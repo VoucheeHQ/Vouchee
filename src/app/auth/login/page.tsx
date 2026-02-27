@@ -39,9 +39,8 @@ export default function LoginPage() {
       toast.success('Welcome back!')
 
       // Redirect based on role
-      if (profile?.role === 'admin') {
-        router.push('/admin')
-      } else if (profile?.role === 'cleaner') {
+      if ((profile as any)?.role === 'admin') {
+      } else if ((profile as any)?.role === 'cleaner') {
         router.push('/cleaner')
       } else {
         router.push('/dashboard')
