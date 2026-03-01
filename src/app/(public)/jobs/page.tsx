@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database.types'
 
 // ─── Types ───────────────────────────────────────────
@@ -275,7 +275,10 @@ function FilterBar({
 // ─── Main Page ───────────────────────────────────────
 
 export default function JobsPage() {
-  const supabase = createClientComponentClient<Database>()
+    const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      )
   const [jobs, setJobs] = useState<Job[]>([])
   const [loading, setLoading] = useState(true)
   const [filters, setFilters] = useState<FilterState>({
@@ -306,7 +309,8 @@ export default function JobsPage() {
         .order('created_at', { ascending: false })
         .limit(100)
 
-      if (!error && data) {
+        if (error) console.log('Supabase error:', error)
+            if (!error && data) {
         const filtered = data.filter((row: any) => {
           if (row.status === 'pending') return true
           const updatedAt = new Date(row.updated_at).getTime()
