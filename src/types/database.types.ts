@@ -146,6 +146,9 @@ export type Database = {
           preferred_time: string | null
           start_date: string | null
           status: 'pending' | 'assigned' | 'active' | 'completed' | 'cancelled'
+          service_type: 'regular' | 'deep_clean' | 'end_of_tenancy' | 'oven_clean'
+          zone: 'central_south_east' | 'north_west' | 'north_east_roffey' | 'south_west' | 'warnham_north' | 'broadbridge_heath' | 'mannings_heath' | 'faygate_kilnwood_vale' | 'christs_hospital' | null
+          price_per_session: number | null
           created_at: string
           updated_at: string
         }
@@ -162,6 +165,9 @@ export type Database = {
           preferred_time?: string | null
           start_date?: string | null
           status?: 'pending' | 'assigned' | 'active' | 'completed' | 'cancelled'
+          service_type?: 'regular' | 'deep_clean' | 'end_of_tenancy' | 'oven_clean'
+          zone?: 'central_south_east' | 'north_west' | 'north_east_roffey' | 'south_west' | 'warnham_north' | 'broadbridge_heath' | 'mannings_heath' | 'faygate_kilnwood_vale' | 'christs_hospital' | null
+          price_per_session?: number | null
           created_at?: string
           updated_at?: string
         }
@@ -178,6 +184,9 @@ export type Database = {
           preferred_time?: string | null
           start_date?: string | null
           status?: 'pending' | 'assigned' | 'active' | 'completed' | 'cancelled'
+          service_type?: 'regular' | 'deep_clean' | 'end_of_tenancy' | 'oven_clean'
+          zone?: 'central_south_east' | 'north_west' | 'north_east_roffey' | 'south_west' | 'warnham_north' | 'broadbridge_heath' | 'mannings_heath' | 'faygate_kilnwood_vale' | 'christs_hospital' | null
+          price_per_session?: number | null
           created_at?: string
           updated_at?: string
         }
@@ -308,6 +317,8 @@ export type Database = {
       request_status: 'pending' | 'assigned' | 'active' | 'completed' | 'cancelled'
       session_status: 'scheduled' | 'completed' | 'cancelled' | 'no_show'
       issue_status: 'open' | 'investigating' | 'resolved' | 'closed'
+      service_type: 'regular' | 'deep_clean' | 'end_of_tenancy' | 'oven_clean'
+      horsham_zone: 'central_south_east' | 'north_west' | 'north_east_roffey' | 'south_west' | 'warnham_north' | 'broadbridge_heath' | 'mannings_heath' | 'faygate_kilnwood_vale' | 'christs_hospital'
     }
   }
 }

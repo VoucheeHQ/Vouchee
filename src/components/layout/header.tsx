@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { Button } from '@/components/ui/button'
 import { Menu, X } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
@@ -15,6 +16,7 @@ export function Header() {
     { name: 'Pricing', href: '/pricing' },
     { name: 'For cleaners', href: '/cleaner' },
     { name: 'FAQ', href: '/faq' },
+    { name: 'View active requests', href: '/jobs' },
   ]
 
   return (
@@ -46,12 +48,19 @@ export function Header() {
 
         {/* Desktop Auth Buttons */}
         <div className="hidden items-center gap-4 md:flex">
-          <Link href="/auth/login" className="text-sm font-medium text-ink-secondary hover:text-ink px-3 py-2 rounded-md transition-colors">
-            Log in
-          </Link>
-          <Link href="/auth/signup" className="text-sm font-medium bg-brand-600 text-white px-4 py-2 rounded-md hover:bg-brand-700 transition-colors">
-            Sign up
-          </Link>
+        <Link
+  href="/auth/login"
+  className="text-sm font-medium hover:text-brand-600"
+>
+  Log in
+</Link>
+
+<Link
+  href="/auth/signup"
+  className="text-sm font-medium bg-brand-600 text-white px-4 py-2 rounded-md"
+>
+  Sign up
+</Link>
         </div>
 
         {/* Mobile Menu Button */}
@@ -88,12 +97,6 @@ export function Header() {
               </Link>
             ))}
             <div className="!mt-4 flex flex-col gap-2 border-t border-ink/5 pt-4">
-              <Link href="/auth/login" className="w-full text-center text-sm font-medium text-ink-secondary hover:text-ink px-3 py-2 rounded-md transition-colors block">
-                Log in
-              </Link>
-              <Link href="/auth/signup" className="w-full text-center text-sm font-medium bg-brand-600 text-white px-4 py-2 rounded-md hover:bg-brand-700 transition-colors block">
-                Sign up
-              </Link>
             </div>
           </div>
         </div>
