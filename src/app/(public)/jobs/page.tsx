@@ -1,7 +1,5 @@
 'use client'
 
-export const dynamic = 'force-dynamic'
-
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
@@ -289,8 +287,6 @@ export default function JobsPage() {
   useEffect(() => {
     async function fetchJobs() {
       setLoading(true)
-      const tenDaysAgo = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
-
       const { data, error } = await supabase
         .from('clean_requests')
         .select(`
@@ -305,20 +301,18 @@ export default function JobsPage() {
           price_per_session,
           status,
           created_at,
-          updated_at,
-          customers (
-            frequency
-          )
+          updated_at
         `)
-        .or(`status.eq.pending,and(status.in.(assigned,active,completed,cancelled),updated_at.gte.${tenDaysAgo})`)
         .order('created_at', { ascending: false })
+        .limit(100)
 
       if (!error && data) {
-        const mapped = data.map((row: any) => ({
-          ...row,
-          frequency: row.customers?.frequency ?? null,
-        })) as Job[]
-        setJobs(mapped)
+        const filtered = data.filter((row: any) => {
+          if (row.status === 'pending') return true
+          const updatedAt = new Date(row.updated_at).getTime()
+          return updatedAt > Date.now() - 10 * 24 * 60 * 60 * 1000
+        })
+        setJobs(filtered as Job[])
       }
       setLoading(false)
     }
