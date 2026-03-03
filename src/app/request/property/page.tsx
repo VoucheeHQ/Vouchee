@@ -38,7 +38,29 @@ const HOURS_OPTIONS = [
   { value: 4.5, label: '4.5 hours' },
   { value: 5,   label: '5+ hours' },
 ]
+const SECTOR_TO_ZONE: Record<string, string> = {
+  "RH121": "central_south_east", "RH122": "central_south_east",
+  "RH123": "south_west",         "RH124": "north_east_roffey",
+  "RH125": "north_west",         "RH126": "warnham_north",
+  "RH127": "warnham_north",      "RH128": "north_west",
+  "RH129": "north_west",
+  "RH130": "christs_hospital",
+  "RH131": "christs_hospital",   "RH132": "south_west",
+  "RH133": "mannings_heath",     "RH134": "mannings_heath",
+  "RH135": "central_south_east", "RH136": "mannings_heath",
+  "RH137": "broadbridge_heath",  "RH138": "broadbridge_heath",
+  "RH139": "broadbridge_heath",
+  "RH110": "faygate_kilnwood_vale", "RH111": "faygate_kilnwood_vale",
+  "RH112": "faygate_kilnwood_vale", "RH113": "faygate_kilnwood_vale",
+}
 
+function getZoneFromPostcode(postcode: string): string | null {
+  const clean = postcode.toUpperCase().replace(/\s+/g, "")
+  // Try 5-char match first (e.g. RH135), then 4-char (e.g. RH12)
+  const key5 = clean.slice(0, 5)
+  const key4 = clean.slice(0, 4)
+  return SECTOR_TO_ZONE[key5] ?? SECTOR_TO_ZONE[key4] ?? null
+}
 function getSuggestedHours(bedrooms: number) {
   if (bedrooms <= 1) return { min: 1.5, max: 2,   preselect: 1.5 }
   if (bedrooms === 2) return { min: 2,   max: 2.5, preselect: 2   }
@@ -96,6 +118,7 @@ export default function RequestStep1Page() {
     if (!hoursPerSession) { setHoursTouched(true); return }
     sessionStorage.setItem('cleanRequest', JSON.stringify({
       bedrooms, bathrooms, postcode, sector: detectedSector,
+      zone: getZoneFromPostcode(postcode),
       tasks: selectedTasks, preferredDays, preferredTime, hoursPerSession,
     }))
     router.push('/request/frequency')
