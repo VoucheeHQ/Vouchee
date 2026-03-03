@@ -310,16 +310,13 @@ export default function PreviewAndPublishPage() {
         email, password,
         options: { data: { full_name: fullName } },
       })
-
+      
       let userId: string | undefined
-
-      if (signUpError?.message?.includes("already registered")) {
-        // Existing user — sign them in
+      
+      if (signUpError || !authData.user) {
         const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ email, password })
         if (signInError) throw signInError
         userId = signInData.user?.id
-      } else if (signUpError) {
-        throw signUpError
       } else {
         userId = authData.user?.id
       }
