@@ -126,24 +126,24 @@ async function publishRequest(data: RequestData, userId: string): Promise<string
   // No-op if full_name is already set
 
   // 2. Ensure customer record exists
-  const { data: existingCustomer } = await supabase
-    .from("customers")
-    .select("id")
-    .eq("profile_id", userId)
-    .single()
+  const { data: existingCustomer } = await (supabase as any)
+  .from("customers")
+  .select("id")
+  .eq("profile_id", userId)
+  .single() as { data: { id: string } | null }
 
   let customerId: string
 
   if (existingCustomer) {
     customerId = existingCustomer.id
     // Update frequency in case it changed
-    await supabase
-      .from("customers")
-      .update({ frequency: data.frequency ?? "fortnightly" })
-      .eq("id", customerId)
+    await (supabase as any)
+    .from("customers")
+    .update({ frequency: data.frequency ?? "fortnightly" })
+    .eq("id", customerId)
   } else {
     // Create customer record
-    const { data: newCustomer, error: customerError } = await supabase
+    const { data: newCustomer, error: customerError } = await (supabase as any)
       .from("customers")
       .insert({
         profile_id: userId,
@@ -166,7 +166,7 @@ async function publishRequest(data: RequestData, userId: string): Promise<string
     || null
 
   // 4. Insert the clean request
-  const { data: inserted, error: insertError } = await supabase
+  const { data: inserted, error: insertError } = await (supabase as any)
     .from("clean_requests")
     .insert({
       customer_id: customerId,
