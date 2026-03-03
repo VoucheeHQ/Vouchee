@@ -33,17 +33,16 @@ const PRICING: Record<string, { pricePerSession: number; monthlyCharge: number; 
 
 // Map postcode sector → zone enum
 const SECTOR_TO_ZONE: Record<string, string> = {
-  "RH12 1": "central_south_east",
-  "RH12 2": "central_south_east",
-  "RH12 5": "north_west",
-  "RH12 4": "north_east_roffey",
-  "RH12 3": "south_west",
-  "RH13 0": "south_west",
-  "RH12 6": "warnham_north",
-  "RH13 8": "broadbridge_heath",
-  "RH13 6": "mannings_heath",
-  "RH11 0": "faygate_kilnwood_vale",
-  "RH13 0": "christs_hospital",
+  "RH121": "central_south_east",
+  "RH122": "central_south_east",
+  "RH125": "north_west",
+  "RH124": "north_east_roffey",
+  "RH123": "south_west",
+  "RH126": "warnham_north",
+  "RH138": "broadbridge_heath",
+  "RH136": "mannings_heath",
+  "RH110": "faygate_kilnwood_vale",
+  "RH130": "christs_hospital",
 }
 
 function getSectorFromPostcode(postcode: string): string | null {
