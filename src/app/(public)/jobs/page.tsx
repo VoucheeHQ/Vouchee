@@ -1,15 +1,17 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { createClient } from '@supabase/supabase-js'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase/client'
 
-const supabase = createClient(
+const supabase = createSupabaseClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
-// ─── Types ───────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────
 
 type HorshamZone =
   | 'central_south_east' | 'north_west' | 'north_east_roffey'
@@ -17,7 +19,7 @@ type HorshamZone =
   | 'mannings_heath' | 'faygate_kilnwood_vale' | 'christs_hospital'
 
 type ServiceType = 'regular' | 'deep_clean' | 'end_of_tenancy' | 'oven_clean'
-type JobStatus = 'pending' | 'assigned' | 'active' | 'completed' | 'cancelled'
+type JobStatus = 'pending' | 'pending_review' | 'assigned' | 'active' | 'completed' | 'cancelled'
 
 interface Job {
   id: string
@@ -66,23 +68,31 @@ const FREQUENCY_LABELS: Record<string, string> = {
   monthly: 'Monthly',
 }
 
-// Tasks: green = regular, yellow = special
 const TASK_LABELS: Record<string, { label: string; special: boolean }> = {
-  general_cleaning: { label: 'General cleaning', special: false },
-  hoovering:        { label: 'Hoovering', special: false },
-  mopping:          { label: 'Mopping', special: false },
+  general_cleaning:    { label: 'General cleaning', special: false },
+  general:             { label: 'General cleaning', special: false },
+  hoovering:           { label: 'Hoovering', special: false },
+  mopping:             { label: 'Mopping', special: false },
   bathroom_deep_clean: { label: 'Bathroom deep clean', special: false },
+  bathroom:            { label: 'Bathroom clean', special: false },
   kitchen_deep_clean:  { label: 'Kitchen deep clean', special: false },
-  ironing:          { label: 'Ironing', special: true },
-  oven_clean:       { label: 'Oven clean', special: true },
-  windows:          { label: 'Windows', special: true },
-  laundry:          { label: 'Laundry', special: true },
-  hob_clean:        { label: 'Hob clean', special: true },
-  extractor_clean:  { label: 'Extractor clean', special: true },
-  fridge_clean:     { label: 'Fridge clean', special: true },
+  kitchen:             { label: 'Kitchen clean', special: false },
+  ironing:             { label: 'Ironing', special: true },
+  oven_clean:          { label: 'Oven clean', special: true },
+  oven:                { label: 'Oven clean', special: true },
+  windows:             { label: 'Windows', special: true },
+  windows_interior:    { label: 'Interior windows', special: true },
+  laundry:             { label: 'Laundry', special: true },
+  hob_clean:           { label: 'Hob clean', special: true },
+  extractor_clean:     { label: 'Extractor clean', special: true },
+  fridge_clean:        { label: 'Fridge clean', special: true },
+  fridge:              { label: 'Fridge clean', special: true },
+  blinds:              { label: 'Blinds', special: true },
+  mold:                { label: 'Mould removal', special: true },
+  changing_beds:       { label: 'Changing beds', special: true },
 }
 
-const REGULAR_TASKS = ['general_cleaning', 'hoovering', 'mopping', 'bathroom_deep_clean', 'kitchen_deep_clean']
+const REGULAR_TASKS = ['general_cleaning', 'general', 'hoovering', 'mopping', 'bathroom_deep_clean', 'bathroom', 'kitchen_deep_clean', 'kitchen']
 
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime()
@@ -93,16 +103,69 @@ function timeAgo(dateStr: string) {
   return 'Just now'
 }
 
+// ─── Your Listing Banner ──────────────────────────────
+
+function YourListingBanner({ job, onEdit }: { job: Job; onEdit: () => void }) {
+  const zone = job.zone ? ZONE_LABELS[job.zone as HorshamZone] : 'Horsham'
+  const isGrace = job.status === 'pending_review'
+
+  return (
+    <div style={{
+      background: 'linear-gradient(135deg, #f0fdf4, #dcfce7)',
+      border: '2px solid #86efac',
+      borderRadius: '20px',
+      padding: '20px 24px',
+      marginBottom: '28px',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ position: 'relative' }}>
+            <div style={{
+              width: '10px', height: '10px', borderRadius: '50%',
+              background: '#22c55e',
+              boxShadow: '0 0 0 4px rgba(34,197,94,0.2)',
+            }} />
+          </div>
+          <div>
+            <div style={{ fontSize: '15px', fontWeight: 700, color: '#14532d', marginBottom: '2px' }}>
+              Your listing · {zone}
+            </div>
+            <div style={{ fontSize: '13px', color: '#16a34a' }}>
+              {isGrace
+                ? '⏱ Going live in a few minutes — edit now if needed'
+                : '✅ Accepting applications — cleaners can see and apply'}
+            </div>
+          </div>
+        </div>
+        <button
+          onClick={onEdit}
+          style={{
+            display: 'flex', alignItems: 'center', gap: '6px',
+            background: 'white', border: '1.5px solid #86efac',
+            borderRadius: '12px', padding: '8px 16px',
+            fontSize: '13px', fontWeight: 600, color: '#15803d',
+            cursor: 'pointer', transition: 'all 0.15s',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+          }}
+        >
+          ✏️ Edit listing
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ─── Job Card ─────────────────────────────────────────
 
-function JobCard({ job }: { job: Job }) {
+function JobCard({ job, isOwn = false, onEdit }: { job: Job; isOwn?: boolean; onEdit?: () => void }) {
   const [notesOpen, setNotesOpen] = useState(false)
   const [tasksExpanded, setTasksExpanded] = useState(false)
 
-  const isCompleted = job.status === 'completed' || job.status === 'cancelled'
-  const zone = job.zone ? ZONE_LABELS[job.zone] : 'Horsham'
+  const isCompleted = job.status === 'completed' || job.status === 'cancelled' || job.status === 'assigned' || job.status === 'active'
+  const isGrace = job.status === 'pending_review'
+  const zone = job.zone ? ZONE_LABELS[job.zone as HorshamZone] : 'Horsham'
   const days = (job.preferred_days?.length ? job.preferred_days : job.preferred_day ? [job.preferred_day] : [])
-  const daysLabel = days.length > 0 ? days.map(d => d.slice(0, 3)).join(' · ') : null
+  const daysLabel = days.length > 0 ? days.map((d: string) => d.slice(0, 3)).join(' · ') : null
   const estPerSession = job.hourly_rate && job.hours_per_session
     ? (job.hourly_rate * job.hours_per_session).toFixed(2)
     : null
@@ -115,17 +178,34 @@ function JobCard({ job }: { job: Job }) {
 
   return (
     <div className={`relative rounded-2xl border bg-white transition-all duration-200 ${
-      isCompleted
+      isCompleted && !isOwn
         ? 'opacity-60 border-gray-200'
+        : isOwn
+        ? 'border-green-300 shadow-md ring-2 ring-green-100'
         : 'border-gray-200 shadow-sm hover:shadow-md hover:-translate-y-0.5'
     }`}>
 
-      {/* Completed stamp */}
-      {isCompleted && (
+      {/* Filled stamp */}
+      {isCompleted && !isOwn && (
         <div className="absolute top-4 right-4 z-10">
           <span className="text-xs font-semibold tracking-widest uppercase text-gray-400 border border-gray-300 rounded-full px-2.5 py-1">
             Filled
           </span>
+        </div>
+      )}
+
+      {/* Own listing badges */}
+      {isOwn && (
+        <div className="absolute top-4 right-4 z-10 flex flex-col items-end gap-2">
+          {isGrace ? (
+            <span style={{ background: '#fef9c3', border: '1px solid #fde047', color: '#854d0e', fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '100px', letterSpacing: '0.04em' }}>
+              ⏱ Going live soon
+            </span>
+          ) : (
+            <span style={{ background: '#dcfce7', border: '1px solid #86efac', color: '#166534', fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '100px', letterSpacing: '0.04em' }}>
+              ● Accepting applications
+            </span>
+          )}
         </div>
       )}
 
@@ -134,42 +214,30 @@ function JobCard({ job }: { job: Job }) {
         <div className="mb-3">
           <div className="flex items-start gap-2 mb-1">
             <span className="text-base">📍</span>
-            <h3 className="font-bold text-gray-900 text-lg leading-tight">{zone}</h3>
+            <h3 className="font-bold text-gray-900 text-lg leading-tight pr-32">{zone}</h3>
           </div>
           <p className="text-sm text-gray-500 ml-6">{SERVICE_LABELS[job.service_type]}</p>
         </div>
 
         {/* Tag row */}
-        <div className="flex flex-wrap gap-1.5 mb-4 ml-0">
+        <div className="flex flex-wrap gap-1.5 mb-4">
           {job.bedrooms > 0 && (
-            <span className="text-xs bg-gray-100 text-gray-700 rounded-full px-2.5 py-1 font-medium">
-              {job.bedrooms} bed
-            </span>
+            <span className="text-xs bg-gray-100 text-gray-700 rounded-full px-2.5 py-1 font-medium">{job.bedrooms} bed</span>
           )}
           {job.hours_per_session && (
-            <span className="text-xs bg-gray-100 text-gray-700 rounded-full px-2.5 py-1 font-medium">
-              {job.hours_per_session} hrs
-            </span>
+            <span className="text-xs bg-gray-100 text-gray-700 rounded-full px-2.5 py-1 font-medium">{job.hours_per_session} hrs</span>
           )}
           {job.frequency && (
-            <span className="text-xs bg-gray-100 text-gray-700 rounded-full px-2.5 py-1 font-medium">
-              {FREQUENCY_LABELS[job.frequency] ?? job.frequency}
-            </span>
+            <span className="text-xs bg-gray-100 text-gray-700 rounded-full px-2.5 py-1 font-medium">{FREQUENCY_LABELS[job.frequency] ?? job.frequency}</span>
           )}
           {daysLabel && (
-            <span className="text-xs bg-gray-100 text-gray-700 rounded-full px-2.5 py-1 font-medium">
-              {daysLabel}
-            </span>
+            <span className="text-xs bg-gray-100 text-gray-700 rounded-full px-2.5 py-1 font-medium">{daysLabel}</span>
           )}
           {job.time_of_day && (
-            <span className="text-xs bg-gray-100 text-gray-700 rounded-full px-2.5 py-1 font-medium">
-              {job.time_of_day}
-            </span>
+            <span className="text-xs bg-gray-100 text-gray-700 rounded-full px-2.5 py-1 font-medium">{job.time_of_day}</span>
           )}
           {job.has_pets && (
-            <span className="text-xs bg-amber-50 text-amber-700 border border-amber-200 rounded-full px-2.5 py-1 font-medium">
-              🐾 Pets
-            </span>
+            <span className="text-xs bg-amber-50 text-amber-700 border border-amber-200 rounded-full px-2.5 py-1 font-medium">🐾 Pets</span>
           )}
         </div>
 
@@ -182,38 +250,27 @@ function JobCard({ job }: { job: Job }) {
                 const info = TASK_LABELS[task]
                 if (!info) return null
                 return (
-                  <span
-                    key={task}
-                    className={`text-xs rounded-full px-2.5 py-1 font-medium border ${
-                      info.special
-                        ? 'bg-amber-50 text-amber-700 border-amber-200'
-                        : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                    }`}
-                  >
+                  <span key={task} className={`text-xs rounded-full px-2.5 py-1 font-medium border ${
+                    info.special
+                      ? 'bg-amber-50 text-amber-700 border-amber-200'
+                      : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                  }`}>
                     {info.label}
                   </span>
                 )
               })}
               {!tasksExpanded && hiddenCount > 0 && (
-                <button
-                  onClick={() => setTasksExpanded(true)}
-                  className="text-xs text-gray-400 hover:text-gray-600 px-2.5 py-1 border border-dashed border-gray-300 rounded-full transition-colors"
-                >
+                <button onClick={() => setTasksExpanded(true)} className="text-xs text-gray-400 hover:text-gray-600 px-2.5 py-1 border border-dashed border-gray-300 rounded-full transition-colors">
                   +{hiddenCount} more
                 </button>
               )}
               {tasksExpanded && hiddenCount > 0 && (
-                <button
-                  onClick={() => setTasksExpanded(false)}
-                  className="text-xs text-gray-400 hover:text-gray-600 px-2.5 py-1 transition-colors"
-                >
+                <button onClick={() => setTasksExpanded(false)} className="text-xs text-gray-400 hover:text-gray-600 px-2.5 py-1 transition-colors">
                   Show less
                 </button>
               )}
             </div>
-            <p className="text-xs text-gray-400 mt-2">
-              🟢 Regular tasks · 🟡 Special requests
-            </p>
+            <p className="text-xs text-gray-400 mt-2">🟢 Regular tasks · 🟡 Special requests</p>
           </div>
         )}
 
@@ -222,8 +279,7 @@ function JobCard({ job }: { job: Job }) {
           <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 mb-3">
             <p className="text-xs font-semibold text-amber-600 uppercase tracking-wider mb-0.5">Offered rate</p>
             <p className="text-2xl font-bold text-amber-700">
-              £{job.hourly_rate.toFixed(2)}
-              <span className="text-base font-normal text-amber-600">/hr</span>
+              £{job.hourly_rate.toFixed(2)}<span className="text-base font-normal text-amber-600">/hr</span>
             </p>
             {estPerSession && (
               <p className="text-xs text-amber-600 mt-0.5">Est. £{estPerSession} per session</p>
@@ -234,17 +290,12 @@ function JobCard({ job }: { job: Job }) {
         {/* Customer notes */}
         {job.customer_notes && (
           <div className="border border-gray-100 rounded-xl overflow-hidden">
-            <button
-              onClick={() => setNotesOpen(!notesOpen)}
-              className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50 transition-colors"
-            >
+            <button onClick={() => setNotesOpen(!notesOpen)} className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50 transition-colors">
               <span>See customer notes</span>
               <span className="text-gray-400">{notesOpen ? '▲' : '▼'}</span>
             </button>
             {notesOpen && (
-              <div className="px-4 pb-3 pt-1 text-sm text-gray-600 border-t border-gray-100 bg-gray-50">
-                {job.customer_notes}
-              </div>
+              <div className="px-4 pb-3 pt-1 text-sm text-gray-600 border-t border-gray-100 bg-gray-50">{job.customer_notes}</div>
             )}
           </div>
         )}
@@ -252,11 +303,15 @@ function JobCard({ job }: { job: Job }) {
         {/* Footer */}
         <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
           <span className="text-xs text-gray-400">{timeAgo(job.created_at)}</span>
-          {!isCompleted && (
-            <Link
-              href="/cleaner/apply"
-              className="text-xs font-semibold text-white bg-gray-900 hover:bg-gray-700 rounded-full px-4 py-1.5 transition-colors"
+          {isOwn ? (
+            <button
+              onClick={onEdit}
+              className="text-xs font-semibold text-white bg-green-600 hover:bg-green-700 rounded-full px-4 py-1.5 transition-colors"
             >
+              Edit →
+            </button>
+          ) : !isCompleted && (
+            <Link href="/cleaner/apply" className="text-xs font-semibold text-white bg-gray-900 hover:bg-gray-700 rounded-full px-4 py-1.5 transition-colors">
               Apply →
             </Link>
           )}
@@ -269,24 +324,46 @@ function JobCard({ job }: { job: Job }) {
 // ─── Filters ─────────────────────────────────────────
 
 type FilterStatus = 'all' | 'open' | 'recent'
-
-interface FilterState {
-  status: FilterStatus
-  service: string
-  zone: string
-}
+interface FilterState { status: FilterStatus; service: string; zone: string }
 
 // ─── Main Page ────────────────────────────────────────
 
 export default function JobsPage() {
+  const router = useRouter()
   const [jobs, setJobs] = useState<Job[]>([])
   const [loading, setLoading] = useState(true)
   const [filters, setFilters] = useState<FilterState>({ status: 'all', service: 'all', zone: 'all' })
+  const [myJobId, setMyJobId] = useState<string | null>(null)
 
   useEffect(() => {
-    async function fetchJobs() {
+    async function init() {
       setLoading(true)
 
+      // Check if logged in and find their job
+      const authClient = createClient()
+      const { data: { session } } = await authClient.auth.getSession()
+
+      if (session?.user) {
+        const { data: customer } = await (authClient as any)
+          .from('customers')
+          .select('id')
+          .eq('profile_id', session.user.id)
+          .single() as { data: { id: string } | null }
+
+        if (customer) {
+          const { data: myJobs } = await (authClient as any)
+            .from('clean_requests')
+            .select('id')
+            .eq('customer_id', customer.id)
+            .in('status', ['pending', 'pending_review'])
+            .order('created_at', { ascending: false })
+            .limit(1)
+
+          if (myJobs?.length) setMyJobId(myJobs[0].id)
+        }
+      }
+
+      // Fetch all jobs — include pending_review so owner can see theirs
       const { data, error } = await supabase
         .from('clean_requests')
         .select(`
@@ -303,6 +380,7 @@ export default function JobsPage() {
       if (!error && data) {
         const filtered = data.filter((row: any) => {
           if (row.status === 'pending') return true
+          if (row.status === 'pending_review') return true // owner will see it; others filtered below
           const updatedAt = new Date(row.updated_at).getTime()
           return updatedAt > Date.now() - 10 * 24 * 60 * 60 * 1000
         })
@@ -310,18 +388,28 @@ export default function JobsPage() {
       }
       setLoading(false)
     }
-    fetchJobs()
+    init()
   }, [])
 
   const openJobs = jobs.filter(j => j.status === 'pending')
-  const recentJobs = jobs.filter(j => j.status !== 'pending')
+  const recentJobs = jobs.filter(j => j.status !== 'pending' && j.status !== 'pending_review')
+  const myJob = myJobId ? jobs.find(j => j.id === myJobId) : null
 
+  // For the grid: hide pending_review from others, but show to owner
   const filtered = jobs.filter(job => {
-    if (filters.status === 'open' && job.status !== 'pending') return false
-    if (filters.status === 'recent' && job.status === 'pending') return false
+    if (job.status === 'pending_review' && job.id !== myJobId) return false // hide grace period jobs from others
+    if (filters.status === 'open' && job.status !== 'pending' && job.id !== myJobId) return false
+    if (filters.status === 'recent' && (job.status === 'pending' || job.status === 'pending_review')) return false
     if (filters.service !== 'all' && job.service_type !== filters.service) return false
     if (filters.zone !== 'all' && job.zone !== filters.zone) return false
     return true
+  })
+
+  // Sort: own job first
+  const sortedFiltered = [...filtered].sort((a, b) => {
+    if (a.id === myJobId) return -1
+    if (b.id === myJobId) return 1
+    return 0
   })
 
   return (
@@ -337,21 +425,27 @@ export default function JobsPage() {
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Active cleaning requests</h1>
           <p className="text-gray-500 max-w-lg mb-6">
-            Browse open jobs from homeowners in Horsham. See what customers are paying and apply to become a Vouchee cleaner to pick up work.
+            Browse open jobs from homeowners in Horsham. See what customers are paying and apply to become a Vouchee cleaner.
           </p>
           <div className="flex gap-3 flex-wrap">
             <Link href="/cleaner/apply" className="inline-flex items-center gap-2 bg-gray-900 text-white rounded-full px-5 py-2.5 text-sm font-semibold hover:bg-gray-700 transition-colors">
               Become a cleaner →
             </Link>
-            <Link href="/request" className="inline-flex items-center gap-2 bg-white border border-gray-200 text-gray-700 rounded-full px-5 py-2.5 text-sm font-semibold hover:bg-gray-50 transition-colors">
+            <Link href="/request/property" className="inline-flex items-center gap-2 bg-white border border-gray-200 text-gray-700 rounded-full px-5 py-2.5 text-sm font-semibold hover:bg-gray-50 transition-colors">
               Post a request
             </Link>
           </div>
         </div>
       </section>
 
-      {/* Stats + Filters */}
       <section className="container max-w-5xl mx-auto px-4 py-6">
+
+        {/* Your listing banner */}
+        {myJob && (
+          <YourListingBanner job={myJob} onEdit={() => router.push('/dashboard')} />
+        )}
+
+        {/* Stats */}
         <div className="flex flex-wrap items-center gap-4 mb-5">
           <div className="flex items-center gap-4 text-sm">
             <span className="flex items-center gap-1.5">
@@ -373,35 +467,24 @@ export default function JobsPage() {
         <div className="flex flex-wrap items-center gap-3 mb-6">
           <div className="flex bg-white border border-gray-200 rounded-full p-1 gap-1">
             {(['all', 'open', 'recent'] as FilterStatus[]).map(s => (
-              <button
-                key={s}
-                onClick={() => setFilters(f => ({ ...f, status: s }))}
+              <button key={s} onClick={() => setFilters(f => ({ ...f, status: s }))}
                 className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors capitalize ${
                   filters.status === s ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                {s === 'recent' ? 'Recent' : s.charAt(0).toUpperCase() + s.slice(1)}
+                }`}>
+                {s.charAt(0).toUpperCase() + s.slice(1)}
               </button>
             ))}
           </div>
-
-          <select
-            value={filters.service}
-            onChange={e => setFilters(f => ({ ...f, service: e.target.value }))}
-            className="text-sm border border-gray-200 rounded-full px-4 py-2 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-900"
-          >
+          <select value={filters.service} onChange={e => setFilters(f => ({ ...f, service: e.target.value }))}
+            className="text-sm border border-gray-200 rounded-full px-4 py-2 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-900">
             <option value="all">All services</option>
             <option value="regular">Regular Clean</option>
             <option value="deep_clean">Deep Clean</option>
             <option value="end_of_tenancy">End of Tenancy</option>
             <option value="oven_clean">Oven Clean</option>
           </select>
-
-          <select
-            value={filters.zone}
-            onChange={e => setFilters(f => ({ ...f, zone: e.target.value }))}
-            className="text-sm border border-gray-200 rounded-full px-4 py-2 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-900"
-          >
+          <select value={filters.zone} onChange={e => setFilters(f => ({ ...f, zone: e.target.value }))}
+            className="text-sm border border-gray-200 rounded-full px-4 py-2 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-900">
             <option value="all">All areas</option>
             {Object.entries(ZONE_LABELS).map(([k, v]) => (
               <option key={k} value={k}>{v}</option>
@@ -415,15 +498,13 @@ export default function JobsPage() {
             {[...Array(6)].map((_, i) => (
               <div key={i} className="rounded-2xl border border-gray-200 bg-white p-5 animate-pulse">
                 <div className="h-5 bg-gray-100 rounded w-1/2 mb-3" />
-                <div className="flex gap-2 mb-4">
-                  {[...Array(4)].map((_, j) => <div key={j} className="h-6 bg-gray-100 rounded-full w-16" />)}
-                </div>
+                <div className="flex gap-2 mb-4">{[...Array(4)].map((_, j) => <div key={j} className="h-6 bg-gray-100 rounded-full w-16" />)}</div>
                 <div className="h-16 bg-gray-100 rounded-xl mb-3" />
                 <div className="h-12 bg-gray-100 rounded-xl" />
               </div>
             ))}
           </div>
-        ) : filtered.length === 0 ? (
+        ) : sortedFiltered.length === 0 ? (
           <div className="text-center py-16 text-gray-400">
             <div className="text-4xl mb-3">🔍</div>
             <p className="font-medium text-gray-600 mb-1">No requests match your filters</p>
@@ -433,7 +514,14 @@ export default function JobsPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {filtered.map(job => <JobCard key={job.id} job={job} />)}
+            {sortedFiltered.map(job => (
+              <JobCard
+                key={job.id}
+                job={job}
+                isOwn={job.id === myJobId}
+                onEdit={() => router.push('/dashboard')}
+              />
+            ))}
           </div>
         )}
       </section>
@@ -442,13 +530,8 @@ export default function JobsPage() {
       <section className="bg-white border-t border-gray-100 py-12 mt-8">
         <div className="container max-w-5xl mx-auto px-4 text-center">
           <h2 className="text-xl font-bold text-gray-900 mb-2">Want to pick up cleaning work in Horsham?</h2>
-          <p className="text-gray-500 mb-5 max-w-md mx-auto text-sm">
-            Join Vouchee as a vetted cleaner and apply for open requests like these directly.
-          </p>
-          <Link
-            href="/cleaner/apply"
-            className="inline-flex items-center gap-2 bg-gray-900 text-white rounded-full px-6 py-3 text-sm font-semibold hover:bg-gray-700 transition-colors"
-          >
+          <p className="text-gray-500 mb-5 max-w-md mx-auto text-sm">Join Vouchee as a vetted cleaner and apply for open requests directly.</p>
+          <Link href="/cleaner/apply" className="inline-flex items-center gap-2 bg-gray-900 text-white rounded-full px-6 py-3 text-sm font-semibold hover:bg-gray-700 transition-colors">
             Apply to become a cleaner →
           </Link>
         </div>

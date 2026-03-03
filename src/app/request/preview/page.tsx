@@ -121,7 +121,7 @@ async function publishRequest(data: RequestData, userId: string): Promise<void> 
     .from("clean_requests")
     .insert({
       customer_id: customerId,
-      status: "pending",
+      status: "pending_review",
       service_type: "regular",
       zone,
       property_type: "house",
@@ -243,7 +243,7 @@ export default function PreviewAndPublishPage() {
       await publishRequest({ ...data, finalNotes: finalNotes || undefined }, uid)
       clearRequestData()
       toast.success("You're live! 🎉")
-      router.push("/dashboard?new=1")
+      router.push("/jobs")
     } catch (err: any) {
       toast.error(err.message || "Something went wrong")
     } finally {
