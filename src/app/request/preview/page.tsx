@@ -262,23 +262,6 @@ export default function PreviewAndPublishPage() {
     if (!loaded) { router.push("/request/property"); return }
     setData(loaded)
     setFinalNotes(loaded.finalNotes ?? "")
-
-    // If already logged in, skip straight to publishing
-    const supabase = createClient()
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user) {
-        const stored = loadRequestData()
-        if (!stored) return
-        try {
-          await publishRequest({ ...stored, finalNotes: stored.finalNotes }, session.user.id)
-          clearRequestData()
-          router.push("/dashboard?new=1")
-        } catch (err: any) {
-          // Already published or error — just go to dashboard
-          router.push("/dashboard")
-        }
-      }
-    })
   }, [router])
 
   const previewData = data ? { ...data, finalNotes: finalNotes || undefined } : null
