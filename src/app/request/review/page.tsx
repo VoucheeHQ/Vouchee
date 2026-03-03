@@ -469,7 +469,7 @@ export default function ReviewPublishPage() {
     if (!userId) {
       toast.error("Please sign in before publishing.")
       setShowPopup(false)
-      router.push("/request/preview")
+      router.push("/auth/login?redirectTo=/request/review")
       publishLock.current = false
       return
     }
@@ -640,7 +640,7 @@ export default function ReviewPublishPage() {
 
         {/* Publish CTA */}
         <button
-          onClick={() => userId ? setShowPopup(true) : router.push("/request/preview")}
+        onClick={() => userId ? setShowPopup(true) : router.push("/auth/login?redirectTo=/request/review")}
           disabled={isPublishing}
           style={{ width: "100%", padding: "20px", borderRadius: "16px", border: "none", background: isPublishing ? "#e2e8f0" : "linear-gradient(135deg, #16a34a, #22c55e)", color: isPublishing ? "#94a3b8" : "white", fontSize: "18px", fontWeight: 800, fontFamily: "'DM Sans', sans-serif", cursor: isPublishing ? "not-allowed" : "pointer", boxShadow: isPublishing ? "none" : "0 6px 24px rgba(22,163,74,0.35)", transition: "all 0.25s ease" }}
           onMouseEnter={e => { if (!isPublishing) (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-2px)" }}

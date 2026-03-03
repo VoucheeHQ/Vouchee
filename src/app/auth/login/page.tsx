@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { Suspense, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,8 +10,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const redirectTo = searchParams.get('redirectTo') || '/dashboard'
   const [loading, setLoading] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -38,12 +40,12 @@ export default function LoginPage() {
 
       toast.success('Welcome back!')
 
-      // Redirect based on role
       if ((profile as any)?.role === 'admin') {
+        router.push('/dashboard')
       } else if ((profile as any)?.role === 'cleaner') {
         router.push('/cleaner')
       } else {
-        router.push('/dashboard')
+        router.push(redirectTo)
       }
       router.refresh()
     } catch (error: any) {
@@ -109,5 +111,13 @@ export default function LoginPage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   )
 }

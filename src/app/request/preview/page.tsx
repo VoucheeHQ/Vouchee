@@ -481,7 +481,7 @@ export default function PreviewAndSignupPage() {
 
             <div style={{ marginTop: "16px", textAlign: "center", fontSize: "13px" }}>
               <span style={{ color: "#64748b" }}>Already have an account? </span>
-              <Link href="/auth/login" style={{ color: "#3b82f6", fontWeight: 700, textDecoration: "none" }}>Log in</Link>
+              <Link href="/auth/login?redirectTo=/request/review" style={{ color: "#3b82f6", fontWeight: 700, textDecoration: "none" }}>Log in</Link>
             </div>
           </div>
 
