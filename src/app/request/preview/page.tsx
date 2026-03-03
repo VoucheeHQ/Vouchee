@@ -124,6 +124,7 @@ async function publishRequest(data: RequestData, userId: string): Promise<void> 
       status: "pending",
       service_type: "regular",
       zone,
+      property_type: "house",
       bedrooms: data.bedrooms ?? 2,
       bathrooms: data.bathrooms ?? 1,
       has_pets: false,
