@@ -54,6 +54,11 @@ export default function RequestFrequencyPage() {
     const stored = sessionStorage.getItem('cleanRequest')
     if (!stored) { router.push('/request/property'); return }
     setRequestData(JSON.parse(stored))
+    const params = new URLSearchParams(window.location.search)
+    const preset = params.get('preset')
+    if (preset === 'weekly' || preset === 'fortnightly' || preset === 'monthly') {
+      setSelectedFrequency(preset as FrequencyType)
+    }
   }, [router])
 
   const handleContinue = () => {
