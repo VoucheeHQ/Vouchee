@@ -24,14 +24,14 @@ const options: Option[] = [
     emoji: '📣',
     title: 'I\'m self-employed but don\'t have much online presence',
     body: 'No website or ads needed. Vouchee builds your reputation and brings clients to you.',
-    route: '/cleaner/unbranded',
+    route: '/cleaner/no-presence',
     color: '#8b5cf6',
   },
   {
     emoji: '🔓',
     title: 'I work for a company or agency but want to go self-employed',
     body: 'Looking for a way to have reviews and get my own customers.',
-    route: '/cleaner/going-independent',
+    route: '/cleaner/going-solo',
     color: '#f59e0b',
   },
   {
