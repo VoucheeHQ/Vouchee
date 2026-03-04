@@ -112,8 +112,8 @@ export default function HomePageContent({ location = 'Horsham' }: HomePageProps)
           <div className="mx-auto grid max-w-5xl gap-6 md:grid-cols-3">
             {/* Weekly */}
             <Link href="/request/property?preset=weekly" className="block no-underline">
-              <Card className="card-hover h-full cursor-pointer transition-all hover:-translate-y-1 hover:shadow-lg hover:border-brand-400">
-                <CardHeader>
+            <Card className="card-hover h-full cursor-pointer border-brand-500 shadow-elevated ...">
+            <CardHeader>
                   <CardTitle>Weekly</CardTitle>
                   <div className="mt-4">
                     <span className="text-4xl font-bold text-ink">£9.99</span>

@@ -47,7 +47,7 @@ const PRICING_TIERS = [
 export default function RequestFrequencyPage() {
   const router = useRouter()
   const [requestData, setRequestData] = useState<RequestData | null>(null)
-  const [selectedFrequency, setSelectedFrequency] = useState<FrequencyType | null>('fortnightly')
+  const [selectedFrequency, setSelectedFrequency] = useState<FrequencyType | null>(null)
   const [hourlyRate, setHourlyRate] = useState('16.50')
 
   useEffect(() => {
