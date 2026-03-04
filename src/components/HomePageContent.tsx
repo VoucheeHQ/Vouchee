@@ -111,7 +111,7 @@ export default function HomePageContent({ location = 'Horsham' }: HomePageProps)
 
           <div className="mx-auto grid max-w-5xl gap-6 md:grid-cols-3">
             {/* Weekly */}
-            <Link href="/request/frequency?preset=weekly" className="block no-underline">
+            <Link href="/request/property?preset=weekly" className="block no-underline">
               <Card className="card-hover h-full cursor-pointer transition-all hover:-translate-y-1 hover:shadow-lg hover:border-brand-400">
                 <CardHeader>
                   <CardTitle>Weekly</CardTitle>
@@ -127,12 +127,13 @@ export default function HomePageContent({ location = 'Horsham' }: HomePageProps)
                     <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-green-600" /><span>~4.33 sessions/month</span></li>
                     <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-green-600" /><span>Pause anytime</span></li>
                   </ul>
+                  <div className="mt-4 inline-block rounded-full bg-brand-100 px-3 py-1 text-xs font-medium text-brand-700">Most popular</div>
                 </CardContent>
               </Card>
             </Link>
 
             {/* Fortnightly */}
-            <Link href="/request/frequency?preset=fortnightly" className="block no-underline">
+            <Link href="/request/property?preset=fortnightly" className="block no-underline">
               <Card className="card-hover h-full cursor-pointer border-brand-500 shadow-elevated transition-all hover:-translate-y-1 hover:shadow-lg">
                 <CardHeader>
                   <CardTitle>Fortnightly</CardTitle>
@@ -148,13 +149,12 @@ export default function HomePageContent({ location = 'Horsham' }: HomePageProps)
                     <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-green-600" /><span>~2.17 sessions/month</span></li>
                     <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-green-600" /><span>Pause anytime</span></li>
                   </ul>
-                  <div className="mt-4 inline-block rounded-full bg-brand-100 px-3 py-1 text-xs font-medium text-brand-700">Most popular</div>
                 </CardContent>
               </Card>
             </Link>
 
             {/* Monthly */}
-            <Link href="/request/frequency?preset=monthly" className="block no-underline">
+            <Link href="/request/property?preset=monthly" className="block no-underline">
               <Card className="card-hover h-full cursor-pointer transition-all hover:-translate-y-1 hover:shadow-lg hover:border-brand-400">
                 <CardHeader>
                   <CardTitle>Monthly</CardTitle>

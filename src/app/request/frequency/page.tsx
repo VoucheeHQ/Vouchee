@@ -24,6 +24,7 @@ const PRICING_TIERS = [
     monthlyCharge: 43.33,
     description: 'Every week',
     sessionsPerMonth: '~4.33',
+    popular: true,
   },
   {
     frequency: 'fortnightly' as FrequencyType,
@@ -32,7 +33,6 @@ const PRICING_TIERS = [
     monthlyCharge: 32.48,
     description: 'Every 2 weeks',
     sessionsPerMonth: '~2.17',
-    popular: true,
   },
   {
     frequency: 'monthly' as FrequencyType,

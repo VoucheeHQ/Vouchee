@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { getPostcodeSector, isValidHorshamPostcode } from '@/lib/postcode-sectors'
 
 const CLEANING_TASKS = [
@@ -69,8 +69,10 @@ function getSuggestedHours(bedrooms: number) {
   return                     { min: 4,   max: 5,   preselect: 4   }
 }
 
-export default function RequestStep1Page() {
+function RequestStep1Page() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+const frequencyPreset = searchParams.get('preset')
   const [bedrooms, setBedrooms] = useState(2)
   const [bathrooms, setBathrooms] = useState(1)
   const [postcode, setPostcode] = useState('')
@@ -153,11 +155,14 @@ export default function RequestStep1Page() {
 
           {/* ── Step tracker ── */}
           <div style={{ marginBottom: '32px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <div style={{ fontSize: '13px', fontWeight: 600, color: '#3b82f6', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-                Step 1 of 4
-              </div>
-            </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+  <div style={{ fontSize: '13px', fontWeight: 600, color: '#3b82f6', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+    Step 1 of 4
+  </div>
+  <button onClick={() => router.push('/')} style={{ fontSize: '13px', fontWeight: 600, color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
+    ← Back
+  </button>
+</div>
             <div style={{ height: '4px', background: '#e2e8f0', borderRadius: '100px', overflow: 'hidden' }}>
               <div style={{ height: '100%', width: '25%', background: 'linear-gradient(90deg, #3b82f6 0%, #facc15 50%, #22c55e 100%)', borderRadius: '100px' }} />
             </div>
@@ -392,5 +397,12 @@ export default function RequestStep1Page() {
         </div>
       </div>
     </>
+  )
+}
+function RequestStep1Content() {
+  return (
+    <Suspense fallback={<div>Loading…</div>}>
+      <RequestStep1Content />
+    </Suspense>
   )
 }
