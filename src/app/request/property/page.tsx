@@ -69,7 +69,7 @@ function getSuggestedHours(bedrooms: number) {
   return                     { min: 4,   max: 5,   preselect: 4   }
 }
 
-function RequestStep1Page() {
+function RequestStep1Content() {
   const router = useRouter()
   const searchParams = useSearchParams()
 const frequencyPreset = searchParams.get('preset')
@@ -399,7 +399,7 @@ const frequencyPreset = searchParams.get('preset')
     </>
   )
 }
-function RequestStep1Content() {
+export default function RequestStep1Page(): JSX.Element {
   return (
     <Suspense fallback={<div>Loading…</div>}>
       <RequestStep1Content />
