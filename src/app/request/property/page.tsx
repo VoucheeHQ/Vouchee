@@ -72,7 +72,7 @@ function getSuggestedHours(bedrooms: number) {
 function RequestStep1Content() {
   const router = useRouter()
   const searchParams = useSearchParams()
-const frequencyPreset = searchParams.get('preset')
+  const frequencyPreset = searchParams.get('preset')
   const [bedrooms, setBedrooms] = useState(2)
   const [bathrooms, setBathrooms] = useState(1)
   const [postcode, setPostcode] = useState('')
@@ -123,7 +123,7 @@ const frequencyPreset = searchParams.get('preset')
       zone: getZoneFromPostcode(postcode),
       tasks: selectedTasks, preferredDays, preferredTime, hoursPerSession,
     }))
-    router.push('/request/frequency')
+    router.push(`/request/frequency${frequencyPreset ? `?preset=${frequencyPreset}` : ''}`)
   }
 
   const allTasks = [...CLEANING_TASKS, ...ADDITIONAL_TASKS]

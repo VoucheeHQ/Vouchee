@@ -134,7 +134,7 @@ export default function HomePageContent({ location = 'Horsham' }: HomePageProps)
 
             {/* Fortnightly */}
             <Link href="/request/property?preset=fortnightly" className="block no-underline">
-              <Card className="card-hover h-full cursor-pointer border-brand-500 shadow-elevated transition-all hover:-translate-y-1 hover:shadow-lg">
+              <Card className="card-hover h-full cursor-pointer transition-all hover:-translate-y-1 hover:shadow-lg">
                 <CardHeader>
                   <CardTitle>Fortnightly</CardTitle>
                   <div className="mt-4">
