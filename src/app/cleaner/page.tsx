@@ -23,7 +23,7 @@ const options: Option[] = [
   {
     emoji: '📣',
     title: 'I\'m self-employed but don\'t have much online presence',
-    body: 'No website or ads needed. Vouchee builds your reputation and brings clients to you.',
+    body: 'No website. Vouchee builds your reputation and brings clients to you.',
     route: '/cleaner/no-presence',
     color: '#8b5cf6',
   },
