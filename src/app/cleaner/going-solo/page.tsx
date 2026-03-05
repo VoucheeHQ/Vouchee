@@ -124,11 +124,14 @@ export default function GoingSoloCleanerPage() {
           <button className="ep-back" onClick={() => router.push('/cleaner')}>← Back</button>
           <div className="ep-logo">Vou<span>chee</span></div>
           <h1 className="ep-h1">
-            Want to be your own boss?<br />
+            Thinking about going self-employed?<br />
             <em>We'll help you land your first clients.</em>
           </h1>
           <p className="ep-sub">
-            Going self-employed is an exciting change. Finding your own clients is the hardest step. Vouchee solves that — connecting you with homeowners in Horsham who are actively looking for a cleaner, so you can focus on delivering great service instead of knocking on doors.
+            Going self-employed is an exciting change. Finding your own clients is the hardest step. Vouchee solves that by connecting you with homeowners in Horsham who are actively looking for a cleaner, so you can focus on delivering great service instead of knocking on doors.
+          </p>
+          <p style={{ fontSize: '14px', color: '#64748b', fontStyle: 'italic', marginTop: '12px', maxWidth: '480px', marginLeft: 'auto', marginRight: 'auto' }}>
+            Many cleaners start by taking a few clients while still working their current job.
           </p>
         </div>
 
@@ -141,7 +144,7 @@ export default function GoingSoloCleanerPage() {
                 <div className="ep-step-num">1</div>
                 <div>
                   <div className="ep-step-title">Register your interest</div>
-                  <div className="ep-step-body">Tell us how many hours you're looking for and which parts of Horsham suit you, and enjoy a steady stream of customers to choose from.</div>
+                  <div className="ep-step-body">Tell us how many hours you're looking for and which parts of Horsham suit you, and enjoy a steady flow of local customer requests to choose from.</div>
                 </div>
               </div>
               <div className="ep-step">

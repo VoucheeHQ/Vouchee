@@ -10,9 +10,18 @@ type Option = {
   route: string
   color: string
   muted?: boolean
+  mostCommon?: boolean
 }
 
 const options: Option[] = [
+  {
+    emoji: '📣',
+    title: 'I\'m self-employed but don\'t have much online presence',
+    body: 'No website needed. Vouchee builds your reputation and brings clients to you.',
+    route: '/cleaner/no-presence',
+    color: '#8b5cf6',
+    mostCommon: true,
+  },
   {
     emoji: '🏡',
     title: 'I\'m self-employed with my own clients and online presence',
@@ -21,16 +30,9 @@ const options: Option[] = [
     color: '#3b82f6',
   },
   {
-    emoji: '📣',
-    title: 'I\'m self-employed but don\'t have much online presence',
-    body: 'No website. Vouchee builds your reputation and brings clients to you.',
-    route: '/cleaner/no-presence',
-    color: '#8b5cf6',
-  },
-  {
     emoji: '🔓',
     title: 'I work for a company or agency but want to go self-employed',
-    body: 'Looking for a way to have reviews and get my own customers.',
+    body: 'Wanting to get your own clients and keep what you earn.',
     route: '/cleaner/going-solo',
     color: '#f59e0b',
   },
@@ -54,58 +56,18 @@ const options: Option[] = [
 function CoverageMap() {
   return (
     <div style={{ width: '100%', borderRadius: '16px', overflow: 'hidden', border: '1px solid #e2e8f0', boxShadow: '0 2px 12px rgba(0,0,0,0.06)', background: '#e8f4f8', position: 'relative' }}>
-      <TransformWrapper
-        initialScale={1}
-        minScale={1}
-        maxScale={4}
-        centerOnInit
-      >
+      <TransformWrapper initialScale={1} minScale={1} maxScale={4} centerOnInit>
         {({ zoomIn, zoomOut, resetTransform }) => (
           <>
-            <TransformComponent
-              wrapperStyle={{ width: '100%', display: 'block' }}
-              contentStyle={{ width: '100%' }}
-            >
-              <img
-                src="/Vouchee_service_area.png"
-                alt="Vouchee service area map"
-                style={{ width: '100%', height: 'auto', display: 'block' }}
-                draggable={false}
-              />
+            <TransformComponent wrapperStyle={{ width: '100%', display: 'block' }} contentStyle={{ width: '100%' }}>
+              <img src="/Vouchee_service_area.png" alt="Vouchee service area map" style={{ width: '100%', height: 'auto', display: 'block' }} draggable={false} />
             </TransformComponent>
-            <div style={{
-              position: 'absolute', bottom: '12px', right: '12px',
-              display: 'flex', flexDirection: 'column', gap: '4px', zIndex: 10,
-            }}>
-              <button onClick={() => zoomIn()} style={{
-                width: '32px', height: '32px', borderRadius: '8px',
-                background: 'white', border: '1px solid #e2e8f0',
-                fontSize: '18px', fontWeight: 700, color: '#0f172a',
-                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.1)', fontFamily: 'DM Sans, sans-serif',
-              }}>+</button>
-              <button onClick={() => zoomOut()} style={{
-                width: '32px', height: '32px', borderRadius: '8px',
-                background: 'white', border: '1px solid #e2e8f0',
-                fontSize: '18px', fontWeight: 700, color: '#0f172a',
-                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.1)', fontFamily: 'DM Sans, sans-serif',
-              }}>−</button>
-              <button onClick={() => resetTransform()} style={{
-                width: '32px', height: '32px', borderRadius: '8px',
-                background: 'white', border: '1px solid #e2e8f0',
-                fontSize: '11px', fontWeight: 700, color: '#64748b',
-                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.1)', fontFamily: 'DM Sans, sans-serif',
-              }}>↺</button>
+            <div style={{ position: 'absolute', bottom: '12px', right: '12px', display: 'flex', flexDirection: 'column', gap: '4px', zIndex: 10 }}>
+              <button onClick={() => zoomIn()} style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'white', border: '1px solid #e2e8f0', fontSize: '18px', fontWeight: 700, color: '#0f172a', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', fontFamily: 'DM Sans, sans-serif' }}>+</button>
+              <button onClick={() => zoomOut()} style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'white', border: '1px solid #e2e8f0', fontSize: '18px', fontWeight: 700, color: '#0f172a', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', fontFamily: 'DM Sans, sans-serif' }}>−</button>
+              <button onClick={() => resetTransform()} style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'white', border: '1px solid #e2e8f0', fontSize: '11px', fontWeight: 700, color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', fontFamily: 'DM Sans, sans-serif' }}>↺</button>
             </div>
-            <div style={{
-              position: 'absolute', bottom: '12px', left: '12px',
-              background: 'rgba(255,255,255,0.85)', borderRadius: '8px',
-              padding: '5px 10px', fontSize: '11px', color: '#64748b',
-              fontFamily: 'DM Sans, sans-serif', fontWeight: 600,
-              boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-            }}>
+            <div style={{ position: 'absolute', bottom: '12px', left: '12px', background: 'rgba(255,255,255,0.85)', borderRadius: '8px', padding: '5px 10px', fontSize: '11px', color: '#64748b', fontFamily: 'DM Sans, sans-serif', fontWeight: 600, boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
               Scroll to zoom · Drag to pan
             </div>
           </>
@@ -125,61 +87,39 @@ export default function CleanerSelectionPage() {
       <style suppressHydrationWarning>{`
         * { box-sizing: border-box; margin: 0; padding: 0; }
         .sp { min-height: 100vh; font-family: 'DM Sans', sans-serif; background: linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%); display: flex; flex-direction: column; }
-
-        .sp-header {
-          padding: 48px 20px 32px; text-align: center; position: relative;
-        }
+        .sp-header { padding: 48px 20px 32px; text-align: center; position: relative; }
         .sp-header-inner { max-width: 560px; margin: 0 auto; position: relative; z-index: 1; }
-
         .sp-logo { font-family: 'Lora', serif; font-size: 44px; font-weight: 700; color: #0f172a; margin-bottom: 4px; letter-spacing: -0.5px; line-height: 1; }
         .sp-logo span { color: #22c55e; }
         .sp-tagline { font-size: 14px; color: #64748b; margin-bottom: 22px; }
         .sp-header h1 { font-family: 'Lora', serif; font-size: clamp(19px, 3.8vw, 27px); font-weight: 700; color: #0f172a; line-height: 1.28; letter-spacing: -0.2px; }
-
         .sp-proof { background: rgba(255,255,255,0.6); backdrop-filter: blur(12px); border-top: 1px solid rgba(255,255,255,0.8); border-bottom: 1px solid rgba(255,255,255,0.8); padding: 16px 20px; margin-top: 24px; }
         .sp-proof-inner { max-width: 560px; margin: 0 auto; display: flex; justify-content: center; gap: 0; }
         .sp-proof-item { flex: 1; text-align: center; padding: 0 12px; border-right: 1px solid #e2e8f0; }
         .sp-proof-item:last-child { border-right: none; }
         .sp-proof-num { font-family: 'Lora', serif; font-size: 20px; font-weight: 700; color: #0f172a; line-height: 1; }
         .sp-proof-label { font-size: 10px; color: #94a3b8; margin-top: 3px; text-transform: uppercase; letter-spacing: 0.05em; }
-
         .sp-body { flex: 1; padding: 32px 20px 16px; }
         .sp-inner { max-width: 560px; margin: 0 auto; }
         .sp-prompt { font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.09em; text-align: center; margin-bottom: 14px; }
-
         .sp-options { display: flex; flex-direction: column; gap: 9px; }
-        .sp-option {
-          background: rgba(255,255,255,0.82); backdrop-filter: blur(16px); border-radius: 20px; padding: 17px 18px;
-          border: 1.5px solid rgba(255,255,255,0.9); display: flex; align-items: center; gap: 14px;
-          cursor: pointer; text-align: left; width: 100%;
-          font-family: 'DM Sans', sans-serif;
-          box-shadow: 0 2px 16px rgba(0,0,0,0.05);
-          transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
-        }
+        .sp-option { background: rgba(255,255,255,0.82); backdrop-filter: blur(16px); border-radius: 20px; padding: 17px 18px; border: 1.5px solid rgba(255,255,255,0.9); display: flex; align-items: center; gap: 14px; cursor: pointer; text-align: left; width: 100%; font-family: 'DM Sans', sans-serif; box-shadow: 0 2px 16px rgba(0,0,0,0.05); transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s; }
         .sp-option:hover { box-shadow: 0 8px 32px rgba(0,0,0,0.1); transform: translateY(-2px); }
         .sp-emoji-wrap { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
         .sp-option-title { font-size: 14px; font-weight: 700; color: #0f172a; margin-bottom: 3px; line-height: 1.3; }
         .sp-option-body { font-size: 12px; color: #64748b; line-height: 1.5; }
         .sp-arrow { font-size: 17px; color: #cbd5e1; transition: color 0.15s, transform 0.15s; flex-shrink: 0; margin-left: auto; padding-left: 8px; }
         .sp-option:hover .sp-arrow { transform: translateX(3px); }
-
         .sp-map-section { padding: 28px 20px 40px; }
         .sp-map-inner { max-width: 560px; margin: 0 auto; }
         .sp-map-header { text-align: center; margin-bottom: 14px; }
         .sp-map-eyebrow { font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.09em; margin-bottom: 6px; }
         .sp-map-title { font-family: 'Lora', serif; font-size: 19px; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
         .sp-map-sub { font-size: 13px; color: #64748b; line-height: 1.55; }
-        .sp-map-wrap { border-radius: 16px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
-
         .sp-footer { text-align: center; padding: 8px 20px 36px; }
         .sp-footer p { font-size: 13px; color: #94a3b8; }
         .sp-footer a { color: #3b82f6; text-decoration: none; font-weight: 600; }
-
-        @media (max-width: 480px) {
-          .sp-logo { font-size: 36px; }
-          .sp-proof-num { font-size: 17px; }
-          .sp-option { padding: 14px; }
-        }
+        @media (max-width: 480px) { .sp-logo { font-size: 36px; } .sp-proof-num { font-size: 17px; } .sp-option { padding: 14px; } }
       `}</style>
 
       <div className="sp" suppressHydrationWarning>
@@ -212,21 +152,36 @@ export default function CleanerSelectionPage() {
             <div className="sp-prompt">Which position describes you best?</div>
             <div className="sp-options">
               {options.map((opt, i) => (
-                <div key={i}>
+                <div key={i} style={{ position: 'relative' }}>
                   {opt.muted && (
                     <div style={{ borderTop: '1px dashed #e2e8f0', margin: '4px 0 12px' }} />
+                  )}
+                  {opt.mostCommon && (
+                    <div style={{
+                      position: 'absolute', top: '-10px', left: '20px', zIndex: 10,
+                      background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)',
+                      color: 'white', fontSize: '10px', fontWeight: 700,
+                      padding: '3px 10px', borderRadius: '100px',
+                      letterSpacing: '0.04em', whiteSpace: 'nowrap',
+                      boxShadow: '0 2px 8px rgba(139,92,246,0.35)',
+                    }}>
+                      Most common
+                    </div>
                   )}
                   <button
                     className="sp-option"
                     onClick={() => router.push(opt.route)}
-                    style={opt.muted ? { background: 'transparent', borderStyle: 'dashed', borderColor: '#cbd5e1', boxShadow: 'none' } : {}}
+                    style={{
+                      ...(opt.muted ? { background: 'transparent', borderStyle: 'dashed', borderColor: '#cbd5e1', boxShadow: 'none' } : {}),
+                      ...(opt.mostCommon ? { borderColor: '#c4b5fd', marginTop: '4px' } : {}),
+                    }}
                     onMouseEnter={e => {
                       e.currentTarget.style.borderColor = opt.color
                       const arrow = e.currentTarget.querySelector('.sp-arrow') as HTMLElement
                       if (arrow) arrow.style.color = opt.color
                     }}
                     onMouseLeave={e => {
-                      e.currentTarget.style.borderColor = opt.muted ? '#cbd5e1' : '#e2e8f0'
+                      e.currentTarget.style.borderColor = opt.muted ? '#cbd5e1' : opt.mostCommon ? '#c4b5fd' : 'rgba(255,255,255,0.9)'
                       const arrow = e.currentTarget.querySelector('.sp-arrow') as HTMLElement
                       if (arrow) arrow.style.color = '#cbd5e1'
                     }}

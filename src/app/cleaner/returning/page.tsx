@@ -136,7 +136,7 @@ export default function ReturningCleanerPage() {
                 <div className="ep-step-num">1</div>
                 <div>
                   <div className="ep-step-title">Register your interest</div>
-                  <div className="ep-step-body">Tell us how many hours you're looking for and which parts of Horsham you'd like to work in, and we'll ensure you have a steady stream of customers to choose from.</div>
+                  <div className="ep-step-body">Tell us how many hours you're looking for and which parts of Horsham you'd like to work in, so you can see a steady stream of customers to choose from.</div>
                 </div>
               </div>
               <div className="ep-step">

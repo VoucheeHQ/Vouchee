@@ -124,7 +124,7 @@ export default function EstablishedCleanerPage() {
             <em>Let us help you fill the gaps.</em>
           </h1>
           <p className="ep-sub">
-            Vouchee connects you with quality, vetted clients in Horsham — on your terms, around your existing schedule. No commitments, no contracts, no disruption to what you've already built.
+            Vouchee connects you with reliable local clients who value regular cleaners — on your terms, around your existing schedule. No commitments, no contracts, no disruption to what you've already built.
           </p>
         </div>
 

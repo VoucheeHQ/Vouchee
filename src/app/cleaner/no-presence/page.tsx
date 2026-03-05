@@ -117,7 +117,7 @@ export default function NoPresenceCleanerPage() {
           <div className="ep-logo">Vou<span>chee</span></div>
           <h1 className="ep-h1">
             Great cleaners shouldn't need<br />
-            <em>a website to get noticed.</em>
+            <em>a website or ads to get regular work.</em>
           </h1>
           <p className="ep-sub">
             Vouchee brings the work to you. No website, no ads, no social media needed. Just quality local clients in Horsham for you to choose from.
