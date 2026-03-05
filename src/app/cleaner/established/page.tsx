@@ -28,6 +28,8 @@ function CoverageMap() {
   )
 }
 
+const ALL_AREAS = ['Central / South East', 'North West', 'North East / Roffey', 'South West', 'Warnham / Surrounding North', 'Broadbridge Heath', 'Mannings Heath', 'Faygate / Kilnwood Vale', 'Christs Hospital']
+
 export default function EstablishedCleanerPage() {
   const router = useRouter()
   const [creditsOpen, setCreditsOpen] = useState(false)
@@ -35,11 +37,13 @@ export default function EstablishedCleanerPage() {
     name: '', email: '', phone: '',
     hours: '',
     currentClients: '',
+    selectedAreas: [] as string[],
   })
   const [submitted, setSubmitted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
   const canSubmit = form.name && form.email && form.hours
+  const allSelected = form.selectedAreas.includes('__all__')
 
   const handleSubmit = async () => {
     if (!canSubmit) return
@@ -56,45 +60,29 @@ export default function EstablishedCleanerPage() {
       <link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;600;700&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
       <style suppressHydrationWarning>{`
         * { box-sizing: border-box; margin: 0; padding: 0; }
-
         .ep { min-height: 100vh; font-family: 'DM Sans', sans-serif; background: linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%); }
-
-        /* ── Header ── */
         .ep-header { padding: 40px 20px 48px; text-align: center; max-width: 600px; margin: 0 auto; }
         .ep-back { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: #64748b; cursor: pointer; background: none; border: none; font-family: 'DM Sans', sans-serif; margin-bottom: 28px; padding: 0; transition: color 0.15s; }
         .ep-back:hover { color: #0f172a; }
         .ep-logo { font-family: 'Lora', serif; font-size: 44px; font-weight: 700; color: #0f172a; letter-spacing: -0.5px; margin-bottom: 24px; display: block; }
         .ep-logo span { color: #22c55e; }
-        .ep-eyebrow { display: none; }
         .ep-h1 { font-family: 'Lora', serif; font-size: clamp(24px, 5vw, 36px); font-weight: 700; color: #0f172a; line-height: 1.2; letter-spacing: -0.3px; margin-bottom: 16px; }
         .ep-h1 em { font-style: normal; color: #3b82f6; }
         .ep-sub { font-size: 16px; color: #475569; line-height: 1.65; max-width: 480px; margin: 0 auto; }
-
-        /* ── Sections ── */
         .ep-section { padding: 0 20px 40px; max-width: 600px; margin: 0 auto; }
         .ep-section-label { font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 16px; }
-
-        /* ── Cards ── */
         .ep-card { background: rgba(255,255,255,0.82); backdrop-filter: blur(16px); border-radius: 20px; border: 1.5px solid rgba(255,255,255,0.9); box-shadow: 0 2px 16px rgba(0,0,0,0.05); padding: 24px; margin-bottom: 12px; }
-        .ep-card-title { font-size: 15px; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
-        .ep-card-body { font-size: 13px; color: #64748b; line-height: 1.6; }
-
-        /* ── How it works ── */
         .ep-steps { display: flex; flex-direction: column; gap: 0; }
         .ep-step { display: flex; gap: 16px; align-items: flex-start; padding: 20px 0; border-bottom: 1px solid rgba(0,0,0,0.05); }
         .ep-step:last-child { border-bottom: none; padding-bottom: 0; }
         .ep-step-num { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #3b82f6, #22c55e); display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 800; color: white; flex-shrink: 0; font-family: 'Lora', serif; }
         .ep-step-title { font-size: 14px; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
         .ep-step-body { font-size: 13px; color: #64748b; line-height: 1.55; }
-
-        /* ── Value props ── */
         .ep-props { display: flex; flex-direction: column; gap: 10px; }
         .ep-prop { display: flex; align-items: flex-start; gap: 12px; padding: 16px; background: rgba(255,255,255,0.7); border-radius: 14px; border: 1.5px solid rgba(255,255,255,0.9); }
         .ep-prop-icon { font-size: 22px; flex-shrink: 0; margin-top: 1px; }
         .ep-prop-title { font-size: 13px; font-weight: 700; color: #0f172a; margin-bottom: 2px; }
         .ep-prop-body { font-size: 12px; color: #64748b; line-height: 1.55; }
-
-        /* ── Credits ── */
         .ep-credits-hero { background: linear-gradient(135deg, #eff6ff, #f0fdf4); border-radius: 20px; border: 1.5px solid #bfdbfe; padding: 24px; margin-bottom: 10px; text-align: center; }
         .ep-credits-badge { display: inline-flex; align-items: center; gap: 8px; background: #3b82f6; color: white; font-size: 13px; font-weight: 700; padding: 6px 14px; border-radius: 100px; margin-bottom: 14px; }
         .ep-credits-headline { font-family: 'Lora', serif; font-size: 20px; font-weight: 700; color: #0f172a; line-height: 1.3; margin-bottom: 10px; }
@@ -106,8 +94,6 @@ export default function EstablishedCleanerPage() {
         .ep-credits-row:last-child { border-bottom: none; padding-bottom: 0; }
         .ep-credits-milestone { font-size: 13px; font-weight: 600; color: #0f172a; }
         .ep-credits-reward { font-size: 12px; font-weight: 700; color: #22c55e; }
-
-        /* ── Form ── */
         .ep-form { display: flex; flex-direction: column; gap: 16px; }
         .ep-label { font-size: 13px; font-weight: 600; color: #475569; display: block; margin-bottom: 6px; }
         .ep-input { width: 100%; background: rgba(255,255,255,0.8); border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 11px 14px; font-family: 'DM Sans', sans-serif; font-size: 14px; color: #1e293b; outline: none; transition: border-color 0.15s; }
@@ -121,26 +107,17 @@ export default function EstablishedCleanerPage() {
         .ep-submit { width: 100%; padding: 15px; background: linear-gradient(90deg, #3b82f6 0%, #22c55e 100%); color: white; font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 700; border: none; border-radius: 14px; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 16px rgba(59,130,246,0.25); margin-top: 4px; }
         .ep-submit:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(59,130,246,0.35); }
         .ep-submit:disabled { opacity: 0.5; cursor: not-allowed; }
-
-        /* ── Success ── */
         .ep-success { text-align: center; padding: 48px 24px; }
         .ep-success-icon { font-size: 56px; margin-bottom: 20px; }
         .ep-success-title { font-family: 'Lora', serif; font-size: 26px; font-weight: 700; color: #0f172a; margin-bottom: 12px; }
         .ep-success-body { font-size: 15px; color: #64748b; line-height: 1.65; }
-
-        @media (max-width: 480px) {
-          .ep-areas { grid-template-columns: 1fr; }
-          .ep-h1 { font-size: 24px; }
-        }
+        @media (max-width: 480px) { .ep-areas { grid-template-columns: 1fr; } .ep-h1 { font-size: 24px; } }
       `}</style>
 
       <div className="ep" suppressHydrationWarning>
 
-        {/* ── Header ── */}
         <div className="ep-header">
-          <button className="ep-back" onClick={() => router.push('/cleaner')}>
-            ← Back
-          </button>
+          <button className="ep-back" onClick={() => router.push('/cleaner')}>← Back</button>
           <div className="ep-logo">Vou<span>chee</span></div>
           <h1 className="ep-h1">
             You've built something.<br />
@@ -221,9 +198,9 @@ export default function EstablishedCleanerPage() {
           <div className="ep-section-label">Early access offer</div>
           <div className="ep-credits-hero">
             <div className="ep-credits-badge">🎁 Pre-launch perk</div>
-            <div className="ep-credits-headline">Register now and enjoy unlimited free application credits for your first month</div>
+            <div className="ep-credits-headline">Register now and enjoy unlimited free application credits for your first 3 months</div>
             <div className="ep-credits-body">
-              As an early access cleaner, apply for as much work as you want during our launch month — no credits needed. It's our way of saying thank you for being first.
+              As an early access cleaner, apply for as much work as you want during your first 3 months — no credits needed. It's our way of saying thank you for being early.
             </div>
           </div>
           <button className="ep-credits-expand" onClick={() => setCreditsOpen(o => !o)}>
@@ -232,7 +209,6 @@ export default function EstablishedCleanerPage() {
           </button>
           {creditsOpen && (
             <div className="ep-credits-detail">
-
               <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px' }}>Quests — earn as you go</div>
               {[
                 { label: 'First application sent', reward: '+2 credits', bonus: null },
@@ -250,7 +226,6 @@ export default function EstablishedCleanerPage() {
                   <span className="ep-credits-reward">{q.reward}</span>
                 </div>
               ))}
-
               <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '16px 0 10px' }}>Badges — monthly credit refresh</div>
               {[
                 { badge: '🥉 Bronze', req: '5 reviews of 4★+', reward: '2 credits/month', detail: 'Your first Vouchee badge' },
@@ -265,7 +240,6 @@ export default function EstablishedCleanerPage() {
                   <span className="ep-credits-reward">{b.reward}</span>
                 </div>
               ))}
-
               <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '14px', lineHeight: 1.5, borderTop: '1px solid #f1f5f9', paddingTop: '12px' }}>
                 No subscription, no monthly fee. Credits are only used when you apply for work. You can also top up anytime — find out more on your dashboard after registering.
               </div>
@@ -281,7 +255,7 @@ export default function EstablishedCleanerPage() {
               <div className="ep-success-icon">🎉</div>
               <div className="ep-success-title">You're on the list!</div>
               <div className="ep-success-body">
-                We'll be in touch before launch with everything you need to get started. Your first month is completely free.
+                We'll be in touch before launch with everything you need to get started. Your first 3 months are completely free.
               </div>
             </div>
           ) : (
@@ -331,14 +305,20 @@ export default function EstablishedCleanerPage() {
                 <div>
                   <label className="ep-label">Which areas are you happy to work in? <span style={{ color: '#94a3b8', fontWeight: 400 }}>(select all that apply)</span></label>
                   <div className="ep-areas">
-                    {['Central / South East', 'North West', 'North East / Roffey', 'South West', 'Warnham / Surrounding North', 'Broadbridge Heath', 'Mannings Heath', 'Faygate / Kilnwood Vale', 'Christs Hospital'].map(area => {
-                      const selected = (form as any).selectedAreas?.includes(area) || false
+                    <button type="button"
+                      className={`ep-area${allSelected ? ' selected' : ''}`}
+                      style={{ gridColumn: '1 / -1' }}
+                      onClick={() => setForm(f => ({ ...f, selectedAreas: allSelected ? [] : ['__all__'] }))}>
+                      {allSelected ? '✓ ' : ''}All areas
+                    </button>
+                    {!allSelected && ALL_AREAS.map(area => {
+                      const selected = form.selectedAreas.includes(area)
                       return (
                         <button key={area} type="button"
                           className={`ep-area${selected ? ' selected' : ''}`}
                           onClick={() => setForm(f => {
-                            const areas = (f as any).selectedAreas || []
-                            return { ...f, selectedAreas: areas.includes(area) ? areas.filter((a: string) => a !== area) : [...areas, area] }
+                            const areas = f.selectedAreas
+                            return { ...f, selectedAreas: areas.includes(area) ? areas.filter(a => a !== area) : [...areas, area] }
                           })}>
                           {selected ? '✓ ' : ''}{area}
                         </button>
@@ -347,11 +327,7 @@ export default function EstablishedCleanerPage() {
                   </div>
                 </div>
 
-                <button
-                  className="ep-submit"
-                  onClick={handleSubmit}
-                  disabled={!canSubmit || submitting}
-                >
+                <button className="ep-submit" onClick={handleSubmit} disabled={!canSubmit || submitting}>
                   {submitting ? 'Registering...' : 'Register my interest →'}
                 </button>
 

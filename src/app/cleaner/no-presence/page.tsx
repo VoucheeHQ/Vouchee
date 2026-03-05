@@ -116,11 +116,11 @@ export default function NoPresenceCleanerPage() {
           <button className="ep-back" onClick={() => router.push('/cleaner')}>← Back</button>
           <div className="ep-logo">Vou<span>chee</span></div>
           <h1 className="ep-h1">
-            Great cleaners don't need<br />
+            Great cleaners shouldn't need<br />
             <em>a website to get noticed.</em>
           </h1>
           <p className="ep-sub">
-            Vouchee does the finding for you. No website, no ads, no social media — just quality local clients in Horsham delivered straight to you.
+            Vouchee brings the work to you. No website, no ads, no social media needed. Just quality local clients in Horsham for you to choose from.
           </p>
         </div>
 
@@ -133,28 +133,28 @@ export default function NoPresenceCleanerPage() {
                 <div className="ep-step-num">1</div>
                 <div>
                   <div className="ep-step-title">Register your interest</div>
-                  <div className="ep-step-body">Tell us how many hours you're looking for and which areas of Horsham suit you. That's all we need to get started.</div>
+                  <div className="ep-step-body">Tell us how many hours you're looking for and which areas of Horsham suit you best.</div>
                 </div>
               </div>
               <div className="ep-step">
                 <div className="ep-step-num">2</div>
                 <div>
-                  <div className="ep-step-title">We match you with local customers</div>
-                  <div className="ep-step-body">When we launch, you'll see cleaning requests from real customers nearby — with the area, hours needed, preferred days, and what they're willing to pay all shown upfront.</div>
+                  <div className="ep-step-title">We give you access to local customers</div>
+                  <div className="ep-step-body">Upon launch, you'll see cleaning requests from customers in Horsham. Every listing shows the hours needed, preferred days, and what they'd like to pay — all upfront.</div>
                 </div>
               </div>
               <div className="ep-step">
                 <div className="ep-step-num">3</div>
                 <div>
-                  <div className="ep-step-title">Apply for the jobs you want</div>
-                  <div className="ep-step-body">You choose what to apply for. No cold calling, no chasing leads — customers come to Vouchee looking for someone exactly like you.</div>
+                  <div className="ep-step-title">Apply for the work you want</div>
+                  <div className="ep-step-body">You choose what to apply for. All customers have taken their time to fill out what they need and created an account — meaning you know they really are looking for help.</div>
                 </div>
               </div>
               <div className="ep-step">
                 <div className="ep-step-num">4</div>
                 <div>
                   <div className="ep-step-title">Build your reputation as you go</div>
-                  <div className="ep-step-body">Every job adds a verified review to your Vouchee profile. Over time, your reputation does the selling — no website needed.</div>
+                  <div className="ep-step-body">Every customer is prompted to leave you a review, meaning your hard work does the selling for you. No expensive website or ads needed.</div>
                 </div>
               </div>
             </div>
@@ -166,24 +166,17 @@ export default function NoPresenceCleanerPage() {
           <div className="ep-section-label">What you get</div>
           <div className="ep-props">
             <div className="ep-prop">
-              <div className="ep-prop-icon">📣</div>
+              <div className="ep-prop-icon">✅</div>
               <div>
-                <div className="ep-prop-title">Vouchee brings the customers to you</div>
-                <div className="ep-prop-body">No ads, no word-of-mouth waiting game. Customers post their cleaning requests and you choose which ones to go for — it's that simple.</div>
+                <div className="ep-prop-title">Vetted, quality clients</div>
+                <div className="ep-prop-body">Every customer goes through our onboarding process. You'll know exactly what the job involves before you apply — no surprises, no time-wasters.</div>
               </div>
             </div>
             <div className="ep-prop">
               <div className="ep-prop-icon">💷</div>
               <div>
                 <div className="ep-prop-title">You set your rate</div>
-                <div className="ep-prop-body">Customers post what they're willing to pay. You can discuss your rate with them directly — Vouchee doesn't take a cut of your hourly earnings.</div>
-              </div>
-            </div>
-            <div className="ep-prop">
-              <div className="ep-prop-icon">⭐</div>
-              <div>
-                <div className="ep-prop-title">Your profile grows with every job</div>
-                <div className="ep-prop-body">Each completed clean adds a verified review. The more you work through Vouchee, the stronger your profile becomes — making it easier to win new clients.</div>
+                <div className="ep-prop-body">Customers post what they'd like to pay, and you're always free to discuss your rate directly with them — Vouchee doesn't take a cut of your hourly earnings.</div>
               </div>
             </div>
             <div className="ep-prop">
@@ -191,6 +184,13 @@ export default function NoPresenceCleanerPage() {
               <div>
                 <div className="ep-prop-title">Work on your terms</div>
                 <div className="ep-prop-body">Only apply for jobs that fit your schedule and your area. You're in full control of how much you take on and when.</div>
+              </div>
+            </div>
+            <div className="ep-prop">
+              <div className="ep-prop-icon">⭐</div>
+              <div>
+                <div className="ep-prop-title">Your reputation wins you work</div>
+                <div className="ep-prop-body">Each completed clean adds a verified review. The more reviews you have, the stronger your profile becomes — your Vouchee profile does the work a website would, for free.</div>
               </div>
             </div>
           </div>
@@ -201,9 +201,9 @@ export default function NoPresenceCleanerPage() {
           <div className="ep-section-label">Early access offer</div>
           <div className="ep-credits-hero">
             <div className="ep-credits-badge">🎁 Pre-launch perk</div>
-            <div className="ep-credits-headline">Register now and enjoy unlimited free application credits for your first month</div>
+            <div className="ep-credits-headline">Register now and enjoy unlimited free application credits for your first 3 months</div>
             <div className="ep-credits-body">
-              As an early access cleaner, apply for as much work as you want during our launch month — no credits needed. It's our way of saying thank you for being first.
+              As an early access cleaner, apply for as much work as you want during your first 3 months — no credits needed. It's our way of saying thank you for being early.
             </div>
           </div>
           <button className="ep-credits-expand" onClick={() => setCreditsOpen(o => !o)}>
@@ -300,20 +300,36 @@ export default function NoPresenceCleanerPage() {
                 </div>
                 <div>
                   <label className="ep-label">Which areas are you happy to work in? <span style={{ color: '#94a3b8', fontWeight: 400 }}>(select all that apply)</span></label>
-                  <div className="ep-areas">
-                    {['Central / South East', 'North West', 'North East / Roffey', 'South West', 'Warnham / Surrounding North', 'Broadbridge Heath', 'Mannings Heath', 'Faygate / Kilnwood Vale', 'Christs Hospital'].map(area => {
-                      const selected = (form as any).selectedAreas?.includes(area) || false
+                  <div className="ep-areas" style={{ marginBottom: '8px' }}>
+                    {(() => {
+                      const ALL_AREAS = ['Central / South East', 'North West', 'North East / Roffey', 'South West', 'Warnham / Surrounding North', 'Broadbridge Heath', 'Mannings Heath', 'Faygate / Kilnwood Vale', 'Christs Hospital']
+                      const selectedAreas: string[] = (form as any).selectedAreas || []
+                      const allSelected = selectedAreas.includes('__all__')
                       return (
-                        <button key={area} type="button"
-                          className={`ep-area${selected ? ' selected' : ''}`}
-                          onClick={() => setForm(f => {
-                            const areas = (f as any).selectedAreas || []
-                            return { ...f, selectedAreas: areas.includes(area) ? areas.filter((a: string) => a !== area) : [...areas, area] }
-                          })}>
-                          {selected ? '✓ ' : ''}{area}
-                        </button>
+                        <>
+                          <button type="button"
+                            className={`ep-area${allSelected ? ' selected' : ''}`}
+                            style={{ gridColumn: '1 / -1' }}
+                            onClick={() => setForm(f => ({ ...f, selectedAreas: allSelected ? [] : ['__all__'] }))}>
+                            {allSelected ? '✓ ' : ''}All areas
+                          </button>
+                          {!allSelected && ALL_AREAS.map(area => {
+                            const selected = selectedAreas.includes(area)
+                            return (
+                              <button key={area} type="button"
+                                className={`ep-area${selected ? ' selected' : ''}`}
+                                onClick={() => setForm(f => {
+                                  const areas = (f as any).selectedAreas || []
+                                  return { ...f, selectedAreas: areas.includes(area) ? areas.filter((a: string) => a !== area) : [...areas, area] }
+                                })}>
+                                {selected ? '✓ ' : ''}{area}
+                              </button>
+                            )
+                          })}
+                        </>
                       )
-                    })}</div>
+                    })()}
+                  </div>
                 </div>
                 <button className="ep-submit" onClick={handleSubmit} disabled={!canSubmit || submitting}>
                   {submitting ? 'Registering...' : 'Register my interest →'}
