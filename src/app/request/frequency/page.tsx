@@ -75,71 +75,56 @@ function getRateSuggestion(
   bathrooms: number,
   tasks: string[]
 ): RateSuggestion {
+  // No frequency yet — neutral state, default to mid-market, no warning shown
   if (!frequency) {
-    return {
-      low: 15, high: 17.5,
-      defaultRate: '16.00',
-      reason: '', // empty = neutral, no frequency chosen yet
-    }
+    return { low: 15, high: 20, defaultRate: '16.00', reason: '' }
   }
 
   const hasDeepCleanTasks = tasks.some(t => DEEP_CLEAN_TASKS.includes(t))
   const isMonthly = frequency === 'monthly'
   const weight = getPropertyWeight(bedrooms, bathrooms)
 
-  // XL: e.g. 4 bed / 3 bath (weight ≥ 3.65), 5 bed / 2 bath (weight ≥ 3.95)
-  const isXL = weight >= 3.6
-  // Large: e.g. 4 bed / 1 bath (weight 2.95), 3 bed / 3 bath (weight 3.0)
-  const isLarge = weight >= 2.8 && !isXL
-  // Medium: e.g. 3 bed / 1-2 bath, 2 bed / 2 bath
+  // Size buckets
+  // XL:     4 bed / 3+ bath (3.65+), 5 bed / 2 bath (3.95+)
+  // Large:  4 bed / 1-2 bath (2.95-3.30), 3 bed / 3 bath (3.0)
+  // Medium: 3 bed / 1-2 bath (2.30-2.65), 2 bed / 2 bath (2.0)
+  // Small:  1-2 bed / 1 bath
+  const isXL     = weight >= 3.6
+  const isLarge  = weight >= 2.8 && !isXL
   const isMedium = weight >= 1.9 && !isLarge && !isXL
 
-  // Monthly or specialist tasks — higher band across all sizes
-  if (hasDeepCleanTasks || isMonthly) {
-    if (isXL) {
-      return {
-        low: 17.5, high: 20, defaultRate: '19.00',
-        reason: `A large ${bedrooms}-bed / ${bathrooms}-bath property with ${isMonthly ? 'monthly' : 'specialist'} clean requirements. £17.50–20/hr reflects the substantial effort per visit.`,
-      }
-    }
-    if (isLarge) {
-      return {
-        low: 18, high: 20, defaultRate: '18.50',
-        reason: `A ${bedrooms}-bed / ${bathrooms}-bath property with ${isMonthly ? 'monthly' : 'specialist'} clean requirements. £18–20/hr reflects the extra work per visit.`,
-      }
-    }
-    return {
-      low: 17, high: 19, defaultRate: '18.00',
-      reason: isMonthly
-        ? `A ${bedrooms}-bed / ${bathrooms}-bath home on a monthly schedule. £17–19/hr reflects the extra work per visit compared to regular cleans.`
-        : `Specialist tasks take additional time and skill. £17–19/hr reflects that fairly for your size property.`,
-    }
+  // Base ranges per size — these are the weekly/fortnightly regular clean ranges
+  // Calibrated to Horsham market: 4 bed / 1 bath (~1000 sqft) = Large = £16.50–18.50
+  const base: Record<string, { low: number; high: number }> = {
+    Small:  { low: 15,   high: 16.5 },
+    Medium: { low: 15.5, high: 17.5 },
+    Large:  { low: 16.5, high: 18.5 },
+    XL:     { low: 17.5, high: 20   },
+  }
+  const bucket = isXL ? 'XL' : isLarge ? 'Large' : isMedium ? 'Medium' : 'Small'
+  let { low, high } = base[bucket]
+
+  // Monthly: shift range up by £1 across all buckets (more work per visit)
+  if (isMonthly) { low += 1; high = Math.min(high + 1, 20) }
+
+  // Deep clean tasks: shift up by £0.50 (extra effort, but don't double-count with monthly)
+  if (hasDeepCleanTasks && !isMonthly) { low += 0.5; high = Math.min(high + 0.5, 20) }
+
+  // Default = midpoint of range, rounded to nearest 0.50
+  const mid = Math.round((low + high) / 2 / 0.5) * 0.5
+  const defaultRate = Math.min(mid, high).toFixed(2)
+
+  // Build reason
+  const deepNote = hasDeepCleanTasks ? ', including specialist tasks' : ''
+  const freqLabel = isMonthly ? 'monthly' : frequency
+  let reason = ''
+  if (isMonthly) {
+    reason = `A ${bedrooms}-bed / ${bathrooms}-bath home on a monthly schedule${deepNote}. Monthly cleans involve more work per session — £${low}–£${high}/hr reflects that.`
+  } else {
+    reason = `A ${bedrooms}-bed / ${bathrooms}-bath home on a ${freqLabel} schedule${deepNote}. £${low}–£${high}/hr is the typical Horsham range — regular work is a strong draw for good cleaners.`
   }
 
-  // Regular cleans (weekly / fortnightly) — regularity is attractive to cleaners
-  if (isXL) {
-    return {
-      low: 17.5, high: 20, defaultRate: '19.00',
-      reason: `A large ${bedrooms}-bed / ${bathrooms}-bath home on a ${frequency} schedule. £17.50–20/hr reflects the size — the regular slot still makes this competitive for experienced cleaners.`,
-    }
-  }
-  if (isLarge) {
-    return {
-      low: 16, high: 17.5, defaultRate: '16.50',
-      reason: `A ${bedrooms}-bed / ${bathrooms}-bath home on a ${frequency} schedule. £16–17.50/hr is competitive in Horsham — the regular slot is a strong draw for good cleaners.`,
-    }
-  }
-  if (isMedium) {
-    return {
-      low: 15, high: 17, defaultRate: '16.00',
-      reason: `A ${bedrooms}-bed / ${bathrooms}-bath home on a ${frequency} schedule. £15–17/hr is the typical Horsham range — cleaners value the consistency of a regular booking.`,
-    }
-  }
-  // Small (1–2 bed, 1 bath)
-  return {
-    low: 15, high: 16.5, defaultRate: '15.50',
-    reason: `A smaller ${bedrooms}-bed / ${bathrooms}-bath property on a ${frequency} schedule. £15–16.50/hr is fair and competitive — regular work at a good rate attracts reliable cleaners.`,
-  }
+  return { low, high, defaultRate, reason }
 }
 
 export default function RequestFrequencyPage() {

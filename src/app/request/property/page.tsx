@@ -64,12 +64,25 @@ function getZoneFromPostcode(postcode: string): string | null {
   return SECTOR_TO_ZONE[key5] ?? SECTOR_TO_ZONE[key4] ?? null
 }
 
-function getSuggestedHours(bedrooms: number) {
-  if (bedrooms <= 1) return { min: 1.5, max: 2,   preselect: 1.5 }
-  if (bedrooms === 2) return { min: 2,   max: 2.5, preselect: 2   }
-  if (bedrooms === 3) return { min: 2.5, max: 3,   preselect: 2.5 }
-  if (bedrooms === 4) return { min: 3,   max: 4,   preselect: 3   }
-  return                     { min: 4,   max: 5,   preselect: 4   }
+function getSuggestedHours(bedrooms: number, bathrooms: number) {
+  // Base hours from bedrooms, then add 0.5 per extra bathroom beyond 1
+  const extraBaths = Math.max(0, bathrooms - 1)
+  const bathBonus  = extraBaths * 0.5
+
+  let base: { min: number; max: number; preselect: number }
+  if (bedrooms <= 1) base = { min: 1.5, max: 2,   preselect: 1.5 }
+  else if (bedrooms === 2) base = { min: 2,   max: 2.5, preselect: 2   }
+  else if (bedrooms === 3) base = { min: 2.5, max: 3.5, preselect: 3   }
+  else if (bedrooms === 4) base = { min: 3,   max: 4.5, preselect: 3.5 }
+  else                     base = { min: 4,   max: 5,   preselect: 4.5 }
+
+  // Round bath bonus to nearest 0.5 and cap total at 5
+  const bonus = Math.round(bathBonus / 0.5) * 0.5
+  return {
+    min:       Math.min(base.min + bonus, 5),
+    max:       Math.min(base.max + bonus, 5),
+    preselect: Math.min(base.preselect + bonus, 5),
+  }
 }
 
 // ── Rate preview logic (mirrors frequency page — keep in sync) ──────────────
@@ -85,10 +98,10 @@ function getRatePreview(bedrooms: number, bathrooms: number, tasks: string[]) {
   const bucket   = isXL ? 'XL' : isLarge ? 'Large' : isMedium ? 'Medium' : 'Small'
 
   const bands: Record<string, { regular: string; monthly: string; default: string }> = {
-    Small:  { regular: '£15–16.50', monthly: '£17–19',    default: '£15.50' },
-    Medium: { regular: '£15–17',    monthly: '£17–19',    default: '£16.00' },
-    Large:  { regular: '£16–17.50', monthly: '£18–20',    default: '£16.50' },
-    XL:     { regular: '£17.50–20', monthly: '£17.50–20', default: '£19.00' },
+    Small:  { regular: '£15–16.50',   monthly: '£16–17.50',  default: '£15.00' },
+    Medium: { regular: '£15.50–17.50',monthly: '£16.50–18.50',default: '£15.50' },
+    Large:  { regular: '£16.50–18.50',monthly: '£17.50–19.50',default: '£16.50' },
+    XL:     { regular: '£17.50–20',   monthly: '£18.50–20',   default: '£17.50' },
   }
   return { weight: weight.toFixed(2), bucket, hasDeep, ...bands[bucket] }
 }
@@ -100,6 +113,11 @@ function RequestStep1Content() {
 
   const [bedrooms, setBedrooms]               = useState(2)
   const [bathrooms, setBathrooms]             = useState(1)
+
+  const handleBathroomsChange = (val: number) => {
+    setBathrooms(val)
+    if (!userPickedHours) setHoursPerSession(getSuggestedHours(bedrooms, val).preselect)
+  }
   const [postcode, setPostcode]               = useState('')
   const [postcodeError, setPostcodeError]     = useState('')
   const [detectedSector, setDetectedSector]   = useState<string | null>(null)
@@ -133,12 +151,12 @@ function RequestStep1Content() {
     } catch {}
   }, [])
 
-  const suggested = getSuggestedHours(bedrooms)
+  const suggested = getSuggestedHours(bedrooms, bathrooms)
   const isBelowSuggested = hoursPerSession !== null && hoursPerSession < suggested.min
 
   const handleBedroomsChange = (val: number) => {
     setBedrooms(val)
-    if (!userPickedHours) setHoursPerSession(getSuggestedHours(val).preselect)
+    if (!userPickedHours) setHoursPerSession(getSuggestedHours(val, bathrooms).preselect)
   }
 
   const handlePostcodeChange = (value: string) => {
@@ -238,7 +256,7 @@ function RequestStep1Content() {
               </div>
               <div>
                 <label style={{ fontSize: '13px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '6px' }}>Bathrooms</label>
-                <select className="vou-select" value={bathrooms} onChange={e => setBathrooms(Number(e.target.value))}>
+                <select className="vou-select" value={bathrooms} onChange={e => handleBathroomsChange(Number(e.target.value))}>
                   {[1,2,3,4,5,6].map(n => <option key={n} value={n}>{n === 6 ? '6+' : n}</option>)}
                 </select>
               </div>
