@@ -136,7 +136,7 @@ export default function ReturningCleanerPage() {
                 <div className="ep-step-num">1</div>
                 <div>
                   <div className="ep-step-title">Register your interest</div>
-                  <div className="ep-step-body">Tell us how many hours you're looking for and which parts of Horsham you'd like to work in, so you can see a steady stream of customers to choose from.</div>
+                  <div className="ep-step-body">Tell us how many hours you're looking for and which parts of Horsham you'd like to work in, and we'll ensure you have a steady stream of customers to choose from.</div>
                 </div>
               </div>
               <div className="ep-step">
@@ -194,6 +194,7 @@ export default function ReturningCleanerPage() {
               <div>
                 <div className="ep-prop-title">Your rate, your terms</div>
                 <div className="ep-prop-body">Customers post what they're offering, and you can discuss your rate with them directly. Vouchee doesn't take a cut of your hourly earnings — ever.</div>
+                <div style={{ marginTop: '8px', fontSize: '12px', fontWeight: 700, color: '#22c55e' }}>Most Horsham customers post between £14.5–17.5/hr</div>
               </div>
             </div>
             <div className="ep-prop">

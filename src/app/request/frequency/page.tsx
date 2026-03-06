@@ -44,22 +44,111 @@ const PRICING_TIERS = [
   },
 ]
 
+// Tasks that indicate a heavier-than-usual clean — matched to property page task IDs
+const DEEP_CLEAN_TASKS = ['oven', 'bathroom_deep', 'kitchen_deep', 'fridge', 'mold']
+
+const RATE_OPTIONS = [
+  { value: '13.00', label: '£13.00 / hr' },
+  { value: '14.00', label: '£14.00 / hr' },
+  { value: '15.00', label: '£15.00 / hr' },
+  { value: '16.00', label: '£16.00 / hr' },
+  { value: '17.00', label: '£17.00 / hr' },
+  { value: '18.00', label: '£18.00 / hr' },
+  { value: '19.00', label: '£19.00 / hr' },
+  { value: '20.00', label: '£20.00 / hr' },
+  { value: '21.00', label: '£21.00 / hr' },
+  { value: '22.00', label: '£22.00 / hr' },
+]
+
+interface RateSuggestion {
+  low: number
+  high: number
+  defaultRate: string
+  reason: string
+}
+
+function getRateSuggestion(
+  frequency: FrequencyType | null,
+  bedrooms: number,
+  tasks: string[]
+): RateSuggestion {
+  if (!frequency) {
+    return {
+      low: 15, high: 20,
+      defaultRate: '16.00',
+      reason: "Select a frequency above and we'll tailor this to your property.",
+    }
+  }
+
+  const hasDeepCleanTasks = tasks.some(t => DEEP_CLEAN_TASKS.includes(t))
+  const isLarge = bedrooms >= 4
+  const isMedium = bedrooms === 3
+  const isMonthly = frequency === 'monthly'
+
+  // Deep clean tasks or monthly always push to the higher band
+  if (hasDeepCleanTasks || isMonthly) {
+    if (isLarge) {
+      return {
+        low: 18, high: 20, defaultRate: '20.00',
+        reason: `A ${bedrooms}-bedroom property with specialist or monthly clean requirements. £18–20/hr reflects the extra time and effort per visit.`,
+      }
+    }
+    return {
+      low: 18, high: 20, defaultRate: '18.00',
+      reason: isMonthly
+        ? 'Monthly cleans require more work per session than regular visits. £18–20/hr is standard in Horsham for this.'
+        : 'Specialist clean tasks require additional skill and time. £18–20/hr is the standard Horsham range.',
+    }
+  }
+
+  // Regular cleans (weekly / fortnightly)
+  if (isLarge) {
+    return {
+      low: 16, high: 18, defaultRate: '17.00',
+      reason: `A ${bedrooms}-bedroom property on a ${frequency} schedule. £16–18/hr reflects the size, while the regular slot makes this appealing to good cleaners.`,
+    }
+  }
+  if (isMedium) {
+    return {
+      low: 15, high: 17, defaultRate: '16.00',
+      reason: `A 3-bedroom home on a ${frequency} schedule. £15–17/hr is the typical Horsham range — regular work is a strong draw for experienced cleaners.`,
+    }
+  }
+  // 1–2 bed
+  return {
+    low: 15, high: 16, defaultRate: '15.00',
+    reason: `Smaller property on a ${frequency} schedule. £15–16/hr is fair and competitive for regular cleans in Horsham.`,
+  }
+}
+
 export default function RequestFrequencyPage() {
   const router = useRouter()
   const [requestData, setRequestData] = useState<RequestData | null>(null)
   const [selectedFrequency, setSelectedFrequency] = useState<FrequencyType | null>(null)
-  const [hourlyRate, setHourlyRate] = useState('16.50')
+  const [hourlyRate, setHourlyRate] = useState('16.00')
+  const [userEditedRate, setUserEditedRate] = useState(false)
 
   useEffect(() => {
     const stored = sessionStorage.getItem('cleanRequest')
     if (!stored) { router.push('/request/property'); return }
-    setRequestData(JSON.parse(stored))
+    const data = JSON.parse(stored) as RequestData
+    setRequestData(data)
     const params = new URLSearchParams(window.location.search)
     const preset = params.get('preset')
     if (preset === 'weekly' || preset === 'fortnightly' || preset === 'monthly') {
-      setSelectedFrequency(preset as FrequencyType)
+      const freq = preset as FrequencyType
+      setSelectedFrequency(freq)
+      const s = getRateSuggestion(freq, data.bedrooms ?? 2, data.tasks ?? [])
+      setHourlyRate(s.defaultRate)
     }
   }, [router])
+
+  // Auto-update default rate when frequency changes, unless user has manually picked a rate
+  useEffect(() => {
+    if (!selectedFrequency || !requestData || userEditedRate) return
+    const s = getRateSuggestion(selectedFrequency, requestData.bedrooms ?? 2, requestData.tasks ?? [])
+    setHourlyRate(s.defaultRate)
+  }, [selectedFrequency, requestData, userEditedRate])
 
   const handleContinue = () => {
     if (!selectedFrequency || !requestData) return
@@ -70,6 +159,15 @@ export default function RequestFrequencyPage() {
     }))
     router.push('/request/terms')
   }
+
+  const suggestion = requestData
+    ? getRateSuggestion(selectedFrequency, requestData.bedrooms ?? 2, requestData.tasks ?? [])
+    : { low: 15, high: 20, defaultRate: '16.00', reason: '' }
+
+  const rateNum = parseFloat(hourlyRate)
+  const rateInRange = rateNum >= suggestion.low && rateNum <= suggestion.high
+  const rateLow = rateNum < suggestion.low
+  const rateHigh = rateNum > suggestion.high
 
   if (!requestData) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans', sans-serif" }}>
@@ -85,8 +183,9 @@ export default function RequestFrequencyPage() {
         * { box-sizing: border-box; }
         .freq-card { transition: all 0.2s ease; cursor: pointer; }
         .freq-card:hover { transform: translateY(-2px); }
-        .vou-input { width: 100%; background: rgba(255,255,255,0.8); border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 11px 14px; font-family: 'DM Sans', sans-serif; font-size: 14px; color: #1e293b; }
-        .vou-input:focus { outline: none; border-color: #3b82f6; background: white; }
+        .vou-select { width: 100%; background: rgba(255,255,255,0.9); border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 13px 16px; font-family: 'DM Sans', sans-serif; font-size: 16px; font-weight: 700; color: #0f172a; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 16px center; cursor: pointer; transition: border-color 0.15s; }
+        .vou-select:focus { outline: none; border-color: #3b82f6; background-color: white; }
+        .rate-hint { transition: background 0.25s ease, border-color 0.25s ease; }
         .continue-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(59,130,246,0.35) !important; }
         .continue-btn:disabled { opacity: 0.5; cursor: not-allowed; }
         .back-btn:hover { color: #3b82f6; }
@@ -113,7 +212,6 @@ export default function RequestFrequencyPage() {
             <div style={{ height: '4px', background: '#e2e8f0', borderRadius: '100px', overflow: 'hidden' }}>
               <div style={{ height: '100%', width: '50%', background: 'linear-gradient(90deg, #3b82f6 0%, #facc15 50%, #22c55e 100%)', borderRadius: '100px' }} />
             </div>
-
           </div>
 
           {/* ── Header ── */}
@@ -126,47 +224,6 @@ export default function RequestFrequencyPage() {
             </p>
           </div>
 
-          {/* ── Hourly rate ── */}
-          <div style={{ background: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(16px)', borderRadius: '20px', border: '1.5px solid rgba(255,255,255,0.9)', boxShadow: '0 2px 16px rgba(0,0,0,0.05)', padding: '24px', marginBottom: '12px' }}>
-            <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '16px' }}>
-              💷 Offered hourly rate
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
-              <span style={{ fontSize: '28px', fontWeight: 800, color: '#0f172a' }}>£</span>
-              <input
-                className="vou-input"
-                type="number"
-                step="0.10"
-                min="10"
-                max="50"
-                value={hourlyRate}
-                onChange={e => {
-                  const val = parseFloat(e.target.value)
-                  if (!isNaN(val)) setHourlyRate(val.toFixed(2))
-                  else setHourlyRate(e.target.value)
-                }}
-                onBlur={e => {
-                  const val = parseFloat(e.target.value)
-                  if (!isNaN(val)) setHourlyRate(val.toFixed(2))
-                }}
-                style={{ maxWidth: '120px', fontSize: '28px', fontWeight: 800, textAlign: 'center', padding: '10px 12px' }}
-              />
-              <span style={{ fontSize: '15px', color: '#64748b', fontWeight: 500 }}>per hour</span>
-            </div>
-            <div style={{ padding: '12px 14px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '12px' }}>
-              <p style={{ fontSize: '13px', fontWeight: 600, color: '#1e40af', margin: '0 0 4px' }}>
-                💡 Suggested range: £14.20 – £19.50
-              </p>
-              <p style={{ fontSize: '12px', color: '#3b82f6', margin: 0 }}>
-                A higher rate gives you a broader choice of cleaners.
-                Based on your area: {requestData.sector || requestData.postcode}.
-              </p>
-            </div>
-            <p style={{ fontSize: '12px', color: '#94a3b8', margin: '10px 0 0' }}>
-              This is an offer — your cleaner may discuss the rate with you before agreeing to start.
-            </p>
-          </div>
-
           {/* ── Frequency ── */}
           <div style={{ background: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(16px)', borderRadius: '20px', border: '1.5px solid rgba(255,255,255,0.9)', boxShadow: '0 2px 16px rgba(0,0,0,0.05)', padding: '24px', marginBottom: '12px' }}>
             <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '6px' }}>
@@ -176,7 +233,6 @@ export default function RequestFrequencyPage() {
               How often would you like your property cleaned?
             </p>
 
-            {/* DD reassurance */}
             <div style={{ padding: '10px 14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '12px', marginBottom: '16px', display: 'flex', gap: '8px' }}>
               <span style={{ fontSize: '14px', flexShrink: 0 }}>✅</span>
               <span style={{ fontSize: '13px', color: '#166534', fontWeight: 500 }}>
@@ -191,7 +247,7 @@ export default function RequestFrequencyPage() {
                   <div
                     key={tier.frequency}
                     className="freq-card"
-                    onClick={() => setSelectedFrequency(tier.frequency)}
+                    onClick={() => { setSelectedFrequency(tier.frequency); setUserEditedRate(false) }}
                     style={{
                       position: 'relative', padding: '18px 14px', borderRadius: '16px',
                       border: `2px solid ${selected ? '#3b82f6' : '#e2e8f0'}`,
@@ -241,6 +297,68 @@ export default function RequestFrequencyPage() {
             </div>
           </div>
 
+          {/* ── Hourly rate ── */}
+          <div style={{ background: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(16px)', borderRadius: '20px', border: '1.5px solid rgba(255,255,255,0.9)', boxShadow: '0 2px 16px rgba(0,0,0,0.05)', padding: '24px', marginBottom: '12px' }}>
+            <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '6px' }}>
+              💷 Offered hourly rate
+            </div>
+            <p style={{ fontSize: '13px', color: '#64748b', margin: '0 0 14px', lineHeight: 1.5 }}>
+              We've suggested a starting point based on your {requestData.bedrooms}-bedroom property
+              {requestData.tasks?.some((t: string) => ['oven', 'bathroom_deep', 'kitchen_deep', 'fridge', 'mold'].includes(t)) ? ', specialist tasks selected,' : ','} and chosen frequency.
+              You're free to adjust.
+            </p>
+
+            <select
+              className="vou-select"
+              value={hourlyRate}
+              onChange={e => { setHourlyRate(e.target.value); setUserEditedRate(true) }}
+            >
+              {RATE_OPTIONS.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+
+            {/* Live feedback hint */}
+            <div className="rate-hint" style={{
+              marginTop: '12px', padding: '12px 14px', borderRadius: '12px',
+              background: rateInRange ? '#eff6ff' : rateLow ? '#fefce8' : '#f0fdf4',
+              border: `1px solid ${rateInRange ? '#bfdbfe' : rateLow ? '#fde68a' : '#bbf7d0'}`,
+            }}>
+              {rateInRange && (
+                <>
+                  <p style={{ fontSize: '13px', fontWeight: 600, color: '#1e40af', margin: '0 0 3px' }}>
+                    ✅ Within the suggested range for your clean — £{suggestion.low}–£{suggestion.high}/hr
+                  </p>
+                  <p style={{ fontSize: '12px', color: '#3b82f6', margin: 0, lineHeight: 1.5 }}>{suggestion.reason}</p>
+                </>
+              )}
+              {rateLow && (
+                <>
+                  <p style={{ fontSize: '13px', fontWeight: 600, color: '#92400e', margin: '0 0 3px' }}>
+                    ⚠️ Below the suggested range of £{suggestion.low}–£{suggestion.high}/hr
+                  </p>
+                  <p style={{ fontSize: '12px', color: '#b45309', margin: 0, lineHeight: 1.5 }}>
+                    A lower rate may reduce the number of cleaners who apply. You can always adjust once you've seen who's interested.
+                  </p>
+                </>
+              )}
+              {rateHigh && (
+                <>
+                  <p style={{ fontSize: '13px', fontWeight: 600, color: '#166534', margin: '0 0 3px' }}>
+                    💚 Above the suggested range — you'll attract a strong field of applicants
+                  </p>
+                  <p style={{ fontSize: '12px', color: '#16a34a', margin: 0, lineHeight: 1.5 }}>
+                    Offering above the typical rate gives you the best pick of available cleaners in Horsham.
+                  </p>
+                </>
+              )}
+            </div>
+
+            <p style={{ fontSize: '12px', color: '#94a3b8', margin: '10px 0 0', lineHeight: 1.5 }}>
+              This is an offer — your cleaner may discuss the rate with you before agreeing to start.
+            </p>
+          </div>
+
           {/* ── Why Vouchee ── */}
           <div style={{ background: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(16px)', borderRadius: '20px', border: '1.5px solid rgba(255,255,255,0.9)', boxShadow: '0 2px 16px rgba(0,0,0,0.05)', padding: '24px', marginBottom: '24px' }}>
             <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '14px' }}>
@@ -263,7 +381,6 @@ export default function RequestFrequencyPage() {
                 </div>
               ))}
             </div>
-
           </div>
 
           {/* ── CTA ── */}

@@ -188,6 +188,7 @@ export default function GoingSoloCleanerPage() {
               <div>
                 <div className="ep-prop-title">Earn without an agency taking a cut</div>
                 <div className="ep-prop-body">Vouchee doesn't take a percentage of your hourly rate. You agree with the customer what your hourly rate is, and the customer pays you direct. No funny business.</div>
+                <div style={{ marginTop: '8px', fontSize: '12px', fontWeight: 700, color: '#22c55e' }}>Most Horsham customers post between £14.50–17.50/hr</div>
               </div>
             </div>
             <div className="ep-prop">
