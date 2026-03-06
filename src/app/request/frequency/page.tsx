@@ -143,10 +143,17 @@ export default function RequestFrequencyPage() {
     const freq = (preset === 'weekly' || preset === 'fortnightly' || preset === 'monthly')
       ? preset as FrequencyType
       : null
-    if (freq) setSelectedFrequency(freq)
-    // Always initialise rate from property data — use preset freq if available, else no-frequency fallback
-    const s = getRateSuggestion(freq, data.bedrooms ?? 2, data.bathrooms ?? 1, data.tasks ?? [])
-    setHourlyRate(parseFloat(s.defaultRate))
+    if (freq) {
+      setSelectedFrequency(freq)
+      // Preset arrived — set rate for that specific frequency immediately
+      const s = getRateSuggestion(freq, data.bedrooms ?? 2, data.bathrooms ?? 1, data.tasks ?? [])
+      setHourlyRate(parseFloat(s.defaultRate))
+    } else {
+      // No preset — set a neutral default based on property data (mid of no-frequency range)
+      // Rate will update properly once user picks a frequency
+      const s = getRateSuggestion(null, data.bedrooms ?? 2, data.bathrooms ?? 1, data.tasks ?? [])
+      setHourlyRate(parseFloat(s.defaultRate))
+    }
   }, [router])
 
   const handleContinue = () => {
@@ -245,7 +252,13 @@ export default function RequestFrequencyPage() {
                   <div
                     key={tier.frequency}
                     className="freq-card"
-                    onClick={() => setSelectedFrequency(tier.frequency)}
+                    onClick={() => {
+                      setSelectedFrequency(tier.frequency)
+                      if (requestData) {
+                        const s = getRateSuggestion(tier.frequency, requestData.bedrooms ?? 2, requestData.bathrooms ?? 1, requestData.tasks ?? [])
+                        setHourlyRate(parseFloat(s.defaultRate))
+                      }
+                    }}
                     style={{
                       position: 'relative', padding: '18px 14px', borderRadius: '16px',
                       border: `2px solid ${selected ? '#3b82f6' : '#e2e8f0'}`,
