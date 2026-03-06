@@ -63,57 +63,82 @@ interface RateSuggestion {
   reason: string
 }
 
+// Property weight combines bedrooms and bathrooms into a single size signal.
+// Bathrooms are a strong proxy for en-suites / house size (4 bed / 1 bath vs 4 bed / 3 bath).
+function getPropertyWeight(bedrooms: number, bathrooms: number): number {
+  return (bedrooms * 0.65) + (bathrooms * 0.35)
+}
+
 function getRateSuggestion(
   frequency: FrequencyType | null,
   bedrooms: number,
+  bathrooms: number,
   tasks: string[]
 ): RateSuggestion {
   if (!frequency) {
     return {
-      low: 15, high: 20,
+      low: 15, high: 17.5,
       defaultRate: '16.00',
-      reason: "Select a frequency above and we'll tailor this to your property.",
+      reason: '', // empty = neutral, no frequency chosen yet
     }
   }
 
   const hasDeepCleanTasks = tasks.some(t => DEEP_CLEAN_TASKS.includes(t))
-  const isLarge = bedrooms >= 4
-  const isMedium = bedrooms === 3
   const isMonthly = frequency === 'monthly'
+  const weight = getPropertyWeight(bedrooms, bathrooms)
 
-  // Deep clean tasks or monthly always push to the higher band
+  // XL: e.g. 4 bed / 3 bath (weight ≥ 3.65), 5 bed / 2 bath (weight ≥ 3.95)
+  const isXL = weight >= 3.6
+  // Large: e.g. 4 bed / 1 bath (weight 2.95), 3 bed / 3 bath (weight 3.0)
+  const isLarge = weight >= 2.8 && !isXL
+  // Medium: e.g. 3 bed / 1-2 bath, 2 bed / 2 bath
+  const isMedium = weight >= 1.9 && !isLarge && !isXL
+
+  // Monthly or specialist tasks — higher band across all sizes
   if (hasDeepCleanTasks || isMonthly) {
+    if (isXL) {
+      return {
+        low: 17.5, high: 20, defaultRate: '19.00',
+        reason: `A large ${bedrooms}-bed / ${bathrooms}-bath property with ${isMonthly ? 'monthly' : 'specialist'} clean requirements. £17.50–20/hr reflects the substantial effort per visit.`,
+      }
+    }
     if (isLarge) {
       return {
-        low: 18, high: 20, defaultRate: '20.00',
-        reason: `A ${bedrooms}-bedroom property with specialist or monthly clean requirements. £18–20/hr reflects the extra time and effort per visit.`,
+        low: 18, high: 20, defaultRate: '18.50',
+        reason: `A ${bedrooms}-bed / ${bathrooms}-bath property with ${isMonthly ? 'monthly' : 'specialist'} clean requirements. £18–20/hr reflects the extra work per visit.`,
       }
     }
     return {
-      low: 18, high: 20, defaultRate: '18.00',
+      low: 17, high: 19, defaultRate: '18.00',
       reason: isMonthly
-        ? 'Monthly cleans require more work per session than regular visits. £18–20/hr is standard in Horsham for this.'
-        : 'Specialist clean tasks require additional skill and time. £18–20/hr is the standard Horsham range.',
+        ? `A ${bedrooms}-bed / ${bathrooms}-bath home on a monthly schedule. £17–19/hr reflects the extra work per visit compared to regular cleans.`
+        : `Specialist tasks take additional time and skill. £17–19/hr reflects that fairly for your size property.`,
     }
   }
 
-  // Regular cleans (weekly / fortnightly)
+  // Regular cleans (weekly / fortnightly) — regularity is attractive to cleaners
+  if (isXL) {
+    return {
+      low: 17.5, high: 20, defaultRate: '19.00',
+      reason: `A large ${bedrooms}-bed / ${bathrooms}-bath home on a ${frequency} schedule. £17.50–20/hr reflects the size — the regular slot still makes this competitive for experienced cleaners.`,
+    }
+  }
   if (isLarge) {
     return {
-      low: 16, high: 18, defaultRate: '17.00',
-      reason: `A ${bedrooms}-bedroom property on a ${frequency} schedule. £16–18/hr reflects the size, while the regular slot makes this appealing to good cleaners.`,
+      low: 16, high: 17.5, defaultRate: '16.50',
+      reason: `A ${bedrooms}-bed / ${bathrooms}-bath home on a ${frequency} schedule. £16–17.50/hr is competitive in Horsham — the regular slot is a strong draw for good cleaners.`,
     }
   }
   if (isMedium) {
     return {
       low: 15, high: 17, defaultRate: '16.00',
-      reason: `A 3-bedroom home on a ${frequency} schedule. £15–17/hr is the typical Horsham range — regular work is a strong draw for experienced cleaners.`,
+      reason: `A ${bedrooms}-bed / ${bathrooms}-bath home on a ${frequency} schedule. £15–17/hr is the typical Horsham range — cleaners value the consistency of a regular booking.`,
     }
   }
-  // 1–2 bed
+  // Small (1–2 bed, 1 bath)
   return {
-    low: 15, high: 16, defaultRate: '15.00',
-    reason: `Smaller property on a ${frequency} schedule. £15–16/hr is fair and competitive for regular cleans in Horsham.`,
+    low: 15, high: 16.5, defaultRate: '15.50',
+    reason: `A smaller ${bedrooms}-bed / ${bathrooms}-bath property on a ${frequency} schedule. £15–16.50/hr is fair and competitive — regular work at a good rate attracts reliable cleaners.`,
   }
 }
 
@@ -133,7 +158,7 @@ export default function RequestFrequencyPage() {
     if (preset === 'weekly' || preset === 'fortnightly' || preset === 'monthly') {
       const freq = preset as FrequencyType
       setSelectedFrequency(freq)
-      const s = getRateSuggestion(freq, data.bedrooms ?? 2, data.tasks ?? [])
+      const s = getRateSuggestion(freq, data.bedrooms ?? 2, data.bathrooms ?? 1, data.tasks ?? [])
       setHourlyRate(parseFloat(s.defaultRate))
     }
   }, [router])
@@ -149,7 +174,7 @@ export default function RequestFrequencyPage() {
   }
 
   const suggestion = requestData
-    ? getRateSuggestion(selectedFrequency, requestData.bedrooms ?? 2, requestData.tasks ?? [])
+    ? getRateSuggestion(selectedFrequency, requestData.bedrooms ?? 2, requestData.bathrooms ?? 1, requestData.tasks ?? [])
     : { low: 15, high: 20, defaultRate: '16.00', reason: '' }
 
   const rateInRange = hourlyRate >= suggestion.low && hourlyRate <= suggestion.high
@@ -309,13 +334,18 @@ export default function RequestFrequencyPage() {
               >+</button>
             </div>
 
-            {/* Live feedback hint — subtext lives here, not above the stepper */}
+                        {/* Live feedback hint */}
             <div className="rate-hint" style={{
               marginTop: '12px', padding: '12px 14px', borderRadius: '12px',
-              background: rateInRange ? '#eff6ff' : rateLow ? '#fefce8' : '#f0fdf4',
-              border: `1px solid ${rateInRange ? '#bfdbfe' : rateLow ? '#fde68a' : '#bbf7d0'}`,
+              background: !selectedFrequency ? '#f8fafc' : rateInRange ? '#eff6ff' : rateLow ? '#fefce8' : '#f0fdf4',
+              border: `1px solid ${!selectedFrequency ? '#e2e8f0' : rateInRange ? '#bfdbfe' : rateLow ? '#fde68a' : '#bbf7d0'}`,
             }}>
-              {rateInRange && (
+              {!selectedFrequency && (
+                <p style={{ fontSize: '13px', fontWeight: 500, color: '#94a3b8', margin: 0 }}>
+                  💡 Select a frequency above and we’ll suggest a rate range for your property.
+                </p>
+              )}
+              {selectedFrequency && rateInRange && (
                 <>
                   <p style={{ fontSize: '13px', fontWeight: 600, color: '#1e40af', margin: '0 0 4px' }}>
                     ✅ Within the suggested range — £{suggestion.low}–£{suggestion.high}/hr
@@ -323,20 +353,20 @@ export default function RequestFrequencyPage() {
                   <p style={{ fontSize: '12px', color: '#3b82f6', margin: 0, lineHeight: 1.55 }}>{suggestion.reason}</p>
                 </>
               )}
-              {rateLow && (
+              {selectedFrequency && rateLow && (
                 <>
                   <p style={{ fontSize: '13px', fontWeight: 600, color: '#92400e', margin: '0 0 3px' }}>
                     ⚠️ Below the suggested range of £{suggestion.low}–£{suggestion.high}/hr
                   </p>
                   <p style={{ fontSize: '12px', color: '#b45309', margin: 0, lineHeight: 1.5 }}>
-                    A lower rate may reduce the number of cleaners who apply. You can always adjust once you've seen who's interested.
+                    A lower rate may reduce the number of cleaners who apply. You can always adjust once you’ve seen who’s interested.
                   </p>
                 </>
               )}
-              {rateHigh && (
+              {selectedFrequency && rateHigh && (
                 <>
                   <p style={{ fontSize: '13px', fontWeight: 600, color: '#166534', margin: '0 0 3px' }}>
-                    💚 Above the suggested range — you'll attract a strong field of applicants
+                    💚 Above the suggested range — you’ll attract a strong field of applicants
                   </p>
                   <p style={{ fontSize: '12px', color: '#16a34a', margin: 0, lineHeight: 1.5 }}>
                     Offering above the typical rate gives you the best pick of available cleaners in Horsham.
