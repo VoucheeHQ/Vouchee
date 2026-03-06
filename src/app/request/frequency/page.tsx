@@ -104,9 +104,9 @@ function getRateSuggestion(
   const freqLabel = isMonthly ? 'monthly' : frequency
   let reason = ''
   if (isMonthly) {
-    reason = `A ${bedrooms}-bed / ${bathrooms}-bath home on a monthly schedule${deepNote}. Monthly cleans involve more work per session — £${low}–£${high}/hr reflects that.`
+    reason = `Monthly cleans often involve more work per visit, so cleaners typically expect a slightly higher hourly rate.`
   } else {
-    reason = `A ${bedrooms}-bed / ${bathrooms}-bath home on a ${freqLabel} schedule${deepNote}. £${low}–£${high}/hr is the typical Horsham range — regular work is a strong draw for good cleaners.`
+    reason = `Cleaners in Horsham commonly accept jobs in this range for a ${bedrooms}-bed / ${bathrooms}-bath home on a ${freqLabel} schedule.`
   }
 
   return { low, high, defaultRate, reason }
@@ -334,6 +334,11 @@ export default function RequestFrequencyPage() {
                     ✅ Within the suggested range — £{suggestion.low}–£{suggestion.high}/hr
                   </p>
                   <p style={{ fontSize: '12px', color: '#3b82f6', margin: 0, lineHeight: 1.55 }}>{suggestion.reason}</p>
+                  {selectedFrequency === 'monthly' && (
+                    <p style={{ fontSize: '12px', color: '#3b82f6', margin: '8px 0 0', padding: '8px 10px', background: 'rgba(59,130,246,0.06)', borderRadius: '8px', lineHeight: 1.55 }}>
+                      💡 Tip: Monthly cleans often take longer per visit than weekly or fortnightly cleans.
+                    </p>
+                  )}
                 </>
               )}
               {selectedFrequency && rateLow && (
