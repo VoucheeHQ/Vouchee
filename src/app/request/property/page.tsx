@@ -14,19 +14,19 @@ const CLEANING_TASKS = [
 ]
 
 const ADDITIONAL_TASKS = [
-  { id: 'oven',          label: 'Oven cleaning',        description: 'Deep clean oven interior' },
-  { id: 'bathroom_deep', label: 'Bathroom deep clean',  description: 'Grout, limescale, full scrub' },
-  { id: 'kitchen_deep',  label: 'Kitchen deep clean',   description: 'Inside cupboards, behind appliances' },
-  { id: 'fridge',        label: 'Fridge clean',         description: 'Inside and out' },
-  { id: 'blinds',        label: 'Blinds',               description: 'Dusting and wiping blinds' },
-  { id: 'mold',          label: 'Mould removal',        description: 'Bathroom and damp areas' },
-  { id: 'ironing',       label: 'Ironing',              description: 'Clothes and linens' },
-  { id: 'laundry',       label: 'Laundry',              description: 'Washing and folding' },
-  { id: 'changing_beds', label: 'Changing beds',        description: 'Strip and remake beds' },
-  { id: 'garage',        label: 'Garage / utility',     description: 'Sweeping and tidying' },
+  { id: 'kitchen_deep',  label: 'Kitchen deep clean',     description: 'Inside cupboards, behind appliances' },
+  { id: 'bathroom_deep', label: 'Bathroom deep clean',    description: 'Grout, limescale, full scrub' },
+  { id: 'conservatory',  label: 'Conservatory clean',     description: 'Interior windows and surfaces' },
+  { id: 'changing_beds', label: 'Changing beds',          description: 'Strip and remake beds' },
+  { id: 'ironing',       label: 'Ironing',                description: 'Clothes and linens' },
+  { id: 'laundry',       label: 'Laundry',                description: 'Washing and folding' },
+  { id: 'bins',          label: 'Emptying all bins',      description: 'All rooms and kitchen' },
+  { id: 'fridge',        label: 'Fridge deep clean',      description: 'Inside and out' },
+  { id: 'blinds',        label: 'Blinds',                 description: 'Dusting and wiping blinds' },
+  { id: 'skirting',      label: 'Skirting boards & doorframes', description: 'Wiping down edges and frames' },
 ]
 
-const DEEP_CLEAN_TASKS = ['oven', 'bathroom_deep', 'kitchen_deep', 'fridge', 'mold']
+const DEEP_CLEAN_TASKS = ['bathroom_deep', 'kitchen_deep', 'fridge', 'conservatory']
 
 const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 const TIME_SLOTS = ['Morning (8am - 12pm)', 'Afternoon (12pm - 5pm)', 'Evening (5pm - 8pm)']
@@ -121,7 +121,7 @@ function RequestStep1Content() {
   const [postcode, setPostcode]               = useState('')
   const [postcodeError, setPostcodeError]     = useState('')
   const [detectedSector, setDetectedSector]   = useState<string | null>(null)
-  const [selectedTasks, setSelectedTasks]     = useState<string[]>(['general'])
+  const [selectedTasks, setSelectedTasks]     = useState<string[]>(['general', 'hoovering', 'mopping', 'bathroom', 'kitchen'])
   const [showAdditional, setShowAdditional]   = useState(false)
   const [preferredDays, setPreferredDays]     = useState<string[]>([])
   const [preferredTime, setPreferredTime]     = useState('')
