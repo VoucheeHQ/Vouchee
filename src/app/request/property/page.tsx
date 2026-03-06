@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, Suspense } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { getPostcodeSector, isValidHorshamPostcode } from '@/lib/postcode-sectors'
 
@@ -26,6 +26,8 @@ const ADDITIONAL_TASKS = [
   { id: 'garage',        label: 'Garage / utility',     description: 'Sweeping and tidying' },
 ]
 
+const DEEP_CLEAN_TASKS = ['oven', 'bathroom_deep', 'kitchen_deep', 'fridge', 'mold']
+
 const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 const TIME_SLOTS = ['Morning (8am - 12pm)', 'Afternoon (12pm - 5pm)', 'Evening (5pm - 8pm)']
 const HOURS_OPTIONS = [
@@ -38,6 +40,7 @@ const HOURS_OPTIONS = [
   { value: 4.5, label: '4.5 hours' },
   { value: 5,   label: '5+ hours' },
 ]
+
 const SECTOR_TO_ZONE: Record<string, string> = {
   "RH121": "central_south_east", "RH122": "central_south_east",
   "RH123": "south_west",         "RH124": "north_east_roffey",
@@ -56,11 +59,11 @@ const SECTOR_TO_ZONE: Record<string, string> = {
 
 function getZoneFromPostcode(postcode: string): string | null {
   const clean = postcode.toUpperCase().replace(/\s+/g, "")
-  // Try 5-char match first (e.g. RH135), then 4-char (e.g. RH12)
   const key5 = clean.slice(0, 5)
   const key4 = clean.slice(0, 4)
   return SECTOR_TO_ZONE[key5] ?? SECTOR_TO_ZONE[key4] ?? null
 }
+
 function getSuggestedHours(bedrooms: number) {
   if (bedrooms <= 1) return { min: 1.5, max: 2,   preselect: 1.5 }
   if (bedrooms === 2) return { min: 2,   max: 2.5, preselect: 2   }
@@ -69,22 +72,66 @@ function getSuggestedHours(bedrooms: number) {
   return                     { min: 4,   max: 5,   preselect: 4   }
 }
 
+// ── Rate preview logic (mirrors frequency page — keep in sync) ──────────────
+function getPropertyWeight(bedrooms: number, bathrooms: number) {
+  return (bedrooms * 0.65) + (bathrooms * 0.35)
+}
+function getRatePreview(bedrooms: number, bathrooms: number, tasks: string[]) {
+  const weight = getPropertyWeight(bedrooms, bathrooms)
+  const hasDeep = tasks.some(t => DEEP_CLEAN_TASKS.includes(t))
+  const isXL     = weight >= 3.6
+  const isLarge  = weight >= 2.8 && !isXL
+  const isMedium = weight >= 1.9 && !isLarge && !isXL
+  const bucket   = isXL ? 'XL' : isLarge ? 'Large' : isMedium ? 'Medium' : 'Small'
+
+  const bands: Record<string, { regular: string; monthly: string; default: string }> = {
+    Small:  { regular: '£15–16.50', monthly: '£17–19',    default: '£15.50' },
+    Medium: { regular: '£15–17',    monthly: '£17–19',    default: '£16.00' },
+    Large:  { regular: '£16–17.50', monthly: '£18–20',    default: '£16.50' },
+    XL:     { regular: '£17.50–20', monthly: '£17.50–20', default: '£19.00' },
+  }
+  return { weight: weight.toFixed(2), bucket, hasDeep, ...bands[bucket] }
+}
+
 function RequestStep1Content() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const frequencyPreset = searchParams.get('preset')
-  const [bedrooms, setBedrooms] = useState(2)
-  const [bathrooms, setBathrooms] = useState(1)
-  const [postcode, setPostcode] = useState('')
-  const [postcodeError, setPostcodeError] = useState('')
-  const [detectedSector, setDetectedSector] = useState<string | null>(null)
-  const [selectedTasks, setSelectedTasks] = useState<string[]>(['general'])
-  const [showAdditional, setShowAdditional] = useState(false)
-  const [preferredDays, setPreferredDays] = useState<string[]>([])
-  const [preferredTime, setPreferredTime] = useState('')
+
+  const [bedrooms, setBedrooms]               = useState(2)
+  const [bathrooms, setBathrooms]             = useState(1)
+  const [postcode, setPostcode]               = useState('')
+  const [postcodeError, setPostcodeError]     = useState('')
+  const [detectedSector, setDetectedSector]   = useState<string | null>(null)
+  const [selectedTasks, setSelectedTasks]     = useState<string[]>(['general'])
+  const [showAdditional, setShowAdditional]   = useState(false)
+  const [preferredDays, setPreferredDays]     = useState<string[]>([])
+  const [preferredTime, setPreferredTime]     = useState('')
   const [hoursPerSession, setHoursPerSession] = useState<number | null>(2)
-  const [hoursTouched, setHoursTouched] = useState(false)
+  const [hoursTouched, setHoursTouched]       = useState(false)
   const [userPickedHours, setUserPickedHours] = useState(false)
+
+  // ── Restore state from sessionStorage when navigating back ──────────────
+  useEffect(() => {
+    const stored = sessionStorage.getItem('cleanRequest')
+    if (!stored) return
+    try {
+      const data = JSON.parse(stored)
+      if (data.bedrooms)       setBedrooms(data.bedrooms)
+      if (data.bathrooms)      setBathrooms(data.bathrooms)
+      if (data.postcode) {
+        setPostcode(data.postcode)
+        if (data.sector) setDetectedSector(data.sector)
+      }
+      if (data.tasks?.length)  setSelectedTasks(data.tasks)
+      if (data.preferredDays)  setPreferredDays(data.preferredDays)
+      if (data.preferredTime)  setPreferredTime(data.preferredTime)
+      if (data.hoursPerSession) {
+        setHoursPerSession(data.hoursPerSession)
+        setUserPickedHours(true)
+      }
+    } catch {}
+  }, [])
 
   const suggested = getSuggestedHours(bedrooms)
   const isBelowSuggested = hoursPerSession !== null && hoursPerSession < suggested.min
@@ -127,6 +174,7 @@ function RequestStep1Content() {
   }
 
   const allTasks = [...CLEANING_TASKS, ...ADDITIONAL_TASKS]
+  const ratePreview = getRatePreview(bedrooms, bathrooms, selectedTasks)
 
   return (
     <>
@@ -155,18 +203,17 @@ function RequestStep1Content() {
 
           {/* ── Step tracker ── */}
           <div style={{ marginBottom: '32px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-  <div style={{ fontSize: '13px', fontWeight: 600, color: '#3b82f6', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-    Step 1 of 4
-  </div>
-  <button onClick={() => router.push('/')} style={{ fontSize: '13px', fontWeight: 600, color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
-    ← Back
-  </button>
-</div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <div style={{ fontSize: '13px', fontWeight: 600, color: '#3b82f6', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                Step 1 of 4
+              </div>
+              <button onClick={() => router.push('/')} style={{ fontSize: '13px', fontWeight: 600, color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
+                ← Back
+              </button>
+            </div>
             <div style={{ height: '4px', background: '#e2e8f0', borderRadius: '100px', overflow: 'hidden' }}>
               <div style={{ height: '100%', width: '25%', background: 'linear-gradient(90deg, #3b82f6 0%, #facc15 50%, #22c55e 100%)', borderRadius: '100px' }} />
             </div>
-
           </div>
 
           {/* ── Header ── */}
@@ -252,7 +299,6 @@ function RequestStep1Content() {
               })}
             </div>
 
-            {/* Additional tasks toggle */}
             <button type="button" onClick={() => setShowAdditional(!showAdditional)} style={{
               width: '100%', padding: '11px 14px', borderRadius: '12px',
               border: '1.5px dashed #cbd5e1', background: 'transparent',
@@ -293,7 +339,6 @@ function RequestStep1Content() {
               </div>
             )}
 
-            {/* Selected summary */}
             {selectedTasks.length > 0 && (
               <div style={{ marginTop: '12px', padding: '12px', background: '#f8fafc', borderRadius: '12px' }}>
                 <div style={{ fontSize: '12px', fontWeight: 600, color: '#64748b', marginBottom: '8px' }}>Selected tasks:</div>
@@ -348,7 +393,7 @@ function RequestStep1Content() {
           </div>
 
           {/* ── Schedule preference ── */}
-          <div style={{ background: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(16px)', borderRadius: '20px', border: '1.5px solid rgba(255,255,255,0.9)', boxShadow: '0 2px 16px rgba(0,0,0,0.05)', padding: '24px', marginBottom: '24px' }}>
+          <div style={{ background: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(16px)', borderRadius: '20px', border: '1.5px solid rgba(255,255,255,0.9)', boxShadow: '0 2px 16px rgba(0,0,0,0.05)', padding: '24px', marginBottom: '12px' }}>
             <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '16px' }}>
               📅 Preferred schedule <span style={{ fontSize: '12px', fontWeight: 400, color: '#94a3b8' }}>— optional</span>
             </div>
@@ -378,6 +423,29 @@ function RequestStep1Content() {
             </div>
           </div>
 
+          {/* ── 🛠 DEV: Rate preview box — REMOVE BEFORE LAUNCH ── */}
+          <div style={{ marginBottom: '16px', padding: '16px 20px', background: '#0f172a', borderRadius: '16px', border: '1px solid #1e293b' }}>
+            <div style={{ fontSize: '11px', color: '#475569', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>
+              🛠 Dev — Rate preview · remove before launch
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 16px' }}>
+              {([
+                ['Bedrooms', bedrooms],
+                ['Bathrooms', bathrooms],
+                ['Weight', ratePreview.weight],
+                ['Bucket', ratePreview.bucket],
+                ['Regular range', ratePreview.regular],
+                ['Monthly/specialist', ratePreview.hasDeep ? `${ratePreview.monthly} ✦ deep` : ratePreview.monthly],
+                ['Suggested default', ratePreview.default],
+              ] as [string, string | number][]).map(([k, v]) => (
+                <div key={k} style={{ fontSize: '12px', fontFamily: 'monospace' }}>
+                  <span style={{ color: '#64748b' }}>{k}: </span>
+                  <span style={{ color: '#22c55e', fontWeight: 700 }}>{v}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* ── CTA ── */}
           <button
             className="continue-btn"
@@ -399,6 +467,7 @@ function RequestStep1Content() {
     </>
   )
 }
+
 export default function RequestStep1Page(): JSX.Element {
   return (
     <Suspense fallback={<div>Loading…</div>}>

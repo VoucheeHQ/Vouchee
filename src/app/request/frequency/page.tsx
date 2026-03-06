@@ -155,12 +155,13 @@ export default function RequestFrequencyPage() {
     setRequestData(data)
     const params = new URLSearchParams(window.location.search)
     const preset = params.get('preset')
-    if (preset === 'weekly' || preset === 'fortnightly' || preset === 'monthly') {
-      const freq = preset as FrequencyType
-      setSelectedFrequency(freq)
-      const s = getRateSuggestion(freq, data.bedrooms ?? 2, data.bathrooms ?? 1, data.tasks ?? [])
-      setHourlyRate(parseFloat(s.defaultRate))
-    }
+    const freq = (preset === 'weekly' || preset === 'fortnightly' || preset === 'monthly')
+      ? preset as FrequencyType
+      : null
+    if (freq) setSelectedFrequency(freq)
+    // Always initialise rate from property data — use preset freq if available, else no-frequency fallback
+    const s = getRateSuggestion(freq, data.bedrooms ?? 2, data.bathrooms ?? 1, data.tasks ?? [])
+    setHourlyRate(parseFloat(s.defaultRate))
   }, [router])
 
   const handleContinue = () => {
