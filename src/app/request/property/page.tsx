@@ -14,15 +14,15 @@ const CLEANING_TASKS = [
 ]
 
 const ADDITIONAL_TASKS = [
-  { id: 'kitchen_deep',  label: 'Kitchen deep clean',     description: 'Inside cupboards, behind appliances' },
-  { id: 'bathroom_deep', label: 'Bathroom deep clean',    description: 'Grout, limescale, full scrub' },
-  { id: 'conservatory',  label: 'Conservatory clean',     description: 'Interior windows and surfaces' },
-  { id: 'changing_beds', label: 'Changing beds',          description: 'Strip and remake beds' },
-  { id: 'ironing',       label: 'Ironing',                description: 'Clothes and linens' },
-  { id: 'laundry',       label: 'Laundry',                description: 'Washing and folding' },
-  { id: 'bins',          label: 'Emptying all bins',      description: 'All rooms and kitchen' },
-  { id: 'fridge',        label: 'Fridge deep clean',      description: 'Inside and out' },
-  { id: 'blinds',        label: 'Blinds',                 description: 'Dusting and wiping blinds' },
+  { id: 'kitchen_deep',  label: 'Kitchen deep clean',          description: 'Inside cupboards, behind appliances' },
+  { id: 'bathroom_deep', label: 'Bathroom deep clean',         description: 'Grout, limescale, full scrub' },
+  { id: 'conservatory',  label: 'Conservatory clean',          description: 'Interior windows and surfaces' },
+  { id: 'changing_beds', label: 'Changing beds',               description: 'Strip and remake beds' },
+  { id: 'ironing',       label: 'Ironing',                     description: 'Clothes and linens' },
+  { id: 'laundry',       label: 'Laundry',                     description: 'Washing and folding' },
+  { id: 'bins',          label: 'Emptying all bins',           description: 'All rooms and kitchen' },
+  { id: 'fridge',        label: 'Fridge deep clean',           description: 'Inside and out' },
+  { id: 'blinds',        label: 'Blinds',                      description: 'Dusting and wiping blinds' },
   { id: 'skirting',      label: 'Skirting boards & doorframes', description: 'Wiping down edges and frames' },
 ]
 
@@ -65,12 +65,11 @@ function getZoneFromPostcode(postcode: string): string | null {
 }
 
 function getSuggestedHours(bedrooms: number, bathrooms: number) {
-  // Base hours from bedrooms, then add 0.5 per extra bathroom beyond 1
   const extraBaths = Math.max(0, bathrooms - 1)
   const bathBonus  = Math.round((extraBaths * 0.5) / 0.5) * 0.5
 
   let base: { min: number; max: number; preselect: number }
-  if (bedrooms <= 1) base = { min: 2,   max: 3,   preselect: 2   }
+  if (bedrooms <= 1)       base = { min: 2,   max: 3,   preselect: 2   }
   else if (bedrooms === 2) base = { min: 2,   max: 3,   preselect: 2.5 }
   else if (bedrooms === 3) base = { min: 2.5, max: 4,   preselect: 3   }
   else if (bedrooms === 4) base = { min: 3,   max: 5,   preselect: 3.5 }
@@ -96,10 +95,10 @@ function getRatePreview(bedrooms: number, bathrooms: number, tasks: string[]) {
   const bucket   = isXL ? 'XL' : isLarge ? 'Large' : isMedium ? 'Medium' : 'Small'
 
   const bands: Record<string, { regular: string; monthly: string; default: string }> = {
-    Small:  { regular: '£15–16.50',   monthly: '£16–17.50',  default: '£15.00' },
-    Medium: { regular: '£15.50–17.50',monthly: '£16.50–18.50',default: '£15.50' },
-    Large:  { regular: '£16.50–18.50',monthly: '£17.50–19.50',default: '£16.50' },
-    XL:     { regular: '£17.50–20',   monthly: '£18.50–20',   default: '£17.50' },
+    Small:  { regular: '£15–16.50',    monthly: '£16–17.50',   default: '£15.00' },
+    Medium: { regular: '£15.50–17.50', monthly: '£16.50–18.50', default: '£15.50' },
+    Large:  { regular: '£16.50–18.50', monthly: '£17.50–19.50', default: '£16.50' },
+    XL:     { regular: '£17.50–20',    monthly: '£18.50–20',    default: '£17.50' },
   }
   return { weight: weight.toFixed(2), bucket, hasDeep, ...bands[bucket] }
 }
@@ -111,11 +110,6 @@ function RequestStep1Content() {
 
   const [bedrooms, setBedrooms]               = useState(2)
   const [bathrooms, setBathrooms]             = useState(1)
-
-  const handleBathroomsChange = (val: number) => {
-    setBathrooms(val)
-    if (!userPickedHours) setHoursPerSession(getSuggestedHours(bedrooms, val).preselect)
-  }
   const [postcode, setPostcode]               = useState('')
   const [postcodeError, setPostcodeError]     = useState('')
   const [detectedSector, setDetectedSector]   = useState<string | null>(null)
@@ -126,10 +120,9 @@ function RequestStep1Content() {
   const [hoursPerSession, setHoursPerSession] = useState<number | null>(2)
   const [hoursTouched, setHoursTouched]       = useState(false)
   const [userPickedHours, setUserPickedHours] = useState(false)
+  const [extraHoursNote, setExtraHoursNote]   = useState('')
 
   // ── Restore state from sessionStorage when navigating back ──────────────
-  // Only restore if the user navigated back from step 2 (not a fresh session start).
-  // We track this with a sessionStorage flag set when continuing to frequency page.
   useEffect(() => {
     const stored = sessionStorage.getItem('cleanRequest')
     const isBackNav = sessionStorage.getItem('_voucheeStep') === 'frequency'
@@ -149,6 +142,7 @@ function RequestStep1Content() {
         setHoursPerSession(data.hoursPerSession)
         setUserPickedHours(true)
       }
+      if (data.extraHoursNote)  setExtraHoursNote(data.extraHoursNote)
     } catch {}
   }, [])
 
@@ -157,6 +151,11 @@ function RequestStep1Content() {
   const handleBedroomsChange = (val: number) => {
     setBedrooms(val)
     if (!userPickedHours) setHoursPerSession(getSuggestedHours(val, bathrooms).preselect)
+  }
+
+  const handleBathroomsChange = (val: number) => {
+    setBathrooms(val)
+    if (!userPickedHours) setHoursPerSession(getSuggestedHours(bedrooms, val).preselect)
   }
 
   const handlePostcodeChange = (value: string) => {
@@ -187,6 +186,7 @@ function RequestStep1Content() {
       bedrooms, bathrooms, postcode, sector: detectedSector,
       zone: getZoneFromPostcode(postcode),
       tasks: selectedTasks, preferredDays, preferredTime, hoursPerSession,
+      extraHoursNote,
     }))
     sessionStorage.setItem('_voucheeStep', 'frequency')
     router.push(`/request/frequency${frequencyPreset ? `?preset=${frequencyPreset}` : ''}`)
@@ -194,6 +194,13 @@ function RequestStep1Content() {
 
   const allTasks = [...CLEANING_TASKS, ...ADDITIONAL_TASKS]
   const ratePreview = getRatePreview(bedrooms, bathrooms, selectedTasks)
+
+  // Hint state for hours
+  const hoursHintState = hoursPerSession !== null ? (() => {
+    if (hoursPerSession < suggested.min) return 'low'
+    if (hoursPerSession > suggested.max) return 'high'
+    return 'inRange'
+  })() : null
 
   return (
     <>
@@ -208,6 +215,9 @@ function RequestStep1Content() {
         .vou-input { width: 100%; background: rgba(255,255,255,0.8); border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 11px 14px; font-family: 'DM Sans', sans-serif; font-size: 14px; color: #1e293b; }
         .vou-input:focus { outline: none; border-color: #3b82f6; background: white; }
         .vou-input::placeholder { color: #94a3b8; }
+        .vou-textarea { width: 100%; background: rgba(255,255,255,0.8); border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 11px 14px; font-family: 'DM Sans', sans-serif; font-size: 13px; color: #1e293b; resize: vertical; min-height: 72px; line-height: 1.55; }
+        .vou-textarea:focus { outline: none; border-color: #3b82f6; background: white; }
+        .vou-textarea::placeholder { color: #94a3b8; }
         .continue-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(59,130,246,0.35) !important; }
         .continue-btn:disabled { opacity: 0.5; cursor: not-allowed; }
       `}</style>
@@ -325,7 +335,7 @@ function RequestStep1Content() {
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               transition: 'all 0.2s',
             }}>
-              <span>+ Special requests (oven, deep cleans, ironing…)</span>
+              <span>+ Special requests (deep cleans, ironing, laundry…)</span>
               <span style={{ transform: showAdditional ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', fontSize: '11px' }}>▾</span>
             </button>
 
@@ -380,89 +390,6 @@ function RequestStep1Content() {
             )}
           </div>
 
-          {/* ── Hours per session ── */}
-          <div style={{ background: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(16px)', borderRadius: '20px', border: '1.5px solid rgba(255,255,255,0.9)', boxShadow: '0 2px 16px rgba(0,0,0,0.05)', padding: '24px', marginBottom: '12px' }}>
-            <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '4px' }}>
-              ⏱ How long per session?
-            </div>
-            <p style={{ fontSize: '13px', color: '#64748b', margin: '0 0 14px', lineHeight: 1.55 }}>
-              Customers with <strong>{bedrooms}-bed / {bathrooms}-bathroom</strong> homes are usually happiest with a clean lasting around{' '}
-              <strong>{suggested.preselect} hours</strong>. Most adjust slightly after their first session once they know what works for them.
-            </p>
-            <select
-              className="vou-select"
-              value={hoursPerSession?.toString() ?? ''}
-              onChange={e => {
-                const val = parseFloat(e.target.value)
-                setHoursPerSession(isNaN(val) ? null : val)
-                setHoursTouched(true)
-                setUserPickedHours(true)
-              }}
-            >
-              <option value="">Select session length</option>
-              {HOURS_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-            </select>
-
-            {/* Contextual guidance based on selection */}
-            {hoursPerSession !== null && (() => {
-              const inRange = hoursPerSession >= suggested.min && hoursPerSession <= suggested.max
-              const isLow   = hoursPerSession < suggested.min
-              const isHigh  = hoursPerSession > suggested.max
-              return (
-                <div style={{
-                  marginTop: '10px', padding: '12px 14px', borderRadius: '12px',
-                  background: isLow ? '#fffbeb' : inRange ? '#f0fdf4' : '#eff6ff',
-                  border: `1px solid ${isLow ? '#fde68a' : inRange ? '#bbf7d0' : '#bfdbfe'}`,
-                  fontSize: '13px', lineHeight: 1.55,
-                }}>
-                  {isLow && (
-                    <>
-                      <p style={{ fontWeight: 600, color: '#92400e', margin: '0 0 3px' }}>
-                        ⚠️ On the lower end for a {bedrooms}-bed / {bathrooms}-bath home
-                      </p>
-                      <p style={{ color: '#b45309', margin: '0 0 6px' }}>
-                        Homes like yours typically need {suggested.min}–{suggested.max} hours. At {hoursPerSession}h your cleaner may not be able to cover everything — worth discussing with them directly.
-                      </p>
-                      <p style={{ color: '#92400e', margin: 0, fontStyle: 'italic' }}>
-                        No one knows your home better than you — this is based on experience from our cleaning partners across Horsham.
-                      </p>
-                    </>
-                  )}
-                  {inRange && (
-                    <>
-                      <p style={{ fontWeight: 600, color: '#166534', margin: '0 0 3px' }}>
-                        ✅ Within the typical range for your home
-                      </p>
-                      <p style={{ color: '#15803d', margin: '0 0 8px' }}>
-                        {hoursPerSession}h fits well for a {bedrooms}-bed / {bathrooms}-bath property. You and your cleaner can fine-tune this after the first session.
-                      </p>
-                      <p style={{ color: '#166534', margin: 0, padding: '8px 10px', background: 'rgba(34,197,94,0.08)', borderRadius: '8px', fontWeight: 500 }}>
-                        💡 First clean tip: consider asking your cleaner for an extra hour on the first visit to get on top of things — then drop to {hoursPerSession}h from the second session onwards.
-                      </p>
-                    </>
-                  )}
-                  {isHigh && (
-                    <>
-                      <p style={{ fontWeight: 600, color: '#1e40af', margin: '0 0 3px' }}>
-                        Generous allowance — your cleaner will appreciate the time
-                      </p>
-                      <p style={{ color: '#3b82f6', margin: '0 0 6px' }}>
-                        {hoursPerSession}h gives your cleaner plenty of time to do a thorough job. Great if you have specialist tasks or want a more detailed clean each visit.
-                      </p>
-                      <p style={{ color: '#1e40af', margin: 0, fontStyle: 'italic' }}>
-                        No one knows your home better than you — this is based on experience from our cleaning partners across Horsham.
-                      </p>
-                    </>
-                  )}
-                </div>
-              )
-            })()}
-
-            {hoursTouched && !hoursPerSession && (
-              <p style={{ fontSize: '13px', color: '#ef4444', marginTop: '6px' }}>Please select a session length</p>
-            )}
-          </div>
-
           {/* ── Schedule preference ── */}
           <div style={{ background: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(16px)', borderRadius: '20px', border: '1.5px solid rgba(255,255,255,0.9)', boxShadow: '0 2px 16px rgba(0,0,0,0.05)', padding: '24px', marginBottom: '12px' }}>
             <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '16px' }}>
@@ -492,6 +419,90 @@ function RequestStep1Content() {
                 {TIME_SLOTS.map(slot => <option key={slot} value={slot}>{slot}</option>)}
               </select>
             </div>
+          </div>
+
+          {/* ── How many hours per clean? ── */}
+          <div style={{ background: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(16px)', borderRadius: '20px', border: '1.5px solid rgba(255,255,255,0.9)', boxShadow: '0 2px 16px rgba(0,0,0,0.05)', padding: '24px', marginBottom: '12px' }}>
+            <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '4px' }}>
+              ⏱ How many hours per clean?
+            </div>
+            <p style={{ fontSize: '13px', color: '#64748b', margin: '0 0 14px', lineHeight: 1.55 }}>
+              Customers with <strong>{bedrooms}-bed / {bathrooms}-bathroom</strong> homes are usually happiest with a clean lasting between{' '}
+              <strong>{suggested.min}–{suggested.max} hours</strong>. You are free to adjust your hourly requirements at any time.
+            </p>
+            <select
+              className="vou-select"
+              value={hoursPerSession?.toString() ?? ''}
+              onChange={e => {
+                const val = parseFloat(e.target.value)
+                setHoursPerSession(isNaN(val) ? null : val)
+                setHoursTouched(true)
+                setUserPickedHours(true)
+              }}
+            >
+              <option value="">Select session length</option>
+              {HOURS_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+            </select>
+
+            {/* Contextual guidance: green / amber / green */}
+            {hoursPerSession !== null && hoursHintState && (
+              <div style={{
+                marginTop: '10px', padding: '12px 14px', borderRadius: '12px',
+                background: hoursHintState === 'low' ? '#fffbeb' : '#f0fdf4',
+                border: `1px solid ${hoursHintState === 'low' ? '#fde68a' : '#bbf7d0'}`,
+                fontSize: '13px', lineHeight: 1.55,
+              }}>
+                {hoursHintState === 'low' && (
+                  <>
+                    <p style={{ fontWeight: 600, color: '#92400e', margin: '0 0 3px' }}>
+                      ⚠️ On the lower end for a {bedrooms}-bed / {bathrooms}-bath home
+                    </p>
+                    <p style={{ color: '#b45309', margin: '0 0 6px' }}>
+                      Homes like yours typically need {suggested.min}–{suggested.max} hours. At {hoursPerSession}h your cleaner may not be able to cover everything — worth discussing with them directly.
+                    </p>
+                    <p style={{ color: '#92400e', margin: 0, fontStyle: 'italic' }}>
+                      No one knows your home better than you — this is based on experience from our cleaning partners across Horsham.
+                    </p>
+                  </>
+                )}
+                {hoursHintState === 'inRange' && (
+                  <>
+                    <p style={{ fontWeight: 600, color: '#166534', margin: '0 0 3px' }}>
+                      ✅ Within the typical range for your home
+                    </p>
+                    <p style={{ color: '#15803d', margin: '0 0 8px' }}>
+                      {hoursPerSession}h fits well for a {bedrooms}-bed / {bathrooms}-bath property. You and your cleaner can fine-tune this after the first session.
+                    </p>
+                    <p style={{ color: '#166534', margin: 0, padding: '8px 10px', background: 'rgba(34,197,94,0.08)', borderRadius: '8px', fontWeight: 500 }}>
+                      💡 First clean tip: consider asking your cleaner for an extra hour on the first visit to get on top of things — then drop to {hoursPerSession}h from the second session onwards.
+                    </p>
+                  </>
+                )}
+                {hoursHintState === 'high' && (
+                  <>
+                    <p style={{ fontWeight: 600, color: '#166534', margin: '0 0 3px' }}>
+                      ✅ Generous allowance — your cleaner will appreciate the time
+                    </p>
+                    <p style={{ color: '#15803d', margin: '0 0 10px' }}>
+                      {hoursPerSession}h gives your cleaner plenty of time to do a thorough job. Great if you have specialist tasks or want a more detailed clean each visit.
+                    </p>
+                    <label style={{ fontSize: '12px', fontWeight: 600, color: '#166534', display: 'block', marginBottom: '6px' }}>
+                      Anything in particular you'd like them to focus on? <span style={{ fontWeight: 400, color: '#64748b' }}>(optional)</span>
+                    </label>
+                    <textarea
+                      className="vou-textarea"
+                      placeholder="e.g. deep clean the kitchen monthly, extra attention to the conservatory…"
+                      value={extraHoursNote}
+                      onChange={e => setExtraHoursNote(e.target.value)}
+                    />
+                  </>
+                )}
+              </div>
+            )}
+
+            {hoursTouched && !hoursPerSession && (
+              <p style={{ fontSize: '13px', color: '#ef4444', marginTop: '6px' }}>Please select a session length</p>
+            )}
           </div>
 
           {/* ── 🛠 DEV: Rate preview box — REMOVE BEFORE LAUNCH ── */}
