@@ -131,7 +131,7 @@ export default function RequestFrequencyPage() {
   const router = useRouter()
   const [requestData, setRequestData] = useState<RequestData | null>(null)
   const [selectedFrequency, setSelectedFrequency] = useState<FrequencyType | null>(null)
-  const [hourlyRate, setHourlyRate] = useState(16.00)
+  const [hourlyRate, setHourlyRate] = useState<number | null>(null)
 
   useEffect(() => {
     const stored = sessionStorage.getItem('cleanRequest')
@@ -149,9 +149,9 @@ export default function RequestFrequencyPage() {
       const s = getRateSuggestion(freq, data.bedrooms ?? 2, data.bathrooms ?? 1, data.tasks ?? [])
       setHourlyRate(parseFloat(s.defaultRate))
     } else {
-      // No preset — set a neutral default based on property data (mid of no-frequency range)
-      // Rate will update properly once user picks a frequency
-      const s = getRateSuggestion(null, data.bedrooms ?? 2, data.bathrooms ?? 1, data.tasks ?? [])
+      // No preset — calculate rate using 'weekly' as the base frequency
+      // (most common, gives a realistic starting point without pre-selecting a card)
+      const s = getRateSuggestion('weekly', data.bedrooms ?? 2, data.bathrooms ?? 1, data.tasks ?? [])
       setHourlyRate(parseFloat(s.defaultRate))
     }
   }, [router])
@@ -161,7 +161,7 @@ export default function RequestFrequencyPage() {
     sessionStorage.setItem('cleanRequest', JSON.stringify({
       ...requestData,
       frequency: selectedFrequency,
-      hourlyRate: hourlyRate >= RATE_MAX ? RATE_MAX : hourlyRate,
+      hourlyRate: hourlyRate !== null ? (hourlyRate >= RATE_MAX ? RATE_MAX : hourlyRate) : suggestion.low,
     }))
     router.push('/request/terms')
   }
@@ -170,9 +170,9 @@ export default function RequestFrequencyPage() {
     ? getRateSuggestion(selectedFrequency, requestData.bedrooms ?? 2, requestData.bathrooms ?? 1, requestData.tasks ?? [])
     : { low: 15, high: 20, defaultRate: '16.00', reason: '' }
 
-  const rateInRange = hourlyRate >= suggestion.low && hourlyRate <= suggestion.high
-  const rateLow = hourlyRate < suggestion.low
-  const rateHigh = hourlyRate > suggestion.high
+  const rateInRange = hourlyRate !== null && hourlyRate >= suggestion.low && hourlyRate <= suggestion.high
+  const rateLow = hourlyRate !== null && hourlyRate < suggestion.low
+  const rateHigh = hourlyRate !== null && hourlyRate > suggestion.high
 
   if (!requestData) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans', sans-serif" }}>
@@ -317,19 +317,21 @@ export default function RequestFrequencyPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '0', marginBottom: '12px', border: '1.5px solid #e2e8f0', borderRadius: '14px', overflow: 'hidden', background: 'rgba(255,255,255,0.9)' }}>
               <button
                 type="button"
-                onClick={() => setHourlyRate(r => Math.max(RATE_MIN, parseFloat((r - RATE_STEP).toFixed(2))))}
-                disabled={hourlyRate <= RATE_MIN}
-                style={{ width: '56px', height: '56px', fontSize: '24px', fontWeight: 300, color: hourlyRate <= RATE_MIN ? '#cbd5e1' : '#0f172a', background: 'transparent', border: 'none', cursor: hourlyRate <= RATE_MIN ? 'not-allowed' : 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRight: '1.5px solid #e2e8f0' }}
+                onClick={() => setHourlyRate(r => Math.max(RATE_MIN, parseFloat(((r ?? RATE_MIN) - RATE_STEP).toFixed(2))))}
+                disabled={hourlyRate === null || hourlyRate <= RATE_MIN}
+                style={{ width: '56px', height: '56px', fontSize: '24px', fontWeight: 300, color: (hourlyRate === null || hourlyRate <= RATE_MIN) ? '#cbd5e1' : '#0f172a', background: 'transparent', border: 'none', cursor: (hourlyRate === null || hourlyRate <= RATE_MIN) ? 'not-allowed' : 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRight: '1.5px solid #e2e8f0' }}
               >−</button>
               <div style={{ flex: 1, textAlign: 'center' }}>
-                <div style={{ fontSize: '26px', fontWeight: 800, color: '#0f172a', lineHeight: 1 }}>{formatRate(hourlyRate)}</div>
+                <div style={{ fontSize: '26px', fontWeight: 800, color: hourlyRate === null ? '#94a3b8' : '#0f172a', lineHeight: 1 }}>
+                  {hourlyRate === null ? '—' : formatRate(hourlyRate)}
+                </div>
                 <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 500, marginTop: '2px' }}>per hour</div>
               </div>
               <button
                 type="button"
-                onClick={() => setHourlyRate(r => Math.min(RATE_MAX, parseFloat((r + RATE_STEP).toFixed(2))))}
-                disabled={hourlyRate >= RATE_MAX}
-                style={{ width: '56px', height: '56px', fontSize: '24px', fontWeight: 300, color: hourlyRate >= RATE_MAX ? '#cbd5e1' : '#0f172a', background: 'transparent', border: 'none', cursor: hourlyRate >= RATE_MAX ? 'not-allowed' : 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderLeft: '1.5px solid #e2e8f0' }}
+                onClick={() => setHourlyRate(r => Math.min(RATE_MAX, parseFloat(((r ?? RATE_MIN) + RATE_STEP).toFixed(2))))}
+                disabled={hourlyRate === null || hourlyRate >= RATE_MAX}
+                style={{ width: '56px', height: '56px', fontSize: '24px', fontWeight: 300, color: (hourlyRate === null || hourlyRate >= RATE_MAX) ? '#cbd5e1' : '#0f172a', background: 'transparent', border: 'none', cursor: (hourlyRate === null || hourlyRate >= RATE_MAX) ? 'not-allowed' : 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderLeft: '1.5px solid #e2e8f0' }}
               >+</button>
             </div>
 
@@ -339,7 +341,7 @@ export default function RequestFrequencyPage() {
               background: !selectedFrequency ? '#f8fafc' : rateInRange ? '#eff6ff' : rateLow ? '#fefce8' : '#f0fdf4',
               border: `1px solid ${!selectedFrequency ? '#e2e8f0' : rateInRange ? '#bfdbfe' : rateLow ? '#fde68a' : '#bbf7d0'}`,
             }}>
-              {!selectedFrequency && (
+              {(!selectedFrequency || hourlyRate === null) && (
                 <p style={{ fontSize: '13px', fontWeight: 500, color: '#94a3b8', margin: 0 }}>
                   💡 Select a frequency above and we’ll suggest a rate range for your property.
                 </p>
