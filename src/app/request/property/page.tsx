@@ -31,14 +31,14 @@ const DEEP_CLEAN_TASKS = ['bathroom_deep', 'kitchen_deep', 'fridge', 'conservato
 const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 const TIME_SLOTS = ['Morning (8am - 12pm)', 'Afternoon (12pm - 5pm)', 'Evening (5pm - 8pm)']
 const HOURS_OPTIONS = [
-  { value: 1.5, label: '1.5 hours' },
   { value: 2,   label: '2 hours' },
   { value: 2.5, label: '2.5 hours' },
   { value: 3,   label: '3 hours' },
   { value: 3.5, label: '3.5 hours' },
   { value: 4,   label: '4 hours' },
   { value: 4.5, label: '4.5 hours' },
-  { value: 5,   label: '5+ hours' },
+  { value: 5,   label: '5 hours' },
+  { value: 5.5, label: '5.5+ hours' },
 ]
 
 const SECTOR_TO_ZONE: Record<string, string> = {
@@ -67,21 +67,19 @@ function getZoneFromPostcode(postcode: string): string | null {
 function getSuggestedHours(bedrooms: number, bathrooms: number) {
   // Base hours from bedrooms, then add 0.5 per extra bathroom beyond 1
   const extraBaths = Math.max(0, bathrooms - 1)
-  const bathBonus  = extraBaths * 0.5
+  const bathBonus  = Math.round((extraBaths * 0.5) / 0.5) * 0.5
 
   let base: { min: number; max: number; preselect: number }
-  if (bedrooms <= 1) base = { min: 1.5, max: 2,   preselect: 1.5 }
-  else if (bedrooms === 2) base = { min: 2,   max: 2.5, preselect: 2   }
-  else if (bedrooms === 3) base = { min: 2.5, max: 3.5, preselect: 3   }
-  else if (bedrooms === 4) base = { min: 3,   max: 4.5, preselect: 3.5 }
-  else                     base = { min: 4,   max: 5,   preselect: 4.5 }
+  if (bedrooms <= 1) base = { min: 2,   max: 3,   preselect: 2   }
+  else if (bedrooms === 2) base = { min: 2,   max: 3,   preselect: 2.5 }
+  else if (bedrooms === 3) base = { min: 2.5, max: 4,   preselect: 3   }
+  else if (bedrooms === 4) base = { min: 3,   max: 5,   preselect: 3.5 }
+  else                     base = { min: 4,   max: 5.5, preselect: 4.5 }
 
-  // Round bath bonus to nearest 0.5 and cap total at 5
-  const bonus = Math.round(bathBonus / 0.5) * 0.5
   return {
-    min:       Math.min(base.min + bonus, 5),
-    max:       Math.min(base.max + bonus, 5),
-    preselect: Math.min(base.preselect + bonus, 5),
+    min:       Math.min(base.min + bathBonus, 5.5),
+    max:       Math.min(base.max + bathBonus, 5.5),
+    preselect: Math.min(base.preselect + bathBonus, 5.5),
   }
 }
 
@@ -155,7 +153,6 @@ function RequestStep1Content() {
   }, [])
 
   const suggested = getSuggestedHours(bedrooms, bathrooms)
-  const isBelowSuggested = hoursPerSession !== null && hoursPerSession < suggested.min
 
   const handleBedroomsChange = (val: number) => {
     setBedrooms(val)
@@ -388,8 +385,9 @@ function RequestStep1Content() {
             <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '4px' }}>
               ⏱ How long per session?
             </div>
-            <p style={{ fontSize: '13px', color: '#64748b', margin: '0 0 14px' }}>
-              💡 Not sure? Most customers with a <strong>{bedrooms}-bedroom</strong> home start with <strong>{suggested.preselect} hours</strong> and adjust after their first clean.
+            <p style={{ fontSize: '13px', color: '#64748b', margin: '0 0 14px', lineHeight: 1.55 }}>
+              Customers with <strong>{bedrooms}-bed / {bathrooms}-bathroom</strong> homes are usually happiest with a clean lasting around{' '}
+              <strong>{suggested.preselect} hours</strong>. Most adjust slightly after their first session once they know what works for them.
             </p>
             <select
               className="vou-select"
@@ -404,11 +402,62 @@ function RequestStep1Content() {
               <option value="">Select session length</option>
               {HOURS_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
             </select>
-            {isBelowSuggested && (
-              <div style={{ marginTop: '10px', padding: '10px 14px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '10px', fontSize: '13px', color: '#92400e' }}>
-                ⚠️ Most cleaners recommend at least <strong>{suggested.min} hours</strong> for a {bedrooms}-bed home — you can agree the final time directly with your cleaner.
-              </div>
-            )}
+
+            {/* Contextual guidance based on selection */}
+            {hoursPerSession !== null && (() => {
+              const inRange = hoursPerSession >= suggested.min && hoursPerSession <= suggested.max
+              const isLow   = hoursPerSession < suggested.min
+              const isHigh  = hoursPerSession > suggested.max
+              return (
+                <div style={{
+                  marginTop: '10px', padding: '12px 14px', borderRadius: '12px',
+                  background: isLow ? '#fffbeb' : inRange ? '#f0fdf4' : '#eff6ff',
+                  border: `1px solid ${isLow ? '#fde68a' : inRange ? '#bbf7d0' : '#bfdbfe'}`,
+                  fontSize: '13px', lineHeight: 1.55,
+                }}>
+                  {isLow && (
+                    <>
+                      <p style={{ fontWeight: 600, color: '#92400e', margin: '0 0 3px' }}>
+                        ⚠️ On the lower end for a {bedrooms}-bed / {bathrooms}-bath home
+                      </p>
+                      <p style={{ color: '#b45309', margin: '0 0 6px' }}>
+                        Homes like yours typically need {suggested.min}–{suggested.max} hours. At {hoursPerSession}h your cleaner may not be able to cover everything — worth discussing with them directly.
+                      </p>
+                      <p style={{ color: '#92400e', margin: 0, fontStyle: 'italic' }}>
+                        No one knows your home better than you — this is based on experience from our cleaning partners across Horsham.
+                      </p>
+                    </>
+                  )}
+                  {inRange && (
+                    <>
+                      <p style={{ fontWeight: 600, color: '#166534', margin: '0 0 3px' }}>
+                        ✅ Within the typical range for your home
+                      </p>
+                      <p style={{ color: '#15803d', margin: '0 0 8px' }}>
+                        {hoursPerSession}h fits well for a {bedrooms}-bed / {bathrooms}-bath property. You and your cleaner can fine-tune this after the first session.
+                      </p>
+                      <p style={{ color: '#166534', margin: 0, padding: '8px 10px', background: 'rgba(34,197,94,0.08)', borderRadius: '8px', fontWeight: 500 }}>
+                        💡 First clean tip: consider asking your cleaner for an extra hour on the first visit to get on top of things — then drop to {hoursPerSession}h from the second session onwards.
+                      </p>
+                    </>
+                  )}
+                  {isHigh && (
+                    <>
+                      <p style={{ fontWeight: 600, color: '#1e40af', margin: '0 0 3px' }}>
+                        Generous allowance — your cleaner will appreciate the time
+                      </p>
+                      <p style={{ color: '#3b82f6', margin: '0 0 6px' }}>
+                        {hoursPerSession}h gives your cleaner plenty of time to do a thorough job. Great if you have specialist tasks or want a more detailed clean each visit.
+                      </p>
+                      <p style={{ color: '#1e40af', margin: 0, fontStyle: 'italic' }}>
+                        No one knows your home better than you — this is based on experience from our cleaning partners across Horsham.
+                      </p>
+                    </>
+                  )}
+                </div>
+              )
+            })()}
+
             {hoursTouched && !hoursPerSession && (
               <p style={{ fontSize: '13px', color: '#ef4444', marginTop: '6px' }}>Please select a session length</p>
             )}
