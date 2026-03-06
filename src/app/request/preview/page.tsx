@@ -53,6 +53,7 @@ interface RequestData {
   hourlyRate?: number
   hoursPerSession?: number
   finalNotes?: string
+  extraHoursNote?: string
 }
 
 function saveRequestData(data: Partial<RequestData>) {
@@ -216,7 +217,16 @@ function PreviewCard({ data }: { data: RequestData }) {
 export default function PreviewAndPublishPage() {
   const router = useRouter()
   const [data, setData] = useState<RequestData | null>(null)
-  const [finalNotes, setFinalNotes] = useState("")
+  const [finalNotes, setFinalNotes] = useState(() => {
+    try {
+      const stored = sessionStorage.getItem('cleanRequest')
+      if (stored) {
+        const d = JSON.parse(stored)
+        return d.extraHoursNote ?? d.finalNotes ?? ''
+      }
+    } catch {}
+    return ''
+  })
   const [loading, setLoading] = useState(false)
   const [showEmailForm, setShowEmailForm] = useState(false)
   const [fullName, setFullName] = useState("")
@@ -228,7 +238,9 @@ export default function PreviewAndPublishPage() {
     const loaded = loadRequestData()
     if (!loaded) { router.push("/request/property"); return }
     setData(loaded)
-    setFinalNotes(loaded.finalNotes ?? "")
+    // Only set finalNotes from loaded data if the lazy initialiser returned empty
+    // (i.e. sessionStorage wasn't available during SSR)
+    setFinalNotes((prev: string) => prev || loaded.extraHoursNote || loaded.finalNotes || '')
 
     const supabase = createClient()
     supabase.auth.getSession().then(({ data: { session } }) => {

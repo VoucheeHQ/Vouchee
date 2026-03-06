@@ -115,7 +115,7 @@ function getRateSuggestion(
 export default function RequestFrequencyPage() {
   const router = useRouter()
   const [requestData, setRequestData] = useState<RequestData | null>(null)
-  const [selectedFrequency, setSelectedFrequency] = useState<FrequencyType | null>(null)
+  const [selectedFrequency, setSelectedFrequency] = useState<FrequencyType>('weekly')
   const [hourlyRate, setHourlyRate] = useState<number | null>(null)
 
   useEffect(() => {
