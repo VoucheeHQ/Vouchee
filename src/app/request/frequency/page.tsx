@@ -47,18 +47,14 @@ const PRICING_TIERS = [
 // Tasks that indicate a heavier-than-usual clean — matched to property page task IDs
 const DEEP_CLEAN_TASKS = ['oven', 'bathroom_deep', 'kitchen_deep', 'fridge', 'mold']
 
-const RATE_OPTIONS = [
-  { value: '13.00', label: '£13.00 / hr' },
-  { value: '14.00', label: '£14.00 / hr' },
-  { value: '15.00', label: '£15.00 / hr' },
-  { value: '16.00', label: '£16.00 / hr' },
-  { value: '17.00', label: '£17.00 / hr' },
-  { value: '18.00', label: '£18.00 / hr' },
-  { value: '19.00', label: '£19.00 / hr' },
-  { value: '20.00', label: '£20.00 / hr' },
-  { value: '21.00', label: '£21.00 / hr' },
-  { value: '22.00', label: '£22.00 / hr' },
-]
+const RATE_MIN = 13.00
+const RATE_MAX = 25.00
+const RATE_STEP = 0.50
+
+function formatRate(rate: number): string {
+  if (rate >= RATE_MAX) return '£25.00+'
+  return `£${rate.toFixed(2)}`
+}
 
 interface RateSuggestion {
   low: number
@@ -125,8 +121,7 @@ export default function RequestFrequencyPage() {
   const router = useRouter()
   const [requestData, setRequestData] = useState<RequestData | null>(null)
   const [selectedFrequency, setSelectedFrequency] = useState<FrequencyType | null>(null)
-  const [hourlyRate, setHourlyRate] = useState('16.00')
-  const [userEditedRate, setUserEditedRate] = useState(false)
+  const [hourlyRate, setHourlyRate] = useState(16.00)
 
   useEffect(() => {
     const stored = sessionStorage.getItem('cleanRequest')
@@ -139,23 +134,16 @@ export default function RequestFrequencyPage() {
       const freq = preset as FrequencyType
       setSelectedFrequency(freq)
       const s = getRateSuggestion(freq, data.bedrooms ?? 2, data.tasks ?? [])
-      setHourlyRate(s.defaultRate)
+      setHourlyRate(parseFloat(s.defaultRate))
     }
   }, [router])
-
-  // Auto-update default rate when frequency changes, unless user has manually picked a rate
-  useEffect(() => {
-    if (!selectedFrequency || !requestData || userEditedRate) return
-    const s = getRateSuggestion(selectedFrequency, requestData.bedrooms ?? 2, requestData.tasks ?? [])
-    setHourlyRate(s.defaultRate)
-  }, [selectedFrequency, requestData, userEditedRate])
 
   const handleContinue = () => {
     if (!selectedFrequency || !requestData) return
     sessionStorage.setItem('cleanRequest', JSON.stringify({
       ...requestData,
       frequency: selectedFrequency,
-      hourlyRate: parseFloat(hourlyRate),
+      hourlyRate: hourlyRate >= RATE_MAX ? RATE_MAX : hourlyRate,
     }))
     router.push('/request/terms')
   }
@@ -164,10 +152,9 @@ export default function RequestFrequencyPage() {
     ? getRateSuggestion(selectedFrequency, requestData.bedrooms ?? 2, requestData.tasks ?? [])
     : { low: 15, high: 20, defaultRate: '16.00', reason: '' }
 
-  const rateNum = parseFloat(hourlyRate)
-  const rateInRange = rateNum >= suggestion.low && rateNum <= suggestion.high
-  const rateLow = rateNum < suggestion.low
-  const rateHigh = rateNum > suggestion.high
+  const rateInRange = hourlyRate >= suggestion.low && hourlyRate <= suggestion.high
+  const rateLow = hourlyRate < suggestion.low
+  const rateHigh = hourlyRate > suggestion.high
 
   if (!requestData) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans', sans-serif" }}>
@@ -247,7 +234,7 @@ export default function RequestFrequencyPage() {
                   <div
                     key={tier.frequency}
                     className="freq-card"
-                    onClick={() => { setSelectedFrequency(tier.frequency); setUserEditedRate(false) }}
+                    onClick={() => setSelectedFrequency(tier.frequency)}
                     style={{
                       position: 'relative', padding: '18px 14px', borderRadius: '16px',
                       border: `2px solid ${selected ? '#3b82f6' : '#e2e8f0'}`,
@@ -302,23 +289,27 @@ export default function RequestFrequencyPage() {
             <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '6px' }}>
               💷 Offered hourly rate
             </div>
-            <p style={{ fontSize: '13px', color: '#64748b', margin: '0 0 14px', lineHeight: 1.5 }}>
-              We've suggested a starting point based on your {requestData.bedrooms}-bedroom property
-              {requestData.tasks?.some((t: string) => ['oven', 'bathroom_deep', 'kitchen_deep', 'fridge', 'mold'].includes(t)) ? ', specialist tasks selected,' : ','} and chosen frequency.
-              You're free to adjust.
-            </p>
+            {/* Stepper */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0', marginBottom: '12px', border: '1.5px solid #e2e8f0', borderRadius: '14px', overflow: 'hidden', background: 'rgba(255,255,255,0.9)' }}>
+              <button
+                type="button"
+                onClick={() => setHourlyRate(r => Math.max(RATE_MIN, parseFloat((r - RATE_STEP).toFixed(2))))}
+                disabled={hourlyRate <= RATE_MIN}
+                style={{ width: '56px', height: '56px', fontSize: '24px', fontWeight: 300, color: hourlyRate <= RATE_MIN ? '#cbd5e1' : '#0f172a', background: 'transparent', border: 'none', cursor: hourlyRate <= RATE_MIN ? 'not-allowed' : 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRight: '1.5px solid #e2e8f0' }}
+              >−</button>
+              <div style={{ flex: 1, textAlign: 'center' }}>
+                <div style={{ fontSize: '26px', fontWeight: 800, color: '#0f172a', lineHeight: 1 }}>{formatRate(hourlyRate)}</div>
+                <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 500, marginTop: '2px' }}>per hour</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setHourlyRate(r => Math.min(RATE_MAX, parseFloat((r + RATE_STEP).toFixed(2))))}
+                disabled={hourlyRate >= RATE_MAX}
+                style={{ width: '56px', height: '56px', fontSize: '24px', fontWeight: 300, color: hourlyRate >= RATE_MAX ? '#cbd5e1' : '#0f172a', background: 'transparent', border: 'none', cursor: hourlyRate >= RATE_MAX ? 'not-allowed' : 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderLeft: '1.5px solid #e2e8f0' }}
+              >+</button>
+            </div>
 
-            <select
-              className="vou-select"
-              value={hourlyRate}
-              onChange={e => { setHourlyRate(e.target.value); setUserEditedRate(true) }}
-            >
-              {RATE_OPTIONS.map(opt => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-
-            {/* Live feedback hint */}
+            {/* Live feedback hint — subtext lives here, not above the stepper */}
             <div className="rate-hint" style={{
               marginTop: '12px', padding: '12px 14px', borderRadius: '12px',
               background: rateInRange ? '#eff6ff' : rateLow ? '#fefce8' : '#f0fdf4',
@@ -326,10 +317,10 @@ export default function RequestFrequencyPage() {
             }}>
               {rateInRange && (
                 <>
-                  <p style={{ fontSize: '13px', fontWeight: 600, color: '#1e40af', margin: '0 0 3px' }}>
-                    ✅ Within the suggested range for your clean — £{suggestion.low}–£{suggestion.high}/hr
+                  <p style={{ fontSize: '13px', fontWeight: 600, color: '#1e40af', margin: '0 0 4px' }}>
+                    ✅ Within the suggested range — £{suggestion.low}–£{suggestion.high}/hr
                   </p>
-                  <p style={{ fontSize: '12px', color: '#3b82f6', margin: 0, lineHeight: 1.5 }}>{suggestion.reason}</p>
+                  <p style={{ fontSize: '12px', color: '#3b82f6', margin: 0, lineHeight: 1.55 }}>{suggestion.reason}</p>
                 </>
               )}
               {rateLow && (
@@ -354,7 +345,7 @@ export default function RequestFrequencyPage() {
               )}
             </div>
 
-            <p style={{ fontSize: '12px', color: '#94a3b8', margin: '10px 0 0', lineHeight: 1.5 }}>
+            <p style={{ fontSize: '11px', color: '#94a3b8', margin: '10px 0 0', lineHeight: 1.5 }}>
               This is an offer — your cleaner may discuss the rate with you before agreeing to start.
             </p>
           </div>
