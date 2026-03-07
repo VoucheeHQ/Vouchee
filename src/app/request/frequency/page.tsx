@@ -236,10 +236,6 @@ export default function RequestFrequencyPage() {
                     className="freq-card"
                     onClick={() => {
                       setSelectedFrequency(tier.frequency)
-                      if (requestData) {
-                        const s = getRateSuggestion(tier.frequency, requestData.bedrooms ?? 2, requestData.bathrooms ?? 1, requestData.tasks ?? [])
-                        setHourlyRate(parseFloat(s.defaultRate))
-                      }
                     }}
                     style={{
                       position: 'relative', padding: '18px 14px', borderRadius: '16px',
