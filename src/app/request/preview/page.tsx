@@ -234,6 +234,10 @@ export default function PreviewAndPublishPage() {
   const [userId, setUserId] = useState<string | null>(null)
 
   useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [])
+
+  useEffect(() => {
     const loaded = loadRequestData()
     if (!loaded) { router.push("/request/property"); return }
     setData(loaded)
@@ -343,7 +347,7 @@ export default function PreviewAndPublishPage() {
           {/* Header */}
           <div style={{ marginBottom: "20px" }}>
             <h1 style={{ fontSize: "26px", fontWeight: 800, color: "#0f172a", margin: "0 0 6px", lineHeight: 1.2 }}>Here's your request</h1>
-            <p style={{ fontSize: "14px", color: "#64748b", margin: 0 }}>This is exactly what cleaners will see. Publish it to go live.</p>
+            <p style={{ fontSize: "14px", color: "#64748b", margin: 0 }}>This is exactly what cleaners will see.</p>
           </div>
 
           {/* Preview card */}

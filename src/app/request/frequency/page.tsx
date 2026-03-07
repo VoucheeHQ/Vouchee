@@ -119,6 +119,10 @@ export default function RequestFrequencyPage() {
   const [hourlyRate, setHourlyRate] = useState<number | null>(null)
 
   useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [])
+
+  useEffect(() => {
     const stored = sessionStorage.getItem('cleanRequest')
     if (!stored) { router.push('/request/property'); return }
     const data = JSON.parse(stored) as RequestData
@@ -222,7 +226,7 @@ export default function RequestFrequencyPage() {
               </span>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '8px' }}>
               {PRICING_TIERS.map(tier => {
                 const selected = selectedFrequency === tier.frequency
                 return (

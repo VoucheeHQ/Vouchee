@@ -124,6 +124,10 @@ function RequestStep1Content() {
 
   // ── Restore state from sessionStorage when navigating back ──────────────
   useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [])
+
+  useEffect(() => {
     const stored = sessionStorage.getItem('cleanRequest')
     const isBackNav = sessionStorage.getItem('_voucheeStep') === 'frequency'
     if (!stored || !isBackNav) return
@@ -283,7 +287,7 @@ function RequestStep1Content() {
               placeholder="RH12 1AB"
               value={postcode}
               onChange={e => handlePostcodeChange(e.target.value)}
-              style={{ borderColor: postcodeError ? '#ef4444' : undefined }}
+              style={{ fontSize: '16px', borderColor: postcodeError ? '#ef4444' : undefined }}
             />
             {postcodeError && <p style={{ fontSize: '13px', color: '#ef4444', marginTop: '6px' }}>{postcodeError}</p>}
             {detectedSector && (
