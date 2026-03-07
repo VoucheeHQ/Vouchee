@@ -218,7 +218,7 @@ export default function RequestFrequencyPage() {
             <div style={{ padding: '10px 14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '12px', marginBottom: '16px', display: 'flex', gap: '8px' }}>
               <span style={{ fontSize: '14px', flexShrink: 0 }}>✅</span>
               <span style={{ fontSize: '13px', color: '#166534', fontWeight: 500 }}>
-                Your Direct Debit doesn't start until you've selected your cleaner and confirmed a start date.
+                Your Direct Debit doesn't start until you've selected your cleaner and agreed a start date.
               </span>
             </div>
 
@@ -253,9 +253,6 @@ export default function RequestFrequencyPage() {
                       {formatPrice(tier.pricePerSession)}
                     </div>
                     <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '10px' }}>per clean</div>
-                    <div style={{ fontSize: '11px', color: '#94a3b8', paddingTop: '10px', borderTop: '1px solid #f1f5f9' }}>
-                      {tier.sessionsPerMonth} sessions/mo
-                    </div>
                     <div style={{ fontSize: '12px', fontWeight: 600, color: selected ? '#1e40af' : '#475569', marginTop: '2px' }}>
                       {formatPrice(tier.monthlyCharge)}/month
                     </div>
@@ -367,10 +364,8 @@ export default function RequestFrequencyPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {[
                 'Local vetted and vouched cleaners',
-                'All cleaners accreditations kept up-to-date',
-                "You set the price you're happy to pay",
-                "You choose which cleaners you'd like to chat with",
-                'Last minute cover clean support',
+                                                "You choose which cleaners you'd like to chat with",
+                'Last-minute cover clean support',
                 'Cancel anytime with only 30 days notice required',
               ].map((point, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
