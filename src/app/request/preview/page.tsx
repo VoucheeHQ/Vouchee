@@ -178,7 +178,7 @@ function PreviewCard({ data }: { data: RequestData }) {
         )}
         {(data.preferredDays?.length || data.preferredTime) && (
           <div style={{ marginBottom: "14px" }}>
-            <div style={{ fontSize: "10px", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "6px" }}>Preferred schedule</div>
+            <div style={{ fontSize: "10px", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "6px" }}>Preferred slot</div>
             <div style={{ fontSize: "13px", color: "#475569" }}>
               {data.preferredDays?.length ? data.preferredDays.join(", ") : "Flexible"}
               {data.preferredTime ? ` · ${data.preferredTime}` : ""}
@@ -195,18 +195,17 @@ function PreviewCard({ data }: { data: RequestData }) {
             <div style={{ fontSize: "11px", color: "#a16207", marginTop: "4px" }}>Paid directly to your cleaner</div>
           </div>
           <div style={{ flex: 1, background: "#f0f5ff", border: "1px solid #c7d7f9", borderRadius: "14px", padding: "14px 16px" }}>
-            <div style={{ fontSize: "10px", fontWeight: 700, color: "#3451a7", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: "4px" }}>Vouchee fee</div>
+            <div style={{ fontSize: "10px", fontWeight: 700, color: "#3451a7", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: "4px" }}>Vouchee service fee</div>
             <div style={{ fontSize: "22px", fontWeight: 700, color: "#3b5fc0", lineHeight: 1 }}>
               £{pricing.monthlyCharge}<span style={{ fontSize: "13px", fontWeight: 500 }}>/mo</span>
             </div>
-            <div style={{ fontSize: "11px", color: "#5272c4", marginTop: "4px" }}>Direct Debit · {pricing.sessionsPerMonth}</div>
+            <div style={{ fontSize: "11px", color: "#5272c4", marginTop: "4px" }}>Billed monthly by Direct Debit</div>
           </div>
         </div>
         <div style={{ marginTop: "12px", padding: "10px 14px", background: "#f8fafc", borderRadius: "10px", display: "flex", gap: "8px", border: "1px solid #e2e8f0" }}>
           <span style={{ fontSize: "13px", flexShrink: 0 }}>✅</span>
           <span style={{ fontSize: "12px", color: "#475569", lineHeight: 1.5 }}>
-            No commitment — your Direct Debit only starts once you've chosen a cleaner and secured a start date.{" "}
-            <Link href="/why-vouchee" style={{ color: "#3b82f6", fontWeight: 600, textDecoration: "none" }}>Why use Vouchee?</Link>
+            No commitment — your Direct Debit only starts once you've chosen a cleaner and agreed a start date.
           </span>
         </div>
       </div>
