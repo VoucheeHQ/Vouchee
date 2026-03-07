@@ -276,7 +276,7 @@ export default function RequestFrequencyPage() {
               * Based on 52 weeks per year, averaged across 12 months
             </p>
             <div style={{ textAlign: 'center', marginTop: '10px' }}>
-              <a href="/why-vouchee" style={{ fontSize: '13px', color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>
+              <a href="/why-vouchee?from=frequency" style={{ fontSize: '13px', color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>
                 Why find cleaners through Vouchee? →
               </a>
             </div>

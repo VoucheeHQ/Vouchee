@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 const cards = [
   {
@@ -19,39 +20,46 @@ const cards = [
     delay: 80,
   },
   {
+    icon: "💷",
+    color: "green",
+    title: "Cleaners keep 100% of their hourly rate",
+    body: "Unlike agencies, Vouchee doesn't take a cut of your cleaner's pay. You agree the hourly rate directly with your cleaner and they keep every penny — meaning great cleaners are happy to work through the platform.",
+    delay: 160,
+  },
+  {
     icon: "✅",
     color: "blue",
     title: "Vouchee vetted",
     body: "Every cleaner is interviewed before joining and must hold a valid DBS certificate, public liability insurance and proof of right to work. We actively monitor all accreditations and if anything lapses, the cleaner is removed until it's renewed. We check, so you don't have to.",
-    delay: 160,
+    delay: 240,
   },
   {
     icon: "📍",
     color: "green",
     title: "Locally reviewed",
     body: "Every cleaner on Vouchee is vouched for by your neighbours. You can see their rating, what customers are saying about their services, how long they've been with Vouchee and how many clients they've helped. Everything you need to know before you say yes.",
-    delay: 240,
+    delay: 320,
   },
   {
     icon: "🔒",
     color: "yellow",
     title: "No payment until you're ready",
     body: "Browse cleaners, chat with them, and confirm your choice. All before a single penny leaves your account. Your direct debit only starts once you've said yes.",
-    delay: 320,
+    delay: 400,
   },
   {
     icon: "📅",
     color: "purple",
     title: "Cancel anytime",
     body: "We work on a simple 30 day rolling contract. Give us 30 days notice and you're free to go, no awkward calls, no hidden fees. We'd rather earn your loyalty every month than lock you in.",
-    delay: 400,
+    delay: 480,
   },
   {
     icon: "🏠",
     color: "blue",
     title: "Your regular cleaner unavailable?",
     body: "If your cleaner can't make it, you can request a cover clean at the tap of a button. Vouchee instantly alerts available cleaners in your area so your home is taken care of, no matter what.",
-    delay: 480,
+    delay: 560,
   },
 ];
 
@@ -154,6 +162,96 @@ function Card({ icon, color, title, body, delay }: {
   );
 }
 
+function CommitmentBox() {
+  const searchParams = useSearchParams();
+  const from = searchParams.get("from");
+  const isFromFrequency = from === "frequency";
+
+  return (
+    <div style={{
+      background: "linear-gradient(135deg, #1e40af, #3b82f6)",
+      borderRadius: "28px", padding: "36px",
+      position: "relative", overflow: "hidden",
+    }}>
+      <div style={{
+        position: "absolute", top: "-40px", right: "-40px",
+        width: "180px", height: "180px", borderRadius: "50%",
+        background: "rgba(255,255,255,0.08)",
+      }} />
+      <div style={{
+        position: "absolute", bottom: "-60px", right: "60px",
+        width: "240px", height: "240px", borderRadius: "50%",
+        background: "rgba(250,204,21,0.12)",
+      }} />
+
+      <p style={{
+        fontFamily: "'DM Sans', sans-serif", fontSize: "12px", fontWeight: 600,
+        letterSpacing: "1.5px", textTransform: "uppercase",
+        color: "#fde68a", marginBottom: "10px",
+      }}>
+        Our commitment to you
+      </p>
+      <h2 style={{
+        fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: "24px",
+        fontWeight: 800, color: "white", marginBottom: "12px",
+        letterSpacing: "-0.5px", position: "relative", zIndex: 1,
+      }}>
+        Unhappy? Find a replacement for free.
+      </h2>
+      <p style={{
+        fontFamily: "'DM Sans', sans-serif", fontSize: "15px",
+        color: "rgba(255,255,255,0.82)", lineHeight: 1.65,
+        position: "relative", zIndex: 1, marginBottom: "28px",
+      }}>
+        If your chosen cleaner does not meet your expectations, you can re-publish your
+        ad at the press of a button and we&apos;ll discount your first session with your
+        new cleaner, to make sure it&apos;s a good fit.
+      </p>
+
+      {isFromFrequency ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: "12px", position: "relative", zIndex: 1 }}>
+          <Link
+            href="/request/frequency"
+            style={{
+              display: "inline-flex", alignItems: "center", gap: "8px",
+              background: "#facc15", color: "#1e293b",
+              fontFamily: "'Plus Jakarta Sans', sans-serif",
+              fontWeight: 700, fontSize: "15px",
+              padding: "14px 26px", borderRadius: "100px",
+              textDecoration: "none",
+              boxShadow: "0 4px 20px rgba(250,204,21,0.4)",
+              alignSelf: "flex-start",
+            }}
+          >
+            Continue publishing →
+          </Link>
+          <p style={{
+            fontFamily: "'DM Sans', sans-serif", fontSize: "13px",
+            color: "rgba(255,255,255,0.6)", margin: 0,
+          }}>
+            You were almost there — pick up where you left off.
+          </p>
+        </div>
+      ) : (
+        <Link
+          href="/request/property"
+          style={{
+            display: "inline-flex", alignItems: "center", gap: "8px",
+            background: "#facc15", color: "#1e293b",
+            fontFamily: "'Plus Jakarta Sans', sans-serif",
+            fontWeight: 700, fontSize: "15px",
+            padding: "14px 26px", borderRadius: "100px",
+            textDecoration: "none", position: "relative", zIndex: 1,
+            boxShadow: "0 4px 20px rgba(250,204,21,0.4)",
+          }}
+        >
+          Find my cleaner →
+        </Link>
+      )}
+    </div>
+  );
+}
+
 export default function WhyVouchee() {
   const [heroVisible, setHeroVisible] = useState(false);
 
@@ -250,60 +348,7 @@ export default function WhyVouchee() {
           </div>
 
           {/* Commitment box */}
-          <div style={{
-            background: "linear-gradient(135deg, #1e40af, #3b82f6)",
-            borderRadius: "28px", padding: "36px",
-            position: "relative", overflow: "hidden",
-          }}>
-            <div style={{
-              position: "absolute", top: "-40px", right: "-40px",
-              width: "180px", height: "180px", borderRadius: "50%",
-              background: "rgba(255,255,255,0.08)",
-            }} />
-            <div style={{
-              position: "absolute", bottom: "-60px", right: "60px",
-              width: "240px", height: "240px", borderRadius: "50%",
-              background: "rgba(250,204,21,0.12)",
-            }} />
-
-            <p style={{
-              fontFamily: "'DM Sans', sans-serif", fontSize: "12px", fontWeight: 600,
-              letterSpacing: "1.5px", textTransform: "uppercase",
-              color: "#fde68a", marginBottom: "10px",
-            }}>
-              Our commitment to you
-            </p>
-            <h2 style={{
-              fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: "24px",
-              fontWeight: 800, color: "white", marginBottom: "12px",
-              letterSpacing: "-0.5px", position: "relative", zIndex: 1,
-            }}>
-              Unhappy? Find a replacement for free.
-            </h2>
-            <p style={{
-              fontFamily: "'DM Sans', sans-serif", fontSize: "15px",
-              color: "rgba(255,255,255,0.82)", lineHeight: 1.65,
-              position: "relative", zIndex: 1, marginBottom: "28px",
-            }}>
-              If your chosen cleaner does not meet your expectations, you can re-publish your
-              ad at the press of a button and we&apos;ll discount your first session with your
-              new cleaner, to make sure it&apos;s a good fit.
-            </p>
-            <Link
-              href="/request/property"
-              style={{
-                display: "inline-flex", alignItems: "center", gap: "8px",
-                background: "#facc15", color: "#1e293b",
-                fontFamily: "'Plus Jakarta Sans', sans-serif",
-                fontWeight: 700, fontSize: "15px",
-                padding: "14px 26px", borderRadius: "100px",
-                textDecoration: "none", position: "relative", zIndex: 1,
-                boxShadow: "0 4px 20px rgba(250,204,21,0.4)",
-              }}
-            >
-              Find my cleaner →
-            </Link>
-          </div>
+          <CommitmentBox />
 
           <p style={{
             textAlign: "center", fontFamily: "'DM Sans', sans-serif",
