@@ -213,12 +213,7 @@ export default function RequestFrequencyPage() {
 
           {/* ── Frequency ── */}
           <div style={{ background: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(16px)', borderRadius: '20px', border: '1.5px solid rgba(255,255,255,0.9)', boxShadow: '0 2px 16px rgba(0,0,0,0.05)', padding: '24px', marginBottom: '12px' }}>
-            <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '6px' }}>
-              🔄 Choose your frequency
-            </div>
-            <p style={{ fontSize: '13px', color: '#64748b', margin: '0 0 16px' }}>
-              How often would you like your property cleaned?
-            </p>
+
 
             <div style={{ padding: '10px 14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '12px', marginBottom: '16px', display: 'flex', gap: '8px' }}>
               <span style={{ fontSize: '14px', flexShrink: 0 }}>✅</span>
@@ -257,7 +252,7 @@ export default function RequestFrequencyPage() {
                     <div style={{ fontSize: '26px', fontWeight: 800, color: selected ? '#1e40af' : '#0f172a', lineHeight: 1 }}>
                       {formatPrice(tier.pricePerSession)}
                     </div>
-                    <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '10px' }}>per session</div>
+                    <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '10px' }}>per clean</div>
                     <div style={{ fontSize: '11px', color: '#94a3b8', paddingTop: '10px', borderTop: '1px solid #f1f5f9' }}>
                       {tier.sessionsPerMonth} sessions/mo
                     </div>
@@ -277,7 +272,7 @@ export default function RequestFrequencyPage() {
             </div>
 
             <p style={{ fontSize: '11px', color: '#94a3b8', textAlign: 'center', margin: '12px 0 0' }}>
-              * Monthly charges based on 52 weeks ÷ 12 months = avg 4.33 weeks/month
+              * Based on 52 weeks per year, averaged across 12 months
             </p>
             <div style={{ textAlign: 'center', marginTop: '10px' }}>
               <a href="/why-vouchee" style={{ fontSize: '13px', color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>
