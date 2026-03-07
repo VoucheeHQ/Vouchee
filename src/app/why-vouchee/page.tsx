@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
@@ -160,6 +160,27 @@ function Card({ icon, color, title, body, delay }: {
       </div>
     </div>
   );
+}
+
+function CommitmentBoxDefault() {
+  return (
+    <div style={{
+      background: "linear-gradient(135deg, #1e40af, #3b82f6)",
+      borderRadius: "28px", padding: "36px",
+      position: "relative", overflow: "hidden",
+    }}>
+      <div style={{ position: "absolute", top: "-40px", right: "-40px", width: "180px", height: "180px", borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
+      <div style={{ position: "absolute", bottom: "-60px", right: "60px", width: "240px", height: "240px", borderRadius: "50%", background: "rgba(250,204,21,0.12)" }} />
+      <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "12px", fontWeight: 600, letterSpacing: "1.5px", textTransform: "uppercase", color: "#fde68a", marginBottom: "10px" }}>Our commitment to you</p>
+      <h2 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: "24px", fontWeight: 800, color: "white", marginBottom: "12px", letterSpacing: "-0.5px", position: "relative", zIndex: 1 }}>Unhappy? Find a replacement for free.</h2>
+      <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "15px", color: "rgba(255,255,255,0.82)", lineHeight: 1.65, position: "relative", zIndex: 1, marginBottom: "28px" }}>
+        If your chosen cleaner does not meet your expectations, you can re-publish your ad at the press of a button and we&apos;ll discount your first session with your new cleaner, to make sure it&apos;s a good fit.
+      </p>
+      <Link href="/request/property" style={{ display: "inline-flex", alignItems: "center", gap: "8px", background: "#facc15", color: "#1e293b", fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: "15px", padding: "14px 26px", borderRadius: "100px", textDecoration: "none", position: "relative", zIndex: 1, boxShadow: "0 4px 20px rgba(250,204,21,0.4)" }}>
+        Find my cleaner →
+      </Link>
+    </div>
+  )
 }
 
 function CommitmentBox() {
@@ -348,7 +369,9 @@ export default function WhyVouchee() {
           </div>
 
           {/* Commitment box */}
-          <CommitmentBox />
+          <Suspense fallback={<CommitmentBoxDefault />}>
+            <CommitmentBox />
+          </Suspense>
 
           <p style={{
             textAlign: "center", fontFamily: "'DM Sans', sans-serif",
