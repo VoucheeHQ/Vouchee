@@ -112,20 +112,19 @@ export default function HomePageContent({ location = 'Horsham' }: HomePageProps)
           <div className="mx-auto grid max-w-5xl gap-6 md:grid-cols-3">
             {/* Weekly */}
             <Link href="/request/property?preset=weekly" className="block no-underline">
-            <Card className="card-hover h-full cursor-pointer border-brand-500 shadow-elevated ...">
-            <CardHeader>
+              <Card className="card-hover h-full cursor-pointer border-brand-500 shadow-elevated ...">
+                <CardHeader>
                   <CardTitle>Weekly</CardTitle>
                   <div className="mt-4">
                     <span className="text-4xl font-bold text-ink">£9.99</span>
-                    <span className="text-ink-secondary"> / session</span>
+                    <span className="text-ink-secondary"> / clean</span>
                   </div>
                   <CardDescription className="mt-2">Billed monthly: £43.33</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ul className="space-y-2 text-sm">
                     <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-green-600" /><span>Every week</span></li>
-                    <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-green-600" /><span>~4.33 sessions/month</span></li>
-                    <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-green-600" /><span>Pause anytime</span></li>
+                    <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-green-600" /><span>Cancel anytime</span></li>
                   </ul>
                   <div className="mt-4 inline-block rounded-full bg-brand-100 px-3 py-1 text-xs font-medium text-brand-700">Most popular</div>
                 </CardContent>
@@ -139,15 +138,14 @@ export default function HomePageContent({ location = 'Horsham' }: HomePageProps)
                   <CardTitle>Fortnightly</CardTitle>
                   <div className="mt-4">
                     <span className="text-4xl font-bold text-ink">£14.99</span>
-                    <span className="text-ink-secondary"> / session</span>
+                    <span className="text-ink-secondary"> / clean</span>
                   </div>
                   <CardDescription className="mt-2">Billed monthly: £32.48</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ul className="space-y-2 text-sm">
                     <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-green-600" /><span>Every 2 weeks</span></li>
-                    <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-green-600" /><span>~2.17 sessions/month</span></li>
-                    <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-green-600" /><span>Pause anytime</span></li>
+                    <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-green-600" /><span>Cancel anytime</span></li>
                   </ul>
                 </CardContent>
               </Card>
@@ -167,8 +165,7 @@ export default function HomePageContent({ location = 'Horsham' }: HomePageProps)
                 <CardContent>
                   <ul className="space-y-2 text-sm">
                     <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-green-600" /><span>Once per month</span></li>
-                    <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-green-600" /><span>1 session/month</span></li>
-                    <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-green-600" /><span>Pause anytime</span></li>
+                    <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-green-600" /><span>Cancel anytime</span></li>
                   </ul>
                 </CardContent>
               </Card>
@@ -176,7 +173,7 @@ export default function HomePageContent({ location = 'Horsham' }: HomePageProps)
           </div>
 
           <p className="mt-8 text-center text-sm text-ink-secondary">
-            Platform fee only. You pay your cleaner directly for their time.
+            Platform service fee based on 52 weeks per year, averaged across 12 months. You pay your cleaner directly for their time.
           </p>
         </div>
       </section>
