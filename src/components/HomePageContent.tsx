@@ -8,9 +8,9 @@ interface HomePageProps {
 
 export default function HomePageContent({ location = 'Horsham' }: HomePageProps) {
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen" style={{ background: "linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%)" }}>
       {/* Hero Section */}
-      <section className="relative overflow-hidden py-20 md:py-32" style={{ background: "linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%)" }}>
+      <section className="relative overflow-hidden py-20 md:py-32">
         <div className="container">
           <div className="mx-auto max-w-3xl text-center">
             <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-brand-100 px-4 py-1.5 text-sm font-medium text-brand-700">
@@ -61,7 +61,7 @@ export default function HomePageContent({ location = 'Horsham' }: HomePageProps)
       </section>
 
       {/* Features Section */}
-      <section className="section" style={{ background: "rgba(255,255,255,0.5)" }}>
+      <section className="section">
         <div className="container">
           <div className="mx-auto mb-12 max-w-2xl text-center">
             <h2 className="mb-4 text-3xl font-bold text-ink md:text-4xl">Why choose Vouchee?</h2>
@@ -103,7 +103,7 @@ export default function HomePageContent({ location = 'Horsham' }: HomePageProps)
       </section>
 
       {/* Pricing Section */}
-      <section className="section bg-surface-secondary">
+      <section className="section">
         <div className="container">
           <div className="mx-auto mb-12 max-w-2xl text-center">
             <h2 className="mb-4 text-3xl font-bold text-ink md:text-4xl">Simple, transparent pricing</h2>
@@ -186,14 +186,11 @@ export default function HomePageContent({ location = 'Horsham' }: HomePageProps)
           }}>
             <div style={{ position: "absolute", top: "-60px", right: "-60px", width: "220px", height: "220px", borderRadius: "50%", background: "rgba(255,255,255,0.07)" }} />
             <div style={{ position: "absolute", bottom: "-80px", right: "40px", width: "280px", height: "280px", borderRadius: "50%", background: "rgba(250,204,21,0.1)" }} />
-            <p style={{ fontSize: "11px", fontWeight: 700, color: "#fde68a", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "10px", position: "relative" }}>
-              Our commitment to you
-            </p>
             <h2 className="mb-3 text-3xl font-bold text-white md:text-4xl" style={{ position: "relative" }}>
-              Unhappy? Find a replacement for free.
+              Not the right fit? Switch cleaners easily.
             </h2>
             <p className="mb-8 text-lg" style={{ color: "rgba(255,255,255,0.8)", position: "relative" }}>
-              If your chosen cleaner does not meet your expectations, you can re-publish your request at the press of a button and we&apos;ll discount your first session with your new cleaner to make sure it&apos;s a good fit.
+              If your cleaner isn&apos;t the right fit, let us know and we&apos;ll help you find a better match — with a discounted first clean.
             </p>
             <Link href="/request/property" style={{
               display: "inline-flex", alignItems: "center", gap: "8px",
