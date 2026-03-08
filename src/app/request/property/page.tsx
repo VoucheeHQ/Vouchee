@@ -10,20 +10,20 @@ const CLEANING_TASKS = [
   { id: 'mopping',          label: 'Mopping',             description: 'Hard floors' },
   { id: 'bathroom',         label: 'Bathroom clean',      description: 'Toilet, sink, shower, bath' },
   { id: 'kitchen',          label: 'Kitchen clean',       description: 'Counters, hob, sink, appliances' },
-  { id: 'windows_interior', label: 'Interior windows',    description: 'Inside window cleaning' },
+  { id: 'bins',             label: 'Emptying all bins',   description: 'All rooms and kitchen' },
 ]
 
 const ADDITIONAL_TASKS = [
-  { id: 'kitchen_deep',  label: 'Kitchen deep clean',          description: 'Inside cupboards, behind appliances' },
-  { id: 'bathroom_deep', label: 'Bathroom deep clean',         description: 'Grout, limescale, full scrub' },
-  { id: 'conservatory',  label: 'Conservatory clean',          description: 'Interior windows and surfaces' },
-  { id: 'changing_beds', label: 'Changing beds',               description: 'Strip and remake beds' },
-  { id: 'ironing',       label: 'Ironing',                     description: 'Clothes and linens' },
-  { id: 'laundry',       label: 'Laundry',                     description: 'Washing and folding' },
-  { id: 'bins',          label: 'Emptying all bins',           description: 'All rooms and kitchen' },
-  { id: 'fridge',        label: 'Fridge deep clean',           description: 'Inside and out' },
-  { id: 'blinds',        label: 'Blinds',                      description: 'Dusting and wiping blinds' },
-  { id: 'skirting',      label: 'Skirting boards & doorframes', description: 'Wiping down edges and frames' },
+  { id: 'kitchen_deep',      label: 'Kitchen deep clean',          description: 'Inside cupboards, behind appliances' },
+  { id: 'bathroom_deep',     label: 'Bathroom deep clean',         description: 'Grout, limescale, full scrub' },
+  { id: 'conservatory',      label: 'Conservatory clean',          description: 'Interior windows and surfaces' },
+  { id: 'changing_beds',     label: 'Changing beds',               description: 'Strip and remake beds' },
+  { id: 'ironing',           label: 'Ironing',                     description: 'Clothes and linens' },
+  { id: 'laundry',           label: 'Laundry',                     description: 'Washing and folding' },
+  { id: 'windows_interior',  label: 'Interior windows',            description: 'Inside window cleaning' },
+  { id: 'fridge',            label: 'Fridge deep clean',           description: 'Inside and out' },
+  { id: 'blinds',            label: 'Blinds',                      description: 'Dusting and wiping blinds' },
+  { id: 'skirting',          label: 'Skirting boards & doorframes', description: 'Wiping down edges and frames' },
 ]
 
 const DEEP_CLEAN_TASKS = ['bathroom_deep', 'kitchen_deep', 'fridge', 'conservatory']
@@ -35,10 +35,7 @@ const HOURS_OPTIONS = [
   { value: 2.5, label: '2.5 hours' },
   { value: 3,   label: '3 hours' },
   { value: 3.5, label: '3.5 hours' },
-  { value: 4,   label: '4 hours' },
-  { value: 4.5, label: '4.5 hours' },
-  { value: 5,   label: '5 hours' },
-  { value: 5.5, label: '5.5+ hours' },
+  { value: 4,   label: '4+ hours' },
 ]
 
 const SECTOR_TO_ZONE: Record<string, string> = {
@@ -64,43 +61,24 @@ function getZoneFromPostcode(postcode: string): string | null {
   return SECTOR_TO_ZONE[key5] ?? SECTOR_TO_ZONE[key4] ?? null
 }
 
-function getSuggestedHours(bedrooms: number, bathrooms: number) {
+function getSuggestedHours(bedrooms: number, bathrooms: number, tasks: string[] = []) {
   const extraBaths = Math.max(0, bathrooms - 1)
   const bathBonus  = Math.round((extraBaths * 0.5) / 0.5) * 0.5
+  const hasDeep    = tasks.some(t => DEEP_CLEAN_TASKS.includes(t))
+  const deepBonus  = hasDeep ? 0.5 : 0
 
   let base: { min: number; max: number; preselect: number }
   if (bedrooms <= 1)       base = { min: 2,   max: 3,   preselect: 2   }
   else if (bedrooms === 2) base = { min: 2,   max: 3,   preselect: 2.5 }
-  else if (bedrooms === 3) base = { min: 2.5, max: 4,   preselect: 3   }
-  else if (bedrooms === 4) base = { min: 3,   max: 5,   preselect: 3.5 }
-  else                     base = { min: 4,   max: 5.5, preselect: 4.5 }
+  else if (bedrooms === 3) base = { min: 2.5, max: 3.5, preselect: 3   }
+  else if (bedrooms === 4) base = { min: 3,   max: 4,   preselect: 3.5 }
+  else                     base = { min: 3.5, max: 4,   preselect: 4   }
 
   return {
-    min:       Math.min(base.min + bathBonus, 5.5),
-    max:       Math.min(base.max + bathBonus, 5.5),
-    preselect: Math.min(base.preselect + bathBonus, 5.5),
+    min:       Math.min(base.min + bathBonus + deepBonus, 4),
+    max:       Math.min(base.max + bathBonus + deepBonus, 4),
+    preselect: Math.min(base.preselect + bathBonus + deepBonus, 4),
   }
-}
-
-// ── Rate preview logic (mirrors frequency page — keep in sync) ──────────────
-function getPropertyWeight(bedrooms: number, bathrooms: number) {
-  return (bedrooms * 0.65) + (bathrooms * 0.35)
-}
-function getRatePreview(bedrooms: number, bathrooms: number, tasks: string[]) {
-  const weight = getPropertyWeight(bedrooms, bathrooms)
-  const hasDeep = tasks.some(t => DEEP_CLEAN_TASKS.includes(t))
-  const isXL     = weight >= 3.6
-  const isLarge  = weight >= 2.8 && !isXL
-  const isMedium = weight >= 1.9 && !isLarge && !isXL
-  const bucket   = isXL ? 'XL' : isLarge ? 'Large' : isMedium ? 'Medium' : 'Small'
-
-  const bands: Record<string, { regular: string; monthly: string; default: string }> = {
-    Small:  { regular: '£15–16.50',    monthly: '£16–17.50',   default: '£15.00' },
-    Medium: { regular: '£15.50–17.50', monthly: '£16.50–18.50', default: '£15.50' },
-    Large:  { regular: '£16.50–18.50', monthly: '£17.50–19.50', default: '£16.50' },
-    XL:     { regular: '£17.50–20',    monthly: '£18.50–20',    default: '£17.50' },
-  }
-  return { weight: weight.toFixed(2), bucket, hasDeep, ...bands[bucket] }
 }
 
 function RequestStep1Content() {
@@ -150,16 +128,16 @@ function RequestStep1Content() {
     } catch {}
   }, [])
 
-  const suggested = getSuggestedHours(bedrooms, bathrooms)
+  const suggested = getSuggestedHours(bedrooms, bathrooms, selectedTasks)
 
   const handleBedroomsChange = (val: number) => {
     setBedrooms(val)
-    if (!userPickedHours) setHoursPerSession(getSuggestedHours(val, bathrooms).preselect)
+    if (!userPickedHours) setHoursPerSession(getSuggestedHours(val, bathrooms, selectedTasks).preselect)
   }
 
   const handleBathroomsChange = (val: number) => {
     setBathrooms(val)
-    if (!userPickedHours) setHoursPerSession(getSuggestedHours(bedrooms, val).preselect)
+    if (!userPickedHours) setHoursPerSession(getSuggestedHours(bedrooms, val, selectedTasks).preselect)
   }
 
   const handlePostcodeChange = (value: string) => {
@@ -176,8 +154,13 @@ function RequestStep1Content() {
     }
   }
 
-  const toggleTask = (id: string) =>
-    setSelectedTasks(prev => prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id])
+  const toggleTask = (id: string) => {
+    setSelectedTasks(prev => {
+      const next = prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id]
+      if (!userPickedHours) setHoursPerSession(getSuggestedHours(bedrooms, bathrooms, next).preselect)
+      return next
+    })
+  }
 
   const toggleDay = (day: string) =>
     setPreferredDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day])
@@ -197,7 +180,6 @@ function RequestStep1Content() {
   }
 
   const allTasks = [...CLEANING_TASKS, ...ADDITIONAL_TASKS]
-  const ratePreview = getRatePreview(bedrooms, bathrooms, selectedTasks)
 
   // Hint state for hours
   const hoursHintState = hoursPerSession !== null ? (() => {
@@ -432,7 +414,7 @@ function RequestStep1Content() {
             </div>
             <p style={{ fontSize: '13px', color: '#64748b', margin: '0 0 14px', lineHeight: 1.55 }}>
               Customers with <strong>{bedrooms}-bed / {bathrooms}-bathroom</strong> homes are usually happiest with a clean lasting between{' '}
-              <strong>{suggested.min}–{suggested.max} hours</strong>. You are free to adjust your hourly requirements at any time.
+              <strong>{suggested.min === 4 ? '3.5–4+' : `${suggested.min}–${suggested.max === 4 ? '4+' : suggested.max}`} hours</strong>. You are free to adjust your hourly requirements at any time.
             </p>
             <select
               className="vou-select"
@@ -507,29 +489,6 @@ function RequestStep1Content() {
             {hoursTouched && !hoursPerSession && (
               <p style={{ fontSize: '13px', color: '#ef4444', marginTop: '6px' }}>Please select a session length</p>
             )}
-          </div>
-
-          {/* ── 🛠 DEV: Rate preview box — REMOVE BEFORE LAUNCH ── */}
-          <div style={{ marginBottom: '16px', padding: '16px 20px', background: '#0f172a', borderRadius: '16px', border: '1px solid #1e293b' }}>
-            <div style={{ fontSize: '11px', color: '#475569', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>
-              🛠 Dev — Rate preview · remove before launch
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 16px' }}>
-              {([
-                ['Bedrooms', bedrooms],
-                ['Bathrooms', bathrooms],
-                ['Weight', ratePreview.weight],
-                ['Bucket', ratePreview.bucket],
-                ['Regular range', ratePreview.regular],
-                ['Monthly/specialist', ratePreview.hasDeep ? `${ratePreview.monthly} ✦ deep` : ratePreview.monthly],
-                ['Suggested default', ratePreview.default],
-              ] as [string, string | number][]).map(([k, v]) => (
-                <div key={k} style={{ fontSize: '12px', fontFamily: 'monospace' }}>
-                  <span style={{ color: '#64748b' }}>{k}: </span>
-                  <span style={{ color: '#22c55e', fontWeight: 700 }}>{v}</span>
-                </div>
-              ))}
-            </div>
           </div>
 
           {/* ── CTA ── */}
