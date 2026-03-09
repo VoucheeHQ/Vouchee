@@ -1,61 +1,12 @@
 'use client'
 
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch'
 
-type Option = {
-  emoji: string
-  title: string
-  body: string
-  route: string
-  color: string
-  muted?: boolean
-  mostCommon?: boolean
-}
-
-const options: Option[] = [
-  {
-    emoji: '📣',
-    title: 'I\'m self-employed but don\'t have much online presence',
-    body: 'No website needed. Vouchee builds your reputation and brings clients to you.',
-    route: '/cleaner/no-presence',
-    color: '#8b5cf6',
-    mostCommon: true,
-  },
-  {
-    emoji: '🏡',
-    title: 'I\'m self-employed with my own clients and online presence',
-    body: 'Looking to fill specific slots with quality local clients.',
-    route: '/cleaner/established',
-    color: '#3b82f6',
-  },
-  {
-    emoji: '🔓',
-    title: 'I work for a company or agency but want to go self-employed',
-    body: 'Wanting to get your own clients and keep what you earn.',
-    route: '/cleaner/going-solo',
-    color: '#f59e0b',
-  },
-  {
-    emoji: '🔄',
-    title: 'I used to clean and want to get back into it',
-    body: 'You have experience and want to build your diary quickly.',
-    route: '/cleaner/returning',
-    color: '#22c55e',
-  },
-  {
-    emoji: '🤔',
-    title: 'None of these quite fit',
-    body: 'New to cleaning and want to know how to get started.',
-    route: '/cleaner/new-to-cleaning',
-    color: '#94a3b8',
-    muted: true,
-  },
-]
-
 function CoverageMap() {
   return (
-    <div style={{ width: '100%', borderRadius: '16px', overflow: 'hidden', border: '1px solid #e2e8f0', boxShadow: '0 2px 12px rgba(0,0,0,0.06)', background: '#e8f4f8', position: 'relative' }}>
+    <div style={{ width: '100%', borderRadius: '16px', overflow: 'hidden', border: '1.5px solid #e2e8f0', boxShadow: '0 2px 12px rgba(0,0,0,0.06)', background: '#e8f4f8', position: 'relative' }}>
       <TransformWrapper initialScale={1} minScale={1} maxScale={4} centerOnInit>
         {({ zoomIn, zoomOut, resetTransform }) => (
           <>
@@ -77,144 +28,334 @@ function CoverageMap() {
   )
 }
 
-export default function CleanerSelectionPage() {
+const ALL_AREAS = ['Central / South East', 'North West', 'North East / Roffey', 'South West', 'Warnham / Surrounding North', 'Broadbridge Heath', 'Mannings Heath', 'Faygate / Kilnwood Vale', 'Christs Hospital']
+
+export default function ReturningCleanerPage() {
   const router = useRouter()
+  const [creditsOpen, setCreditsOpen] = useState(false)
+  const [form, setForm] = useState({
+    name: '', email: '', phone: '',
+    hours: '',
+    gapReason: '',
+    selectedAreas: [] as string[],
+  })
+  const [submitted, setSubmitted] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+
+  const canSubmit = form.name && form.email && form.hours
+  const allSelected = form.selectedAreas.includes('__all__')
+
+  const handleSubmit = async () => {
+    if (!canSubmit) return
+    setSubmitting(true)
+    await new Promise(r => setTimeout(r, 800))
+    setSubmitted(true)
+    setSubmitting(false)
+  }
 
   return (
     <>
       <link rel="preconnect" href="https://fonts.googleapis.com" />
-      <link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+      <link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;600;700&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
       <style suppressHydrationWarning>{`
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        .sp { min-height: 100vh; font-family: 'DM Sans', sans-serif; background: linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%); display: flex; flex-direction: column; }
-        .sp-header { padding: 48px 20px 32px; text-align: center; position: relative; }
-        .sp-header-inner { max-width: 560px; margin: 0 auto; position: relative; z-index: 1; }
-        .sp-logo { font-family: 'Lora', serif; font-size: 44px; font-weight: 700; color: #0f172a; margin-bottom: 4px; letter-spacing: -0.5px; line-height: 1; }
-        .sp-logo span { color: #22c55e; }
-        .sp-tagline { font-size: 14px; color: #64748b; margin-bottom: 22px; }
-        .sp-header h1 { font-family: 'Lora', serif; font-size: clamp(19px, 3.8vw, 27px); font-weight: 700; color: #0f172a; line-height: 1.28; letter-spacing: -0.2px; }
-        .sp-proof { background: rgba(255,255,255,0.6); backdrop-filter: blur(12px); border-top: 1px solid rgba(255,255,255,0.8); border-bottom: 1px solid rgba(255,255,255,0.8); padding: 16px 20px; margin-top: 24px; }
-        .sp-proof-inner { max-width: 560px; margin: 0 auto; display: flex; justify-content: center; gap: 0; }
-        .sp-proof-item { flex: 1; text-align: center; padding: 0 12px; border-right: 1px solid #e2e8f0; }
-        .sp-proof-item:last-child { border-right: none; }
-        .sp-proof-num { font-family: 'Lora', serif; font-size: 20px; font-weight: 700; color: #0f172a; line-height: 1; }
-        .sp-proof-label { font-size: 10px; color: #94a3b8; margin-top: 3px; text-transform: uppercase; letter-spacing: 0.05em; }
-        .sp-body { flex: 1; padding: 32px 20px 16px; }
-        .sp-inner { max-width: 560px; margin: 0 auto; }
-        .sp-prompt { font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.09em; text-align: center; margin-bottom: 14px; }
-        .sp-options { display: flex; flex-direction: column; gap: 9px; }
-        .sp-option { background: rgba(255,255,255,0.82); backdrop-filter: blur(16px); border-radius: 20px; padding: 17px 18px; border: 1.5px solid rgba(255,255,255,0.9); display: flex; align-items: center; gap: 14px; cursor: pointer; text-align: left; width: 100%; font-family: 'DM Sans', sans-serif; box-shadow: 0 2px 16px rgba(0,0,0,0.05); transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s; }
-        .sp-option:hover { box-shadow: 0 8px 32px rgba(0,0,0,0.1); transform: translateY(-2px); }
-        .sp-emoji-wrap { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
-        .sp-option-title { font-size: 14px; font-weight: 700; color: #0f172a; margin-bottom: 3px; line-height: 1.3; }
-        .sp-option-body { font-size: 12px; color: #64748b; line-height: 1.5; }
-        .sp-arrow { font-size: 17px; color: #cbd5e1; transition: color 0.15s, transform 0.15s; flex-shrink: 0; margin-left: auto; padding-left: 8px; }
-        .sp-option:hover .sp-arrow { transform: translateX(3px); }
-        .sp-map-section { padding: 28px 20px 40px; }
-        .sp-map-inner { max-width: 560px; margin: 0 auto; }
-        .sp-map-header { text-align: center; margin-bottom: 14px; }
-        .sp-map-eyebrow { font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.09em; margin-bottom: 6px; }
-        .sp-map-title { font-family: 'Lora', serif; font-size: 19px; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
-        .sp-map-sub { font-size: 13px; color: #64748b; line-height: 1.55; }
-        .sp-footer { text-align: center; padding: 8px 20px 36px; }
-        .sp-footer p { font-size: 13px; color: #94a3b8; }
-        .sp-footer a { color: #3b82f6; text-decoration: none; font-weight: 600; }
-        @media (max-width: 480px) { .sp-logo { font-size: 36px; } .sp-proof-num { font-size: 17px; } .sp-option { padding: 14px; } }
+        .ep { min-height: 100vh; font-family: 'DM Sans', sans-serif; background: linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%); }
+        .ep-header { padding: 40px 20px 48px; text-align: center; max-width: 600px; margin: 0 auto; }
+        .ep-back { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: #64748b; cursor: pointer; background: none; border: none; font-family: 'DM Sans', sans-serif; margin-bottom: 28px; padding: 0; transition: color 0.15s; }
+        .ep-back:hover { color: #0f172a; }
+        .ep-logo { font-family: 'Lora', serif; font-size: 44px; font-weight: 700; color: #0f172a; letter-spacing: -0.5px; margin-bottom: 24px; display: block; }
+        .ep-logo span { color: #22c55e; }
+        .ep-h1 { font-family: 'Lora', serif; font-size: clamp(24px, 5vw, 36px); font-weight: 700; color: #0f172a; line-height: 1.2; letter-spacing: -0.3px; margin-bottom: 16px; }
+        .ep-h1 em { font-style: normal; color: #3b82f6; }
+        .ep-sub { font-size: 16px; color: #475569; line-height: 1.65; max-width: 480px; margin: 0 auto; }
+        .ep-section { padding: 0 20px 40px; max-width: 600px; margin: 0 auto; }
+        .ep-section-label { font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 16px; }
+        .ep-card { background: rgba(255,255,255,0.82); backdrop-filter: blur(16px); border-radius: 20px; border: 1.5px solid rgba(255,255,255,0.9); box-shadow: 0 2px 16px rgba(0,0,0,0.05); padding: 24px; margin-bottom: 12px; }
+        .ep-steps { display: flex; flex-direction: column; gap: 0; }
+        .ep-step { display: flex; gap: 16px; align-items: flex-start; padding: 20px 0; border-bottom: 1px solid rgba(0,0,0,0.05); }
+        .ep-step:last-child { border-bottom: none; padding-bottom: 0; }
+        .ep-step-num { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #3b82f6, #22c55e); display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 800; color: white; flex-shrink: 0; font-family: 'Lora', serif; }
+        .ep-step-title { font-size: 14px; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
+        .ep-step-body { font-size: 13px; color: #64748b; line-height: 1.55; }
+        .ep-props { display: flex; flex-direction: column; gap: 10px; }
+        .ep-prop { display: flex; align-items: flex-start; gap: 12px; padding: 16px; background: rgba(255,255,255,0.7); border-radius: 14px; border: 1.5px solid rgba(255,255,255,0.9); }
+        .ep-prop-icon { font-size: 22px; flex-shrink: 0; margin-top: 1px; }
+        .ep-prop-title { font-size: 13px; font-weight: 700; color: #0f172a; margin-bottom: 2px; }
+        .ep-prop-body { font-size: 12px; color: #64748b; line-height: 1.55; }
+        .ep-credits-hero { background: linear-gradient(135deg, #eff6ff, #f0fdf4); border-radius: 20px; border: 1.5px solid #bfdbfe; padding: 24px; margin-bottom: 10px; text-align: center; }
+        .ep-credits-badge { display: inline-flex; align-items: center; gap: 8px; background: #3b82f6; color: white; font-size: 13px; font-weight: 700; padding: 6px 14px; border-radius: 100px; margin-bottom: 14px; }
+        .ep-credits-headline { font-family: 'Lora', serif; font-size: 20px; font-weight: 700; color: #0f172a; line-height: 1.3; margin-bottom: 10px; }
+        .ep-credits-body { font-size: 13px; color: #475569; line-height: 1.65; }
+        .ep-credits-expand { display: flex; align-items: center; justify-content: space-between; width: 100%; background: transparent; border: 1.5px dashed #cbd5e1; border-radius: 14px; padding: 13px 16px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600; color: #64748b; cursor: pointer; transition: all 0.2s; margin-top: 4px; }
+        .ep-credits-expand:hover { border-color: #3b82f6; color: #3b82f6; }
+        .ep-credits-detail { background: rgba(255,255,255,0.7); border-radius: 14px; border: 1.5px solid #e2e8f0; padding: 18px; margin-top: 8px; }
+        .ep-credits-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #f1f5f9; }
+        .ep-credits-row:last-child { border-bottom: none; padding-bottom: 0; }
+        .ep-credits-milestone { font-size: 13px; font-weight: 600; color: #0f172a; }
+        .ep-credits-reward { font-size: 12px; font-weight: 700; color: #22c55e; }
+        .ep-form { display: flex; flex-direction: column; gap: 16px; }
+        .ep-label { font-size: 13px; font-weight: 600; color: #475569; display: block; margin-bottom: 6px; }
+        .ep-input { width: 100%; background: rgba(255,255,255,0.8); border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 11px 14px; font-family: 'DM Sans', sans-serif; font-size: 14px; color: #1e293b; outline: none; transition: border-color 0.15s; }
+        .ep-input:focus { border-color: #3b82f6; background: white; }
+        .ep-input::placeholder { color: #94a3b8; }
+        .ep-select { width: 100%; background: rgba(255,255,255,0.8); border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 11px 14px; font-family: 'DM Sans', sans-serif; font-size: 14px; color: #1e293b; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; outline: none; }
+        .ep-select:focus { border-color: #3b82f6; }
+        .ep-areas { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .ep-area { border-radius: 10px; padding: 9px 12px; font-size: 12px; font-weight: 600; cursor: pointer; border: 1.5px solid #e2e8f0; background: rgba(255,255,255,0.7); color: #475569; transition: all 0.15s; text-align: left; font-family: 'DM Sans', sans-serif; }
+        .ep-area.selected { border-color: #3b82f6; background: rgba(59,130,246,0.06); color: #1e40af; }
+        .ep-submit { width: 100%; padding: 15px; background: linear-gradient(90deg, #3b82f6 0%, #22c55e 100%); color: white; font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 700; border: none; border-radius: 14px; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 16px rgba(59,130,246,0.25); margin-top: 4px; }
+        .ep-submit:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(59,130,246,0.35); }
+        .ep-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+        .ep-success { text-align: center; padding: 48px 24px; }
+        .ep-success-icon { font-size: 56px; margin-bottom: 20px; }
+        .ep-success-title { font-family: 'Lora', serif; font-size: 26px; font-weight: 700; color: #0f172a; margin-bottom: 12px; }
+        .ep-success-body { font-size: 15px; color: #64748b; line-height: 1.65; }
+        @media (max-width: 480px) { .ep-areas { grid-template-columns: 1fr; } .ep-h1 { font-size: 24px; } }
       `}</style>
 
-      <div className="sp" suppressHydrationWarning>
-        <div className="sp-header">
-          <div className="sp-header-inner">
-            <div className="sp-logo">Vou<span>chee</span></div>
-            <div className="sp-tagline">Find regular cleaning work in Horsham</div>
-            <h1>Which best describes where you are right now?</h1>
-          </div>
-          <div className="sp-proof">
-            <div className="sp-proof-inner">
-              <div className="sp-proof-item">
-                <div className="sp-proof-num">8</div>
-                <div className="sp-proof-label">Cleaners registered</div>
+      <div className="ep" suppressHydrationWarning>
+
+        <div className="ep-header">
+          <button className="ep-back" onClick={() => router.push('/cleaner')}>← Back</button>
+          <div className="ep-logo">Vou<span>chee</span></div>
+          <h1 className="ep-h1">
+            Your experience still counts.<br />
+            <em>Let's get your diary full again.</em>
+          </h1>
+          <p className="ep-sub">
+            Whether life got in the way or you just needed a break, your cleaning experience still counts. Vouchee helps fill your diary with committed local clients, around whatever schedule suits you.
+          </p>
+        </div>
+
+        {/* ── How it works ── */}
+        <div className="ep-section">
+          <div className="ep-section-label">How it works</div>
+          <div className="ep-card">
+            <div className="ep-steps">
+              <div className="ep-step">
+                <div className="ep-step-num">1</div>
+                <div>
+                  <div className="ep-step-title">Register your interest</div>
+                  <div className="ep-step-body">Tell us how many hours you're looking for and which parts of Horsham you'd like to work in, and we'll ensure you have a steady stream of customers to choose from.</div>
+                </div>
               </div>
-              <div className="sp-proof-item">
-                <div className="sp-proof-num">Pre-launch</div>
-                <div className="sp-proof-label">Early access open</div>
+              <div className="ep-step">
+                <div className="ep-step-num">2</div>
+                <div>
+                  <div className="ep-step-title">Browse real local job listings</div>
+                  <div className="ep-step-body">Upon launch, you'll see cleaning requests from real customers in Horsham, including their area, hours needed, preferred schedule, and what they're offering to pay — everything you need to decide if a job is right for you, before you even apply.</div>
+                </div>
               </div>
-              <div className="sp-proof-item">
-                <div className="sp-proof-num">Horsham</div>
-                <div className="sp-proof-label">Coverage area</div>
+              <div className="ep-step">
+                <div className="ep-step-num">3</div>
+                <div>
+                  <div className="ep-step-title">Apply for the right jobs for you</div>
+                  <div className="ep-step-body">View all available work across Horsham and apply only for what fits around your life — no pressure, no minimum commitment.</div>
+                </div>
+              </div>
+              <div className="ep-step">
+                <div className="ep-step-num">4</div>
+                <div>
+                  <div className="ep-step-title">Build your reputation as you go</div>
+                  <div className="ep-step-body">Every accepted job through Vouchee earns a verified review on your profile. The faster you build reviews, the easier it becomes to win new clients.</div>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="sp-body">
-          <div className="sp-inner">
-            <div className="sp-prompt">Which position describes you best?</div>
-            <div className="sp-options">
-              {options.map((opt, i) => (
-                <div key={i} style={{ position: 'relative' }}>
-                  {opt.muted && (
-                    <div style={{ borderTop: '1px dashed #e2e8f0', margin: '4px 0 12px' }} />
-                  )}
-                  {opt.mostCommon && (
-                    <div style={{
-                      position: 'absolute', top: '-10px', left: '20px', zIndex: 10,
-                      background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)',
-                      color: 'white', fontSize: '10px', fontWeight: 700,
-                      padding: '3px 10px', borderRadius: '100px',
-                      letterSpacing: '0.04em', whiteSpace: 'nowrap',
-                      boxShadow: '0 2px 8px rgba(139,92,246,0.35)',
-                    }}>
-                      Most common
-                    </div>
-                  )}
-                  <button
-                    className="sp-option"
-                    onClick={() => router.push(opt.route)}
-                    style={{
-                      ...(opt.muted ? { background: 'transparent', borderStyle: 'dashed', borderColor: '#cbd5e1', boxShadow: 'none' } : {}),
-                      ...(opt.mostCommon ? { borderColor: '#c4b5fd', marginTop: '4px' } : {}),
-                    }}
-                    onMouseEnter={e => {
-                      e.currentTarget.style.borderColor = opt.color
-                      const arrow = e.currentTarget.querySelector('.sp-arrow') as HTMLElement
-                      if (arrow) arrow.style.color = opt.color
-                    }}
-                    onMouseLeave={e => {
-                      e.currentTarget.style.borderColor = opt.muted ? '#cbd5e1' : opt.mostCommon ? '#c4b5fd' : 'rgba(255,255,255,0.9)'
-                      const arrow = e.currentTarget.querySelector('.sp-arrow') as HTMLElement
-                      if (arrow) arrow.style.color = '#cbd5e1'
-                    }}
-                  >
-                    <div className="sp-emoji-wrap" style={{ background: opt.muted ? '#f1f5f9' : `${opt.color}18` }}>
-                      {opt.emoji}
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div className="sp-option-title" style={opt.muted ? { color: '#64748b', fontWeight: 600 } : {}}>{opt.title}</div>
-                      <div className="sp-option-body">{opt.body}</div>
-                    </div>
-                    <div className="sp-arrow">→</div>
-                  </button>
+        {/* ── What you get ── */}
+        <div className="ep-section">
+          <div className="ep-section-label">Why Vouchee works for you</div>
+          <div className="ep-props">
+            <div className="ep-prop">
+              <div className="ep-prop-icon">🔄</div>
+              <div>
+                <div className="ep-prop-title">Rebuild your client base fast</div>
+                <div className="ep-prop-body">No waiting for word-of-mouth to spread. Vouchee gives you access to customers who are already looking — so you can fill your diary as quickly or as gradually as you like.</div>
+              </div>
+            </div>
+            <div className="ep-prop">
+              <div className="ep-prop-icon">🙌</div>
+              <div>
+                <div className="ep-prop-title">No judgement on the gap</div>
+                <div className="ep-prop-body">It doesn't matter how long you've been away. Customers care about the work you do for them, not what you did before. Your Vouchee profile starts fresh and grows from your first clean.</div>
+              </div>
+            </div>
+            <div className="ep-prop">
+              <div className="ep-prop-icon">🕐</div>
+              <div>
+                <div className="ep-prop-title">Start at your own pace</div>
+                <div className="ep-prop-body">Ease back in with a few hours a week, or go for it from the start. You choose what you apply for, with no minimum commitments and no pressure.</div>
+              </div>
+            </div>
+            <div className="ep-prop">
+              <div className="ep-prop-icon">💷</div>
+              <div>
+                <div className="ep-prop-title">Your rate, your terms</div>
+                <div className="ep-prop-body">Customers post what they're offering, and you can discuss your rate with them directly. Vouchee doesn't take a cut of your hourly earnings — ever.</div>
+                <div style={{ marginTop: '8px', fontSize: '12px', fontWeight: 700, color: '#22c55e' }}>Most Horsham customers post between £15–18/hr</div>
+              </div>
+            </div>
+            <div className="ep-prop">
+              <div className="ep-prop-icon">✅</div>
+              <div>
+                <div className="ep-prop-title">Vetted customers, no time-wasters</div>
+                <div className="ep-prop-body">Every customer goes through our onboarding process. You'll know exactly what's involved before you apply — no nasty surprises when you arrive.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Credits ── */}
+        <div className="ep-section">
+          <div className="ep-section-label">Early access offer</div>
+          <div className="ep-credits-hero">
+            <div className="ep-credits-badge">🎁 Pre-launch perk</div>
+            <div className="ep-credits-headline">Register now and enjoy unlimited free application credits for your first 3 months</div>
+            <div className="ep-credits-body">
+              As an early access cleaner, apply for as much work as you want during your first 3 months — no credits needed. It's our way of saying thank you for being early.
+            </div>
+          </div>
+          <button className="ep-credits-expand" onClick={() => setCreditsOpen(o => !o)}>
+            <span>+ How do credits work after that?</span>
+            <span style={{ transition: 'transform 0.2s', transform: creditsOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>↓</span>
+          </button>
+          {creditsOpen && (
+            <div className="ep-credits-detail">
+              <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px' }}>Quests — earn as you go</div>
+              {[
+                { label: 'First application sent', reward: '+2 credits', bonus: null },
+                { label: 'First job accepted', reward: '+5 credits', bonus: '+10 early cleaner bonus' },
+                { label: 'First clean completed', reward: '+5 credits', bonus: null },
+                { label: 'First 5★ review received', reward: '+5 credits', bonus: '+10 early cleaner bonus' },
+                { label: '3 reviews of 4★ or above', reward: '+10 credits', bonus: '+20 early cleaner bonus' },
+                { label: 'Referred cleaner completes first clean', reward: '+25 credits', bonus: null },
+              ].map((q, i) => (
+                <div key={i} className="ep-credits-row">
+                  <div>
+                    <span className="ep-credits-milestone">{q.label}</span>
+                    {q.bonus && <div style={{ fontSize: '11px', color: '#22c55e', fontWeight: 600, marginTop: '2px' }}>🎁 {q.bonus}</div>}
+                  </div>
+                  <span className="ep-credits-reward">{q.reward}</span>
                 </div>
               ))}
+              <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '16px 0 10px' }}>Badges — monthly credit refresh</div>
+              {[
+                { badge: '🥉 Bronze', req: '5 reviews of 4★+', reward: '2 credits/month', detail: 'Your first Vouchee badge' },
+                { badge: '🥈 Silver', req: '15 reviews of 4★+', reward: '10 credits/month', detail: 'A recognised badge customers trust' },
+                { badge: '🥇 Gold', req: '50 reviews of 4★+', reward: 'Unlimited credits', detail: 'Unrestricted access to every listing' },
+              ].map((b, i) => (
+                <div key={i} className="ep-credits-row">
+                  <div>
+                    <span className="ep-credits-milestone">{b.badge} — {b.req}</span>
+                    <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>{b.detail}</div>
+                  </div>
+                  <span className="ep-credits-reward">{b.reward}</span>
+                </div>
+              ))}
+              <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '14px', lineHeight: 1.5, borderTop: '1px solid #f1f5f9', paddingTop: '12px' }}>
+                No subscription, no monthly fee. Credits are only used when you apply for work. You can also top up anytime — find out more on your dashboard after registering.
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
-        <div className="sp-map-section">
-          <div className="sp-map-inner">
-            <div className="sp-map-header">
-              <div className="sp-map-eyebrow">Coverage area</div>
-              <div className="sp-map-title">All work is local to you</div>
-              <div className="sp-map-sub">Every listing shows which area it's in before you apply.</div>
+        {/* ── Form ── */}
+        <div className="ep-section">
+          <div className="ep-section-label">Register your interest</div>
+          {submitted ? (
+            <div className="ep-card ep-success">
+              <div className="ep-success-icon">🎉</div>
+              <div className="ep-success-title">You're on the list!</div>
+              <div className="ep-success-body">
+                We'll be in touch before launch with everything you need to get back up and running. Your first 3 months are completely free.
+              </div>
             </div>
-            <CoverageMap />
-          </div>
+          ) : (
+            <div className="ep-card">
+              <div className="ep-form">
+
+                <div>
+                  <label className="ep-label">Your name</label>
+                  <input className="ep-input" placeholder="Jane Smith" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+                </div>
+
+                <div>
+                  <label className="ep-label">Email address</label>
+                  <input className="ep-input" type="email" placeholder="jane@example.com" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
+                </div>
+
+                <div>
+                  <label className="ep-label">Phone number <span style={{ color: '#94a3b8', fontWeight: 400 }}>(optional)</span></label>
+                  <input className="ep-input" type="tel" placeholder="07700 900000" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
+                </div>
+
+                <div>
+                  <label className="ep-label">What best describes your situation? <span style={{ color: '#94a3b8', fontWeight: 400 }}>(optional)</span></label>
+                  <select className="ep-select" value={form.gapReason} onChange={e => setForm(f => ({ ...f, gapReason: e.target.value }))}>
+                    <option value="">Select...</option>
+                    <option value="family">Took time out for family</option>
+                    <option value="health">Health reasons</option>
+                    <option value="other-work">Was doing other work for a while</option>
+                    <option value="moved">Recently moved to the area</option>
+                    <option value="prefer-not">Prefer not to say</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="ep-label">Hours you're looking to fill</label>
+                  <select className="ep-select" value={form.hours} onChange={e => setForm(f => ({ ...f, hours: e.target.value }))}>
+                    <option value="">Select...</option>
+                    <option value="1-5">1–5 hours per week</option>
+                    <option value="5-10">5–10 hours per week</option>
+                    <option value="10+">10+ hours per week</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="ep-label">Areas you cover <span style={{ color: '#94a3b8', fontWeight: 400 }}>(for reference)</span></label>
+                  <CoverageMap />
+                </div>
+
+                <div>
+                  <label className="ep-label">Which areas are you happy to work in? <span style={{ color: '#94a3b8', fontWeight: 400 }}>(select all that apply)</span></label>
+                  <div className="ep-areas">
+                    <button type="button"
+                      className={`ep-area${allSelected ? ' selected' : ''}`}
+                      style={{ gridColumn: '1 / -1' }}
+                      onClick={() => setForm(f => ({ ...f, selectedAreas: allSelected ? [] : ['__all__'] }))}>
+                      {allSelected ? '✓ ' : ''}All areas
+                    </button>
+                    {!allSelected && ALL_AREAS.map(area => {
+                      const selected = form.selectedAreas.includes(area)
+                      return (
+                        <button key={area} type="button"
+                          className={`ep-area${selected ? ' selected' : ''}`}
+                          onClick={() => setForm(f => {
+                            const areas = f.selectedAreas
+                            return { ...f, selectedAreas: areas.includes(area) ? areas.filter(a => a !== area) : [...areas, area] }
+                          })}>
+                          {selected ? '✓ ' : ''}{area}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                <button className="ep-submit" onClick={handleSubmit} disabled={!canSubmit || submitting}>
+                  {submitting ? 'Registering...' : 'Register my interest →'}
+                </button>
+
+                <p style={{ fontSize: '12px', color: '#94a3b8', textAlign: 'center', lineHeight: 1.5 }}>
+                  No commitment. We'll be in touch before launch. Start as slowly or as quickly as you like.
+                </p>
+
+              </div>
+            </div>
+          )}
         </div>
 
-        <div className="sp-footer">
-          <p>Already registered? <a href="/cleaner/login">Sign in here</a></p>
-        </div>
       </div>
     </>
   )

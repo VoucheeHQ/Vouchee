@@ -35,6 +35,7 @@ export default function NoPresenceCleanerPage() {
     name: '', email: '', phone: '',
     hours: '',
     howTheyFindClients: '',
+    selectedAreas: [] as string[],
   })
   const [submitted, setSubmitted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -300,35 +301,26 @@ export default function NoPresenceCleanerPage() {
                 </div>
                 <div>
                   <label className="ep-label">Which areas are you happy to work in? <span style={{ color: '#94a3b8', fontWeight: 400 }}>(select all that apply)</span></label>
-                  <div className="ep-areas" style={{ marginBottom: '8px' }}>
-                    {(() => {
-                      const ALL_AREAS = ['Central / South East', 'North West', 'North East / Roffey', 'South West', 'Warnham / Surrounding North', 'Broadbridge Heath', 'Mannings Heath', 'Faygate / Kilnwood Vale', 'Christs Hospital']
-                      const selectedAreas: string[] = (form as any).selectedAreas || []
-                      const allSelected = selectedAreas.includes('__all__')
+                  <div className="ep-areas">
+                    <button type="button"
+                      className={`ep-area${form.selectedAreas.includes('__all__') ? ' selected' : ''}`}
+                      style={{ gridColumn: '1 / -1' }}
+                      onClick={() => setForm(f => ({ ...f, selectedAreas: f.selectedAreas.includes('__all__') ? [] : ['__all__'] }))}>
+                      {form.selectedAreas.includes('__all__') ? '✓ ' : ''}All areas
+                    </button>
+                    {!form.selectedAreas.includes('__all__') && ['Central / South East', 'North West', 'North East / Roffey', 'South West', 'Warnham / Surrounding North', 'Broadbridge Heath', 'Mannings Heath', 'Faygate / Kilnwood Vale', 'Christs Hospital'].map(area => {
+                      const selected = form.selectedAreas.includes(area)
                       return (
-                        <>
-                          <button type="button"
-                            className={`ep-area${allSelected ? ' selected' : ''}`}
-                            style={{ gridColumn: '1 / -1' }}
-                            onClick={() => setForm(f => ({ ...f, selectedAreas: allSelected ? [] : ['__all__'] }))}>
-                            {allSelected ? '✓ ' : ''}All areas
-                          </button>
-                          {!allSelected && ALL_AREAS.map(area => {
-                            const selected = selectedAreas.includes(area)
-                            return (
-                              <button key={area} type="button"
-                                className={`ep-area${selected ? ' selected' : ''}`}
-                                onClick={() => setForm(f => {
-                                  const areas = (f as any).selectedAreas || []
-                                  return { ...f, selectedAreas: areas.includes(area) ? areas.filter((a: string) => a !== area) : [...areas, area] }
-                                })}>
-                                {selected ? '✓ ' : ''}{area}
-                              </button>
-                            )
-                          })}
-                        </>
+                        <button key={area} type="button"
+                          className={`ep-area${selected ? ' selected' : ''}`}
+                          onClick={() => setForm(f => ({
+                            ...f,
+                            selectedAreas: f.selectedAreas.includes(area) ? f.selectedAreas.filter(a => a !== area) : [...f.selectedAreas, area]
+                          }))}>
+                          {selected ? '✓ ' : ''}{area}
+                        </button>
                       )
-                    })()}
+                    })}
                   </div>
                 </div>
                 <button className="ep-submit" onClick={handleSubmit} disabled={!canSubmit || submitting}>
@@ -336,6 +328,12 @@ export default function NoPresenceCleanerPage() {
                 </button>
                 <p style={{ fontSize: '12px', color: '#94a3b8', textAlign: 'center', lineHeight: 1.5 }}>
                   No commitment. We'll be in touch before launch. No website or social media needed.
+                </p>
+                <p style={{ fontSize: '12px', color: '#94a3b8', textAlign: 'center', lineHeight: 1.5 }}>
+                  Have a question before registering?{' '}
+                  <a href="mailto:cleaners@vouchee.co.uk" style={{ color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>
+                    cleaners@vouchee.co.uk
+                  </a>
                 </p>
               </div>
             </div>

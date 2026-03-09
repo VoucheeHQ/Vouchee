@@ -344,7 +344,6 @@ export default function GoingSoloCleanerPage() {
                   </div>
                 </div>
 
-                {/* ── Self-employed guide ── */}
                 <div className="ep-checkbox-row" onClick={() => setForm(f => ({ ...f, wantsGuide: !f.wantsGuide }))}>
                   <input
                     type="checkbox"
@@ -364,6 +363,13 @@ export default function GoingSoloCleanerPage() {
 
                 <p style={{ fontSize: '12px', color: '#94a3b8', textAlign: 'center', lineHeight: 1.5 }}>
                   No commitment. We'll be in touch before launch. Your current employer is never contacted.
+                </p>
+
+                <p style={{ fontSize: '12px', color: '#94a3b8', textAlign: 'center', lineHeight: 1.5 }}>
+                  Have a question before registering?{' '}
+                  <a href="mailto:cleaners@vouchee.co.uk" style={{ color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>
+                    cleaners@vouchee.co.uk
+                  </a>
                 </p>
 
               </div>
