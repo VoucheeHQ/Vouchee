@@ -109,7 +109,6 @@ function EditPanel({ request, frequency, onSave, onCancel, onDelete, onPause, on
   const isLive = request.status === 'pending' || request.status === 'pending_review'
   const isPaused = request.status === 'paused'
 
-  // 24hr lock check
   const pausedAt = request.paused_at ? new Date(request.paused_at).getTime() : null
   const hoursSincePause = pausedAt ? (Date.now() - pausedAt) / 3600000 : null
   const isRepublishLocked = request.republish_count >= 2 && hoursSincePause !== null && hoursSincePause < 24
@@ -163,7 +162,7 @@ function EditPanel({ request, frequency, onSave, onCancel, onDelete, onPause, on
         </div>
       </div>
 
-      {/* Tasks — red X to remove, dropdown to add */}
+      {/* Tasks */}
       <div>
         <label style={labelStyle}>Tasks</label>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
@@ -190,8 +189,6 @@ function EditPanel({ request, frequency, onSave, onCancel, onDelete, onPause, on
             )
           })}
         </div>
-
-        {/* Add task dropdown */}
         {availableToAdd.length > 0 && (
           <div style={{ position: 'relative' }}>
             <button
@@ -290,7 +287,6 @@ function EditPanel({ request, frequency, onSave, onCancel, onDelete, onPause, on
         }}>Cancel</button>
       </div>
 
-      {/* Divider */}
       <div style={{ height: '1px', background: '#e2e8f0' }} />
 
       {/* Pause / Republish */}
@@ -310,7 +306,7 @@ function EditPanel({ request, frequency, onSave, onCancel, onDelete, onPause, on
             <div style={{ fontSize: '14px', fontWeight: 700, color: '#991b1b', marginBottom: '4px' }}>🔒 Republishing locked for 24 hours</div>
             <div style={{ fontSize: '13px', color: '#b91c1c', lineHeight: 1.5 }}>
               To protect cleaners' time, you can't republish again so soon. If this is a platform issue, email{' '}
-              <a href="mailto:info@vouchee.co.uk" style={{ color: '#dc2626', fontWeight: 600 }}>info@vouchee.co.uk</a>
+              <a href="mailto:support@vouchee.co.uk" style={{ color: '#dc2626', fontWeight: 600 }}>support@vouchee.co.uk</a>
             </div>
           </div>
         ) : (
@@ -324,7 +320,7 @@ function EditPanel({ request, frequency, onSave, onCancel, onDelete, onPause, on
         )
       )}
 
-      {/* Danger zone — delete */}
+      {/* Danger zone */}
       <div style={{ background: '#fef2f2', border: '1.5px solid #fecaca', borderRadius: '12px', padding: '16px' }}>
         <div style={{ fontSize: '12px', fontWeight: 700, color: '#991b1b', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>Danger zone</div>
         <p style={{ fontSize: '13px', color: '#b91c1c', margin: '0 0 12px', lineHeight: 1.5 }}>
@@ -350,13 +346,14 @@ function ListingCard({ request, onSave, onPause, onRepublish, onDelete }: {
   onSave: (id: string, updates: Partial<CleanRequest>) => Promise<void>
   onPause: (id: string) => Promise<void>
   onRepublish: (id: string) => Promise<void>
-  onDelete: (id: string) => void
+  onDelete: (id: string) => Promise<void>
 }) {
   const [editing, setEditing] = useState(false)
   const [saved, setSaved] = useState(false)
   const [showPauseModal, setShowPauseModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   const zone = request.zone ? (ZONE_LABELS[request.zone] ?? request.zone) : 'Horsham'
   const tasks = (request.tasks ?? []).map(t => TASK_LABELS[t] ?? t).filter(Boolean)
@@ -394,6 +391,19 @@ function ListingCard({ request, onSave, onPause, onRepublish, onDelete }: {
     setActionLoading(false)
   }
 
+  const handleDeleteConfirm = async () => {
+    setActionLoading(true)
+    setDeleteError(null)
+    try {
+      await onDelete(request.id)
+      setShowDeleteModal(false)
+    } catch (err: any) {
+      setDeleteError(err?.message ?? 'Delete failed. Please try again.')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
   return (
     <>
       {/* Pause confirmation modal */}
@@ -426,12 +436,17 @@ function ListingCard({ request, onSave, onPause, onRepublish, onDelete }: {
           <p style={{ fontSize: '14px', color: '#475569', lineHeight: 1.6, marginBottom: '20px' }}>
             This will permanently delete your request and all applications. This cannot be undone.
           </p>
+          {deleteError && (
+            <p style={{ fontSize: '13px', color: '#dc2626', marginBottom: '12px', background: '#fef2f2', padding: '10px 14px', borderRadius: '10px' }}>
+              {deleteError}
+            </p>
+          )}
           <div style={{ display: 'flex', gap: '10px' }}>
-            <button onClick={() => { setShowDeleteModal(false); onDelete(request.id) }} style={{
-              flex: 1, background: '#dc2626', color: 'white', border: 'none', borderRadius: '12px',
-              padding: '12px', fontSize: '14px', fontWeight: 700, cursor: 'pointer',
+            <button onClick={handleDeleteConfirm} disabled={actionLoading} style={{
+              flex: 1, background: actionLoading ? '#fca5a5' : '#dc2626', color: 'white', border: 'none', borderRadius: '12px',
+              padding: '12px', fontSize: '14px', fontWeight: 700, cursor: actionLoading ? 'not-allowed' : 'pointer',
             }}>
-              Yes, delete permanently
+              {actionLoading ? 'Deleting…' : 'Yes, delete permanently'}
             </button>
             <button onClick={() => setShowDeleteModal(false)} style={{
               padding: '12px 20px', background: 'white', border: '1.5px solid #e2e8f0',
@@ -583,7 +598,7 @@ function ApplicationsCard({ count }: { count: number }) {
   )
 }
 
-// ── Messages preview ──────────────────────────────────────────
+// ── Messages Card ─────────────────────────────────────────────
 
 function MessagesCard() {
   return (
@@ -609,11 +624,10 @@ function MessagesCard() {
           Open <ChevronRight size={14} />
         </button>
       </div>
-      {/* Dummy chat preview */}
       <div style={{ borderTop: '1px solid #f1f5f9', padding: '0' }}>
         {[
-        { name: 'Sarah M.', preview: "Hi! I'd love to apply for your cleaning request…", time: 'Soon', avatar: 'S' },
-        { name: 'James T.', preview: "I have 5 years experience and live nearby…", time: 'Soon', avatar: 'J' },
+          { name: 'Sarah M.', preview: "Hi! I'd love to apply for your cleaning request…", time: 'Soon', avatar: 'S' },
+          { name: 'James T.', preview: "I have 5 years experience and live nearby…", time: 'Soon', avatar: 'J' },
         ].map((msg, i) => (
           <div key={i} style={{
             display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 24px',
@@ -712,7 +726,11 @@ function DashboardContent() {
 
   const handleDelete = async (id: string) => {
     const supabase = createClient()
-    await (supabase as any).from('clean_requests').delete().eq('id', id)
+    const { error } = await (supabase as any).from('clean_requests').delete().eq('id', id)
+    if (error) {
+      console.error('Delete failed:', error)
+      throw new Error(error.message ?? 'Could not delete this request. Please try again.')
+    }
     setRequests(prev => prev.filter(r => r.id !== id))
   }
 
