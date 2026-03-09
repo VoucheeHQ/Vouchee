@@ -187,7 +187,7 @@ export default function HomePageContent({ location = 'Horsham' }: HomePageProps)
             <div style={{ position: "absolute", top: "-60px", right: "-60px", width: "220px", height: "220px", borderRadius: "50%", background: "rgba(255,255,255,0.07)" }} />
             <div style={{ position: "absolute", bottom: "-80px", right: "40px", width: "280px", height: "280px", borderRadius: "50%", background: "rgba(250,204,21,0.1)" }} />
             <h2 className="mb-3 text-3xl font-bold text-white md:text-4xl" style={{ position: "relative" }}>
-              Not the right fit? Switch cleaners easily.
+              Not the right fit? Switch cleaners anytime.
             </h2>
             <p className="mb-8 text-lg" style={{ color: "rgba(255,255,255,0.8)", position: "relative" }}>
               If your cleaner isn&apos;t the right fit, let us know and we&apos;ll help you find a better match — with a discounted first clean.
@@ -198,7 +198,7 @@ export default function HomePageContent({ location = 'Horsham' }: HomePageProps)
               padding: "14px 28px", borderRadius: "100px", textDecoration: "none",
               position: "relative", boxShadow: "0 4px 20px rgba(250,204,21,0.4)",
             }}>
-              Get started in {location} →
+              Find a cleaner in {location} →
             </Link>
           </div>
         </div>

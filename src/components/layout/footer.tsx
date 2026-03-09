@@ -10,17 +10,19 @@ export function Footer() {
       { name: 'For cleaners', href: '/cleaner/apply' },
       { name: 'FAQ', href: '/faq' },
     ],
-    Company: [
-      { name: 'About', href: '/about' },
-      { name: 'Contact', href: '/contact' },
-      { name: 'Blog', href: '/blog' },
-    ],
     Legal: [
       { name: 'Privacy Policy', href: '/legal/privacy' },
       { name: 'Terms of Service', href: '/legal/terms' },
       { name: 'Cookie Policy', href: '/legal/cookies' },
     ],
   }
+
+  const contactLinks = [
+    { label: 'General enquiries', email: 'hello@vouchee.co.uk' },
+    { label: 'Customer support', email: 'support@vouchee.co.uk' },
+    { label: 'Cleaner applications', email: 'cleaners@vouchee.co.uk' },
+    { label: 'Legal', email: 'legal@vouchee.co.uk' },
+  ]
 
   return (
     <footer className="border-t border-ink/5 bg-surface-secondary">
@@ -39,7 +41,7 @@ export function Footer() {
             </p>
           </div>
 
-          {/* Links */}
+          {/* Product & Legal links */}
           {Object.entries(footerLinks).map(([category, links]) => (
             <div key={category}>
               <h3 className="mb-4 text-sm font-semibold text-ink">{category}</h3>
@@ -57,6 +59,24 @@ export function Footer() {
               </ul>
             </div>
           ))}
+
+          {/* Contact */}
+          <div>
+            <h3 className="mb-4 text-sm font-semibold text-ink">Contact</h3>
+            <ul className="space-y-3">
+              {contactLinks.map(({ label, email }) => (
+                <li key={email}>
+                  <span className="block text-xs text-ink-secondary mb-0.5">{label}</span>
+                  <a
+                    href={`mailto:${email}`}
+                    className="text-sm text-ink-secondary transition-colors hover:text-brand-600"
+                  >
+                    {email}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
 
         <div className="mt-12 border-t border-ink/5 pt-8">
