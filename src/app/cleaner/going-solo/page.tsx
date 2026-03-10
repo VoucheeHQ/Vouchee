@@ -1,58 +1,9 @@
 'use client'
 
-import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch'
-
-function CoverageMap() {
-  return (
-    <div style={{ width: '100%', borderRadius: '16px', overflow: 'hidden', border: '1.5px solid #e2e8f0', boxShadow: '0 2px 12px rgba(0,0,0,0.06)', background: '#e8f4f8', position: 'relative' }}>
-      <TransformWrapper initialScale={1} minScale={1} maxScale={4} centerOnInit>
-        {({ zoomIn, zoomOut, resetTransform }) => (
-          <>
-            <TransformComponent wrapperStyle={{ width: '100%', display: 'block' }} contentStyle={{ width: '100%' }}>
-              <img src="/Vouchee_service_area.png" alt="Vouchee service area map" style={{ width: '100%', height: 'auto', display: 'block' }} draggable={false} />
-            </TransformComponent>
-            <div style={{ position: 'absolute', bottom: '12px', right: '12px', display: 'flex', flexDirection: 'column', gap: '4px', zIndex: 10 }}>
-              <button onClick={() => zoomIn()} style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'white', border: '1px solid #e2e8f0', fontSize: '18px', fontWeight: 700, color: '#0f172a', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', fontFamily: 'DM Sans, sans-serif' }}>+</button>
-              <button onClick={() => zoomOut()} style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'white', border: '1px solid #e2e8f0', fontSize: '18px', fontWeight: 700, color: '#0f172a', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', fontFamily: 'DM Sans, sans-serif' }}>−</button>
-              <button onClick={() => resetTransform()} style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'white', border: '1px solid #e2e8f0', fontSize: '11px', fontWeight: 700, color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', fontFamily: 'DM Sans, sans-serif' }}>↺</button>
-            </div>
-            <div style={{ position: 'absolute', bottom: '12px', left: '12px', background: 'rgba(255,255,255,0.85)', borderRadius: '8px', padding: '5px 10px', fontSize: '11px', color: '#64748b', fontFamily: 'DM Sans, sans-serif', fontWeight: 600, boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
-              Scroll to zoom · Drag to pan
-            </div>
-          </>
-        )}
-      </TransformWrapper>
-    </div>
-  )
-}
-
-const ALL_AREAS = ['Central / South East', 'North West', 'North East / Roffey', 'South West', 'Warnham / Surrounding North', 'Broadbridge Heath', 'Mannings Heath', 'Faygate / Kilnwood Vale', 'Christs Hospital']
 
 export default function GoingSoloCleanerPage() {
   const router = useRouter()
-  const [creditsOpen, setCreditsOpen] = useState(false)
-  const [form, setForm] = useState({
-    name: '', email: '', phone: '',
-    hours: '',
-    readiness: '',
-    selectedAreas: [] as string[],
-    wantsGuide: false,
-  })
-  const [submitted, setSubmitted] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
-
-  const canSubmit = form.name && form.email && form.hours
-  const allSelected = form.selectedAreas.includes('__all__')
-
-  const handleSubmit = async () => {
-    if (!canSubmit) return
-    setSubmitting(true)
-    await new Promise(r => setTimeout(r, 800))
-    setSubmitted(true)
-    setSubmitting(false)
-  }
 
   return (
     <>
@@ -207,174 +158,25 @@ export default function GoingSoloCleanerPage() {
             </div>
           </div>
         </div>
-
-        {/* ── Credits ── */}
+        {/* ── CTA ── */}
         <div className="ep-section">
-          <div className="ep-section-label">Early access offer</div>
-          <div className="ep-credits-hero">
-            <div className="ep-credits-badge">🎁 Pre-launch perk</div>
-            <div className="ep-credits-headline">Register now and enjoy unlimited free application credits for your first 3 months</div>
-            <div className="ep-credits-body">
-              As an early access cleaner, apply for as much work as you want during your first 3 months — no credits needed. It's our way of saying thank you for being early.
-            </div>
+          <div className="ep-card" style={{ textAlign: 'center', padding: '32px 24px' }}>
+            <p style={{ fontSize: '14px', color: '#64748b', lineHeight: 1.6, marginBottom: '20px' }}>
+              Ready to get started? It takes about 4 minutes to complete your application.
+            </p>
+            <button
+              className="ep-submit"
+              onClick={() => router.push('/cleaner/onboarding')}
+            >
+              Continue →
+            </button>
+            <p style={{ fontSize: '12px', color: '#94a3b8', textAlign: 'center', lineHeight: 1.5, marginTop: '14px' }}>
+              Have a question first?{' '}
+              <a href="mailto:cleaners@vouchee.co.uk" style={{ color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>
+                cleaners@vouchee.co.uk
+              </a>
+            </p>
           </div>
-          <button className="ep-credits-expand" onClick={() => setCreditsOpen(o => !o)}>
-            <span>+ How do credits work after that?</span>
-            <span style={{ transition: 'transform 0.2s', transform: creditsOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>↓</span>
-          </button>
-          {creditsOpen && (
-            <div className="ep-credits-detail">
-              <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px' }}>Quests — earn as you go</div>
-              {[
-                { label: 'First application sent', reward: '+2 credits', bonus: null },
-                { label: 'First job accepted', reward: '+5 credits', bonus: '+10 early cleaner bonus' },
-                { label: 'First clean completed', reward: '+5 credits', bonus: null },
-                { label: 'First 5★ review received', reward: '+5 credits', bonus: '+10 early cleaner bonus' },
-                { label: '3 reviews of 4★ or above', reward: '+10 credits', bonus: '+20 early cleaner bonus' },
-                { label: 'Referred cleaner completes first clean', reward: '+25 credits', bonus: null },
-              ].map((q, i) => (
-                <div key={i} className="ep-credits-row">
-                  <div>
-                    <span className="ep-credits-milestone">{q.label}</span>
-                    {q.bonus && <div style={{ fontSize: '11px', color: '#22c55e', fontWeight: 600, marginTop: '2px' }}>🎁 {q.bonus}</div>}
-                  </div>
-                  <span className="ep-credits-reward">{q.reward}</span>
-                </div>
-              ))}
-              <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '16px 0 10px' }}>Badges — monthly credit refresh</div>
-              {[
-                { badge: '🥉 Bronze', req: '5 reviews of 4★+', reward: '2 credits/month', detail: 'Your first Vouchee badge' },
-                { badge: '🥈 Silver', req: '15 reviews of 4★+', reward: '10 credits/month', detail: 'A recognised badge customers trust' },
-                { badge: '🥇 Gold', req: '50 reviews of 4★+', reward: 'Unlimited credits', detail: 'Unrestricted access to every listing' },
-              ].map((b, i) => (
-                <div key={i} className="ep-credits-row">
-                  <div>
-                    <span className="ep-credits-milestone">{b.badge} — {b.req}</span>
-                    <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>{b.detail}</div>
-                  </div>
-                  <span className="ep-credits-reward">{b.reward}</span>
-                </div>
-              ))}
-              <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '14px', lineHeight: 1.5, borderTop: '1px solid #f1f5f9', paddingTop: '12px' }}>
-                No subscription, no monthly fee. Credits are only used when you apply for work. You can also top up anytime — find out more on your dashboard after registering.
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* ── Form ── */}
-        <div className="ep-section">
-          <div className="ep-section-label">Register your interest</div>
-          {submitted ? (
-            <div className="ep-card ep-success">
-              <div className="ep-success-icon">🎉</div>
-              <div className="ep-success-title">You're on the list!</div>
-              <div className="ep-success-body">
-                We'll be in touch before launch with everything you need to hit the ground running. Your first 3 months are completely free.
-                {form.wantsGuide && <><br /><br />We'll also send you our free guide to going self-employed — written in plain English, step by step.</>}
-              </div>
-            </div>
-          ) : (
-            <div className="ep-card">
-              <div className="ep-form">
-
-                <div>
-                  <label className="ep-label">Your name</label>
-                  <input className="ep-input" placeholder="Jane Smith" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
-                </div>
-
-                <div>
-                  <label className="ep-label">Email address</label>
-                  <input className="ep-input" type="email" placeholder="jane@example.com" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
-                </div>
-
-                <div>
-                  <label className="ep-label">Phone number <span style={{ color: '#94a3b8', fontWeight: 400 }}>(optional)</span></label>
-                  <input className="ep-input" type="tel" placeholder="07700 900000" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
-                </div>
-
-                <div>
-                  <label className="ep-label">Where are you in your plans to go self-employed?</label>
-                  <select className="ep-select" value={form.readiness} onChange={e => setForm(f => ({ ...f, readiness: e.target.value }))}>
-                    <option value="">Select...</option>
-                    <option value="thinking">Just exploring the idea</option>
-                    <option value="soon">Planning to make the move soon</option>
-                    <option value="ready">Ready to go — just need clients</option>
-                    <option value="part-time">Looking to start part-time alongside my current job</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="ep-label">Hours you're looking to fill</label>
-                  <select className="ep-select" value={form.hours} onChange={e => setForm(f => ({ ...f, hours: e.target.value }))}>
-                    <option value="">Select...</option>
-                    <option value="1-5">1–5 hours per week</option>
-                    <option value="5-10">5–10 hours per week</option>
-                    <option value="10+">10+ hours per week</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="ep-label">Areas you cover <span style={{ color: '#94a3b8', fontWeight: 400 }}>(for reference)</span></label>
-                  <CoverageMap />
-                </div>
-
-                <div>
-                  <label className="ep-label">Which areas are you happy to work in? <span style={{ color: '#94a3b8', fontWeight: 400 }}>(select all that apply)</span></label>
-                  <div className="ep-areas">
-                    <button type="button"
-                      className={`ep-area${allSelected ? ' selected' : ''}`}
-                      style={{ gridColumn: '1 / -1' }}
-                      onClick={() => setForm(f => ({ ...f, selectedAreas: allSelected ? [] : ['__all__'] }))}>
-                      {allSelected ? '✓ ' : ''}All areas
-                    </button>
-                    {!allSelected && ALL_AREAS.map(area => {
-                      const selected = form.selectedAreas.includes(area)
-                      return (
-                        <button key={area} type="button"
-                          className={`ep-area${selected ? ' selected' : ''}`}
-                          onClick={() => setForm(f => {
-                            const areas = f.selectedAreas
-                            return { ...f, selectedAreas: areas.includes(area) ? areas.filter(a => a !== area) : [...areas, area] }
-                          })}>
-                          {selected ? '✓ ' : ''}{area}
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-
-                <div className="ep-checkbox-row" onClick={() => setForm(f => ({ ...f, wantsGuide: !f.wantsGuide }))}>
-                  <input
-                    type="checkbox"
-                    checked={form.wantsGuide}
-                    onChange={() => setForm(f => ({ ...f, wantsGuide: !f.wantsGuide }))}
-                    onClick={e => e.stopPropagation()}
-                  />
-                  <div>
-                    <div className="ep-checkbox-label">📘 Send me the free guide to going self-employed</div>
-                    <div className="ep-checkbox-sub">We'll walk you through setting up as a sole trader in plain English — step by step.</div>
-                  </div>
-                </div>
-
-                <button className="ep-submit" onClick={handleSubmit} disabled={!canSubmit || submitting}>
-                  {submitting ? 'Registering...' : 'Register my interest →'}
-                </button>
-
-                <p style={{ fontSize: '12px', color: '#94a3b8', textAlign: 'center', lineHeight: 1.5 }}>
-                  No commitment. We'll be in touch before launch. Your current employer is never contacted.
-                </p>
-
-                <p style={{ fontSize: '12px', color: '#94a3b8', textAlign: 'center', lineHeight: 1.5 }}>
-                  Have a question before registering?{' '}
-                  <a href="mailto:cleaners@vouchee.co.uk" style={{ color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>
-                    cleaners@vouchee.co.uk
-                  </a>
-                </p>
-
-              </div>
-            </div>
-          )}
         </div>
 
       </div>

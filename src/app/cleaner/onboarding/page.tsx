@@ -335,7 +335,7 @@ function ApplicationCardPreview({ form }: { form: any }) {
             cursor: 'default', fontFamily: 'inherit',
             boxShadow: '0 2px 8px rgba(34,197,94,0.25)',
           }}>
-            ✓ Accept &amp; open chat
+            ✓ Accept &amp; chat
           </button>
           <button style={{
             flex: 1, padding: '12px', borderRadius: '12px',
@@ -637,7 +637,9 @@ export default function CleanerOnboarding() {
             Tell us about yourself
           </h1>
           <p style={{ fontSize: '16px', color: '#64748b', lineHeight: 1.6, maxWidth: '480px', margin: '0 auto' }}>
-            Fill in the form below and we'll be in touch within 3 working days. <em>It takes roughly 4 minutes to complete this final step.</em>
+            Fill in the form below and we'll be in touch within 3 working days.
+            <br />
+            <em>It takes roughly 4 minutes to complete this final step.</em>
           </p>
         </div>
 
