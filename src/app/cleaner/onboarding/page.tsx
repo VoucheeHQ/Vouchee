@@ -637,7 +637,7 @@ export default function CleanerOnboarding() {
             Tell us about yourself
           </h1>
           <p style={{ fontSize: '16px', color: '#64748b', lineHeight: 1.6, maxWidth: '480px', margin: '0 auto' }}>
-            Fill in the form below and we'll be in touch within 3 working days to arrange a quick call. Have your insurance details to hand if you have them.
+            Fill in the form below and we'll be in touch within 3 working days. <em>It takes roughly 4 minutes to complete this final step.</em>
           </p>
         </div>
 
@@ -814,7 +814,11 @@ export default function CleanerOnboarding() {
             {(!form.dbs_checked || !form.right_to_work || !form.has_insurance) && (
               <div style={{ marginTop: '4px' }}>
                 <button
-                  onClick={() => setMissingCredentials(!missingCredentials)}
+                  onClick={() => {
+                    const opening = !missingCredentials
+                    setMissingCredentials(opening)
+                    if (opening) set('needs_credentials_help', true)
+                  }}
                   style={{
                     display: 'flex', alignItems: 'center', gap: '8px',
                     background: missingCredentials ? '#fffbeb' : '#f8fafc',
@@ -839,7 +843,7 @@ export default function CleanerOnboarding() {
                       No problem — you can still apply. Tick the box below and we'll email you a step-by-step guide on how to get your DBS certificate and public liability insurance.
                     </p>
                     <CheckToggle
-                      label="Send me a step-by-step guide via email"
+                      label="Email me a simple step-by-step guide on getting a DBS check and public liability insurance."
                       checked={form.needs_credentials_help}
                       onChange={v => set('needs_credentials_help', v)}
                     />
@@ -936,10 +940,10 @@ export default function CleanerOnboarding() {
                 </button>
                 <div>
                   <p style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', margin: '0 0 8px', lineHeight: 1.55 }}>
-                    I understand that customers introduced through Vouchee are platform connections. Contacting or working with those customers privately outside the platform is not permitted and may result in suspension of my account.
+                    I understand that customers introduced through Vouchee must be managed through the platform. Taking these customers private is a breach of Vouchee's Terms and may result in my account being permanently removed.
                   </p>
                   <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0, lineHeight: 1.5 }}>
-                    Note: You are paid directly by the customer for your time — Vouchee does not take a cut of your hourly earnings. This agreement applies to customer relationships, not payments.
+                    Note: You are paid directly by the customer for your time — <strong style={{ color: '#64748b' }}>Vouchee does not take a cut of your hourly earnings.</strong> This agreement applies to customer relationships, not payments.
                   </p>
                 </div>
               </div>
