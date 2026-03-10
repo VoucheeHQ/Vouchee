@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Check, ExternalLink } from 'lucide-react'
+import { Check, Eye, EyeOff } from 'lucide-react'
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch'
 
 // ── Constants ─────────────────────────────────────────────────
@@ -112,8 +112,7 @@ function ZoneSelector({ selectedAreas, onToggle, onToggleAll }: {
       <CoverageMap />
       <div>
         <p style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px' }}>
-          Which areas are you happy to work in?{' '}
-          <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(select all that apply)</span>
+          Which areas are you happy to work in?
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
           <button type="button" onClick={onToggleAll} style={{
@@ -227,16 +226,6 @@ function ApplicationCardPreview({ form }: { form: any }) {
   return (
     <div style={{ maxWidth: '420px', margin: '0 auto' }}>
 
-      {/* Context label */}
-      <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-        <span style={{
-          display: 'inline-block', background: '#f1f5f9', borderRadius: '100px',
-          padding: '5px 14px', fontSize: '12px', fontWeight: 600, color: '#64748b',
-        }}>
-          📬 What a customer sees when you apply for their job
-        </span>
-      </div>
-
       {/* Card */}
       <div style={{
         background: 'white', borderRadius: '20px', border: '2px solid #e2e8f0',
@@ -333,7 +322,7 @@ function ApplicationCardPreview({ form }: { form: any }) {
             </div>
           ))}
           <div style={{ textAlign: 'center', marginTop: '8px', fontSize: '12px', color: '#94a3b8' }}>
-            Full reviews available after a customer has accepted your application.
+            Accept a cleaner's application to view their reviews.
           </div>
         </div>
 
@@ -372,6 +361,8 @@ export default function CleanerOnboarding() {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [missingCredentials, setMissingCredentials] = useState(false)
   const [platformAgreement, setPlatformAgreement] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
 
   const [form, setForm] = useState({
     full_name: '',
@@ -394,8 +385,41 @@ export default function CleanerOnboarding() {
   })
 
   const set = (key: string, value: any) => {
-    setForm(f => ({ ...f, [key]: value }))
-    if (errors[key]) setErrors(e => { const next = { ...e }; delete next[key]; return next })
+    setForm(f => {
+      const next = { ...f, [key]: value }
+
+      // Live password validation
+      if (key === 'password') {
+        if (value && !isValidPassword(value)) {
+          setErrors(e => ({ ...e, password: 'Must be 8+ characters, one uppercase letter, and one number or symbol.' }))
+        } else {
+          setErrors(e => { const n = { ...e }; delete n.password; return n })
+        }
+        // Re-check confirm match
+        if (next.confirm_password) {
+          if (value !== next.confirm_password) {
+            setErrors(e => ({ ...e, confirm_password: 'Passwords do not match.' }))
+          } else {
+            setErrors(e => { const n = { ...e }; delete n.confirm_password; return n })
+          }
+        }
+      }
+
+      // Live confirm password validation
+      if (key === 'confirm_password') {
+        if (value && value !== next.password) {
+          setErrors(e => ({ ...e, confirm_password: 'Passwords do not match.' }))
+        } else {
+          setErrors(e => { const n = { ...e }; delete n.confirm_password; return n })
+        }
+      }
+
+      return next
+    })
+    // Clear non-password field errors on change
+    if (key !== 'password' && key !== 'confirm_password') {
+      if (errors[key]) setErrors(e => { const next = { ...e }; delete next[key]; return next })
+    }
   }
 
   const toggleArr = (key: string, value: string) => {
@@ -665,13 +689,28 @@ export default function CleanerOnboarding() {
 
             <div id="field-password">
               <label style={labelStyle}>Password</label>
-              <input
-                type="password"
-                style={errors.password ? inputErrorStyle : inputStyle}
-                placeholder="At least 8 characters"
-                value={form.password}
-                onChange={e => set('password', e.target.value)}
-              />
+              <div style={{ position: 'relative' }}>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  style={{ ...(errors.password ? inputErrorStyle : inputStyle), paddingRight: '44px' }}
+                  placeholder="At least 8 characters"
+                  value={form.password}
+                  onChange={e => set('password', e.target.value)}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(v => !v)}
+                  style={{
+                    position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)',
+                    background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px',
+                    transition: 'color 0.15s',
+                  }}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
               <p style={{ fontSize: '12px', color: '#94a3b8', marginTop: '6px' }}>
                 Must include at least one uppercase letter and one number or symbol (e.g. <span style={{ fontFamily: 'monospace' }}>Cleaning1!</span>).
               </p>
@@ -680,13 +719,28 @@ export default function CleanerOnboarding() {
 
             <div id="field-confirm_password">
               <label style={labelStyle}>Confirm password</label>
-              <input
-                type="password"
-                style={errors.confirm_password ? inputErrorStyle : inputStyle}
-                placeholder="Re-enter your password"
-                value={form.confirm_password}
-                onChange={e => set('confirm_password', e.target.value)}
-              />
+              <div style={{ position: 'relative' }}>
+                <input
+                  type={showConfirm ? 'text' : 'password'}
+                  style={{ ...(errors.confirm_password ? inputErrorStyle : inputStyle), paddingRight: '44px' }}
+                  placeholder="Re-enter your password"
+                  value={form.confirm_password}
+                  onChange={e => set('confirm_password', e.target.value)}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirm(v => !v)}
+                  style={{
+                    position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)',
+                    background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px',
+                    transition: 'color 0.15s',
+                  }}
+                  aria-label={showConfirm ? 'Hide password' : 'Show password'}
+                >
+                  {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
               {errors.confirm_password && <p style={fieldErrorStyle}>⚠ {errors.confirm_password}</p>}
               {!errors.confirm_password && form.confirm_password && form.password === form.confirm_password && (
                 <p style={{ fontSize: '12px', color: '#16a34a', marginTop: '6px', fontWeight: 600 }}>✓ Passwords match</p>
