@@ -11,7 +11,7 @@ export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [userRole, setUserRole] = useState<string | null>(null)
-  const [checked, setChecked] = useState(false)
+  const [checked, setChecked] = useState(true)
   const pathname = usePathname()
 
   useEffect(() => {
