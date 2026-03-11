@@ -9,64 +9,42 @@ import { createClient } from '@/lib/supabase/client'
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [userRole, setUserRole] = useState<string | null>(null)
-  const [roleLoaded, setRoleLoaded] = useState(false)
   const pathname = usePathname()
-  const router = useRouter()
 
   useEffect(() => {
     const supabase = createClient()
 
-    const loadUser = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession()
-        setIsLoggedIn(!!session)
-        if (session?.user) {
-          const { data: profile } = await (supabase as any)
-            .from('profiles')
-            .select('role')
-            .eq('id', session.user.id)
-            .single()
-          setUserRole(profile?.role ?? null)
-        }
-      } catch (e) {
-        // fail silently
-      } finally {
-        setRoleLoaded(true)
-      }
+    const loadRole = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.user) return
+      const { data: profile } = await (supabase as any)
+        .from('profiles')
+        .select('role')
+        .eq('id', session.user.id)
+        .single()
+      setUserRole(profile?.role ?? null)
     }
 
-    loadUser()
+    loadRole()
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setIsLoggedIn(!!session)
-      if (session?.user) {
-        const supabase2 = createClient()
-        const { data: profile } = await (supabase2 as any)
-          .from('profiles')
-          .select('role')
-          .eq('id', session.user.id)
-          .single()
-        setUserRole(profile?.role ?? null)
-      } else {
-        setUserRole(null)
-      }
-      setRoleLoaded(true)
+      if (!session?.user) { setUserRole(null); return }
+      const supabase2 = createClient()
+      const { data: profile } = await (supabase2 as any)
+        .from('profiles')
+        .select('role')
+        .eq('id', session.user.id)
+        .single()
+      setUserRole(profile?.role ?? null)
     })
 
     return () => subscription.unsubscribe()
   }, [])
 
-  // Navigate to the correct dashboard once role is confirmed
-  const handleDashboardClick = (e: React.MouseEvent) => {
-    e.preventDefault()
-    if (!roleLoaded) return // still loading, do nothing
-    const href = userRole === 'cleaner' ? '/cleaner/dashboard' : '/customer/dashboard'
-    router.push(href)
-  }
-
-  const dashboardHref = userRole === 'cleaner' ? '/cleaner/dashboard' : '/customer/dashboard'
+  const dashboardHref = userRole === 'cleaner'
+    ? '/cleaner/dashboard'
+    : '/customer/dashboard'
 
   const navigation = [
     { name: 'How it works', href: '/how-it-works' },
@@ -79,6 +57,7 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-ink/5 bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/60">
       <nav className="container flex h-16 items-center justify-between">
+
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600">
@@ -87,7 +66,7 @@ export function Header() {
           <span className="text-lg font-semibold text-ink">Vouchee</span>
         </Link>
 
-        {/* Desktop Navigation */}
+        {/* Desktop Nav */}
         <div className="hidden items-center gap-6 md:flex">
           {navigation.map((item) => (
             <Link
@@ -103,17 +82,16 @@ export function Header() {
           ))}
         </div>
 
-        {/* Desktop Auth Buttons */}
+        {/* Desktop Auth */}
         <div className="hidden items-center gap-4 md:flex">
-          {isLoggedIn && roleLoaded ? (
-            <a
+          {userRole ? (
+            <Link
               href={dashboardHref}
-              onClick={handleDashboardClick}
-              className="text-sm font-medium bg-brand-600 text-white px-4 py-2 rounded-md hover:bg-brand-700 transition-colors cursor-pointer"
+              className="text-sm font-medium bg-brand-600 text-white px-4 py-2 rounded-md hover:bg-brand-700 transition-colors"
             >
               My dashboard
-            </a>
-          ) : !isLoggedIn ? (
+            </Link>
+          ) : (
             <>
               <Link href="/login" className="text-sm font-medium text-ink-secondary hover:text-brand-600 transition-colors">
                 Log in
@@ -122,20 +100,12 @@ export function Header() {
                 Get started
               </Link>
             </>
-          ) : null}
+          )}
         </div>
 
         {/* Mobile Menu Button */}
-        <button
-          type="button"
-          className="md:hidden"
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-        >
-          {mobileMenuOpen ? (
-            <X className="h-6 w-6 text-ink" />
-          ) : (
-            <Menu className="h-6 w-6 text-ink" />
-          )}
+        <button type="button" className="md:hidden" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+          {mobileMenuOpen ? <X className="h-6 w-6 text-ink" /> : <Menu className="h-6 w-6 text-ink" />}
         </button>
       </nav>
 
@@ -149,9 +119,7 @@ export function Header() {
                 href={item.href}
                 className={cn(
                   'block rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                  pathname === item.href
-                    ? 'bg-brand-50 text-brand-600'
-                    : 'text-ink-secondary hover:bg-surface-secondary hover:text-ink'
+                  pathname === item.href ? 'bg-brand-50 text-brand-600' : 'text-ink-secondary hover:bg-surface-secondary hover:text-ink'
                 )}
                 onClick={() => setMobileMenuOpen(false)}
               >
@@ -159,32 +127,24 @@ export function Header() {
               </Link>
             ))}
             <div className="!mt-4 flex flex-col gap-2 border-t border-ink/5 pt-4">
-              {isLoggedIn && roleLoaded ? (
-                <a
+              {userRole ? (
+                <Link
                   href={dashboardHref}
-                  onClick={(e) => { handleDashboardClick(e); setMobileMenuOpen(false) }}
-                  className="block rounded-lg px-3 py-2 text-sm font-medium bg-brand-600 text-white text-center cursor-pointer"
+                  className="block rounded-lg px-3 py-2 text-sm font-medium bg-brand-600 text-white text-center"
+                  onClick={() => setMobileMenuOpen(false)}
                 >
                   My dashboard
-                </a>
-              ) : !isLoggedIn ? (
+                </Link>
+              ) : (
                 <>
-                  <Link
-                    href="/login"
-                    className="block rounded-lg px-3 py-2 text-sm font-medium text-ink-secondary hover:bg-surface-secondary"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
+                  <Link href="/login" className="block rounded-lg px-3 py-2 text-sm font-medium text-ink-secondary hover:bg-surface-secondary" onClick={() => setMobileMenuOpen(false)}>
                     Log in
                   </Link>
-                  <Link
-                    href="/request/property"
-                    className="block rounded-lg px-3 py-2 text-sm font-medium bg-brand-600 text-white text-center"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
+                  <Link href="/request/property" className="block rounded-lg px-3 py-2 text-sm font-medium bg-brand-600 text-white text-center" onClick={() => setMobileMenuOpen(false)}>
                     Get started
                   </Link>
                 </>
-              ) : null}
+              )}
             </div>
           </div>
         </div>
