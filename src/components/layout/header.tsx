@@ -105,15 +105,15 @@ export function Header() {
 
         {/* Desktop Auth Buttons */}
         <div className="hidden items-center gap-4 md:flex">
-          {isLoggedIn ? (
+          {isLoggedIn && roleLoaded ? (
             <a
               href={dashboardHref}
               onClick={handleDashboardClick}
               className="text-sm font-medium bg-brand-600 text-white px-4 py-2 rounded-md hover:bg-brand-700 transition-colors cursor-pointer"
             >
-              {roleLoaded ? 'My dashboard' : '…'}
+              My dashboard
             </a>
-          ) : (
+          ) : !isLoggedIn ? (
             <>
               <Link href="/login" className="text-sm font-medium text-ink-secondary hover:text-brand-600 transition-colors">
                 Log in
@@ -122,7 +122,7 @@ export function Header() {
                 Get started
               </Link>
             </>
-          )}
+          ) : null}
         </div>
 
         {/* Mobile Menu Button */}
@@ -159,15 +159,15 @@ export function Header() {
               </Link>
             ))}
             <div className="!mt-4 flex flex-col gap-2 border-t border-ink/5 pt-4">
-              {isLoggedIn ? (
+              {isLoggedIn && roleLoaded ? (
                 <a
                   href={dashboardHref}
                   onClick={(e) => { handleDashboardClick(e); setMobileMenuOpen(false) }}
                   className="block rounded-lg px-3 py-2 text-sm font-medium bg-brand-600 text-white text-center cursor-pointer"
                 >
-                  {roleLoaded ? 'My dashboard' : '…'}
+                  My dashboard
                 </a>
-              ) : (
+              ) : !isLoggedIn ? (
                 <>
                   <Link
                     href="/login"
@@ -184,7 +184,7 @@ export function Header() {
                     Get started
                   </Link>
                 </>
-              )}
+              ) : null}
             </div>
           </div>
         </div>

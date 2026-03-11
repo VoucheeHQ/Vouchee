@@ -122,7 +122,7 @@ function SummaryRow({ label, value }: { label: string; value: React.ReactNode })
 
 // ─── Pending Screen ───────────────────────────────────────────────────────────
 
-function PendingScreen({ profile, cleaner }: { profile: CleanerProfile; cleaner: CleanerData }) {
+function PendingScreen({ profile, cleaner, emailConfirmed }: { profile: CleanerProfile; cleaner: CleanerData; emailConfirmed: boolean }) {
   const firstName = profile.full_name.trim().split(' ')[0]
   const zones = (cleaner.zones ?? []).map(z => ZONE_LABELS[z] ?? z)
 
@@ -136,8 +136,9 @@ function PendingScreen({ profile, cleaner }: { profile: CleanerProfile; cleaner:
     {
       icon: '📧',
       title: 'Email confirmed',
-      desc: 'Awaiting email verification',
-      done: true,
+      desc: emailConfirmed ? 'Your email address has been verified' : 'Please check your inbox and click the confirmation link',
+      done: emailConfirmed,
+      active: !emailConfirmed,
     },
     {
       icon: '🔍',
@@ -475,6 +476,7 @@ export default function CleanerDashboardPage() {
   const router = useRouter()
   const [profile, setProfile] = useState<CleanerProfile | null>(null)
   const [cleaner, setCleaner] = useState<CleanerData | null>(null)
+  const [emailConfirmed, setEmailConfirmed] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -490,6 +492,7 @@ export default function CleanerDashboardPage() {
         }
 
         const userId = session.user.id
+        setEmailConfirmed(!!session.user.email_confirmed_at)
 
         // Fetch profile
         const { data: profileData, error: profileError } = await (supabase as any)
@@ -645,7 +648,7 @@ export default function CleanerDashboardPage() {
         {/* Main content */}
         <div style={{ padding: '0 24px' }}>
           {(status === 'submitted' || status === 'pending') && (
-            <PendingScreen profile={profile} cleaner={cleaner} />
+            <PendingScreen profile={profile} cleaner={cleaner} emailConfirmed={emailConfirmed} />
           )}
           {status === 'approved' && (
             <ApprovedShell profile={profile} />
