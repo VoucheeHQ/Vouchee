@@ -10,21 +10,46 @@ import { createClient } from '@/lib/supabase/client'
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [userRole, setUserRole] = useState<string | null>(null)
   const [checked, setChecked] = useState(false)
   const pathname = usePathname()
   const router = useRouter()
 
   useEffect(() => {
     const supabase = createClient()
-    supabase.auth.getSession().then(({ data: { session } }) => {
+
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setIsLoggedIn(!!session)
+      if (session?.user) {
+        const { data: profile } = await (supabase as any)
+          .from('profiles')
+          .select('role')
+          .eq('id', session.user.id)
+          .single()
+        setUserRole(profile?.role ?? null)
+      }
       setChecked(true)
     })
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setIsLoggedIn(!!session)
+      if (session?.user) {
+        const supabase2 = createClient()
+        const { data: profile } = await (supabase2 as any)
+          .from('profiles')
+          .select('role')
+          .eq('id', session.user.id)
+          .single()
+        setUserRole(profile?.role ?? null)
+      } else {
+        setUserRole(null)
+      }
     })
+
     return () => subscription.unsubscribe()
   }, [])
+
+  const dashboardHref = userRole === 'cleaner' ? '/cleaner/dashboard' : '/dashboard'
 
   const navigation = [
     { name: 'How it works', href: '/how-it-works' },
@@ -66,18 +91,18 @@ export function Header() {
           {checked && (
             isLoggedIn ? (
               <Link
-                href="/dashboard"
+                href={dashboardHref}
                 className="text-sm font-medium bg-brand-600 text-white px-4 py-2 rounded-md hover:bg-brand-700 transition-colors"
               >
                 My dashboard
               </Link>
             ) : (
               <>
-                <Link href="/auth/login" className="text-sm font-medium text-ink-secondary hover:text-brand-600 transition-colors">
+                <Link href="/login" className="text-sm font-medium text-ink-secondary hover:text-brand-600 transition-colors">
                   Log in
                 </Link>
-                <Link href="/auth/signup" className="text-sm font-medium bg-brand-600 text-white px-4 py-2 rounded-md hover:bg-brand-700 transition-colors">
-                  Sign up
+                <Link href="/request/property" className="text-sm font-medium bg-brand-600 text-white px-4 py-2 rounded-md hover:bg-brand-700 transition-colors">
+                  Get started
                 </Link>
               </>
             )
@@ -121,7 +146,7 @@ export function Header() {
               {checked && (
                 isLoggedIn ? (
                   <Link
-                    href="/dashboard"
+                    href={dashboardHref}
                     className="block rounded-lg px-3 py-2 text-sm font-medium bg-brand-600 text-white text-center"
                     onClick={() => setMobileMenuOpen(false)}
                   >
@@ -130,18 +155,18 @@ export function Header() {
                 ) : (
                   <>
                     <Link
-                      href="/auth/login"
+                      href="/login"
                       className="block rounded-lg px-3 py-2 text-sm font-medium text-ink-secondary hover:bg-surface-secondary"
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       Log in
                     </Link>
                     <Link
-                      href="/auth/signup"
+                      href="/request/property"
                       className="block rounded-lg px-3 py-2 text-sm font-medium bg-brand-600 text-white text-center"
                       onClick={() => setMobileMenuOpen(false)}
                     >
-                      Sign up
+                      Get started
                     </Link>
                   </>
                 )
