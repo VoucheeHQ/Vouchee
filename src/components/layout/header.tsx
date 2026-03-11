@@ -18,25 +18,17 @@ export function Header() {
 
     const loadUser = async () => {
       try {
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-        console.log('[Header] session:', session?.user?.id, 'error:', sessionError)
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session?.user) { setLoading(false); return }
 
-        if (!session?.user) {
-          setUserRole(null)
-          setLoading(false)
-          return
-        }
-
-        const { data: profile, error: profileError } = await supabase
+        const { data } = await supabase
           .from('profiles')
           .select('role')
           .eq('id', session.user.id)
           .single()
 
-        console.log('[Header] profile:', profile, 'error:', profileError)
-        setUserRole(profile?.role ?? null)
+        setUserRole((data as any)?.role ?? null)
       } catch (e) {
-        console.error('[Header] error:', e)
         setUserRole(null)
       } finally {
         setLoading(false)
@@ -46,27 +38,20 @@ export function Header() {
     loadUser()
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      console.log('[Header] auth change event, user:', session?.user?.id)
-      if (!session?.user) {
-        setUserRole(null)
-        setLoading(false)
-        return
-      }
-      const { data: profile } = await supabase
+      if (!session?.user) { setUserRole(null); setLoading(false); return }
+      const { data } = await supabase
         .from('profiles')
         .select('role')
         .eq('id', session.user.id)
         .single()
-      setUserRole(profile?.role ?? null)
+      setUserRole((data as any)?.role ?? null)
       setLoading(false)
     })
 
     return () => subscription.unsubscribe()
   }, [])
 
-  const dashboardHref = userRole === 'cleaner'
-    ? '/cleaner/dashboard'
-    : '/customer/dashboard'
+  const dashboardHref = userRole === 'cleaner' ? '/cleaner/dashboard' : '/customer/dashboard'
 
   const navigation = [
     { name: 'How it works', href: '/how-it-works' },
@@ -80,7 +65,6 @@ export function Header() {
     <header className="sticky top-0 z-50 w-full border-b border-ink/5 bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/60">
       <nav className="container flex h-16 items-center justify-between">
 
-        {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600">
             <span className="text-lg font-bold text-white">V</span>
@@ -88,7 +72,6 @@ export function Header() {
           <span className="text-lg font-semibold text-ink">Vouchee</span>
         </Link>
 
-        {/* Desktop Nav */}
         <div className="hidden items-center gap-6 md:flex">
           {navigation.map((item) => (
             <Link
@@ -104,16 +87,11 @@ export function Header() {
           ))}
         </div>
 
-        {/* Desktop Auth */}
         <div className="hidden items-center gap-4 md:flex">
           {loading ? (
-            // Placeholder to prevent layout shift while loading
             <div className="h-9 w-28 rounded-md bg-ink/5 animate-pulse" />
           ) : userRole ? (
-            <Link
-              href={dashboardHref}
-              className="text-sm font-medium bg-brand-600 text-white px-4 py-2 rounded-md hover:bg-brand-700 transition-colors"
-            >
+            <Link href={dashboardHref} className="text-sm font-medium bg-brand-600 text-white px-4 py-2 rounded-md hover:bg-brand-700 transition-colors">
               My dashboard
             </Link>
           ) : (
@@ -128,13 +106,11 @@ export function Header() {
           )}
         </div>
 
-        {/* Mobile Menu Button */}
         <button type="button" className="md:hidden" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
           {mobileMenuOpen ? <X className="h-6 w-6 text-ink" /> : <Menu className="h-6 w-6 text-ink" />}
         </button>
       </nav>
 
-      {/* Mobile Menu */}
       {mobileMenuOpen && (
         <div className="border-t border-ink/5 bg-surface md:hidden">
           <div className="container space-y-1 py-4">
@@ -155,11 +131,7 @@ export function Header() {
               {loading ? (
                 <div className="h-9 rounded-md bg-ink/5 animate-pulse" />
               ) : userRole ? (
-                <Link
-                  href={dashboardHref}
-                  className="block rounded-lg px-3 py-2 text-sm font-medium bg-brand-600 text-white text-center"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
+                <Link href={dashboardHref} className="block rounded-lg px-3 py-2 text-sm font-medium bg-brand-600 text-white text-center" onClick={() => setMobileMenuOpen(false)}>
                   My dashboard
                 </Link>
               ) : (
