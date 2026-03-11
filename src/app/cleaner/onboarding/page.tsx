@@ -309,14 +309,19 @@ function ApplicationCardPreview({ form }: { form: any }) {
         <div style={{ padding: '12px 16px', borderBottom: '1px solid #f1f5f9' }}>
           <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>Reviews</div>
           {[
-            { text: 'Absolutely brilliant — left the house spotless. Would highly recommend to anyone looking for a reliable cleaner.', name: 'Emma T.' },
-            { text: 'Very professional and thorough. Always on time and incredibly easy to communicate with. A real gem!', name: 'James R.' },
+            { text: 'Absolutely brilliant — left the house spotless. Would highly recommend to anyone looking for a reliable cleaner.', name: 'Emma T.', stars: 5 },
+            { text: 'Very professional and thorough. Always on time and incredibly easy to communicate with. A real gem!', name: 'James R.', stars: 5 },
           ].map((review, i) => (
             <div key={i} style={{
               background: '#f8fafc', borderRadius: '10px', padding: '10px 12px',
               marginBottom: i === 0 ? '6px' : 0,
               filter: 'blur(3.5px)', userSelect: 'none', pointerEvents: 'none',
             }}>
+              <div style={{ display: 'flex', gap: '2px', marginBottom: '6px' }}>
+                {[1,2,3,4,5].map(s => (
+                  <span key={s} style={{ fontSize: '12px', color: s <= review.stars ? '#f59e0b' : '#e2e8f0' }}>★</span>
+                ))}
+              </div>
               <div style={{ fontSize: '12px', color: '#475569', lineHeight: 1.5, marginBottom: '4px' }}>"{review.text}"</div>
               <div style={{ fontSize: '11px', fontWeight: 600, color: '#94a3b8' }}>— {review.name}</div>
             </div>
@@ -841,8 +846,8 @@ export default function CleanerOnboarding() {
                     borderRadius: '12px', padding: '16px', marginTop: '8px',
                     display: 'flex', flexDirection: 'column', gap: '12px',
                   }}>
-                    <p style={{ fontSize: '14px', color: '#92400e', margin: 0, lineHeight: 1.6 }}>
-                      No problem — you can still apply. Tick the box below and we'll email you a step-by-step guide on how to get your DBS certificate and public liability insurance.
+                  <p style={{ fontSize: '14px', color: '#92400e', margin: 0, lineHeight: 1.6 }}>
+                      No problem. You can still apply and we'll email you a step-by-step guide on how to get your DBS certificate and public liability insurance.
                     </p>
                     <CheckToggle
                       label="Email me a simple step-by-step guide on getting a DBS check and public liability insurance."
