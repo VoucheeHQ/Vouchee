@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { Menu, X } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
@@ -13,23 +13,31 @@ export function Header() {
   const [userRole, setUserRole] = useState<string | null>(null)
   const [checked, setChecked] = useState(false)
   const pathname = usePathname()
-  const router = useRouter()
 
   useEffect(() => {
     const supabase = createClient()
 
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
-      setIsLoggedIn(!!user)
-      if (user) {
-        const { data: profile } = await (supabase as any)
-          .from('profiles')
-          .select('role')
-          .eq('id', user.id)
-          .single()
-        setUserRole(profile?.role ?? null)
+    const loadUser = async () => {
+      try {
+        // getSession reads from cookie cache — no LockManager needed
+        const { data: { session } } = await supabase.auth.getSession()
+        setIsLoggedIn(!!session)
+        if (session?.user) {
+          const { data: profile } = await (supabase as any)
+            .from('profiles')
+            .select('role')
+            .eq('id', session.user.id)
+            .single()
+          setUserRole(profile?.role ?? null)
+        }
+      } catch (e) {
+        // fail silently — show logged-out state
+      } finally {
+        setChecked(true)
       }
-      setChecked(true)
-    })
+    }
+
+    loadUser()
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setIsLoggedIn(!!session)
@@ -44,6 +52,7 @@ export function Header() {
       } else {
         setUserRole(null)
       }
+      setChecked(true)
     })
 
     return () => subscription.unsubscribe()
