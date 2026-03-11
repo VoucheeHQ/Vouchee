@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { Menu, X } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
@@ -9,7 +9,11 @@ import { createClient } from '@/lib/supabase/client'
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [userRole, setUserRole] = useState<string | null>(null)
+  // Initialise from localStorage so the button appears instantly on page load
+  const [userRole, setUserRole] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null
+    return localStorage.getItem('vouchee_role')
+  })
   const pathname = usePathname()
 
   useEffect(() => {
@@ -17,26 +21,40 @@ export function Header() {
 
     const loadRole = async () => {
       const { data: { session } } = await supabase.auth.getSession()
-      if (!session?.user) return
+      if (!session?.user) {
+        setUserRole(null)
+        localStorage.removeItem('vouchee_role')
+        return
+      }
       const { data: profile } = await (supabase as any)
         .from('profiles')
         .select('role')
         .eq('id', session.user.id)
         .single()
-      setUserRole(profile?.role ?? null)
+      const role = profile?.role ?? null
+      setUserRole(role)
+      if (role) localStorage.setItem('vouchee_role', role)
+      else localStorage.removeItem('vouchee_role')
     }
 
     loadRole()
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (!session?.user) { setUserRole(null); return }
+      if (!session?.user) {
+        setUserRole(null)
+        localStorage.removeItem('vouchee_role')
+        return
+      }
       const supabase2 = createClient()
       const { data: profile } = await (supabase2 as any)
         .from('profiles')
         .select('role')
         .eq('id', session.user.id)
         .single()
-      setUserRole(profile?.role ?? null)
+      const role = profile?.role ?? null
+      setUserRole(role)
+      if (role) localStorage.setItem('vouchee_role', role)
+      else localStorage.removeItem('vouchee_role')
     })
 
     return () => subscription.unsubscribe()
