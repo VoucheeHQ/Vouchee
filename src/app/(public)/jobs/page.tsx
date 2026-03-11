@@ -442,8 +442,8 @@ export default function JobsPage() {
 
         {/* Your listing banner */}
         {myJob && (
-          <YourListingBanner job={myJob} onEdit={() => router.push('/dashboard')} />
-        )}
+        <YourListingBanner job={myJob} onEdit={() => router.push('/customer/dashboard')} />
+      )}
 
         {/* Stats */}
         <div className="flex flex-wrap items-center gap-4 mb-5">
@@ -515,12 +515,12 @@ export default function JobsPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {sortedFiltered.map(job => (
-              <JobCard
-                key={job.id}
-                job={job}
-                isOwn={job.id === myJobId}
-                onEdit={() => router.push('/dashboard')}
-              />
+               <JobCard
+               key={job.id}
+               job={job}
+               isOwn={job.id === myJobId}
+               onEdit={() => router.push('/customer/dashboard')}
+             />
             ))}
           </div>
         )}
