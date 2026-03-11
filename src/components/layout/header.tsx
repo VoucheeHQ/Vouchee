@@ -18,13 +18,13 @@ export function Header() {
   useEffect(() => {
     const supabase = createClient()
 
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setIsLoggedIn(!!session)
-      if (session?.user) {
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      setIsLoggedIn(!!user)
+      if (user) {
         const { data: profile } = await (supabase as any)
           .from('profiles')
           .select('role')
-          .eq('id', session.user.id)
+          .eq('id', user.id)
           .single()
         setUserRole(profile?.role ?? null)
       }
