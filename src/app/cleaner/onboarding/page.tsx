@@ -582,11 +582,24 @@ export default function CleanerOnboarding() {
 
   if (submitted) {
     return (
-      <div style={{
-        minHeight: '100vh',
-        background: 'linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px',
-      }}>
+      <div style={{ minHeight: '100vh', background: 'linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%)' }}>
+
+        {/* Header */}
+        <div style={{ borderBottom: '1px solid #e2e8f0', background: 'white', padding: '0 24px' }}>
+          <div style={{ maxWidth: '680px', margin: '0 auto', height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <a href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'linear-gradient(135deg, #3b82f6, #6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ fontSize: '16px', fontWeight: 800, color: 'white', fontFamily: 'Lora, serif' }}>V</span>
+              </div>
+              <span style={{ fontSize: '17px', fontWeight: 700, color: '#0f172a', fontFamily: 'Lora, serif' }}>Vouchee</span>
+            </a>
+            <a href="/" style={{ fontSize: '13px', fontWeight: 600, color: '#64748b', textDecoration: 'none' }}>
+              ← Back to home
+            </a>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '60px 24px' }}>
         <div style={{
           background: 'white', borderRadius: '24px', padding: '48px 40px',
           maxWidth: '480px', width: '100%', textAlign: 'center',
@@ -608,6 +621,7 @@ export default function CleanerOnboarding() {
           <a href="mailto:cleaners@vouchee.co.uk" style={{ fontSize: '14px', color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>
             Questions? cleaners@vouchee.co.uk
           </a>
+        </div>
         </div>
       </div>
     )
