@@ -9,52 +9,56 @@ import { createClient } from '@/lib/supabase/client'
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  // Initialise from localStorage so the button appears instantly on page load
-  const [userRole, setUserRole] = useState<string | null>(() => {
-    if (typeof window === 'undefined') return null
-    return localStorage.getItem('vouchee_role')
-  })
+  const [userRole, setUserRole] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
   const pathname = usePathname()
 
   useEffect(() => {
     const supabase = createClient()
 
-    const loadRole = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session?.user) {
+    const loadUser = async () => {
+      try {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+        console.log('[Header] session:', session?.user?.id, 'error:', sessionError)
+
+        if (!session?.user) {
+          setUserRole(null)
+          setLoading(false)
+          return
+        }
+
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', session.user.id)
+          .single()
+
+        console.log('[Header] profile:', profile, 'error:', profileError)
+        setUserRole(profile?.role ?? null)
+      } catch (e) {
+        console.error('[Header] error:', e)
         setUserRole(null)
-        localStorage.removeItem('vouchee_role')
-        return
+      } finally {
+        setLoading(false)
       }
-      const { data: profile } = await (supabase as any)
-        .from('profiles')
-        .select('role')
-        .eq('id', session.user.id)
-        .single()
-      const role = profile?.role ?? null
-      setUserRole(role)
-      if (role) localStorage.setItem('vouchee_role', role)
-      else localStorage.removeItem('vouchee_role')
     }
 
-    loadRole()
+    loadUser()
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      console.log('[Header] auth change event, user:', session?.user?.id)
       if (!session?.user) {
         setUserRole(null)
-        localStorage.removeItem('vouchee_role')
+        setLoading(false)
         return
       }
-      const supabase2 = createClient()
-      const { data: profile } = await (supabase2 as any)
+      const { data: profile } = await supabase
         .from('profiles')
         .select('role')
         .eq('id', session.user.id)
         .single()
-      const role = profile?.role ?? null
-      setUserRole(role)
-      if (role) localStorage.setItem('vouchee_role', role)
-      else localStorage.removeItem('vouchee_role')
+      setUserRole(profile?.role ?? null)
+      setLoading(false)
     })
 
     return () => subscription.unsubscribe()
@@ -102,7 +106,10 @@ export function Header() {
 
         {/* Desktop Auth */}
         <div className="hidden items-center gap-4 md:flex">
-          {userRole ? (
+          {loading ? (
+            // Placeholder to prevent layout shift while loading
+            <div className="h-9 w-28 rounded-md bg-ink/5 animate-pulse" />
+          ) : userRole ? (
             <Link
               href={dashboardHref}
               className="text-sm font-medium bg-brand-600 text-white px-4 py-2 rounded-md hover:bg-brand-700 transition-colors"
@@ -145,7 +152,9 @@ export function Header() {
               </Link>
             ))}
             <div className="!mt-4 flex flex-col gap-2 border-t border-ink/5 pt-4">
-              {userRole ? (
+              {loading ? (
+                <div className="h-9 rounded-md bg-ink/5 animate-pulse" />
+              ) : userRole ? (
                 <Link
                   href={dashboardHref}
                   className="block rounded-lg px-3 py-2 text-sm font-medium bg-brand-600 text-white text-center"
