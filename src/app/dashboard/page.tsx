@@ -1,1033 +1,824 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Check, Eye, EyeOff } from 'lucide-react'
-import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch'
+import { Settings, X, MessageSquare, Users, ChevronRight, Pause, Play, Trash2, ChevronDown, Plus } from 'lucide-react'
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
 
-// ── Constants ─────────────────────────────────────────────────
-
-const ALL_AREAS = [
-  'Central / South East',
-  'North West',
-  'North East / Roffey',
-  'South West',
-  'Warnham / Surrounding North',
-  'Broadbridge Heath',
-  'Mannings Heath',
-  'Faygate / Kilnwood Vale',
-  'Christs Hospital',
+const ALL_TASKS: { id: string; label: string; special: boolean }[] = [
+  { id: 'general_cleaning', label: 'General cleaning', special: false },
+  { id: 'hoovering', label: 'Hoovering', special: false },
+  { id: 'mopping', label: 'Mopping', special: false },
+  { id: 'bathroom_deep_clean', label: 'Bathroom deep clean', special: false },
+  { id: 'kitchen_deep_clean', label: 'Kitchen deep clean', special: false },
+  { id: 'ironing', label: 'Ironing', special: true },
+  { id: 'oven', label: 'Oven clean', special: true },
+  { id: 'windows_interior', label: 'Interior windows', special: true },
+  { id: 'laundry', label: 'Laundry', special: true },
+  { id: 'changing_beds', label: 'Changing beds', special: true },
+  { id: 'blinds', label: 'Blinds', special: true },
+  { id: 'fridge', label: 'Fridge clean', special: true },
+  { id: 'mold', label: 'Mould removal', special: true },
 ]
 
-const AREA_TO_ID: Record<string, string> = {
-  'Central / South East':       'central_south_east',
-  'North West':                  'north_west',
-  'North East / Roffey':        'north_east_roffey',
-  'South West':                  'south_west',
-  'Warnham / Surrounding North': 'warnham_north',
-  'Broadbridge Heath':           'broadbridge_heath',
-  'Mannings Heath':              'mannings_heath',
-  'Faygate / Kilnwood Vale':    'faygate_kilnwood_vale',
-  'Christs Hospital':            'christs_hospital',
+const TASK_MAP = Object.fromEntries(ALL_TASKS.map(t => [t.id, t]))
+const TASK_LABELS: Record<string, string> = Object.fromEntries(ALL_TASKS.map(t => [t.id, t.label]))
+
+const ZONE_LABELS: Record<string, string> = {
+  central_south_east: 'Central Horsham', north_west: 'North West Horsham',
+  north_east_roffey: 'North East / Roffey', south_west: 'South West Horsham',
+  warnham_north: 'Warnham & North', broadbridge_heath: 'Broadbridge Heath',
+  mannings_heath: 'Mannings Heath', faygate_kilnwood_vale: 'Faygate / Kilnwood Vale',
+  christs_hospital: "Christ's Hospital",
 }
 
-const EXPERIENCE_TYPES = [
-  { id: 'domestic',       label: 'Domestic cleaning' },
-  { id: 'end_of_tenancy', label: 'End of tenancy cleaning' },
-  { id: 'office',         label: 'Office / commercial cleaning' },
-  { id: 'holiday_let',   label: 'Holiday let / Airbnb turnaround' },
-  { id: 'care_home',     label: 'Care homes / assisted living' },
-  { id: 'hospitality',   label: 'Hospitality / hotel housekeeping' },
-]
-
-// ── Validation helpers ────────────────────────────────────────
-
-function isValidEmail(email: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
+const FREQUENCY_LABELS: Record<string, string> = {
+  weekly: 'Weekly', fortnightly: 'Fortnightly', monthly: 'Monthly',
 }
 
-function isValidPhone(phone: string) {
-  const digits = phone.replace(/[\s\-\(\)]/g, '')
-  return /^(\+44|0)7\d{9}$/.test(digits) || /^(\+44|0)[1-9]\d{8,9}$/.test(digits)
+const TIME_OPTIONS = ['Morning (8am – 12pm)', 'Afternoon (12pm – 5pm)', 'Evening (5pm – 8pm)', 'Flexible']
+const DAY_OPTIONS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+
+interface CleanRequest {
+  id: string
+  status: string
+  zone: string | null
+  bedrooms: number
+  bathrooms: number
+  hourly_rate: number | null
+  hours_per_session: number | null
+  tasks: string[] | null
+  preferred_days: string[] | null
+  time_of_day: string | null
+  customer_notes: string | null
+  created_at: string
+  paused_at: string | null
+  republish_count: number
+  customers?: { frequency: string | null }
 }
 
-function isValidName(name: string) {
-  return name.trim().length >= 2 && /^[A-Za-zÀ-ÖØ-öø-ÿ'\- ]+$/.test(name.trim())
-}
+// ── Modal ─────────────────────────────────────────────────────
 
-function isValidPassword(password: string) {
-  return (
-    password.length >= 8 &&
-    /[A-Z]/.test(password) &&
-    /[0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(password)
-  )
-}
-
-// ── Coverage map ──────────────────────────────────────────────
-
-function CoverageMap() {
+function Modal({ title, children, onClose }: { title: string; children: React.ReactNode; onClose: () => void }) {
   return (
     <div style={{
-      width: '100%', borderRadius: '16px', overflow: 'hidden',
-      border: '1.5px solid #e2e8f0', boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
-      background: '#e8f4f8', position: 'relative',
-    }}>
-      <TransformWrapper initialScale={1} minScale={1} maxScale={4} centerOnInit>
-        {({ zoomIn, zoomOut, resetTransform }) => (
-          <>
-            <TransformComponent wrapperStyle={{ width: '100%', display: 'block' }} contentStyle={{ width: '100%' }}>
-              <img
-                src="/Vouchee_service_area.png"
-                alt="Vouchee service area map"
-                style={{ width: '100%', height: 'auto', display: 'block' }}
-                draggable={false}
-              />
-            </TransformComponent>
-            <div style={{ position: 'absolute', bottom: '12px', right: '12px', display: 'flex', flexDirection: 'column', gap: '4px', zIndex: 10 }}>
-              <button onClick={() => zoomIn()} style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'white', border: '1px solid #e2e8f0', fontSize: '18px', fontWeight: 700, color: '#0f172a', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', fontFamily: 'inherit' }}>+</button>
-              <button onClick={() => zoomOut()} style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'white', border: '1px solid #e2e8f0', fontSize: '18px', fontWeight: 700, color: '#0f172a', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', fontFamily: 'inherit' }}>−</button>
-              <button onClick={() => resetTransform()} style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'white', border: '1px solid #e2e8f0', fontSize: '11px', fontWeight: 700, color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', fontFamily: 'inherit' }}>↺</button>
-            </div>
-            <div style={{ position: 'absolute', bottom: '12px', left: '12px', background: 'rgba(255,255,255,0.85)', borderRadius: '8px', padding: '5px 10px', fontSize: '11px', color: '#64748b', fontFamily: 'inherit', fontWeight: 600, boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
-              Scroll to zoom · Drag to pan
-            </div>
-          </>
-        )}
-      </TransformWrapper>
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 50,
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px',
+    }} onClick={onClose}>
+      <div style={{
+        background: 'white', borderRadius: '20px', padding: '28px', maxWidth: '440px', width: '100%',
+        boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
+      }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+          <h3 style={{ fontSize: '17px', fontWeight: 700, color: '#0f172a', margin: 0 }}>{title}</h3>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: '4px' }}>
+            <X size={18} />
+          </button>
+        </div>
+        {children}
+      </div>
     </div>
   )
 }
 
-// ── Zone selector ─────────────────────────────────────────────
+// ── Edit Panel ────────────────────────────────────────────────
 
-function ZoneSelector({ selectedAreas, onToggle, onToggleAll }: {
-  selectedAreas: string[]
-  onToggle: (area: string) => void
-  onToggleAll: () => void
+function EditPanel({ request, frequency, onSave, onCancel, onDelete, onPause, onRepublish }: {
+  request: CleanRequest
+  frequency: string | null
+  onSave: (updates: Partial<CleanRequest>) => Promise<void>
+  onCancel: () => void
+  onDelete: () => void
+  onPause: () => void
+  onRepublish: () => void
 }) {
-  const allSelected = selectedAreas.includes('__all__')
+  const [saving, setSaving] = useState(false)
+  const [showAddTasks, setShowAddTasks] = useState(false)
+  const [form, setForm] = useState({
+    hourly_rate: request.hourly_rate?.toString() ?? '',
+    hours_per_session: request.hours_per_session?.toString() ?? '',
+    tasks: request.tasks ?? [],
+    preferred_days: request.preferred_days ?? [],
+    time_of_day: request.time_of_day ?? '',
+    customer_notes: request.customer_notes ?? '',
+  })
+
+  const isLive = request.status === 'pending' || request.status === 'pending_review'
+  const isPaused = request.status === 'paused'
+
+  const pausedAt = request.paused_at ? new Date(request.paused_at).getTime() : null
+  const hoursSincePause = pausedAt ? (Date.now() - pausedAt) / 3600000 : null
+  const isRepublishLocked = request.republish_count >= 2 && hoursSincePause !== null && hoursSincePause < 24
+
+  const removeTask = (id: string) => setForm(f => ({ ...f, tasks: f.tasks.filter(t => t !== id) }))
+  const addTask = (id: string) => { if (!form.tasks.includes(id)) setForm(f => ({ ...f, tasks: [...f.tasks, id] })) }
+  const toggleDay = (day: string) => setForm(f => ({
+    ...f, preferred_days: f.preferred_days.includes(day) ? f.preferred_days.filter(d => d !== day) : [...f.preferred_days, day],
+  }))
+
+  const handleSave = async () => {
+    setSaving(true)
+    await onSave({
+      hourly_rate: form.hourly_rate ? parseFloat(form.hourly_rate) : null,
+      hours_per_session: form.hours_per_session ? parseFloat(form.hours_per_session) : null,
+      tasks: form.tasks,
+      preferred_days: form.preferred_days,
+      time_of_day: form.time_of_day || null,
+      customer_notes: form.customer_notes || null,
+    })
+    setSaving(false)
+  }
+
+  const availableToAdd = ALL_TASKS.filter(t => !form.tasks.includes(t.id))
+
+  const inputStyle = {
+    width: '100%', background: '#f8faff', border: '1.5px solid #e2e8f0',
+    borderRadius: '10px', padding: '10px 12px', fontSize: '14px', color: '#1e293b', fontFamily: 'inherit',
+  }
+  const labelStyle = {
+    fontSize: '12px', fontWeight: 700 as const, color: '#64748b',
+    textTransform: 'uppercase' as const, letterSpacing: '0.06em', display: 'block', marginBottom: '8px',
+  }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-      <CoverageMap />
+    <div style={{ borderTop: '2px solid #e2e8f0', padding: '24px', background: '#f8fafc', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
+      {/* Rate + Hours */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+        <div>
+          <label style={labelStyle}>Hourly rate (£)</label>
+          <input type="number" step="0.50" min="10" max="50" value={form.hourly_rate}
+            onChange={e => setForm(f => ({ ...f, hourly_rate: e.target.value }))}
+            style={inputStyle} placeholder="e.g. 15.00" />
+        </div>
+        <div>
+          <label style={labelStyle}>Hours per session</label>
+          <input type="number" step="0.5" min="1" max="8" value={form.hours_per_session}
+            onChange={e => setForm(f => ({ ...f, hours_per_session: e.target.value }))}
+            style={inputStyle} placeholder="e.g. 3" />
+        </div>
+      </div>
+
+      {/* Tasks */}
       <div>
-        <p style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px' }}>
-          Which areas are you happy to work in?
-        </p>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-          <button type="button" onClick={onToggleAll} style={{
-            gridColumn: '1 / -1', borderRadius: '10px', padding: '9px 12px',
-            fontSize: '12px', fontWeight: 600, cursor: 'pointer',
-            border: '1.5px solid', textAlign: 'left', transition: 'all 0.15s', fontFamily: 'inherit',
-            background: allSelected ? 'rgba(59,130,246,0.06)' : 'rgba(255,255,255,0.7)',
-            borderColor: allSelected ? '#3b82f6' : '#e2e8f0',
-            color: allSelected ? '#1e40af' : '#475569',
-          }}>
-            {allSelected ? '✓ ' : ''}All areas
-          </button>
-          {!allSelected && ALL_AREAS.map(area => {
-            const selected = selectedAreas.includes(area)
+        <label style={labelStyle}>Tasks</label>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
+          {form.tasks.map(id => {
+            const task = TASK_MAP[id]
+            if (!task) return null
             return (
-              <button key={area} type="button" onClick={() => onToggle(area)} style={{
-                borderRadius: '10px', padding: '9px 12px',
-                fontSize: '12px', fontWeight: 600, cursor: 'pointer',
-                border: '1.5px solid', textAlign: 'left', transition: 'all 0.15s', fontFamily: 'inherit',
-                background: selected ? 'rgba(59,130,246,0.06)' : 'rgba(255,255,255,0.7)',
-                borderColor: selected ? '#3b82f6' : '#e2e8f0',
-                color: selected ? '#1e40af' : '#475569',
+              <span key={id} style={{
+                display: 'inline-flex', alignItems: 'center', gap: '6px',
+                padding: '6px 10px 6px 14px', borderRadius: '100px', fontSize: '13px', fontWeight: 600,
+                background: task.special ? '#fefce8' : '#f0fdf4',
+                border: `1.5px solid ${task.special ? '#fde047' : '#86efac'}`,
+                color: task.special ? '#854d0e' : '#166534',
               }}>
-                {selected ? '✓ ' : ''}{area}
-              </button>
+                {task.label}
+                <button onClick={() => removeTask(id)} style={{
+                  background: '#fee2e2', border: 'none', borderRadius: '50%', width: '18px', height: '18px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer', color: '#dc2626', padding: 0, flexShrink: 0,
+                }}>
+                  <X size={10} strokeWidth={3} />
+                </button>
+              </span>
+            )
+          })}
+        </div>
+        {availableToAdd.length > 0 && (
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => setShowAddTasks(!showAddTasks)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '6px',
+                background: 'white', border: '1.5px dashed #cbd5e1', borderRadius: '100px',
+                padding: '6px 14px', fontSize: '13px', fontWeight: 600, color: '#64748b', cursor: 'pointer',
+              }}
+            >
+              <Plus size={13} /> Add task <ChevronDown size={13} style={{ transform: showAddTasks ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
+            </button>
+            {showAddTasks && (
+              <div style={{
+                position: 'absolute', top: '100%', left: 0, marginTop: '6px',
+                background: 'white', border: '1.5px solid #e2e8f0', borderRadius: '14px',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.1)', padding: '8px', zIndex: 10,
+                display: 'flex', flexWrap: 'wrap', gap: '6px', maxWidth: '360px',
+              }}>
+                {availableToAdd.map(task => (
+                  <button key={task.id} onClick={() => { addTask(task.id); setShowAddTasks(false) }}
+                    style={{
+                      padding: '5px 12px', borderRadius: '100px', fontSize: '12px', fontWeight: 600,
+                      background: task.special ? '#fefce8' : '#f0fdf4',
+                      border: `1px solid ${task.special ? '#fde047' : '#86efac'}`,
+                      color: task.special ? '#854d0e' : '#166534',
+                      cursor: 'pointer',
+                    }}>
+                    + {task.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Preferred days */}
+      <div>
+        <label style={labelStyle}>Preferred days</label>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+          {DAY_OPTIONS.map(day => {
+            const selected = form.preferred_days.includes(day)
+            return (
+              <button key={day} onClick={() => toggleDay(day)} style={{
+                padding: '6px 14px', borderRadius: '100px', fontSize: '13px', fontWeight: 600,
+                cursor: 'pointer', border: '1.5px solid',
+                background: selected ? '#eff6ff' : 'white',
+                borderColor: selected ? '#93c5fd' : '#e2e8f0',
+                color: selected ? '#1d4ed8' : '#64748b', transition: 'all 0.15s',
+              }}>{day.slice(0, 3)}</button>
             )
           })}
         </div>
       </div>
+
+      {/* Time of day */}
+      <div>
+        <label style={labelStyle}>Time of day</label>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+          {TIME_OPTIONS.map(t => {
+            const selected = form.time_of_day === t
+            return (
+              <button key={t} onClick={() => setForm(f => ({ ...f, time_of_day: selected ? '' : t }))} style={{
+                padding: '6px 14px', borderRadius: '100px', fontSize: '13px', fontWeight: 600,
+                cursor: 'pointer', border: '1.5px solid',
+                background: selected ? '#eff6ff' : 'white',
+                borderColor: selected ? '#93c5fd' : '#e2e8f0',
+                color: selected ? '#1d4ed8' : '#64748b', transition: 'all 0.15s',
+              }}>{t}</button>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Notes */}
+      <div>
+        <label style={labelStyle}>Notes for cleaner</label>
+        <textarea value={form.customer_notes} onChange={e => setForm(f => ({ ...f, customer_notes: e.target.value }))}
+          rows={3} placeholder="e.g. We have a dog (friendly!). Key safe on the front porch."
+          style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.5 }} />
+      </div>
+
+      {/* Save / Cancel */}
+      <div style={{ display: 'flex', gap: '10px' }}>
+        <button onClick={handleSave} disabled={saving} style={{
+          flex: 1, background: saving ? '#86efac' : 'linear-gradient(135deg, #16a34a, #22c55e)',
+          color: 'white', border: 'none', borderRadius: '12px', padding: '12px',
+          fontSize: '14px', fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer', transition: 'all 0.2s',
+        }}>
+          {saving ? 'Saving…' : '✓ Save changes'}
+        </button>
+        <button onClick={onCancel} style={{
+          padding: '12px 20px', background: 'white', border: '1.5px solid #e2e8f0',
+          borderRadius: '12px', fontSize: '14px', fontWeight: 600, color: '#64748b', cursor: 'pointer',
+        }}>Cancel</button>
+      </div>
+
+      <div style={{ height: '1px', background: '#e2e8f0' }} />
+
+      {/* Pause / Republish */}
+      {isLive && (
+        <button onClick={onPause} style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+          background: '#fff7ed', border: '1.5px solid #fed7aa', borderRadius: '12px',
+          padding: '11px', fontSize: '14px', fontWeight: 600, color: '#c2410c', cursor: 'pointer',
+        }}>
+          <Pause size={15} /> Pause listing
+        </button>
+      )}
+
+      {isPaused && (
+        isRepublishLocked ? (
+          <div style={{ background: '#fef2f2', border: '1.5px solid #fecaca', borderRadius: '12px', padding: '14px 16px' }}>
+            <div style={{ fontSize: '14px', fontWeight: 700, color: '#991b1b', marginBottom: '4px' }}>🔒 Republishing locked for 24 hours</div>
+            <div style={{ fontSize: '13px', color: '#b91c1c', lineHeight: 1.5 }}>
+              To protect cleaners' time, you can't republish again so soon. If this is a platform issue, email{' '}
+              <a href="mailto:support@vouchee.co.uk" style={{ color: '#dc2626', fontWeight: 600 }}>support@vouchee.co.uk</a>
+            </div>
+          </div>
+        ) : (
+          <button onClick={onRepublish} style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+            background: '#f0fdf4', border: '1.5px solid #86efac', borderRadius: '12px',
+            padding: '11px', fontSize: '14px', fontWeight: 600, color: '#16a34a', cursor: 'pointer',
+          }}>
+            <Play size={15} /> Republish listing
+          </button>
+        )
+      )}
+
+      {/* Danger zone */}
+      <div style={{ background: '#fef2f2', border: '1.5px solid #fecaca', borderRadius: '12px', padding: '16px' }}>
+        <div style={{ fontSize: '12px', fontWeight: 700, color: '#991b1b', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>Danger zone</div>
+        <p style={{ fontSize: '13px', color: '#b91c1c', margin: '0 0 12px', lineHeight: 1.5 }}>
+          Permanently deletes this request and all applications. This cannot be undone.
+        </p>
+        <button onClick={onDelete} style={{
+          display: 'flex', alignItems: 'center', gap: '6px',
+          background: '#dc2626', color: 'white', border: 'none', borderRadius: '10px',
+          padding: '8px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
+        }}>
+          <Trash2 size={14} /> Delete request
+        </button>
+      </div>
+
     </div>
   )
 }
 
-// ── Helper components ─────────────────────────────────────────
+// ── Listing Card ──────────────────────────────────────────────
 
-function SectionHeader({ step, title, subtitle }: { step: number; title: string; subtitle?: string }) {
+function ListingCard({ request, onSave, onPause, onRepublish, onDelete }: {
+  request: CleanRequest
+  onSave: (id: string, updates: Partial<CleanRequest>) => Promise<void>
+  onPause: (id: string) => Promise<void>
+  onRepublish: (id: string) => Promise<void>
+  onDelete: (id: string) => Promise<void>
+}) {
+  const [editing, setEditing] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [showPauseModal, setShowPauseModal] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [actionLoading, setActionLoading] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+
+  const zone = request.zone ? (ZONE_LABELS[request.zone] ?? request.zone) : 'Horsham'
+  const tasks = (request.tasks ?? []).map(t => TASK_LABELS[t] ?? t).filter(Boolean)
+  const days = request.preferred_days ?? []
+  const freq = request.customers?.frequency
+  const isLive = request.status === 'pending' || request.status === 'pending_review'
+  const isGrace = request.status === 'pending_review'
+  const isPaused = request.status === 'paused'
+
+  const statusColor = isLive ? '#166534' : isPaused ? '#92400e' : '#64748b'
+  const statusBg = isLive ? 'linear-gradient(135deg, #f0fdf4, #dcfce7)' : isPaused ? 'linear-gradient(135deg, #fffbeb, #fef3c7)' : '#f8fafc'
+  const statusBorder = isLive ? '#bbf7d0' : isPaused ? '#fde68a' : '#e2e8f0'
+  const dotColor = isLive ? '#22c55e' : isPaused ? '#f59e0b' : '#94a3b8'
+  const statusText = isGrace ? '⏱ Going live soon — edit now if needed' : isLive ? 'Live — accepting applications' : isPaused ? 'Paused — hidden from cleaners' : 'Not live'
+
+  const handleSave = async (updates: Partial<CleanRequest>) => {
+    await onSave(request.id, updates)
+    setEditing(false)
+    setSaved(true)
+    setTimeout(() => setSaved(false), 3000)
+  }
+
+  const handlePauseConfirm = async () => {
+    setActionLoading(true)
+    await onPause(request.id)
+    setShowPauseModal(false)
+    setEditing(false)
+    setActionLoading(false)
+  }
+
+  const handleRepublish = async () => {
+    setActionLoading(true)
+    await onRepublish(request.id)
+    setEditing(false)
+    setActionLoading(false)
+  }
+
+  const handleDeleteConfirm = async () => {
+    setActionLoading(true)
+    setDeleteError(null)
+    try {
+      await onDelete(request.id)
+      setShowDeleteModal(false)
+    } catch (err: any) {
+      setDeleteError(err?.message ?? 'Delete failed. Please try again.')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
   return (
-    <div style={{ marginBottom: '24px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+    <>
+      {/* Pause confirmation modal */}
+      {showPauseModal && (
+        <Modal title="Pause your listing?" onClose={() => setShowPauseModal(false)}>
+          <p style={{ fontSize: '14px', color: '#475569', lineHeight: 1.6, marginBottom: '8px' }}>
+            Your listing will be immediately hidden from the jobs board. All cleaners who have applied will be notified that this role is no longer live.
+          </p>
+          <p style={{ fontSize: '14px', color: '#475569', lineHeight: 1.6, marginBottom: '20px' }}>
+            Any open chat windows will be closed. You can republish at any time, though repeated pausing may result in a temporary lock to protect cleaners' time.
+          </p>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button onClick={handlePauseConfirm} disabled={actionLoading} style={{
+              flex: 1, background: '#f59e0b', color: 'white', border: 'none', borderRadius: '12px',
+              padding: '12px', fontSize: '14px', fontWeight: 700, cursor: 'pointer',
+            }}>
+              {actionLoading ? 'Pausing…' : 'Yes, pause listing'}
+            </button>
+            <button onClick={() => setShowPauseModal(false)} style={{
+              padding: '12px 20px', background: 'white', border: '1.5px solid #e2e8f0',
+              borderRadius: '12px', fontSize: '14px', fontWeight: 600, color: '#64748b', cursor: 'pointer',
+            }}>Cancel</button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Delete confirmation modal */}
+      {showDeleteModal && (
+        <Modal title="Delete this request?" onClose={() => setShowDeleteModal(false)}>
+          <p style={{ fontSize: '14px', color: '#475569', lineHeight: 1.6, marginBottom: '20px' }}>
+            This will permanently delete your request and all applications. This cannot be undone.
+          </p>
+          {deleteError && (
+            <p style={{ fontSize: '13px', color: '#dc2626', marginBottom: '12px', background: '#fef2f2', padding: '10px 14px', borderRadius: '10px' }}>
+              {deleteError}
+            </p>
+          )}
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button onClick={handleDeleteConfirm} disabled={actionLoading} style={{
+              flex: 1, background: actionLoading ? '#fca5a5' : '#dc2626', color: 'white', border: 'none', borderRadius: '12px',
+              padding: '12px', fontSize: '14px', fontWeight: 700, cursor: actionLoading ? 'not-allowed' : 'pointer',
+            }}>
+              {actionLoading ? 'Deleting…' : 'Yes, delete permanently'}
+            </button>
+            <button onClick={() => setShowDeleteModal(false)} style={{
+              padding: '12px 20px', background: 'white', border: '1.5px solid #e2e8f0',
+              borderRadius: '12px', fontSize: '14px', fontWeight: 600, color: '#64748b', cursor: 'pointer',
+            }}>Cancel</button>
+          </div>
+        </Modal>
+      )}
+
+      <div style={{
+        background: 'white', borderRadius: '20px',
+        border: `2px solid ${statusBorder}`,
+        boxShadow: '0 2px 16px rgba(0,0,0,0.06)', overflow: 'hidden',
+      }}>
+        {/* Card header */}
         <div style={{
-          width: '28px', height: '28px', borderRadius: '50%',
-          background: 'linear-gradient(135deg, #3b82f6, #6366f1)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: '13px', fontWeight: 700, color: 'white', flexShrink: 0,
-        }}>{step}</div>
-        <h2 style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a', margin: 0 }}>{title}</h2>
+          background: statusBg, padding: '16px 20px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          borderBottom: '1px solid #f1f5f9',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{
+              width: '8px', height: '8px', borderRadius: '50%', background: dotColor,
+              boxShadow: isLive ? '0 0 0 3px rgba(34,197,94,0.2)' : 'none',
+            }} />
+            <span style={{ fontSize: '14px', fontWeight: 700, color: statusColor }}>{statusText}</span>
+            {saved && <span style={{ fontSize: '12px', color: '#16a34a', fontWeight: 600 }}>✓ Saved</span>}
+          </div>
+          <button onClick={() => setEditing(!editing)} style={{
+            display: 'flex', alignItems: 'center', gap: '6px',
+            background: editing ? '#0f172a' : 'white',
+            border: '1.5px solid #e2e8f0', borderRadius: '10px',
+            padding: '6px 12px', cursor: 'pointer', fontSize: '13px', fontWeight: 600,
+            color: editing ? 'white' : '#475569', transition: 'all 0.15s',
+          }}>
+            <Settings size={14} />
+            {editing ? 'Close' : 'Edit listing'}
+          </button>
+        </div>
+
+        <div style={{ padding: '20px' }}>
+          <div style={{ marginBottom: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+              <span>📍</span>
+              <span style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>{zone}</span>
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+              {[
+                request.bedrooms ? `${request.bedrooms} bed` : null,
+                request.bathrooms ? `${request.bathrooms} bath` : null,
+                request.hours_per_session ? `${request.hours_per_session} hrs` : null,
+                freq ? FREQUENCY_LABELS[freq] ?? freq : null,
+                days.length ? days.map(d => d.slice(0, 3)).join(' · ') : null,
+                request.time_of_day ?? null,
+              ].filter(Boolean).map((chip, i) => (
+                <span key={i} style={{ background: '#f1f5f9', borderRadius: '100px', padding: '4px 12px', fontSize: '12px', fontWeight: 600, color: '#475569' }}>{chip}</span>
+              ))}
+            </div>
+          </div>
+
+          {tasks.length > 0 && (
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{ fontSize: '10px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>Tasks</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                {tasks.slice(0, 6).map((t, i) => (
+                  <span key={i} style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#15803d', fontSize: '12px', fontWeight: 600, padding: '4px 12px', borderRadius: '100px' }}>{t}</span>
+                ))}
+                {tasks.length > 6 && <span style={{ fontSize: '12px', color: '#94a3b8', padding: '4px 8px' }}>+{tasks.length - 6} more</span>}
+              </div>
+            </div>
+          )}
+
+          {request.hourly_rate && (
+            <div style={{ background: '#fefce8', border: '1px solid #fef08a', borderRadius: '14px', padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ fontSize: '10px', fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '4px' }}>Offered rate</div>
+                <div style={{ fontSize: '22px', fontWeight: 800, color: '#78350f' }}>
+                  £{request.hourly_rate.toFixed(2)}<span style={{ fontSize: '13px', fontWeight: 500 }}>/hr</span>
+                </div>
+              </div>
+              {request.hours_per_session && (
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: '10px', fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '4px' }}>Est. per session</div>
+                  <div style={{ fontSize: '18px', fontWeight: 700, color: '#78350f' }}>~£{(request.hourly_rate * request.hours_per_session).toFixed(2)}</div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {editing && (
+          <EditPanel
+            request={request}
+            frequency={freq ?? null}
+            onSave={handleSave}
+            onCancel={() => setEditing(false)}
+            onPause={() => setShowPauseModal(true)}
+            onRepublish={handleRepublish}
+            onDelete={() => setShowDeleteModal(true)}
+          />
+        )}
       </div>
-      {subtitle && (
-        <p style={{ fontSize: '14px', color: '#64748b', margin: '0 0 0 38px', lineHeight: 1.5 }}>{subtitle}</p>
+    </>
+  )
+}
+
+// ── Applications Card ─────────────────────────────────────────
+
+function ApplicationsCard({ count }: { count: number }) {
+  return (
+    <div style={{ background: 'white', borderRadius: '20px', border: '2px solid #e2e8f0', boxShadow: '0 2px 16px rgba(0,0,0,0.06)', overflow: 'hidden', marginBottom: '16px' }}>
+      <div style={{ padding: '20px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Users size={20} color="#3b82f6" />
+          </div>
+          <div>
+            <div style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a', marginBottom: '2px' }}>
+              {count === 0 ? 'No applications yet' : `${count} application${count !== 1 ? 's' : ''}`}
+            </div>
+            <div style={{ fontSize: '13px', color: '#64748b' }}>
+              {count === 0 ? 'Cleaners in your area will apply here' : 'Review and chat with cleaners before deciding'}
+            </div>
+          </div>
+        </div>
+        {count > 0 && (
+          <Link href="/dashboard/applications" style={{
+            display: 'flex', alignItems: 'center', gap: '6px',
+            background: '#0f172a', color: 'white', borderRadius: '10px',
+            padding: '8px 16px', fontSize: '13px', fontWeight: 600, textDecoration: 'none',
+          }}>
+            View <ChevronRight size={14} />
+          </Link>
+        )}
+      </div>
+      {count === 0 && (
+        <div style={{ borderTop: '1px solid #f1f5f9', padding: '16px 24px', background: '#f8fafc' }}>
+          <div style={{ display: 'flex', gap: '12px' }}>
+            {['Cleaners apply', 'You review', 'Start chatting', 'Choose yours'].map((step, i) => (
+              <div key={i} style={{ flex: 1, textAlign: 'center' }}>
+                <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 6px', fontSize: '12px', fontWeight: 700, color: '#64748b' }}>{i + 1}</div>
+                <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 500 }}>{step}</div>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   )
 }
 
-function Divider() {
-  return <div style={{ height: '1px', background: '#e2e8f0', margin: '36px 0' }} />
-}
+// ── Messages Card ─────────────────────────────────────────────
 
-function ToggleChip({ label, selected, onClick }: { label: string; selected: boolean; onClick: () => void }) {
+function MessagesCard() {
   return (
-    <button onClick={onClick} style={{
-      padding: '7px 16px', borderRadius: '100px', fontSize: '13px', fontWeight: 600,
-      cursor: 'pointer', border: '1.5px solid', transition: 'all 0.15s', fontFamily: 'inherit',
-      background: selected ? '#eff6ff' : 'white',
-      borderColor: selected ? '#93c5fd' : '#e2e8f0',
-      color: selected ? '#1d4ed8' : '#64748b',
-    }}>{label}</button>
+    <div style={{ background: 'white', borderRadius: '20px', border: '2px solid #e2e8f0', boxShadow: '0 2px 16px rgba(0,0,0,0.06)', overflow: 'hidden', marginBottom: '16px' }}>
+      <div style={{ padding: '20px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <MessageSquare size={20} color="#16a34a" />
+          </div>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
+              <div style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a' }}>Messages</div>
+              <span style={{ background: '#dcfce7', color: '#166534', fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '100px' }}>Coming soon</span>
+            </div>
+            <div style={{ fontSize: '13px', color: '#64748b' }}>Chat directly with cleaners before committing</div>
+          </div>
+        </div>
+        <button disabled style={{
+          display: 'flex', alignItems: 'center', gap: '6px', opacity: 0.4,
+          background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '10px',
+          padding: '8px 16px', fontSize: '13px', fontWeight: 600, cursor: 'not-allowed',
+        }}>
+          Open <ChevronRight size={14} />
+        </button>
+      </div>
+      <div style={{ borderTop: '1px solid #f1f5f9', padding: '0' }}>
+        {[
+          { name: 'Sarah M.', preview: "Hi! I'd love to apply for your cleaning request…", time: 'Soon', avatar: 'S' },
+          { name: 'James T.', preview: "I have 5 years experience and live nearby…", time: 'Soon', avatar: 'J' },
+        ].map((msg, i) => (
+          <div key={i} style={{
+            display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 24px',
+            borderBottom: i === 0 ? '1px solid #f1f5f9' : 'none',
+            opacity: 0.5, filter: 'blur(2px)', userSelect: 'none',
+          }}>
+            <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#dbeafe', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: 700, color: '#1d4ed8', flexShrink: 0 }}>{msg.avatar}</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a', marginBottom: '2px' }}>{msg.name}</div>
+              <div style={{ fontSize: '13px', color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{msg.preview}</div>
+            </div>
+            <div style={{ fontSize: '12px', color: '#94a3b8', flexShrink: 0 }}>{msg.time}</div>
+          </div>
+        ))}
+      </div>
+    </div>
   )
 }
 
-function CheckToggle({ label, checked, onChange, description }: {
-  label: string; checked: boolean; onChange: (v: boolean) => void; description?: string
-}) {
+// ── New listing banner ────────────────────────────────────────
+
+function NewListingBanner({ onDismiss }: { onDismiss: () => void }) {
   return (
-    <button onClick={() => onChange(!checked)} style={{
-      display: 'flex', alignItems: 'flex-start', gap: '12px', width: '100%',
-      background: checked ? '#f0fdf4' : '#f8fafc',
-      border: `1.5px solid ${checked ? '#86efac' : '#e2e8f0'}`,
-      borderRadius: '12px', padding: '14px 16px', cursor: 'pointer', textAlign: 'left',
-      transition: 'all 0.15s', fontFamily: 'inherit',
+    <div style={{
+      background: 'linear-gradient(135deg, #eff6ff, #dbeafe)', border: '1.5px solid #93c5fd',
+      borderRadius: '16px', padding: '16px 20px', marginBottom: '24px',
+      display: 'flex', alignItems: 'flex-start', gap: '14px',
     }}>
-      <div style={{
-        width: '20px', height: '20px', borderRadius: '6px', flexShrink: 0, marginTop: '1px',
-        background: checked ? '#16a34a' : 'white',
-        border: `2px solid ${checked ? '#16a34a' : '#cbd5e1'}`,
-        display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s',
-      }}>
-        {checked && <Check size={12} color="white" strokeWidth={3} />}
+      <span style={{ fontSize: '24px', flexShrink: 0 }}>🎉</span>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontSize: '15px', fontWeight: 700, color: '#1e40af', marginBottom: '4px' }}>Your request is live!</div>
+        <div style={{ fontSize: '13px', color: '#3b82f6', lineHeight: 1.5 }}>Cleaners in your area can now see and apply to your listing.</div>
       </div>
-      <div>
-        <div style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a' }}>{label}</div>
-        {description && (
-          <div style={{ fontSize: '13px', color: '#64748b', marginTop: '2px', lineHeight: 1.4 }}>{description}</div>
+      <button onClick={onDismiss} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#93c5fd', padding: '2px', flexShrink: 0 }}>
+        <X size={18} />
+      </button>
+    </div>
+  )
+}
+
+// ── Main dashboard ────────────────────────────────────────────
+
+function DashboardContent() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const isNew = searchParams.get('new') === '1'
+
+  const [user, setUser] = useState<any>(null)
+  const [requests, setRequests] = useState<CleanRequest[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showNewBanner, setShowNewBanner] = useState(isNew)
+
+  useEffect(() => {
+    const init = async () => {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { router.push('/auth/login'); return }
+      setUser(user)
+
+      const { data: customer } = await (supabase as any)
+        .from('customers').select('id, frequency').eq('profile_id', user.id).single() as { data: { id: string; frequency: string } | null }
+
+      if (customer) {
+        const { data: reqs } = await (supabase as any)
+          .from('clean_requests').select('*').eq('customer_id', customer.id).order('created_at', { ascending: false })
+        if (reqs) setRequests(reqs.map((r: any) => ({ ...r, customers: { frequency: customer.frequency } })))
+      }
+      setLoading(false)
+    }
+    init()
+  }, [router])
+
+  const handleSave = async (id: string, updates: Partial<CleanRequest>) => {
+    const supabase = createClient()
+    await (supabase as any).from('clean_requests').update(updates).eq('id', id)
+    setRequests(prev => prev.map(r => r.id === id ? { ...r, ...updates } : r))
+  }
+
+  const handlePause = async (id: string) => {
+    const supabase = createClient()
+    const req = requests.find(r => r.id === id)
+    const newCount = (req?.republish_count ?? 0) + 1
+    await (supabase as any).from('clean_requests').update({
+      status: 'paused',
+      paused_at: new Date().toISOString(),
+      republish_count: newCount,
+    }).eq('id', id)
+    setRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'paused', paused_at: new Date().toISOString(), republish_count: newCount } : r))
+  }
+
+  const handleRepublish = async (id: string) => {
+    const supabase = createClient()
+    await (supabase as any).from('clean_requests').update({ status: 'pending', paused_at: null }).eq('id', id)
+    setRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'pending', paused_at: null } : r))
+  }
+
+  const handleDelete = async (id: string) => {
+    const supabase = createClient()
+    const { error } = await (supabase as any).from('clean_requests').delete().eq('id', id)
+    if (error) {
+      console.error('Delete failed:', error)
+      throw new Error(error.message ?? 'Could not delete this request. Please try again.')
+    }
+    setRequests(prev => prev.filter(r => r.id !== id))
+  }
+
+  const handleSignOut = async () => {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    router.push('/')
+  }
+
+  if (loading) return (
+    <div className="flex min-h-screen items-center justify-center">
+      <div className="spinner h-8 w-8" />
+    </div>
+  )
+
+  const firstName = user?.user_metadata?.full_name?.split(' ')[0] ?? 'there'
+  const activeRequests = requests.filter(r => r.status === 'pending' || r.status === 'pending_review')
+
+  return (
+    <div className="min-h-screen bg-surface-secondary">
+      {/* Header */}
+      <div className="border-b border-ink/5 bg-surface">
+        <div className="container flex h-16 items-center justify-between">
+          <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600">
+              <span className="text-lg font-bold text-white">V</span>
+            </div>
+            <span className="text-lg font-semibold text-ink">Vouchee</span>
+          </Link>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <Link href="/jobs" style={{ fontSize: '14px', fontWeight: 500, color: '#475569', textDecoration: 'none' }}>View jobs board</Link>
+            <Button variant="ghost" size="sm" onClick={handleSignOut}>Sign out</Button>
+          </div>
+        </div>
+      </div>
+
+      <div className="container py-10" style={{ maxWidth: '720px' }}>
+        <div className="mb-8">
+          <h1 className="mb-1 text-3xl font-bold text-ink">Hey {firstName}! 👋</h1>
+          <p className="text-ink-secondary">
+            {activeRequests.length > 0 ? 'Your request is live — cleaners can apply.' : 'Post a request to find a cleaner in your area.'}
+          </p>
+        </div>
+
+        {showNewBanner && <NewListingBanner onDismiss={() => setShowNewBanner(false)} />}
+
+        {requests.length > 0 ? (
+          <>
+            <div style={{ marginBottom: '24px' }}>
+              <h2 style={{ fontSize: '13px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '14px' }}>
+                Your listing{requests.length > 1 ? 's' : ''}
+              </h2>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {requests.map(req => (
+                  <ListingCard key={req.id} request={req} onSave={handleSave} onPause={handlePause} onRepublish={handleRepublish} onDelete={handleDelete} />
+                ))}
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '24px' }}>
+              <h2 style={{ fontSize: '13px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '14px' }}>Applications</h2>
+              <ApplicationsCard count={0} />
+            </div>
+
+            <div style={{ marginBottom: '24px' }}>
+              <h2 style={{ fontSize: '13px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '14px' }}>Messages</h2>
+              <MessagesCard />
+            </div>
+          </>
+        ) : (
+          <div style={{ background: 'white', borderRadius: '20px', border: '2px dashed #e2e8f0', padding: '40px', textAlign: 'center', marginBottom: '32px' }}>
+            <div style={{ fontSize: '40px', marginBottom: '12px' }}>🏠</div>
+            <div style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a', marginBottom: '8px' }}>No active listings</div>
+            <div style={{ fontSize: '14px', color: '#64748b', marginBottom: '20px' }}>Post a request and cleaners in your area will be able to apply.</div>
+            <button onClick={() => router.push('/request/property')} style={{ background: '#0f172a', color: 'white', border: 'none', borderRadius: '12px', padding: '12px 24px', fontSize: '14px', fontWeight: 700, cursor: 'pointer' }}>
+              Post a request →
+            </button>
+          </div>
         )}
       </div>
-    </button>
-  )
-}
-
-// ── Application card preview ──────────────────────────────────
-// Shows cleaners exactly what a customer sees when they apply
-
-function ApplicationCardPreview({ form }: { form: any }) {
-  const nameParts = (form.full_name ?? '').trim().split(' ')
-  const firstName = nameParts[0] || 'First name'
-  const lastInitial = nameParts[1]?.[0] ? `${nameParts[1][0]}.` : ''
-  const displayName = lastInitial ? `${firstName} ${lastInitial}` : firstName
-  const now = new Date()
-  const monthYear = now.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
-
-  return (
-    <div style={{ maxWidth: '420px', margin: '0 auto' }}>
-
-      {/* Card */}
-      <div style={{
-        background: 'white', borderRadius: '20px', border: '2px solid #e2e8f0',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.08)', overflow: 'hidden',
-      }}>
-
-        {/* Header bar — name, member since, always-verified badges */}
-        <div style={{
-          background: '#f8fafc', borderBottom: '1px solid #e2e8f0',
-          padding: '14px 16px', display: 'flex', alignItems: 'center', gap: '10px',
-        }}>
-          <div style={{
-            width: '38px', height: '38px', borderRadius: '50%',
-            background: 'linear-gradient(135deg, #3b82f6, #6366f1)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '15px', fontWeight: 800, color: 'white', flexShrink: 0,
-          }}>
-            {firstName[0]?.toUpperCase() || 'V'}
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>{displayName}</div>
-            <div style={{ fontSize: '12px', color: '#64748b' }}>Member since {monthYear}</div>
-          </div>
-          {/* Badges are always shown — account only goes live once verified */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end', flexShrink: 0 }}>
-            {['DBS checked', 'Right to work', 'Insured'].map(badge => (
-              <span key={badge} style={{
-                display: 'flex', alignItems: 'center', gap: '3px',
-                background: '#f0fdf4', border: '1px solid #86efac',
-                borderRadius: '100px', padding: '3px 8px',
-                fontSize: '10px', fontWeight: 700, color: '#15803d', whiteSpace: 'nowrap',
-              }}>
-                <Check size={9} strokeWidth={3} /> {badge}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        {/* Chat bubble — application message */}
-        <div style={{ padding: '16px 16px 10px' }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-            <div style={{
-              width: '28px', height: '28px', borderRadius: '50%',
-              background: 'linear-gradient(135deg, #3b82f6, #6366f1)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '11px', fontWeight: 800, color: 'white', flexShrink: 0, marginTop: '2px',
-            }}>
-              {firstName[0]?.toUpperCase() || 'V'}
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{
-                background: '#eff6ff',
-                borderRadius: '4px 18px 18px 18px',
-                padding: '12px 14px',
-                border: '1px solid #bfdbfe',
-              }}>
-                <p style={{
-                  fontSize: '14px', color: '#1e40af', lineHeight: 1.6, margin: 0, fontStyle: 'italic',
-                }}>
-                  "Your chosen message to this customer would appear here — introduce yourself, mention your experience, or let them know why you'd be a great fit."
-                </p>
-              </div>
-              <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px', paddingLeft: '2px' }}>
-                {displayName} · Just now
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Rating */}
-        <div style={{
-          padding: '8px 16px 12px', display: 'flex', alignItems: 'center', gap: '6px',
-          borderBottom: '1px solid #f1f5f9',
-        }}>
-          {[1,2,3,4,5].map(i => <span key={i} style={{ fontSize: '14px', color: '#f59e0b' }}>★</span>)}
-          <span style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>5.0</span>
-          <span style={{ fontSize: '13px', color: '#94a3b8' }}>· 0 cleans completed</span>
-        </div>
-
-        {/* Blurred reviews */}
-        <div style={{ padding: '12px 16px', borderBottom: '1px solid #f1f5f9' }}>
-          <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>Reviews</div>
-          {[
-            { text: 'Absolutely brilliant — left the house spotless. Would highly recommend to anyone looking for a reliable cleaner.', name: 'Emma T.', stars: 5 },
-            { text: 'Very professional and thorough. Always on time and incredibly easy to communicate with. A real gem!', name: 'James R.', stars: 5 },
-          ].map((review, i) => (
-            <div key={i} style={{
-              background: '#f8fafc', borderRadius: '10px', padding: '10px 12px',
-              marginBottom: i === 0 ? '6px' : 0,
-              filter: 'blur(3.5px)', userSelect: 'none', pointerEvents: 'none',
-            }}>
-              <div style={{ display: 'flex', gap: '2px', marginBottom: '6px' }}>
-                {[1,2,3,4,5].map(s => (
-                  <span key={s} style={{ fontSize: '12px', color: s <= review.stars ? '#f59e0b' : '#e2e8f0' }}>★</span>
-                ))}
-              </div>
-              <div style={{ fontSize: '12px', color: '#475569', lineHeight: 1.5, marginBottom: '4px' }}>"{review.text}"</div>
-              <div style={{ fontSize: '11px', fontWeight: 600, color: '#94a3b8' }}>— {review.name}</div>
-            </div>
-          ))}
-          <div style={{ textAlign: 'center', marginTop: '8px', fontSize: '12px', color: '#94a3b8' }}>
-            Accept a cleaner's application to view their reviews.
-          </div>
-        </div>
-
-        {/* Accept / Reject */}
-        <div style={{ padding: '14px 16px', display: 'flex', gap: '10px' }}>
-          <button style={{
-            flex: 1, padding: '12px', borderRadius: '12px',
-            background: 'linear-gradient(135deg, #22c55e, #16a34a)',
-            color: 'white', border: 'none', fontSize: '13px', fontWeight: 700,
-            cursor: 'default', fontFamily: 'inherit',
-            boxShadow: '0 2px 8px rgba(34,197,94,0.25)',
-          }}>
-            ✓ Accept &amp; chat
-          </button>
-          <button style={{
-            flex: 1, padding: '12px', borderRadius: '12px',
-            background: '#f8fafc', color: '#64748b',
-            border: '1.5px solid #e2e8f0', fontSize: '13px', fontWeight: 700,
-            cursor: 'default', fontFamily: 'inherit',
-          }}>
-            ✕ Decline &amp; notify
-          </button>
-        </div>
-
-      </div>
     </div>
   )
 }
 
-// ── Main page ─────────────────────────────────────────────────
-
-export default function CleanerOnboarding() {
-  const [submitting, setSubmitting] = useState(false)
-  const [submitted, setSubmitted] = useState(false)
-  const [errors, setErrors] = useState<Record<string, string>>({})
-  const [submitError, setSubmitError] = useState<string | null>(null)
-  const [missingCredentials, setMissingCredentials] = useState(false)
-  const [platformAgreement, setPlatformAgreement] = useState(false)
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirm, setShowConfirm] = useState(false)
-
-  const [form, setForm] = useState({
-    full_name: '',
-    email: '',
-    password: '',
-    confirm_password: '',
-    phone: '',
-    years_experience: '',
-    experience_types: [] as string[],
-    experience_other: '',
-    own_supplies: false,
-    dbs_checked: false,
-    right_to_work: false,
-    has_insurance: false,
-    needs_credentials_help: false,
-    selectedAreas: [] as string[],
-    cover_cleans_notify: true,
-    job_notify: true,
-    marketing_opt_in: false,
-  })
-
-  const set = (key: string, value: any) => {
-    setForm(f => {
-      const next = { ...f, [key]: value }
-
-      // Live password validation
-      if (key === 'password') {
-        if (value && !isValidPassword(value)) {
-          setErrors(e => ({ ...e, password: 'Must be 8+ characters, one uppercase letter, and one number or symbol.' }))
-        } else {
-          setErrors(e => { const n = { ...e }; delete n.password; return n })
-        }
-        // Re-check confirm match
-        if (next.confirm_password) {
-          if (value !== next.confirm_password) {
-            setErrors(e => ({ ...e, confirm_password: 'Passwords do not match.' }))
-          } else {
-            setErrors(e => { const n = { ...e }; delete n.confirm_password; return n })
-          }
-        }
-      }
-
-      // Live confirm password validation
-      if (key === 'confirm_password') {
-        if (value && value !== next.password) {
-          setErrors(e => ({ ...e, confirm_password: 'Passwords do not match.' }))
-        } else {
-          setErrors(e => { const n = { ...e }; delete n.confirm_password; return n })
-        }
-      }
-
-      return next
-    })
-    // Clear non-password field errors on change
-    if (key !== 'password' && key !== 'confirm_password') {
-      if (errors[key]) setErrors(e => { const next = { ...e }; delete next[key]; return next })
-    }
-  }
-
-  const toggleArr = (key: string, value: string) => {
-    const arr = (form as any)[key] as string[]
-    set(key, arr.includes(value) ? arr.filter((v: string) => v !== value) : [...arr, value])
-  }
-
-  const handleToggleArea = (area: string) => {
-    setForm(f => {
-      const areas = f.selectedAreas.filter(a => a !== '__all__')
-      return {
-        ...f,
-        selectedAreas: areas.includes(area) ? areas.filter(a => a !== area) : [...areas, area],
-      }
-    })
-  }
-
-  const handleToggleAll = () => {
-    setForm(f => ({
-      ...f,
-      selectedAreas: f.selectedAreas.includes('__all__') ? [] : ['__all__'],
-    }))
-  }
-
-  const validate = () => {
-    const e: Record<string, string> = {}
-
-    if (!form.full_name.trim()) {
-      e.full_name = 'Please enter your full name.'
-    } else if (!isValidName(form.full_name)) {
-      e.full_name = 'Name should only contain letters, spaces, hyphens or apostrophes — no numbers.'
-    }
-
-    if (!form.email.trim()) {
-      e.email = 'Please enter your email address.'
-    } else if (!isValidEmail(form.email)) {
-      e.email = 'Please enter a valid email address (e.g. you@example.com).'
-    }
-
-    if (!form.phone.trim()) {
-      e.phone = 'Please enter your phone number.'
-    } else if (!isValidPhone(form.phone)) {
-      e.phone = 'Please enter a valid UK phone number (e.g. 07700 900000).'
-    }
-
-    if (!form.password) {
-      e.password = 'Please set a password.'
-    } else if (!isValidPassword(form.password)) {
-      e.password = 'Password must be at least 8 characters and include one uppercase letter and one number or symbol.'
-    }
-
-    if (!form.confirm_password) {
-      e.confirm_password = 'Please confirm your password.'
-    } else if (form.password !== form.confirm_password) {
-      e.confirm_password = 'Passwords do not match — please check and try again.'
-    }
-
-    if (form.selectedAreas.length === 0) {
-      e.selectedAreas = 'Please select at least one area you\'re happy to cover.'
-    }
-
-    if (!platformAgreement) {
-      e.platformAgreement = 'You must read and agree to this before submitting your application.'
-    }
-
-    return e
-  }
-
-  const handleSubmit = async () => {
-    setSubmitError(null)
-    const e = validate()
-    if (Object.keys(e).length > 0) {
-      setErrors(e)
-      const firstKey = Object.keys(e)[0]
-      const el = document.getElementById(`field-${firstKey}`)
-      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      return
-    }
-
-    setSubmitting(true)
-    try {
-      const supabase = createClient()
-
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: form.email.trim(),
-        password: form.password,
-        options: { data: { full_name: form.full_name.trim() } },
-      })
-      if (authError) throw new Error(authError.message)
-      if (!authData.user) throw new Error('Account creation failed. Please try again.')
-
-      const userId = authData.user.id
-
-      const { error: profileError } = await (supabase as any)
-        .from('profiles')
-        .upsert({
-          id: userId,
-          email: form.email.trim(),
-          full_name: form.full_name.trim(),
-          phone: form.phone.trim(),
-          role: 'cleaner',
-        }, { onConflict: 'id' })
-      if (profileError) throw new Error(profileError.message)
-
-      const zones = form.selectedAreas.includes('__all__')
-        ? Object.values(AREA_TO_ID)
-        : form.selectedAreas.map(a => AREA_TO_ID[a]).filter(Boolean)
-
-      const experienceFull = [
-        ...form.experience_types,
-        ...(form.experience_other.trim() ? [`other: ${form.experience_other.trim()}`] : []),
-      ]
-
-      const { error: cleanerError } = await (supabase as any)
-        .from('cleaners')
-        .insert({
-          profile_id: userId,
-          application_status: 'submitted',
-          years_experience: form.years_experience ? parseInt(form.years_experience) : null,
-          bio: experienceFull.length > 0 ? experienceFull.join(', ') : null,
-          own_supplies: form.own_supplies,
-          dbs_checked: form.dbs_checked,
-          right_to_work: form.right_to_work,
-          has_insurance: form.has_insurance,
-          needs_credentials_help: form.needs_credentials_help,
-          zones,
-          cover_cleans_notify: form.cover_cleans_notify,
-          job_notify: form.job_notify,
-          marketing_opt_in: form.marketing_opt_in,
-          onboarding_completed_at: new Date().toISOString(),
-        })
-      if (cleanerError) throw new Error(cleanerError.message)
-
-      setSubmitted(true)
-    } catch (err: any) {
-      setSubmitError(err?.message ?? 'Something went wrong. Please try again.')
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  const inputStyle = {
-    width: '100%', background: '#f8faff', border: '1.5px solid #e2e8f0',
-    borderRadius: '12px', padding: '12px 14px', fontSize: '14px', color: '#1e293b',
-    fontFamily: 'inherit', boxSizing: 'border-box' as const, outline: 'none',
-  }
-  const inputErrorStyle = { ...inputStyle, borderColor: '#fca5a5', background: '#fff5f5' }
-  const labelStyle = {
-    fontSize: '12px', fontWeight: 700 as const, color: '#64748b',
-    textTransform: 'uppercase' as const, letterSpacing: '0.06em', display: 'block', marginBottom: '8px',
-  }
-  const fieldErrorStyle = { fontSize: '12px', color: '#dc2626', marginTop: '6px', fontWeight: 500 as const }
-
-  // ── Success screen ──────────────────────────────────────────
-
-  if (submitted) {
-    return (
-      <div style={{ minHeight: '100vh', background: 'linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%)' }}>
-
-        {/* Header */}
-        <div style={{ borderBottom: '1px solid #e2e8f0', background: 'white', padding: '0 24px' }}>
-          <div style={{ maxWidth: '680px', margin: '0 auto', height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <a href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'linear-gradient(135deg, #3b82f6, #6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <span style={{ fontSize: '16px', fontWeight: 800, color: 'white', fontFamily: 'Lora, serif' }}>V</span>
-              </div>
-              <span style={{ fontSize: '17px', fontWeight: 700, color: '#0f172a', fontFamily: 'Lora, serif' }}>Vouchee</span>
-            </a>
-            <a href="/" style={{ fontSize: '13px', fontWeight: 600, color: '#64748b', textDecoration: 'none' }}>
-              ← Back to home
-            </a>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '60px 24px' }}>
-        <div style={{
-          background: 'white', borderRadius: '24px', padding: '48px 40px',
-          maxWidth: '480px', width: '100%', textAlign: 'center',
-          boxShadow: '0 8px 40px rgba(0,0,0,0.08)',
-        }}>
-          <div style={{ fontSize: '56px', marginBottom: '16px' }}>🎉</div>
-          <h1 style={{ fontSize: '24px', fontWeight: 800, color: '#0f172a', marginBottom: '12px' }}>Application submitted!</h1>
-          <p style={{ fontSize: '15px', color: '#64748b', lineHeight: 1.6, marginBottom: '8px' }}>
-            Thanks for applying to join Vouchee. We'll review your application and be in touch within 3 working days to arrange a quick call.
-          </p>
-          <p style={{ fontSize: '14px', color: '#94a3b8', lineHeight: 1.6, marginBottom: '32px' }}>
-            Keep an eye on your inbox — we may follow up with a few questions beforehand.
-          </p>
-          <div style={{ background: '#f0fdf4', border: '1.5px solid #86efac', borderRadius: '14px', padding: '16px', marginBottom: '24px' }}>
-            <div style={{ fontSize: '14px', fontWeight: 600, color: '#15803d', lineHeight: 1.5 }}>
-              ✅ Your account has been created. Once approved, you'll be able to log in and start applying for jobs.
-            </div>
-          </div>
-          <a
-            href="/login"
-            style={{
-              display: 'inline-block',
-              background: 'linear-gradient(135deg, #3b82f6, #6366f1)',
-              color: 'white', textDecoration: 'none',
-              padding: '13px 32px', borderRadius: '14px',
-              fontSize: '15px', fontWeight: 700,
-              boxShadow: '0 4px 16px rgba(59,130,246,0.3)',
-              marginBottom: '24px',
-            }}
-          >
-            Log in to your account →
-          </a>
-          <a href="mailto:cleaners@vouchee.co.uk" style={{ fontSize: '14px', color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>
-            Questions? cleaners@vouchee.co.uk
-          </a>
-        </div>
-        </div>
-      </div>
-    )
-  }
-
-  // ── Main form ───────────────────────────────────────────────
-
+export default function CustomerDashboard() {
   return (
-    <div style={{ minHeight: '100vh', background: 'linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%)' }}>
-
-      {/* Minimal header */}
-      <div style={{ borderBottom: '1px solid #e2e8f0', background: 'white', padding: '0 24px' }}>
-        <div style={{ maxWidth: '680px', margin: '0 auto', height: '60px', display: 'flex', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div style={{
-              width: '32px', height: '32px', borderRadius: '8px',
-              background: 'linear-gradient(135deg, #3b82f6, #6366f1)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <span style={{ fontSize: '16px', fontWeight: 800, color: 'white' }}>V</span>
-            </div>
-            <span style={{ fontSize: '17px', fontWeight: 700, color: '#0f172a' }}>Vouchee</span>
-          </div>
-        </div>
-      </div>
-
-      <div style={{ maxWidth: '680px', margin: '0 auto', padding: '40px 24px 80px' }}>
-
-        {/* Hero */}
-        <div style={{ textAlign: 'center', marginBottom: '48px' }}>
-          <h1 style={{ fontSize: '32px', fontWeight: 800, color: '#0f172a', marginBottom: '12px', lineHeight: 1.2 }}>
-            Tell us about yourself
-          </h1>
-          <p style={{ fontSize: '16px', color: '#64748b', lineHeight: 1.6, maxWidth: '480px', margin: '0 auto' }}>
-            Fill in the form below and we'll be in touch within 3 working days.
-            <br />
-            <em>It takes roughly 4 minutes to complete this final step.</em>
-          </p>
-        </div>
-
-        <div style={{ background: 'white', borderRadius: '24px', padding: '40px', boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
-
-          {/* ── 1: Personal details ── */}
-          <SectionHeader
-            step={1}
-            title="Personal details"
-            subtitle="This is how we'll contact you. Your surname won't be shown publicly."
-          />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-
-            <div id="field-full_name">
-              <label style={labelStyle}>Full name</label>
-              <input
-                style={errors.full_name ? inputErrorStyle : inputStyle}
-                placeholder="e.g. Sarah Mitchell"
-                value={form.full_name}
-                onChange={e => set('full_name', e.target.value)}
-              />
-              {errors.full_name && <p style={fieldErrorStyle}>⚠ {errors.full_name}</p>}
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <div id="field-email">
-                <label style={labelStyle}>Email address</label>
-                <input
-                  type="email"
-                  style={errors.email ? inputErrorStyle : inputStyle}
-                  placeholder="sarah@example.com"
-                  value={form.email}
-                  onChange={e => set('email', e.target.value)}
-                />
-                {errors.email && <p style={fieldErrorStyle}>⚠ {errors.email}</p>}
-              </div>
-              <div id="field-phone">
-                <label style={labelStyle}>Phone number</label>
-                <input
-                  type="tel"
-                  style={errors.phone ? inputErrorStyle : inputStyle}
-                  placeholder="07700 000000"
-                  value={form.phone}
-                  onChange={e => set('phone', e.target.value)}
-                />
-                {errors.phone && <p style={fieldErrorStyle}>⚠ {errors.phone}</p>}
-              </div>
-            </div>
-
-            <div id="field-password">
-              <label style={labelStyle}>Password</label>
-              <div style={{ position: 'relative' }}>
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  style={{ ...(errors.password ? inputErrorStyle : inputStyle), paddingRight: '44px' }}
-                  placeholder="At least 8 characters"
-                  value={form.password}
-                  onChange={e => set('password', e.target.value)}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(v => !v)}
-                  style={{
-                    position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)',
-                    background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px',
-                    transition: 'color 0.15s',
-                  }}
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-              <p style={{ fontSize: '12px', color: '#94a3b8', marginTop: '6px' }}>
-                Must include at least one uppercase letter and one number or symbol (e.g. <span style={{ fontFamily: 'monospace' }}>Cleaning1!</span>).
-              </p>
-              {errors.password && <p style={fieldErrorStyle}>⚠ {errors.password}</p>}
-            </div>
-
-            <div id="field-confirm_password">
-              <label style={labelStyle}>Confirm password</label>
-              <div style={{ position: 'relative' }}>
-                <input
-                  type={showConfirm ? 'text' : 'password'}
-                  style={{ ...(errors.confirm_password ? inputErrorStyle : inputStyle), paddingRight: '44px' }}
-                  placeholder="Re-enter your password"
-                  value={form.confirm_password}
-                  onChange={e => set('confirm_password', e.target.value)}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirm(v => !v)}
-                  style={{
-                    position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)',
-                    background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px',
-                    transition: 'color 0.15s',
-                  }}
-                  aria-label={showConfirm ? 'Hide password' : 'Show password'}
-                >
-                  {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-              {errors.confirm_password && <p style={fieldErrorStyle}>⚠ {errors.confirm_password}</p>}
-              {!errors.confirm_password && form.confirm_password && form.password === form.confirm_password && (
-                <p style={{ fontSize: '12px', color: '#16a34a', marginTop: '6px', fontWeight: 600 }}>✓ Passwords match</p>
-              )}
-            </div>
-
-          </div>
-
-          <Divider />
-
-          {/* ── 2: Experience ── */}
-          <SectionHeader step={2} title="Your experience" />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div>
-              <label style={labelStyle}>Years of cleaning experience</label>
-              <select
-                style={{ ...inputStyle, appearance: 'none' as const, cursor: 'pointer' }}
-                value={form.years_experience}
-                onChange={e => set('years_experience', e.target.value)}
-              >
-                <option value="">Select…</option>
-                <option value="0">Less than 1 year</option>
-                <option value="1">1–2 years</option>
-                <option value="3">3–5 years</option>
-                <option value="6">6–10 years</option>
-                <option value="11">10+ years</option>
-              </select>
-            </div>
-            <div>
-              <label style={labelStyle}>Types of cleaning experience</label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
-                {EXPERIENCE_TYPES.map(t => (
-                  <ToggleChip key={t.id} label={t.label}
-                    selected={form.experience_types.includes(t.id)}
-                    onClick={() => toggleArr('experience_types', t.id)} />
-                ))}
-                <ToggleChip label="Other"
-                  selected={form.experience_types.includes('other')}
-                  onClick={() => toggleArr('experience_types', 'other')} />
-              </div>
-              {form.experience_types.includes('other') && (
-                <input
-                  style={inputStyle}
-                  placeholder="Please describe your other cleaning experience"
-                  value={form.experience_other}
-                  onChange={e => set('experience_other', e.target.value)}
-                />
-              )}
-            </div>
-            <CheckToggle
-              label="I bring my own cleaning supplies and equipment"
-              checked={form.own_supplies}
-              onChange={v => set('own_supplies', v)}
-              description="Make sure to agree with customers which products you'll use beforehand — some prefer eco-friendly products or have allergies."
-            />
-          </div>
-
-          <Divider />
-
-          {/* ── 3: Credentials ── */}
-          <SectionHeader
-            step={3}
-            title="Credentials & accreditations"
-            subtitle="Vouchee requires all cleaners to have a valid DBS check, right to work in the UK, and public liability insurance. If you don't have everything yet, we can help."
-          />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <CheckToggle label="I have a valid DBS check" checked={form.dbs_checked} onChange={v => set('dbs_checked', v)} />
-            <CheckToggle label="I have the right to work in the UK" checked={form.right_to_work} onChange={v => set('right_to_work', v)} />
-            <CheckToggle label="I have public liability insurance" checked={form.has_insurance} onChange={v => set('has_insurance', v)} />
-
-            {(!form.dbs_checked || !form.right_to_work || !form.has_insurance) && (
-              <div style={{ marginTop: '4px' }}>
-                <button
-                  onClick={() => {
-                    const opening = !missingCredentials
-                    setMissingCredentials(opening)
-                    if (opening) set('needs_credentials_help', true)
-                  }}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: '8px',
-                    background: missingCredentials ? '#fffbeb' : '#f8fafc',
-                    border: `1.5px solid ${missingCredentials ? '#fde68a' : '#e2e8f0'}`,
-                    borderRadius: '12px', padding: '12px 16px', cursor: 'pointer',
-                    fontSize: '14px', fontWeight: 600,
-                    color: missingCredentials ? '#92400e' : '#475569',
-                    width: '100%', textAlign: 'left', transition: 'all 0.15s', fontFamily: 'inherit',
-                  }}
-                >
-                  <span style={{ fontSize: '16px' }}>📋</span>
-                  I don't have everything just yet
-                </button>
-
-                {missingCredentials && (
-                  <div style={{
-                    background: '#fffbeb', border: '1.5px solid #fde68a',
-                    borderRadius: '12px', padding: '16px', marginTop: '8px',
-                    display: 'flex', flexDirection: 'column', gap: '12px',
-                  }}>
-                  <p style={{ fontSize: '14px', color: '#92400e', margin: 0, lineHeight: 1.6 }}>
-                      No problem. You can still apply and we'll email you a step-by-step guide on how to get your DBS certificate and public liability insurance.
-                    </p>
-                    <CheckToggle
-                      label="Email me a simple step-by-step guide on getting a DBS check and public liability insurance."
-                      checked={form.needs_credentials_help}
-                      onChange={v => set('needs_credentials_help', v)}
-                    />
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          <Divider />
-
-          {/* ── 4: Zone map ── */}
-          <div id="field-selectedAreas">
-            <SectionHeader
-              step={4}
-              title="Where you work"
-              subtitle="Select the areas of Horsham you'd like to cover. You can update this from your dashboard at any time."
-            />
-            <ZoneSelector
-              selectedAreas={form.selectedAreas}
-              onToggle={handleToggleArea}
-              onToggleAll={handleToggleAll}
-            />
-            {errors.selectedAreas && <p style={{ ...fieldErrorStyle, marginTop: '10px' }}>⚠ {errors.selectedAreas}</p>}
-          </div>
-
-          <Divider />
-
-          {/* ── 5: Notifications ── */}
-          <SectionHeader step={5} title="Notifications" />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <CheckToggle
-              label="🔔 Notify me about cover clean requests"
-              checked={form.cover_cleans_notify}
-              onChange={v => set('cover_cleans_notify', v)}
-              description="Cover cleans are one-off jobs where a customer needs cover. These requests often pay more and go quickly."
-            />
-            <CheckToggle
-              label="🔔 Notify me about new cleaning requests"
-              checked={form.job_notify}
-              onChange={v => set('job_notify', v)}
-              description="We'll alert you when customers post new cleaning requests in the areas you cover."
-            />
-            {form.job_notify && (
-              <div style={{ background: '#f0f9ff', border: '1.5px solid #bae6fd', borderRadius: '12px', padding: '12px 16px', display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-                <span style={{ fontSize: '16px', flexShrink: 0 }}>💡</span>
-                <p style={{ fontSize: '13px', color: '#0369a1', margin: 0, lineHeight: 1.5 }}>
-                  You're free to adjust what jobs you're notified for from your dashboard at any time. Area, hourly rate, preferred days and more.
-                </p>
-              </div>
-            )}
-            <CheckToggle
-              label="📣 Keep me informed with Vouchee updates and promotions"
-              checked={form.marketing_opt_in}
-              onChange={v => set('marketing_opt_in', v)}
-              description="Occasional emails about your account, platform updates, product launches, and exclusive offers."
-            />
-          </div>
-
-          <Divider />
-
-          {/* ── 6: Card preview ── */}
-          <SectionHeader
-            step={6}
-            title="Your cleaner card"
-            subtitle="This is exactly what a customer sees when you apply for one of their jobs."
-          />
-          <ApplicationCardPreview form={form} />
-
-          <Divider />
-
-          {/* ── Platform agreement (mandatory) ── */}
-          <div id="field-platformAgreement" style={{ marginBottom: '28px' }}>
-            <div style={{
-              background: platformAgreement ? '#f0fdf4' : '#fafafa',
-              border: `2px solid ${errors.platformAgreement ? '#fca5a5' : platformAgreement ? '#86efac' : '#e2e8f0'}`,
-              borderRadius: '16px', padding: '20px', transition: 'all 0.2s',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
-                <button
-                  onClick={() => {
-                    setPlatformAgreement(!platformAgreement)
-                    if (errors.platformAgreement) setErrors(e => { const next = { ...e }; delete next.platformAgreement; return next })
-                  }}
-                  style={{
-                    width: '22px', height: '22px', borderRadius: '6px', flexShrink: 0, marginTop: '2px',
-                    background: platformAgreement ? '#16a34a' : 'white',
-                    border: `2px solid ${platformAgreement ? '#16a34a' : '#cbd5e1'}`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit', padding: 0,
-                  }}
-                >
-                  {platformAgreement && <Check size={13} color="white" strokeWidth={3} />}
-                </button>
-                <div>
-                  <p style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', margin: '0 0 8px', lineHeight: 1.55 }}>
-                    I understand that customers introduced through Vouchee must be managed through the platform. Taking these customers private is a breach of Vouchee's Terms and may result in my account being permanently removed.
-                  </p>
-                  <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0, lineHeight: 1.5 }}>
-                    Note: You are paid directly by the customer for your time — <strong style={{ color: '#64748b' }}>Vouchee does not take a cut of your hourly earnings.</strong> This agreement applies to customer relationships, not payments.
-                  </p>
-                </div>
-              </div>
-            </div>
-            {errors.platformAgreement && <p style={{ ...fieldErrorStyle, marginTop: '8px' }}>⚠ {errors.platformAgreement}</p>}
-          </div>
-
-          {/* ── Submit ── */}
-          <div>
-            <p style={{ fontSize: '13px', color: '#94a3b8', lineHeight: 1.6, marginBottom: '20px', textAlign: 'center' }}>
-              By submitting you confirm that the information above is accurate and agree to Vouchee's{' '}
-              <a href="/terms" style={{ color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>Terms of Service</a>
-              {' '}and{' '}
-              <a href="/privacy" style={{ color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>Privacy Policy</a>.
-            </p>
-
-            {submitError && (
-              <div style={{ background: '#fef2f2', border: '1.5px solid #fecaca', borderRadius: '12px', padding: '14px 16px', marginBottom: '16px' }}>
-                <p style={{ fontSize: '14px', color: '#dc2626', margin: 0, fontWeight: 600 }}>{submitError}</p>
-              </div>
-            )}
-
-            <button
-              onClick={handleSubmit}
-              disabled={submitting}
-              style={{
-                width: '100%', padding: '16px',
-                background: submitting ? '#86efac' : 'linear-gradient(135deg, #3b82f6, #6366f1)',
-                color: 'white', border: 'none', borderRadius: '14px',
-                fontSize: '16px', fontWeight: 700,
-                cursor: submitting ? 'not-allowed' : 'pointer',
-                transition: 'all 0.2s',
-                boxShadow: submitting ? 'none' : '0 4px 16px rgba(59,130,246,0.3)',
-                fontFamily: 'inherit',
-              }}
-            >
-              {submitting ? 'Submitting your application…' : 'Submit application →'}
-            </button>
-
-            <p style={{ fontSize: '12px', color: '#94a3b8', textAlign: 'center', marginTop: '12px' }}>
-              Questions before applying?{' '}
-              <a href="mailto:cleaners@vouchee.co.uk" style={{ color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>
-                cleaners@vouchee.co.uk
-              </a>
-            </p>
-          </div>
-
-        </div>
-      </div>
-    </div>
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center"><div className="spinner h-8 w-8" /></div>}>
+      <DashboardContent />
+    </Suspense>
   )
 }
