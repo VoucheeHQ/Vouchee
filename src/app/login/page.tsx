@@ -63,7 +63,7 @@ export default function LoginPage() {
       if (actualRole === 'cleaner') {
         router.push('/cleaner/dashboard')
       } else {
-        router.push('/dashboard')
+        router.push('/customer/dashboard')
       }
 
     } catch (err: any) {
