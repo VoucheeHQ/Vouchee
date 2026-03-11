@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { Menu, X } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
@@ -11,15 +11,15 @@ export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [userRole, setUserRole] = useState<string | null>(null)
-  const [checked, setChecked] = useState(true)
+  const [roleLoaded, setRoleLoaded] = useState(false)
   const pathname = usePathname()
+  const router = useRouter()
 
   useEffect(() => {
     const supabase = createClient()
 
     const loadUser = async () => {
       try {
-        // getSession reads from cookie cache — no LockManager needed
         const { data: { session } } = await supabase.auth.getSession()
         setIsLoggedIn(!!session)
         if (session?.user) {
@@ -31,9 +31,9 @@ export function Header() {
           setUserRole(profile?.role ?? null)
         }
       } catch (e) {
-        // fail silently — show logged-out state
+        // fail silently
       } finally {
-        setChecked(true)
+        setRoleLoaded(true)
       }
     }
 
@@ -52,13 +52,21 @@ export function Header() {
       } else {
         setUserRole(null)
       }
-      setChecked(true)
+      setRoleLoaded(true)
     })
 
     return () => subscription.unsubscribe()
   }, [])
 
-  const dashboardHref = userRole === 'cleaner' ? '/cleaner/dashboard' : '/dashboard'
+  // Navigate to the correct dashboard once role is confirmed
+  const handleDashboardClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    if (!roleLoaded) return // still loading, do nothing
+    const href = userRole === 'cleaner' ? '/cleaner/dashboard' : '/customer/dashboard'
+    router.push(href)
+  }
+
+  const dashboardHref = userRole === 'cleaner' ? '/cleaner/dashboard' : '/customer/dashboard'
 
   const navigation = [
     { name: 'How it works', href: '/how-it-works' },
@@ -97,24 +105,23 @@ export function Header() {
 
         {/* Desktop Auth Buttons */}
         <div className="hidden items-center gap-4 md:flex">
-          {checked && (
-            isLoggedIn ? (
-              <Link
-                href={dashboardHref}
-                className="text-sm font-medium bg-brand-600 text-white px-4 py-2 rounded-md hover:bg-brand-700 transition-colors"
-              >
-                My dashboard
+          {isLoggedIn ? (
+            <a
+              href={dashboardHref}
+              onClick={handleDashboardClick}
+              className="text-sm font-medium bg-brand-600 text-white px-4 py-2 rounded-md hover:bg-brand-700 transition-colors cursor-pointer"
+            >
+              {roleLoaded ? 'My dashboard' : '…'}
+            </a>
+          ) : (
+            <>
+              <Link href="/login" className="text-sm font-medium text-ink-secondary hover:text-brand-600 transition-colors">
+                Log in
               </Link>
-            ) : (
-              <>
-                <Link href="/login" className="text-sm font-medium text-ink-secondary hover:text-brand-600 transition-colors">
-                  Log in
-                </Link>
-                <Link href="/request/property" className="text-sm font-medium bg-brand-600 text-white px-4 py-2 rounded-md hover:bg-brand-700 transition-colors">
-                  Get started
-                </Link>
-              </>
-            )
+              <Link href="/request/property" className="text-sm font-medium bg-brand-600 text-white px-4 py-2 rounded-md hover:bg-brand-700 transition-colors">
+                Get started
+              </Link>
+            </>
           )}
         </div>
 
@@ -152,33 +159,31 @@ export function Header() {
               </Link>
             ))}
             <div className="!mt-4 flex flex-col gap-2 border-t border-ink/5 pt-4">
-              {checked && (
-                isLoggedIn ? (
+              {isLoggedIn ? (
+                <a
+                  href={dashboardHref}
+                  onClick={(e) => { handleDashboardClick(e); setMobileMenuOpen(false) }}
+                  className="block rounded-lg px-3 py-2 text-sm font-medium bg-brand-600 text-white text-center cursor-pointer"
+                >
+                  {roleLoaded ? 'My dashboard' : '…'}
+                </a>
+              ) : (
+                <>
                   <Link
-                    href={dashboardHref}
+                    href="/login"
+                    className="block rounded-lg px-3 py-2 text-sm font-medium text-ink-secondary hover:bg-surface-secondary"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Log in
+                  </Link>
+                  <Link
+                    href="/request/property"
                     className="block rounded-lg px-3 py-2 text-sm font-medium bg-brand-600 text-white text-center"
                     onClick={() => setMobileMenuOpen(false)}
                   >
-                    My dashboard
+                    Get started
                   </Link>
-                ) : (
-                  <>
-                    <Link
-                      href="/login"
-                      className="block rounded-lg px-3 py-2 text-sm font-medium text-ink-secondary hover:bg-surface-secondary"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      Log in
-                    </Link>
-                    <Link
-                      href="/request/property"
-                      className="block rounded-lg px-3 py-2 text-sm font-medium bg-brand-600 text-white text-center"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      Get started
-                    </Link>
-                  </>
-                )
+                </>
               )}
             </div>
           </div>

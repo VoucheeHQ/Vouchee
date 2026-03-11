@@ -136,7 +136,7 @@ function PendingScreen({ profile, cleaner }: { profile: CleanerProfile; cleaner:
     {
       icon: '📧',
       title: 'Email confirmed',
-      desc: 'Your email address has been verified',
+      desc: 'Awaiting email verification',
       done: true,
     },
     {
@@ -148,8 +148,8 @@ function PendingScreen({ profile, cleaner }: { profile: CleanerProfile; cleaner:
     },
     {
       icon: '📞',
-      title: 'Interview',
-      desc: "We'll reach out to arrange a short call to get to know you",
+      title: 'Get to know you',
+      desc: "We'll reach out for a short call to get to know you and answer any questions.",
       done: false,
     },
     {
