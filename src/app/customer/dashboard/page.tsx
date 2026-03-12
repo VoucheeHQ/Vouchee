@@ -44,8 +44,8 @@ function formatDate(iso: string) {
 }
 
 function getInitial(name: string) {
-  return name.trim().charAt(0).toUpperCase()
-}
+    return name?.trim()?.charAt(0)?.toUpperCase() ?? '?'
+  }
 
 function getWeeklyTotal(hours: number, rate: number, frequency: Frequency) {
   const multiplier = frequency === 'weekly' ? 1 : frequency === 'fortnightly' ? 0.5 : 0.25
@@ -77,7 +77,7 @@ function StatusBadge({ status }: { status: RequestStatus }) {
 // ─── No Requests Screen ───────────────────────────────────────────────────────
 
 function NoRequestsScreen({ profile, onPost }: { profile: CustomerProfile; onPost: () => void }) {
-  const firstName = profile.full_name.trim().split(' ')[0]
+const firstName = profile.full_name?.trim()?.split(' ')?.[0] ?? 'there'
   return (
     <div style={{ maxWidth: '560px', margin: '0 auto', padding: '0 0 60px', textAlign: 'center' }}>
       <div style={{
