@@ -85,43 +85,12 @@ function clearRequestData() {
 async function publishRequest(data: RequestData, userId: string): Promise<void> {
   const supabase = createClient()
 
-  const { data: existingCustomer } = await (supabase as any)
-    .from("customers")
-    .select("id")
-    .eq("profile_id", userId)
-    .single() as { data: { id: string } | null }
-
-  let customerId: string
-
-  if (existingCustomer) {
-    customerId = existingCustomer.id
-    await (supabase as any)
-      .from("customers")
-      .update({ frequency: data.frequency ?? "fortnightly" })
-      .eq("id", customerId)
-  } else {
-    const { data: newCustomer, error } = await (supabase as any)
-      .from("customers")
-      .insert({
-        profile_id: userId,
-        postcode: data.postcode ?? "",
-        city: "Horsham",
-        address_line1: "",
-        frequency: data.frequency ?? "fortnightly",
-        subscription_status: "pending",
-      })
-      .select("id")
-      .single()
-    if (error || !newCustomer) throw new Error("Failed to create customer record")
-    customerId = newCustomer.id
-  }
-
   const zone = data.zone || (data.postcode ? getSectorFromPostcode(data.postcode) : null)
 
   const { error: insertError } = await (supabase as any)
     .from("clean_requests")
     .insert({
-      customer_id: customerId,
+      customer_id: userId,
       status: "pending_review",
       service_type: "regular",
       zone,
@@ -241,8 +210,6 @@ export default function PreviewAndPublishPage() {
     const loaded = loadRequestData()
     if (!loaded) { router.push("/request/property"); return }
     setData(loaded)
-    // Only set finalNotes from loaded data if the lazy initialiser returned empty
-    // (i.e. sessionStorage wasn't available during SSR)
     setFinalNotes((prev: string) => prev || loaded.extraHoursNote || loaded.finalNotes || '')
 
     const supabase = createClient()
@@ -258,7 +225,7 @@ export default function PreviewAndPublishPage() {
       await publishRequest({ ...data, finalNotes: finalNotes || undefined }, uid)
       clearRequestData()
       toast.success("You're live! 🎉")
-      router.push("/jobs")
+      router.push("/customer/dashboard")
     } catch (err: any) {
       toast.error(err.message || "Something went wrong")
     } finally {
