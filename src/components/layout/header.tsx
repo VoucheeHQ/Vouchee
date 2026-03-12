@@ -3,53 +3,16 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Menu, X } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { cn } from '@/lib/utils'
-import { createClient } from '@/lib/supabase/client'
 
-export function Header() {
+interface HeaderProps {
+  userRole: string | null
+}
+
+export function Header({ userRole }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [userRole, setUserRole] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
   const pathname = usePathname()
-
-  useEffect(() => {
-    const supabase = createClient()
-
-    const loadUser = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession()
-        if (!session?.user) { setLoading(false); return }
-
-        const { data } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', session.user.id)
-          .single()
-
-        setUserRole((data as any)?.role ?? null)
-      } catch (e) {
-        setUserRole(null)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadUser()
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (!session?.user) { setUserRole(null); setLoading(false); return }
-      const { data } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', session.user.id)
-        .single()
-      setUserRole((data as any)?.role ?? null)
-      setLoading(false)
-    })
-
-    return () => subscription.unsubscribe()
-  }, [])
 
   const dashboardHref = userRole === 'cleaner' ? '/cleaner/dashboard' : '/customer/dashboard'
 
@@ -88,9 +51,7 @@ export function Header() {
         </div>
 
         <div className="hidden items-center gap-4 md:flex">
-          {loading ? (
-            <div className="h-9 w-28 rounded-md bg-ink/5 animate-pulse" />
-          ) : userRole ? (
+          {userRole ? (
             <Link href={dashboardHref} className="text-sm font-medium bg-brand-600 text-white px-4 py-2 rounded-md hover:bg-brand-700 transition-colors">
               My dashboard
             </Link>
@@ -128,9 +89,7 @@ export function Header() {
               </Link>
             ))}
             <div className="!mt-4 flex flex-col gap-2 border-t border-ink/5 pt-4">
-              {loading ? (
-                <div className="h-9 rounded-md bg-ink/5 animate-pulse" />
-              ) : userRole ? (
+              {userRole ? (
                 <Link href={dashboardHref} className="block rounded-lg px-3 py-2 text-sm font-medium bg-brand-600 text-white text-center" onClick={() => setMobileMenuOpen(false)}>
                   My dashboard
                 </Link>
