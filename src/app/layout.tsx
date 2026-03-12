@@ -2,8 +2,7 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { Toaster } from 'sonner'
-import { Header } from '@/components/layout/header'
-import { createClient } from '@/lib/supabase/server'
+import { AuthListener } from '@/components/auth-listener'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -39,28 +38,15 @@ export const metadata: Metadata = {
   },
 }
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  let userRole: string | null = null
-  if (user) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-    userRole = (profile as any)?.role ?? null
-  }
-
   return (
     <html lang="en" className={inter.variable}>
       <body>
-        <Header userRole={userRole} />
+        <AuthListener />
         {children}
         <Toaster position="top-right" richColors closeButton />
       </body>
