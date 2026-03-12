@@ -283,10 +283,10 @@ export default function CustomerDashboard() {
         if (profileData.role !== 'customer') { router.replace('/cleaner/dashboard'); return }
 
         const { data: requestData } = await (supabase as any)
-          .from('requests')
-          .select('*')
-          .eq('user_id', userId)
-          .neq('status', 'deleted')
+        .from('clean_requests')
+        .select('*')
+        .eq('customer_id', userId)
+        .neq('status', 'deleted')
           .order('created_at', { ascending: false })
 
         setProfile(profileData)
@@ -308,7 +308,7 @@ export default function CustomerDashboard() {
 
   const handlePause = async (id: string) => {
     const supabase = createClient()
-    await (supabase as any).from('requests').update({ status: 'paused', paused_at: new Date().toISOString() }).eq('id', id)
+    await (supabase as any).from('clean_requests').update({ status: 'paused', paused_at: new Date().toISOString() }).eq('id', id)
     setRequests(r => r.map(req => req.id === id ? { ...req, status: 'paused', paused_at: new Date().toISOString() } : req))
     setModal(null)
   }
@@ -317,7 +317,7 @@ export default function CustomerDashboard() {
     const req = requests.find(r => r.id === id)
     if (!req) return
     const supabase = createClient()
-    await (supabase as any).from('requests').update({
+    await (supabase as any).from('clean_requests').update({
       status: 'active',
       paused_at: new Date().toISOString(),
       republish_count: req.republish_count + 1,
@@ -328,7 +328,7 @@ export default function CustomerDashboard() {
 
   const handleDelete = async (id: string) => {
     const supabase = createClient()
-    await (supabase as any).from('requests').update({ status: 'deleted' }).eq('id', id)
+    await (supabase as any).from('clean_requests').update({ status: 'deleted' }).eq('id', id)
     setRequests(r => r.filter(req => req.id !== id))
     setModal(null)
   }
