@@ -91,7 +91,7 @@ async function publishRequest(data: RequestData, userId: string): Promise<void> 
     .from("clean_requests")
     .insert({
       customer_id: userId,
-      status: "pending_review",
+      status: "pending",
       service_type: "regular",
       zone,
       property_type: "house",
