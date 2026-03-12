@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type RequestStatus = 'active' | 'paused' | 'deleted'
+type RequestStatus = 'active' | 'paused' | 'deleted' | 'pending_review'
 type Frequency = 'weekly' | 'fortnightly' | 'monthly'
 
 interface CustomerProfile {
@@ -18,7 +18,7 @@ interface CleaningRequest {
   id: string
   bedrooms: number
   bathrooms: number
-  hours: number
+  hours_per_session: number
   hourly_rate: number
   frequency: Frequency
   tasks: string[]
@@ -44,8 +44,8 @@ function formatDate(iso: string) {
 }
 
 function getInitial(name: string) {
-    return name?.trim()?.charAt(0)?.toUpperCase() ?? '?'
-  }
+  return name?.trim()?.charAt(0)?.toUpperCase() ?? '?'
+}
 
 function getWeeklyTotal(hours: number, rate: number, frequency: Frequency) {
   const multiplier = frequency === 'weekly' ? 1 : frequency === 'fortnightly' ? 0.5 : 0.25
@@ -55,10 +55,11 @@ function getWeeklyTotal(hours: number, rate: number, frequency: Frequency) {
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function StatusBadge({ status }: { status: RequestStatus }) {
-  const map = {
-    active:  { label: 'Active',  bg: '#dcfce7', color: '#15803d', dot: '#22c55e' },
-    paused:  { label: 'Paused',  bg: '#fef9c3', color: '#854d0e', dot: '#eab308' },
-    deleted: { label: 'Deleted', bg: '#fee2e2', color: '#991b1b', dot: '#ef4444' },
+  const map: Record<RequestStatus, { label: string; bg: string; color: string; dot: string }> = {
+    active:         { label: 'Active',         bg: '#dcfce7', color: '#15803d', dot: '#22c55e' },
+    paused:         { label: 'Paused',         bg: '#fef9c3', color: '#854d0e', dot: '#eab308' },
+    deleted:        { label: 'Deleted',        bg: '#fee2e2', color: '#991b1b', dot: '#ef4444' },
+    pending_review: { label: 'Under review',   bg: '#eff6ff', color: '#1d4ed8', dot: '#3b82f6' },
   }
   const s = map[status] ?? map.active
   return (
@@ -77,7 +78,7 @@ function StatusBadge({ status }: { status: RequestStatus }) {
 // ─── No Requests Screen ───────────────────────────────────────────────────────
 
 function NoRequestsScreen({ profile, onPost }: { profile: CustomerProfile; onPost: () => void }) {
-const firstName = profile.full_name?.trim()?.split(' ')?.[0] ?? 'there'
+  const firstName = profile.full_name?.trim()?.split(' ')?.[0] ?? 'there'
   return (
     <div style={{ maxWidth: '560px', margin: '0 auto', padding: '0 0 60px', textAlign: 'center' }}>
       <div style={{
@@ -129,8 +130,11 @@ function RequestCard({
   onDelete: () => void
   onEdit: () => void
 }) {
-  const weeklyTotal = getWeeklyTotal(request.hours, request.hourly_rate, request.frequency)
-  const pausesLeft = 2 - request.republish_count
+  const hours = request.hours_per_session ?? 0
+  const rate = request.hourly_rate ?? 0
+  const freq = request.frequency ?? 'fortnightly'
+  const weeklyTotal = getWeeklyTotal(hours, rate, freq)
+  const pausesLeft = 2 - (request.republish_count ?? 0)
   const isRelocked = request.paused_at
     ? Date.now() - new Date(request.paused_at).getTime() < 24 * 60 * 60 * 1000
     : false
@@ -150,32 +154,43 @@ function RequestCard({
       }}>
         <div>
           <div style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a', marginBottom: '4px' }}>
-            {request.bedrooms} bed · {request.bathrooms} bath · {request.hours}h
+            {request.bedrooms} bed · {request.bathrooms} bath{hours ? ` · ${hours}h` : ''}
           </div>
           <div style={{ fontSize: '13px', color: '#64748b' }}>
-            {FREQUENCY_LABEL[request.frequency]} · £{request.hourly_rate}/hr · ~£{weeklyTotal}/week
+            {FREQUENCY_LABEL[freq] ?? freq}{rate ? ` · £${rate}/hr` : ''}{hours && rate ? ` · ~£${weeklyTotal}/week` : ''}
           </div>
         </div>
         <StatusBadge status={request.status} />
       </div>
 
       {/* Tasks */}
-      <div style={{ padding: '16px 24px', borderBottom: '1px solid #f1f5f9' }}>
-        <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '10px' }}>
-          Tasks
+      {(request.tasks ?? []).length > 0 && (
+        <div style={{ padding: '16px 24px', borderBottom: '1px solid #f1f5f9' }}>
+          <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '10px' }}>
+            Tasks
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+            {(request.tasks ?? []).map(task => (
+              <span key={task} style={{
+                background: '#f8fafc', border: '1px solid #e2e8f0',
+                borderRadius: '8px', padding: '4px 10px',
+                fontSize: '12px', color: '#475569', fontWeight: 500,
+              }}>
+                {task}
+              </span>
+            ))}
+          </div>
         </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-          {(request.tasks ?? []).map(task => (
-            <span key={task} style={{
-              background: '#f8fafc', border: '1px solid #e2e8f0',
-              borderRadius: '8px', padding: '4px 10px',
-              fontSize: '12px', color: '#475569', fontWeight: 500,
-            }}>
-              {task}
-            </span>
-          ))}
+      )}
+
+      {/* pending_review notice */}
+      {request.status === 'pending_review' && (
+        <div style={{ padding: '12px 24px', background: '#eff6ff', borderBottom: '1px solid #dbeafe' }}>
+          <p style={{ margin: 0, fontSize: '13px', color: '#1d4ed8', lineHeight: 1.5 }}>
+            ⏳ Your request is under review. We'll notify you once it's live and visible to cleaners.
+          </p>
         </div>
-      </div>
+      )}
 
       {/* Footer */}
       <div style={{
@@ -208,6 +223,9 @@ function RequestCard({
               )}
               <button onClick={onDelete} style={{ ...ghostBtn, color: '#ef4444', borderColor: '#fecaca' }}>Delete</button>
             </>
+          )}
+          {request.status === 'pending_review' && (
+            <button onClick={onDelete} style={{ ...ghostBtn, color: '#ef4444', borderColor: '#fecaca' }}>Delete</button>
           )}
         </div>
       </div>
@@ -282,12 +300,14 @@ export default function CustomerDashboard() {
         if (profileError || !profileData) throw new Error('Could not load your profile.')
         if (profileData.role !== 'customer') { router.replace('/cleaner/dashboard'); return }
 
-        const { data: requestData } = await (supabase as any)
-        .from('clean_requests')
-        .select('*')
-        .eq('customer_id', userId)
-        .neq('status', 'deleted')
+        const { data: requestData, error: requestError } = await (supabase as any)
+          .from('clean_requests')
+          .select('*')
+          .eq('customer_id', userId)
+          .neq('status', 'deleted')
           .order('created_at', { ascending: false })
+
+        if (requestError) throw new Error(requestError.message)
 
         setProfile(profileData)
         setRequests(requestData ?? [])
@@ -309,7 +329,7 @@ export default function CustomerDashboard() {
   const handlePause = async (id: string) => {
     const supabase = createClient()
     await (supabase as any).from('clean_requests').update({ status: 'paused', paused_at: new Date().toISOString() }).eq('id', id)
-    setRequests(r => r.map(req => req.id === id ? { ...req, status: 'paused', paused_at: new Date().toISOString() } : req))
+    setRequests(r => r.map(req => req.id === id ? { ...req, status: 'paused' as RequestStatus, paused_at: new Date().toISOString() } : req))
     setModal(null)
   }
 
@@ -322,7 +342,7 @@ export default function CustomerDashboard() {
       paused_at: new Date().toISOString(),
       republish_count: req.republish_count + 1,
     }).eq('id', id)
-    setRequests(r => r.map(req => req.id === id ? { ...req, status: 'active', republish_count: req.republish_count + 1 } : req))
+    setRequests(r => r.map(req => req.id === id ? { ...req, status: 'active' as RequestStatus, republish_count: req.republish_count + 1 } : req))
     setModal(null)
   }
 
