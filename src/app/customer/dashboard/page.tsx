@@ -6,40 +6,35 @@ import { createClient } from '@/lib/supabase/client'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type ApplicationStatus = 'submitted' | 'approved' | 'rejected' | 'suspended' | 'pending'
+type RequestStatus = 'active' | 'paused' | 'deleted'
+type Frequency = 'weekly' | 'fortnightly' | 'monthly'
 
-interface CleanerProfile {
+interface CustomerProfile {
   full_name: string
   email: string
-  phone: string | null
 }
 
-interface CleanerData {
-  application_status: ApplicationStatus
-  zones: string[]
-  dbs_checked: boolean
-  right_to_work: boolean
-  has_insurance: boolean
-  needs_credentials_help: boolean
-  cover_cleans_notify: boolean
-  job_notify: boolean
-  marketing_opt_in: boolean
-  own_supplies: boolean
+interface CleaningRequest {
+  id: string
+  bedrooms: number
+  bathrooms: number
+  hours: number
+  hourly_rate: number
+  frequency: Frequency
+  tasks: string[]
+  status: RequestStatus
   created_at: string
+  goes_live_at: string | null
+  paused_at: string | null
+  republish_count: number
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const ZONE_LABELS: Record<string, string> = {
-  central_south_east: 'Central / South East',
-  north_west: 'North West',
-  north_east_roffey: 'North East / Roffey',
-  south_west: 'South West',
-  warnham_north: 'Warnham / Surrounding North',
-  broadbridge_heath: 'Broadbridge Heath',
-  mannings_heath: 'Mannings Heath',
-  faygate_kilnwood_vale: 'Faygate / Kilnwood Vale',
-  christs_hospital: 'Christs Hospital',
+const FREQUENCY_LABEL: Record<Frequency, string> = {
+  weekly: 'Weekly',
+  fortnightly: 'Fortnightly',
+  monthly: 'Monthly',
 }
 
 function formatDate(iso: string) {
@@ -52,17 +47,20 @@ function getInitial(name: string) {
   return name.trim().charAt(0).toUpperCase()
 }
 
+function getWeeklyTotal(hours: number, rate: number, frequency: Frequency) {
+  const multiplier = frequency === 'weekly' ? 1 : frequency === 'fortnightly' ? 0.5 : 0.25
+  return (hours * rate * multiplier).toFixed(2)
+}
+
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function StatusBadge({ status }: { status: ApplicationStatus }) {
-  const map: Record<ApplicationStatus, { label: string; bg: string; color: string; dot: string }> = {
-    submitted: { label: 'Under review', bg: '#fef9c3', color: '#854d0e', dot: '#eab308' },
-    pending:   { label: 'Pending',      bg: '#f1f5f9', color: '#475569', dot: '#94a3b8' },
-    approved:  { label: 'Active',       bg: '#dcfce7', color: '#15803d', dot: '#22c55e' },
-    rejected:  { label: 'Rejected',     bg: '#fee2e2', color: '#991b1b', dot: '#ef4444' },
-    suspended: { label: 'Suspended',    bg: '#fef3c7', color: '#92400e', dot: '#f59e0b' },
+function StatusBadge({ status }: { status: RequestStatus }) {
+  const map = {
+    active:  { label: 'Active',  bg: '#dcfce7', color: '#15803d', dot: '#22c55e' },
+    paused:  { label: 'Paused',  bg: '#fef9c3', color: '#854d0e', dot: '#eab308' },
+    deleted: { label: 'Deleted', bg: '#fee2e2', color: '#991b1b', dot: '#ef4444' },
   }
-  const s = map[status] ?? map.pending
+  const s = map[status] ?? map.active
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center', gap: '6px',
@@ -76,394 +74,181 @@ function StatusBadge({ status }: { status: ApplicationStatus }) {
   )
 }
 
-function CredentialChip({ ok, label }: { ok: boolean; label: string }) {
-  return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: '8px',
-      padding: '8px 14px',
-      background: ok ? '#f0fdf4' : '#fef2f2',
-      border: `1px solid ${ok ? '#86efac' : '#fecaca'}`,
-      borderRadius: '10px',
-      fontSize: '13px', fontWeight: 600,
-      color: ok ? '#15803d' : '#dc2626',
-    }}>
-      <span>{ok ? '✅' : '❌'}</span>
-      {label}
-    </div>
-  )
-}
+// ─── No Requests Screen ───────────────────────────────────────────────────────
 
-function ZoneChip({ label }: { label: string }) {
-  return (
-    <span style={{
-      background: '#eff6ff', color: '#1d4ed8',
-      border: '1px solid #bfdbfe',
-      borderRadius: '8px', padding: '5px 12px',
-      fontSize: '12px', fontWeight: 600,
-    }}>
-      {label}
-    </span>
-  )
-}
-
-function SummaryRow({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div style={{
-      display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
-      padding: '12px 0',
-      borderBottom: '1px solid #f1f5f9',
-      gap: '12px',
-    }}>
-      <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 500, flexShrink: 0 }}>{label}</span>
-      <span style={{ fontSize: '13px', color: '#0f172a', fontWeight: 600, textAlign: 'right' }}>{value}</span>
-    </div>
-  )
-}
-
-// ─── Pending Screen ───────────────────────────────────────────────────────────
-
-function PendingScreen({ profile, cleaner }: { profile: CleanerProfile; cleaner: CleanerData }) {
+function NoRequestsScreen({ profile, onPost }: { profile: CustomerProfile; onPost: () => void }) {
   const firstName = profile.full_name.trim().split(' ')[0]
-  const zones = (cleaner.zones ?? []).map(z => ZONE_LABELS[z] ?? z)
+  return (
+    <div style={{ maxWidth: '560px', margin: '0 auto', padding: '0 0 60px', textAlign: 'center' }}>
+      <div style={{
+        background: 'white', borderRadius: '20px', padding: '48px 40px',
+        border: '1.5px solid #e2e8f0', boxShadow: '0 2px 16px rgba(0,0,0,0.05)',
+      }}>
+        <div style={{ fontSize: '48px', marginBottom: '16px' }}>🧹</div>
+        <h2 style={{ fontFamily: 'Lora, serif', fontSize: '22px', fontWeight: 700, color: '#0f172a', margin: '0 0 12px' }}>
+          Hi {firstName}, ready to find your cleaner?
+        </h2>
+        <p style={{ fontSize: '15px', color: '#64748b', lineHeight: 1.7, margin: '0 0 32px' }}>
+          Post your cleaning request and get matched with vetted, local cleaners in Horsham. No contracts, flexible scheduling.
+        </p>
+        <button
+          onClick={onPost}
+          style={{
+            background: '#3b82f6', color: 'white', border: 'none',
+            borderRadius: '12px', padding: '14px 32px',
+            fontSize: '15px', fontWeight: 700, cursor: 'pointer',
+            fontFamily: 'DM Sans, sans-serif',
+          }}
+        >
+          Post a cleaning request
+        </button>
+        <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'center', gap: '24px' }}>
+          {['DBS checked cleaners', 'Insured & vetted', 'No contracts'].map(t => (
+            <span key={t} style={{ fontSize: '12px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span style={{ color: '#22c55e' }}>✓</span> {t}
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
 
-  const steps = [
-    {
-      icon: '✅',
-      title: 'Application received',
-      desc: `Submitted on ${formatDate(cleaner.created_at)}`,
-      done: true,
-    },
-    {
-      icon: '📧',
-      title: 'Email confirmed',
-      desc: 'Your email address has been verified',
-      done: true,
-    },
-    {
-      icon: '🔍',
-      title: 'Application review',
-      desc: "We're reviewing your details — this usually takes 1–3 working days",
-      done: false,
-      active: true,
-    },
-    {
-      icon: '📞',
-      title: 'Interview',
-      desc: "We'll reach out to arrange a short call to get to know you",
-      done: false,
-    },
-    {
-      icon: '🎉',
-      title: 'Account approved',
-      desc: "You'll be notified by email once you're live on Vouchee",
-      done: false,
-    },
-  ]
+// ─── Request Card ─────────────────────────────────────────────────────────────
+
+function RequestCard({
+  request,
+  onPause,
+  onRepublish,
+  onDelete,
+  onEdit,
+}: {
+  request: CleaningRequest
+  onPause: () => void
+  onRepublish: () => void
+  onDelete: () => void
+  onEdit: () => void
+}) {
+  const weeklyTotal = getWeeklyTotal(request.hours, request.hourly_rate, request.frequency)
+  const pausesLeft = 2 - request.republish_count
+  const isRelocked = request.paused_at
+    ? Date.now() - new Date(request.paused_at).getTime() < 24 * 60 * 60 * 1000
+    : false
 
   return (
-    <div style={{ maxWidth: '640px', margin: '0 auto', padding: '0 0 60px' }}>
-
-      {/* Hero */}
+    <div style={{
+      background: 'white', borderRadius: '20px',
+      border: '1.5px solid #e2e8f0',
+      boxShadow: '0 2px 16px rgba(0,0,0,0.05)',
+      marginBottom: '20px', overflow: 'hidden',
+    }}>
+      {/* Header */}
       <div style={{
-        background: 'white',
-        borderRadius: '20px',
-        padding: '32px',
-        border: '1.5px solid #e2e8f0',
-        marginBottom: '20px',
-        boxShadow: '0 2px 16px rgba(0,0,0,0.05)',
+        padding: '20px 24px',
+        borderBottom: '1px solid #f1f5f9',
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
-          <div style={{
-            width: '56px', height: '56px', borderRadius: '50%',
-            background: 'linear-gradient(135deg, #3b82f6, #6366f1)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '22px', fontWeight: 800, color: 'white',
-            fontFamily: 'Lora, serif', flexShrink: 0,
-          }}>
-            {getInitial(profile.full_name)}
+        <div>
+          <div style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a', marginBottom: '4px' }}>
+            {request.bedrooms} bed · {request.bathrooms} bath · {request.hours}h
           </div>
-          <div>
-            <h2 style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a', margin: '0 0 4px', fontFamily: 'Lora, serif' }}>
-              Hi {firstName}!
-            </h2>
-            <StatusBadge status={cleaner.application_status} />
+          <div style={{ fontSize: '13px', color: '#64748b' }}>
+            {FREQUENCY_LABEL[request.frequency]} · £{request.hourly_rate}/hr · ~£{weeklyTotal}/week
           </div>
         </div>
-
-        <p style={{ fontSize: '15px', color: '#475569', lineHeight: 1.7, margin: 0 }}>
-          Thanks for applying to join Vouchee. We've received your application and will be in touch within <strong>1–3 working days</strong>. In the meantime, here's a summary of what you submitted.
-        </p>
+        <StatusBadge status={request.status} />
       </div>
 
-      {/* Progress steps */}
-      <div style={{
-        background: 'white', borderRadius: '20px',
-        padding: '28px 32px', border: '1.5px solid #e2e8f0',
-        marginBottom: '20px', boxShadow: '0 2px 16px rgba(0,0,0,0.05)',
-      }}>
-        <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 24px' }}>
-          What happens next
-        </h3>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
-          {steps.map((step, i) => (
-            <div key={i} style={{ display: 'flex', gap: '16px', position: 'relative' }}>
-              {/* Line */}
-              {i < steps.length - 1 && (
-                <div style={{
-                  position: 'absolute', left: '19px', top: '40px',
-                  width: '2px', height: 'calc(100% - 8px)',
-                  background: step.done ? '#86efac' : '#e2e8f0',
-                }} />
-              )}
-              {/* Icon */}
-              <div style={{
-                width: '40px', height: '40px', borderRadius: '50%', flexShrink: 0,
-                background: step.done ? '#dcfce7' : step.active ? '#eff6ff' : '#f8fafc',
-                border: `2px solid ${step.done ? '#86efac' : step.active ? '#93c5fd' : '#e2e8f0'}`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '16px',
-                zIndex: 1,
-              }}>
-                {step.done ? '✓' : step.icon}
-              </div>
-              {/* Text */}
-              <div style={{ paddingBottom: i < steps.length - 1 ? '24px' : '0', flex: 1 }}>
-                <div style={{
-                  fontSize: '14px', fontWeight: 700,
-                  color: step.done ? '#15803d' : step.active ? '#1d4ed8' : '#94a3b8',
-                  marginBottom: '2px',
-                }}>
-                  {step.title}
-                </div>
-                <div style={{ fontSize: '13px', color: '#64748b', lineHeight: 1.5 }}>
-                  {step.desc}
-                </div>
-              </div>
-            </div>
+      {/* Tasks */}
+      <div style={{ padding: '16px 24px', borderBottom: '1px solid #f1f5f9' }}>
+        <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '10px' }}>
+          Tasks
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+          {(request.tasks ?? []).map(task => (
+            <span key={task} style={{
+              background: '#f8fafc', border: '1px solid #e2e8f0',
+              borderRadius: '8px', padding: '4px 10px',
+              fontSize: '12px', color: '#475569', fontWeight: 500,
+            }}>
+              {task}
+            </span>
           ))}
         </div>
       </div>
 
-      {/* Application summary */}
+      {/* Footer */}
       <div style={{
-        background: 'white', borderRadius: '20px',
-        padding: '28px 32px', border: '1.5px solid #e2e8f0',
-        marginBottom: '20px', boxShadow: '0 2px 16px rgba(0,0,0,0.05)',
+        padding: '14px 24px',
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        background: '#fafafa',
       }}>
-        <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 4px' }}>
-          Your application summary
-        </h3>
-
-        <SummaryRow label="Name" value={profile.full_name} />
-        <SummaryRow label="Email" value={profile.email} />
-        <SummaryRow label="Phone" value={profile.phone ?? '—'} />
-        <SummaryRow label="Own supplies" value={cleaner.own_supplies ? 'Yes' : 'No'} />
-
-        {/* Credentials */}
-        <div style={{ padding: '12px 0', borderBottom: '1px solid #f1f5f9' }}>
-          <div style={{ fontSize: '13px', color: '#64748b', fontWeight: 500, marginBottom: '10px' }}>Credentials</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-            <CredentialChip ok={cleaner.dbs_checked} label="DBS check" />
-            <CredentialChip ok={cleaner.right_to_work} label="Right to work" />
-            <CredentialChip ok={cleaner.has_insurance} label="Insurance" />
-          </div>
-          {cleaner.needs_credentials_help && (
-            <p style={{ fontSize: '12px', color: '#92400e', background: '#fef9c3', border: '1px solid #fde68a', borderRadius: '8px', padding: '8px 12px', marginTop: '10px', marginBottom: 0, fontWeight: 500 }}>
-              📧 A credentials guide is being sent to your email address.
-            </p>
+        <span style={{ fontSize: '12px', color: '#94a3b8' }}>
+          Posted {formatDate(request.created_at)}
+        </span>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          {request.status === 'active' && (
+            <>
+              <button onClick={onEdit} style={ghostBtn}>Edit</button>
+              {pausesLeft > 0 && (
+                <button onClick={onPause} style={ghostBtn}>Pause</button>
+              )}
+              <button onClick={onDelete} style={{ ...ghostBtn, color: '#ef4444', borderColor: '#fecaca' }}>Delete</button>
+            </>
+          )}
+          {request.status === 'paused' && (
+            <>
+              {!isRelocked && (
+                <button onClick={onRepublish} style={{ ...ghostBtn, background: '#3b82f6', color: 'white', borderColor: '#3b82f6' }}>
+                  Republish
+                </button>
+              )}
+              {isRelocked && (
+                <span style={{ fontSize: '12px', color: '#94a3b8' }}>Available to republish in 24h</span>
+              )}
+              <button onClick={onDelete} style={{ ...ghostBtn, color: '#ef4444', borderColor: '#fecaca' }}>Delete</button>
+            </>
           )}
         </div>
-
-        {/* Zones */}
-        <div style={{ padding: '12px 0' }}>
-          <div style={{ fontSize: '13px', color: '#64748b', fontWeight: 500, marginBottom: '10px' }}>Areas you cover</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-            {zones.length > 0
-              ? zones.map(z => <ZoneChip key={z} label={z} />)
-              : <span style={{ fontSize: '13px', color: '#94a3b8' }}>None selected</span>
-            }
-          </div>
-        </div>
       </div>
-
-      {/* Notification preferences */}
-      <div style={{
-        background: 'white', borderRadius: '20px',
-        padding: '28px 32px', border: '1.5px solid #e2e8f0',
-        marginBottom: '20px', boxShadow: '0 2px 16px rgba(0,0,0,0.05)',
-      }}>
-        <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 16px' }}>
-          Notification preferences
-        </h3>
-        {[
-          { label: 'Cover clean alerts', value: cleaner.cover_cleans_notify },
-          { label: 'New job request alerts', value: cleaner.job_notify },
-          { label: 'Marketing & updates', value: cleaner.marketing_opt_in },
-        ].map(({ label, value }) => (
-          <div key={label} style={{
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            padding: '10px 0', borderBottom: '1px solid #f8fafc',
-          }}>
-            <span style={{ fontSize: '14px', color: '#475569', fontWeight: 500 }}>{label}</span>
-            <span style={{
-              fontSize: '12px', fontWeight: 700, padding: '3px 10px', borderRadius: '100px',
-              background: value ? '#dcfce7' : '#f1f5f9',
-              color: value ? '#15803d' : '#94a3b8',
-            }}>
-              {value ? 'On' : 'Off'}
-            </span>
-          </div>
-        ))}
-      </div>
-
-      {/* Help */}
-      <div style={{
-        background: '#f8faff', borderRadius: '16px',
-        padding: '20px 24px', border: '1px solid #e0e7ff',
-        textAlign: 'center',
-      }}>
-        <p style={{ fontSize: '14px', color: '#475569', margin: 0, lineHeight: 1.6 }}>
-          Questions about your application?{' '}
-          <a href="mailto:cleaners@vouchee.co.uk" style={{ color: '#3b82f6', fontWeight: 700, textDecoration: 'none' }}>
-            cleaners@vouchee.co.uk
-          </a>
-        </p>
-      </div>
-
     </div>
   )
 }
 
-// ─── Approved Shell ───────────────────────────────────────────────────────────
-
-function ApprovedShell({ profile }: { profile: CleanerProfile }) {
-  const firstName = profile.full_name.trim().split(' ')[0]
-
-  return (
-    <div style={{ maxWidth: '640px', margin: '0 auto', padding: '0 0 60px' }}>
-
-      {/* Welcome card */}
-      <div style={{
-        background: 'linear-gradient(135deg, #3b82f6, #6366f1)',
-        borderRadius: '20px', padding: '32px',
-        marginBottom: '20px', color: 'white',
-        boxShadow: '0 8px 32px rgba(59,130,246,0.25)',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
-          <div style={{
-            width: '56px', height: '56px', borderRadius: '50%',
-            background: 'rgba(255,255,255,0.2)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '22px', fontWeight: 800, color: 'white',
-            fontFamily: 'Lora, serif', border: '2px solid rgba(255,255,255,0.3)',
-            flexShrink: 0,
-          }}>
-            {getInitial(profile.full_name)}
-          </div>
-          <div>
-            <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.8, marginBottom: '4px' }}>
-              Approved cleaner
-            </div>
-            <h2 style={{ fontSize: '22px', fontWeight: 800, margin: 0, fontFamily: 'Lora, serif' }}>
-              Welcome, {firstName}!
-            </h2>
-          </div>
-        </div>
-        <p style={{ fontSize: '14px', opacity: 0.9, lineHeight: 1.6, margin: 0 }}>
-          You're live on Vouchee. Customers in your areas can now see your application when they post a cleaning request.
-        </p>
-      </div>
-
-      {/* Coming soon panels */}
-      {[
-        {
-          icon: '🔔',
-          title: 'Job alerts',
-          desc: "You'll be notified when a customer posts a request in your area. Check your email to manage notification preferences.",
-          colour: '#eff6ff', border: '#bfdbfe', iconBg: '#dbeafe',
-        },
-        {
-          icon: '⭐',
-          title: 'Reviews & profile link',
-          desc: 'Share your personal Vouchee profile link with existing customers to collect reviews. Coming soon.',
-          colour: '#fefce8', border: '#fde68a', iconBg: '#fef9c3',
-        },
-        {
-          icon: '💬',
-          title: 'Messages',
-          desc: "When a customer accepts your application, your conversation will appear here.",
-          colour: '#f0fdf4', border: '#86efac', iconBg: '#dcfce7',
-        },
-      ].map(panel => (
-        <div key={panel.title} style={{
-          background: panel.colour, border: `1.5px solid ${panel.border}`,
-          borderRadius: '16px', padding: '24px',
-          marginBottom: '16px',
-          display: 'flex', gap: '16px', alignItems: 'flex-start',
-        }}>
-          <div style={{
-            width: '44px', height: '44px', borderRadius: '12px',
-            background: panel.iconBg, display: 'flex', alignItems: 'center',
-            justifyContent: 'center', fontSize: '20px', flexShrink: 0,
-          }}>
-            {panel.icon}
-          </div>
-          <div>
-            <div style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a', marginBottom: '6px' }}>{panel.title}</div>
-            <div style={{ fontSize: '13px', color: '#475569', lineHeight: 1.6 }}>{panel.desc}</div>
-          </div>
-        </div>
-      ))}
-
-      {/* Help */}
-      <div style={{
-        background: '#f8faff', borderRadius: '16px',
-        padding: '20px 24px', border: '1px solid #e0e7ff',
-        textAlign: 'center',
-      }}>
-        <p style={{ fontSize: '14px', color: '#475569', margin: 0, lineHeight: 1.6 }}>
-          Need help?{' '}
-          <a href="mailto:cleaners@vouchee.co.uk" style={{ color: '#3b82f6', fontWeight: 700, textDecoration: 'none' }}>
-            cleaners@vouchee.co.uk
-          </a>
-        </p>
-      </div>
-
-    </div>
-  )
+const ghostBtn: React.CSSProperties = {
+  background: 'none', border: '1px solid #e2e8f0',
+  borderRadius: '8px', padding: '6px 14px',
+  fontSize: '13px', fontWeight: 600, color: '#64748b',
+  cursor: 'pointer', fontFamily: 'DM Sans, sans-serif',
 }
 
-// ─── Rejected / Suspended Screen ─────────────────────────────────────────────
+// ─── Confirm Modal ────────────────────────────────────────────────────────────
 
-function BlockedScreen({ status }: { status: 'rejected' | 'suspended' }) {
+function ConfirmModal({ message, onConfirm, onCancel }: {
+  message: string
+  onConfirm: () => void
+  onCancel: () => void
+}) {
   return (
-    <div style={{ maxWidth: '480px', margin: '0 auto', padding: '0 0 60px' }}>
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      zIndex: 200, padding: '24px',
+    }}>
       <div style={{
-        background: 'white', borderRadius: '20px', padding: '40px',
-        border: '1.5px solid #fecaca', textAlign: 'center',
-        boxShadow: '0 2px 16px rgba(0,0,0,0.05)',
+        background: 'white', borderRadius: '20px', padding: '32px',
+        maxWidth: '400px', width: '100%', textAlign: 'center',
       }}>
-        <div style={{ fontSize: '48px', marginBottom: '16px' }}>
-          {status === 'rejected' ? '😔' : '⚠️'}
+        <p style={{ fontSize: '15px', color: '#0f172a', margin: '0 0 24px', lineHeight: 1.6 }}>{message}</p>
+        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+          <button onClick={onCancel} style={ghostBtn}>Cancel</button>
+          <button onClick={onConfirm} style={{
+            background: '#ef4444', color: 'white', border: 'none',
+            borderRadius: '8px', padding: '8px 20px',
+            fontSize: '14px', fontWeight: 700, cursor: 'pointer',
+            fontFamily: 'DM Sans, sans-serif',
+          }}>Confirm</button>
         </div>
-        <h2 style={{ fontFamily: 'Lora, serif', fontSize: '22px', fontWeight: 700, color: '#0f172a', margin: '0 0 12px' }}>
-          {status === 'rejected' ? 'Application unsuccessful' : 'Account suspended'}
-        </h2>
-        <p style={{ fontSize: '14px', color: '#64748b', lineHeight: 1.7, margin: '0 0 24px' }}>
-          {status === 'rejected'
-            ? "Unfortunately we weren't able to approve your application at this time. Please get in touch if you have any questions."
-            : "Your account has been suspended. Please contact us to find out more."}
-        </p>
-        <a
-          href="mailto:cleaners@vouchee.co.uk"
-          style={{
-            display: 'inline-block', background: '#0f172a', color: 'white',
-            padding: '12px 28px', borderRadius: '12px',
-            fontSize: '14px', fontWeight: 700, textDecoration: 'none',
-          }}
-        >
-          Contact us
-        </a>
       </div>
     </div>
   )
@@ -471,57 +256,47 @@ function BlockedScreen({ status }: { status: 'rejected' | 'suspended' }) {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-export default function CleanerDashboardPage() {
+export default function CustomerDashboard() {
   const router = useRouter()
-  const [profile, setProfile] = useState<CleanerProfile | null>(null)
-  const [cleaner, setCleaner] = useState<CleanerData | null>(null)
+  const [profile, setProfile] = useState<CustomerProfile | null>(null)
+  const [requests, setRequests] = useState<CleaningRequest[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [modal, setModal] = useState<{ type: 'pause' | 'delete' | 'republish'; id: string } | null>(null)
 
   useEffect(() => {
     const init = async () => {
       try {
         const supabase = createClient()
         const { data: { session } } = await supabase.auth.getSession()
-
-        if (!session?.user) {
-          router.replace('/login')
-          return
-        }
+        if (!session?.user) { router.replace('/login'); return }
 
         const userId = session.user.id
 
-        // Fetch profile
         const { data: profileData, error: profileError } = await (supabase as any)
           .from('profiles')
-          .select('full_name, email, phone, role')
+          .select('full_name, email, role')
           .eq('id', userId)
           .single()
 
         if (profileError || !profileData) throw new Error('Could not load your profile.')
-        if (profileData.role !== 'cleaner') {
-          router.replace('/customer/dashboard')
-          return
-        }
+        if (profileData.role !== 'customer') { router.replace('/cleaner/dashboard'); return }
 
-        // Fetch cleaner row
-        const { data: cleanerData, error: cleanerError } = await (supabase as any)
-          .from('cleaners')
-          .select('application_status, zones, dbs_checked, right_to_work, has_insurance, needs_credentials_help, cover_cleans_notify, job_notify, marketing_opt_in, own_supplies, created_at')
-          .eq('profile_id', userId)
-          .single()
-
-        if (cleanerError || !cleanerData) throw new Error('Could not load your cleaner profile.')
+        const { data: requestData } = await (supabase as any)
+          .from('requests')
+          .select('*')
+          .eq('user_id', userId)
+          .neq('status', 'deleted')
+          .order('created_at', { ascending: false })
 
         setProfile(profileData)
-        setCleaner(cleanerData)
+        setRequests(requestData ?? [])
       } catch (err: any) {
         setError(err?.message ?? 'Something went wrong.')
       } finally {
         setLoading(false)
       }
     }
-
     init()
   }, [router])
 
@@ -531,7 +306,33 @@ export default function CleanerDashboardPage() {
     router.push('/')
   }
 
-  // ── Loading ──
+  const handlePause = async (id: string) => {
+    const supabase = createClient()
+    await (supabase as any).from('requests').update({ status: 'paused', paused_at: new Date().toISOString() }).eq('id', id)
+    setRequests(r => r.map(req => req.id === id ? { ...req, status: 'paused', paused_at: new Date().toISOString() } : req))
+    setModal(null)
+  }
+
+  const handleRepublish = async (id: string) => {
+    const req = requests.find(r => r.id === id)
+    if (!req) return
+    const supabase = createClient()
+    await (supabase as any).from('requests').update({
+      status: 'active',
+      paused_at: new Date().toISOString(),
+      republish_count: req.republish_count + 1,
+    }).eq('id', id)
+    setRequests(r => r.map(req => req.id === id ? { ...req, status: 'active', republish_count: req.republish_count + 1 } : req))
+    setModal(null)
+  }
+
+  const handleDelete = async (id: string) => {
+    const supabase = createClient()
+    await (supabase as any).from('requests').update({ status: 'deleted' }).eq('id', id)
+    setRequests(r => r.filter(req => req.id !== id))
+    setModal(null)
+  }
+
   if (loading) {
     return (
       <div style={{
@@ -548,8 +349,7 @@ export default function CleanerDashboardPage() {
     )
   }
 
-  // ── Error ──
-  if (error || !profile || !cleaner) {
+  if (error || !profile) {
     return (
       <div style={{
         minHeight: '100vh',
@@ -578,8 +378,6 @@ export default function CleanerDashboardPage() {
       </div>
     )
   }
-
-  const status = cleaner.application_status
 
   return (
     <>
@@ -611,9 +409,15 @@ export default function CleanerDashboardPage() {
             </div>
             <span style={{ fontSize: '17px', fontWeight: 700, color: '#0f172a', fontFamily: 'Lora, serif' }}>Vouchee</span>
           </a>
-
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <StatusBadge status={status} />
+            <div style={{
+              width: '32px', height: '32px', borderRadius: '50%',
+              background: 'linear-gradient(135deg, #3b82f6, #6366f1)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '14px', fontWeight: 800, color: 'white',
+            }}>
+              {getInitial(profile.full_name)}
+            </div>
             <button
               onClick={handleSignOut}
               style={{
@@ -629,32 +433,72 @@ export default function CleanerDashboardPage() {
         </div>
 
         {/* Page heading */}
-        <div style={{ maxWidth: '640px', margin: '0 auto', padding: '40px 24px 20px' }}>
-          <h1 style={{
-            fontFamily: 'Lora, serif',
-            fontSize: '28px', fontWeight: 700, color: '#0f172a',
-            margin: '0 0 4px',
-          }}>
-            {status === 'approved' ? 'Your dashboard' : 'Application status'}
-          </h1>
-          <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>
-            {profile.email}
-          </p>
+        <div style={{ maxWidth: '680px', margin: '0 auto', padding: '40px 24px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+          <div>
+            <h1 style={{
+              fontFamily: 'Lora, serif',
+              fontSize: '28px', fontWeight: 700, color: '#0f172a',
+              margin: '0 0 4px',
+            }}>
+              Your dashboard
+            </h1>
+            <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>{profile.email}</p>
+          </div>
+          {requests.length > 0 && (
+            <button
+              onClick={() => router.push('/request/property')}
+              style={{
+                background: '#3b82f6', color: 'white', border: 'none',
+                borderRadius: '10px', padding: '10px 20px',
+                fontSize: '14px', fontWeight: 700, cursor: 'pointer',
+                fontFamily: 'DM Sans, sans-serif', whiteSpace: 'nowrap',
+              }}
+            >
+              + New request
+            </button>
+          )}
         </div>
 
-        {/* Main content */}
-        <div style={{ padding: '0 24px' }}>
-          {(status === 'submitted' || status === 'pending') && (
-            <PendingScreen profile={profile} cleaner={cleaner} />
-          )}
-          {status === 'approved' && (
-            <ApprovedShell profile={profile} />
-          )}
-          {(status === 'rejected' || status === 'suspended') && (
-            <BlockedScreen status={status} />
+        {/* Content */}
+        <div style={{ maxWidth: '680px', margin: '0 auto', padding: '0 24px 60px' }}>
+          {requests.length === 0 ? (
+            <NoRequestsScreen profile={profile} onPost={() => router.push('/request/property')} />
+          ) : (
+            requests.map(req => (
+              <RequestCard
+                key={req.id}
+                request={req}
+                onPause={() => setModal({ type: 'pause', id: req.id })}
+                onRepublish={() => setModal({ type: 'republish', id: req.id })}
+                onDelete={() => setModal({ type: 'delete', id: req.id })}
+                onEdit={() => router.push(`/request/property?edit=${req.id}`)}
+              />
+            ))
           )}
         </div>
 
+        {/* Modals */}
+        {modal?.type === 'pause' && (
+          <ConfirmModal
+            message="Pause your request? It won't be visible to cleaners until you republish. You have 2 pauses total."
+            onConfirm={() => handlePause(modal.id)}
+            onCancel={() => setModal(null)}
+          />
+        )}
+        {modal?.type === 'republish' && (
+          <ConfirmModal
+            message="Republish your request? It will be visible to cleaners again."
+            onConfirm={() => handleRepublish(modal.id)}
+            onCancel={() => setModal(null)}
+          />
+        )}
+        {modal?.type === 'delete' && (
+          <ConfirmModal
+            message="Permanently delete this request? This cannot be undone."
+            onConfirm={() => handleDelete(modal.id)}
+            onCancel={() => setModal(null)}
+          />
+        )}
       </div>
     </>
   )
