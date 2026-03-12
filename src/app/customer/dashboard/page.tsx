@@ -27,9 +27,36 @@ interface CleaningRequest {
   goes_live_at: string | null
   paused_at: string | null
   republish_count: number
+  zone: string | null
+  preferred_days: string[] | null
+  time_of_day: string | null
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const TASK_LABELS: Record<string, string> = {
+  general: 'General cleaning', general_cleaning: 'General cleaning',
+  hoovering: 'Hoovering', mopping: 'Mopping',
+  bathroom: 'Bathroom clean', bathroom_deep_clean: 'Bathroom deep clean',
+  kitchen: 'Kitchen clean', kitchen_deep_clean: 'Kitchen deep clean',
+  windows_interior: 'Interior windows', oven: 'Oven cleaning',
+  bathroom_deep: 'Bathroom deep clean', kitchen_deep: 'Kitchen deep clean',
+  fridge: 'Fridge clean', blinds: 'Blinds', mold: 'Mould removal',
+  ironing: 'Ironing', laundry: 'Laundry', changing_beds: 'Changing beds',
+  garage: 'Garage / utility',
+}
+
+const ZONE_LABELS: Record<string, string> = {
+  central_south_east: 'Central / South East',
+  north_west: 'North West',
+  north_east_roffey: 'North East / Roffey',
+  south_west: 'South West',
+  warnham_north: 'Warnham / North',
+  broadbridge_heath: 'Broadbridge Heath',
+  mannings_heath: 'Mannings Heath',
+  faygate_kilnwood_vale: 'Faygate / Kilnwood Vale',
+  christs_hospital: "Christ's Hospital",
+}
 
 const FREQUENCY_LABEL: Record<Frequency, string> = {
   weekly: 'Weekly',
@@ -37,79 +64,90 @@ const FREQUENCY_LABEL: Record<Frequency, string> = {
   monthly: 'Monthly',
 }
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-GB', {
-    day: 'numeric', month: 'long', year: 'numeric',
-  })
-}
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getInitial(name: string) {
   return name?.trim()?.charAt(0)?.toUpperCase() ?? '?'
 }
 
-function getWeeklyTotal(hours: number, rate: number, frequency: Frequency) {
-  const multiplier = frequency === 'weekly' ? 1 : frequency === 'fortnightly' ? 0.5 : 0.25
-  return (hours * rate * multiplier).toFixed(2)
+function getFirstName(name: string) {
+  return name?.trim()?.split(' ')?.[0] ?? 'there'
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
-
-function StatusBadge({ status }: { status: RequestStatus }) {
-  const map: Record<RequestStatus, { label: string; bg: string; color: string; dot: string }> = {
-    active:         { label: 'Active',         bg: '#dcfce7', color: '#15803d', dot: '#22c55e' },
-    paused:         { label: 'Paused',         bg: '#fef9c3', color: '#854d0e', dot: '#eab308' },
-    deleted:        { label: 'Deleted',        bg: '#fee2e2', color: '#991b1b', dot: '#ef4444' },
-    pending_review: { label: 'Under review',   bg: '#eff6ff', color: '#1d4ed8', dot: '#3b82f6' },
+function formatDays(days: string[] | null) {
+  if (!days || days.length === 0) return null
+  const short: Record<string, string> = {
+    monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed',
+    thursday: 'Thu', friday: 'Fri', saturday: 'Sat', sunday: 'Sun',
   }
-  const s = map[status] ?? map.active
+  return days.map(d => short[d.toLowerCase()] ?? d).join(' · ')
+}
+
+// ─── Chip ─────────────────────────────────────────────────────────────────────
+
+function Chip({ children }: { children: React.ReactNode }) {
   return (
     <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: '6px',
-      background: s.bg, color: s.color,
-      borderRadius: '100px', padding: '5px 12px',
-      fontSize: '12px', fontWeight: 700,
+      background: '#f1f5f9', borderRadius: '100px',
+      padding: '4px 12px', fontSize: '12px',
+      fontWeight: 600, color: '#475569',
     }}>
-      <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: s.dot }} />
-      {s.label}
+      {children}
     </span>
+  )
+}
+
+// ─── Action Button ────────────────────────────────────────────────────────────
+
+function ActionBtn({ children, onClick, danger, primary }: {
+  children: React.ReactNode
+  onClick: () => void
+  danger?: boolean
+  primary?: boolean
+}) {
+  return (
+    <button onClick={onClick} style={{
+      background: primary ? '#3b82f6' : 'none',
+      border: `1px solid ${danger ? '#fecaca' : primary ? '#3b82f6' : '#e2e8f0'}`,
+      borderRadius: '8px', padding: '6px 14px',
+      fontSize: '13px', fontWeight: 600,
+      color: danger ? '#ef4444' : primary ? 'white' : '#64748b',
+      cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
+    }}>
+      {children}
+    </button>
   )
 }
 
 // ─── No Requests Screen ───────────────────────────────────────────────────────
 
-function NoRequestsScreen({ profile, onPost }: { profile: CustomerProfile; onPost: () => void }) {
-  const firstName = profile.full_name?.trim()?.split(' ')?.[0] ?? 'there'
+function NoRequestsScreen({ firstName, onPost }: { firstName: string; onPost: () => void }) {
   return (
-    <div style={{ maxWidth: '560px', margin: '0 auto', padding: '0 0 60px', textAlign: 'center' }}>
-      <div style={{
-        background: 'white', borderRadius: '20px', padding: '48px 40px',
-        border: '1.5px solid #e2e8f0', boxShadow: '0 2px 16px rgba(0,0,0,0.05)',
+    <div style={{ textAlign: 'center', padding: '40px 24px' }}>
+      <div style={{ fontSize: '48px', marginBottom: '20px' }}>🧹</div>
+      <h2 style={{
+        fontFamily: "'Lora', serif", fontSize: '24px', fontWeight: 700,
+        color: '#0f172a', margin: '0 0 12px',
       }}>
-        <div style={{ fontSize: '48px', marginBottom: '16px' }}>🧹</div>
-        <h2 style={{ fontFamily: 'Lora, serif', fontSize: '22px', fontWeight: 700, color: '#0f172a', margin: '0 0 12px' }}>
-          Hi {firstName}, ready to find your cleaner?
-        </h2>
-        <p style={{ fontSize: '15px', color: '#64748b', lineHeight: 1.7, margin: '0 0 32px' }}>
-          Post your cleaning request and get matched with vetted, local cleaners in Horsham. No contracts, flexible scheduling.
-        </p>
-        <button
-          onClick={onPost}
-          style={{
-            background: '#3b82f6', color: 'white', border: 'none',
-            borderRadius: '12px', padding: '14px 32px',
-            fontSize: '15px', fontWeight: 700, cursor: 'pointer',
-            fontFamily: 'DM Sans, sans-serif',
-          }}
-        >
-          Post a cleaning request
-        </button>
-        <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'center', gap: '24px' }}>
-          {['DBS checked cleaners', 'Insured & vetted', 'No contracts'].map(t => (
-            <span key={t} style={{ fontSize: '12px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <span style={{ color: '#22c55e' }}>✓</span> {t}
-            </span>
-          ))}
-        </div>
+        Hi {firstName}, ready to find your cleaner?
+      </h2>
+      <p style={{ fontSize: '15px', color: '#64748b', lineHeight: 1.7, margin: '0 0 32px', maxWidth: '420px', marginLeft: 'auto', marginRight: 'auto' }}>
+        Post your cleaning request and get matched with vetted, local cleaners in Horsham. No contracts, flexible scheduling.
+      </p>
+      <button onClick={onPost} style={{
+        background: '#3b82f6', color: 'white', border: 'none',
+        borderRadius: '12px', padding: '14px 32px',
+        fontSize: '15px', fontWeight: 700, cursor: 'pointer',
+        fontFamily: "'DM Sans', sans-serif",
+      }}>
+        Post a cleaning request
+      </button>
+      <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'center', gap: '24px', flexWrap: 'wrap' }}>
+        {['DBS checked cleaners', 'Insured & vetted', 'No contracts'].map(t => (
+          <span key={t} style={{ fontSize: '13px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '5px' }}>
+            <span style={{ color: '#22c55e', fontWeight: 700 }}>✓</span> {t}
+          </span>
+        ))}
       </div>
     </div>
   )
@@ -118,11 +156,7 @@ function NoRequestsScreen({ profile, onPost }: { profile: CustomerProfile; onPos
 // ─── Request Card ─────────────────────────────────────────────────────────────
 
 function RequestCard({
-  request,
-  onPause,
-  onRepublish,
-  onDelete,
-  onEdit,
+  request, onPause, onRepublish, onDelete, onEdit,
 }: {
   request: CleaningRequest
   onPause: () => void
@@ -133,99 +167,156 @@ function RequestCard({
   const hours = request.hours_per_session ?? 0
   const rate = request.hourly_rate ?? 0
   const freq = request.frequency ?? 'fortnightly'
-  const weeklyTotal = getWeeklyTotal(hours, rate, freq)
+  const estPerSession = hours && rate ? `~£${(hours * rate).toFixed(2)}` : null
   const pausesLeft = 2 - (request.republish_count ?? 0)
   const isRelocked = request.paused_at
     ? Date.now() - new Date(request.paused_at).getTime() < 24 * 60 * 60 * 1000
     : false
 
+  const locationLabel = request.zone ? (ZONE_LABELS[request.zone] ?? request.zone) : 'Horsham'
+  const daysLabel = formatDays(request.preferred_days)
+  const visibleTasks = (request.tasks ?? []).slice(0, 6)
+  const extraTasks = (request.tasks ?? []).length - 6
+
+  const statusConfig = {
+    active:         { label: 'Live — accepting applications', dot: '#22c55e', border: '#bbf7d0', headerBg: '#f0fdf4', textColor: '#15803d' },
+    pending_review: { label: 'Under review',                  dot: '#3b82f6', border: '#bfdbfe', headerBg: '#eff6ff', textColor: '#1d4ed8' },
+    paused:         { label: 'Paused',                        dot: '#eab308', border: '#fef08a', headerBg: '#fefce8', textColor: '#854d0e' },
+    deleted:        { label: 'Deleted',                       dot: '#ef4444', border: '#fecaca', headerBg: '#fef2f2', textColor: '#991b1b' },
+  }
+  const sc = statusConfig[request.status] ?? statusConfig.active
+
   return (
     <div style={{
-      background: 'white', borderRadius: '20px',
-      border: '1.5px solid #e2e8f0',
-      boxShadow: '0 2px 16px rgba(0,0,0,0.05)',
+      background: 'white', borderRadius: '16px',
+      border: `1.5px solid ${sc.border}`,
+      boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
       marginBottom: '20px', overflow: 'hidden',
     }}>
-      {/* Header */}
+      {/* Status header */}
       <div style={{
-        padding: '20px 24px',
-        borderBottom: '1px solid #f1f5f9',
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        background: sc.headerBg, padding: '12px 20px',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       }}>
-        <div>
-          <div style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a', marginBottom: '4px' }}>
-            {request.bedrooms} bed · {request.bathrooms} bath{hours ? ` · ${hours}h` : ''}
-          </div>
-          <div style={{ fontSize: '13px', color: '#64748b' }}>
-            {FREQUENCY_LABEL[freq] ?? freq}{rate ? ` · £${rate}/hr` : ''}{hours && rate ? ` · ~£${weeklyTotal}/week` : ''}
-          </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: sc.dot, display: 'inline-block' }} />
+          <span style={{ fontSize: '13px', fontWeight: 700, color: sc.textColor }}>{sc.label}</span>
         </div>
-        <StatusBadge status={request.status} />
+        <button onClick={onEdit} style={{
+          display: 'flex', alignItems: 'center', gap: '5px',
+          background: 'white', border: '1px solid #e2e8f0',
+          borderRadius: '8px', padding: '5px 12px',
+          fontSize: '12px', fontWeight: 600, color: '#475569',
+          cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
+        }}>
+          ⚙️ Edit listing
+        </button>
       </div>
 
-      {/* Tasks */}
-      {(request.tasks ?? []).length > 0 && (
-        <div style={{ padding: '16px 24px', borderBottom: '1px solid #f1f5f9' }}>
-          <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '10px' }}>
-            Tasks
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-            {(request.tasks ?? []).map(task => (
-              <span key={task} style={{
-                background: '#f8fafc', border: '1px solid #e2e8f0',
-                borderRadius: '8px', padding: '4px 10px',
-                fontSize: '12px', color: '#475569', fontWeight: 500,
-              }}>
-                {task}
-              </span>
-            ))}
-          </div>
+      {/* Body */}
+      <div style={{ padding: '20px' }}>
+        {/* Location */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '14px' }}>
+          <span style={{ fontSize: '16px' }}>📍</span>
+          <span style={{ fontFamily: "'Lora', serif", fontSize: '20px', fontWeight: 700, color: '#0f172a' }}>
+            {locationLabel}
+          </span>
         </div>
-      )}
 
-      {/* pending_review notice */}
-      {request.status === 'pending_review' && (
-        <div style={{ padding: '12px 24px', background: '#eff6ff', borderBottom: '1px solid #dbeafe' }}>
-          <p style={{ margin: 0, fontSize: '13px', color: '#1d4ed8', lineHeight: 1.5 }}>
-            ⏳ Your request is under review. We'll notify you once it's live and visible to cleaners.
-          </p>
+        {/* Info chips */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '16px' }}>
+          {request.bedrooms ? <Chip>{request.bedrooms} bed</Chip> : null}
+          {request.bathrooms ? <Chip>{request.bathrooms} bath</Chip> : null}
+          {hours > 0 ? <Chip>{hours} hrs</Chip> : null}
+          {freq ? <Chip>{FREQUENCY_LABEL[freq] ?? freq}</Chip> : null}
+          {daysLabel ? <Chip>{daysLabel}</Chip> : null}
+          {request.time_of_day ? <Chip>{request.time_of_day}</Chip> : null}
         </div>
-      )}
 
-      {/* Footer */}
-      <div style={{
-        padding: '14px 24px',
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        background: '#fafafa',
-      }}>
-        <span style={{ fontSize: '12px', color: '#94a3b8' }}>
-          Posted {formatDate(request.created_at)}
-        </span>
-        <div style={{ display: 'flex', gap: '8px' }}>
+        {/* Tasks */}
+        {visibleTasks.length > 0 && (
+          <div style={{ marginBottom: '16px' }}>
+            <div style={{ fontSize: '10px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>
+              Tasks
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+              {visibleTasks.map(task => (
+                <span key={task} style={{
+                  background: '#f0fdf4', border: '1px solid #bbf7d0',
+                  color: '#15803d', fontSize: '12px', fontWeight: 600,
+                  padding: '4px 10px', borderRadius: '100px',
+                }}>
+                  {TASK_LABELS[task] ?? task}
+                </span>
+              ))}
+              {extraTasks > 0 && (
+                <span style={{
+                  background: '#f1f5f9', color: '#64748b',
+                  fontSize: '12px', fontWeight: 600,
+                  padding: '4px 10px', borderRadius: '100px',
+                }}>
+                  +{extraTasks} more
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Rate */}
+        {rate > 0 && (
+          <div style={{
+            background: '#fefce8', border: '1px solid #fef08a',
+            borderRadius: '12px', padding: '14px 16px',
+            display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end',
+            marginBottom: '16px',
+          }}>
+            <div>
+              <div style={{ fontSize: '10px', fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '4px' }}>
+                Offered rate
+              </div>
+              <div style={{ fontSize: '24px', fontWeight: 800, color: '#78350f', lineHeight: 1 }}>
+                £{rate.toFixed(2)}<span style={{ fontSize: '14px', fontWeight: 500 }}>/hr</span>
+              </div>
+            </div>
+            {estPerSession && (
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: '10px', fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '4px' }}>
+                  Est. per session
+                </div>
+                <div style={{ fontSize: '20px', fontWeight: 700, color: '#92400e' }}>{estPerSession}</div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Pending notice */}
+        {request.status === 'pending_review' && (
+          <div style={{ padding: '10px 14px', background: '#eff6ff', borderRadius: '10px', border: '1px solid #bfdbfe', marginBottom: '16px' }}>
+            <p style={{ margin: 0, fontSize: '13px', color: '#1d4ed8', lineHeight: 1.5 }}>
+              ⏳ Your request is under review. We'll notify you once it's live and visible to cleaners.
+            </p>
+          </div>
+        )}
+
+        {/* Actions */}
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           {request.status === 'active' && (
             <>
-              <button onClick={onEdit} style={ghostBtn}>Edit</button>
-              {pausesLeft > 0 && (
-                <button onClick={onPause} style={ghostBtn}>Pause</button>
-              )}
-              <button onClick={onDelete} style={{ ...ghostBtn, color: '#ef4444', borderColor: '#fecaca' }}>Delete</button>
+              {pausesLeft > 0 && <ActionBtn onClick={onPause}>Pause listing</ActionBtn>}
+              <ActionBtn onClick={onDelete} danger>Remove listing</ActionBtn>
             </>
           )}
           {request.status === 'paused' && (
             <>
-              {!isRelocked && (
-                <button onClick={onRepublish} style={{ ...ghostBtn, background: '#3b82f6', color: 'white', borderColor: '#3b82f6' }}>
-                  Republish
-                </button>
-              )}
-              {isRelocked && (
-                <span style={{ fontSize: '12px', color: '#94a3b8' }}>Available to republish in 24h</span>
-              )}
-              <button onClick={onDelete} style={{ ...ghostBtn, color: '#ef4444', borderColor: '#fecaca' }}>Delete</button>
+              {!isRelocked
+                ? <ActionBtn onClick={onRepublish} primary>Republish</ActionBtn>
+                : <span style={{ fontSize: '12px', color: '#94a3b8', alignSelf: 'center' }}>Available to republish in 24h</span>
+              }
+              <ActionBtn onClick={onDelete} danger>Remove listing</ActionBtn>
             </>
           )}
           {request.status === 'pending_review' && (
-            <button onClick={onDelete} style={{ ...ghostBtn, color: '#ef4444', borderColor: '#fecaca' }}>Delete</button>
+            <ActionBtn onClick={onDelete} danger>Remove listing</ActionBtn>
           )}
         </div>
       </div>
@@ -233,19 +324,10 @@ function RequestCard({
   )
 }
 
-const ghostBtn: React.CSSProperties = {
-  background: 'none', border: '1px solid #e2e8f0',
-  borderRadius: '8px', padding: '6px 14px',
-  fontSize: '13px', fontWeight: 600, color: '#64748b',
-  cursor: 'pointer', fontFamily: 'DM Sans, sans-serif',
-}
-
 // ─── Confirm Modal ────────────────────────────────────────────────────────────
 
 function ConfirmModal({ message, onConfirm, onCancel }: {
-  message: string
-  onConfirm: () => void
-  onCancel: () => void
+  message: string; onConfirm: () => void; onCancel: () => void
 }) {
   return (
     <div style={{
@@ -256,15 +338,19 @@ function ConfirmModal({ message, onConfirm, onCancel }: {
       <div style={{
         background: 'white', borderRadius: '20px', padding: '32px',
         maxWidth: '400px', width: '100%', textAlign: 'center',
+        boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
       }}>
         <p style={{ fontSize: '15px', color: '#0f172a', margin: '0 0 24px', lineHeight: 1.6 }}>{message}</p>
         <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-          <button onClick={onCancel} style={ghostBtn}>Cancel</button>
+          <button onClick={onCancel} style={{
+            background: 'none', border: '1px solid #e2e8f0', borderRadius: '8px',
+            padding: '8px 20px', fontSize: '14px', fontWeight: 600, color: '#64748b',
+            cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
+          }}>Cancel</button>
           <button onClick={onConfirm} style={{
-            background: '#ef4444', color: 'white', border: 'none',
-            borderRadius: '8px', padding: '8px 20px',
-            fontSize: '14px', fontWeight: 700, cursor: 'pointer',
-            fontFamily: 'DM Sans, sans-serif',
+            background: '#ef4444', color: 'white', border: 'none', borderRadius: '8px',
+            padding: '8px 20px', fontSize: '14px', fontWeight: 700,
+            cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
           }}>Confirm</button>
         </div>
       </div>
@@ -292,17 +378,13 @@ export default function CustomerDashboard() {
         const userId = session.user.id
 
         const { data: profileData, error: profileError } = await (supabase as any)
-          .from('profiles')
-          .select('full_name, email, role')
-          .eq('id', userId)
-          .single()
+          .from('profiles').select('full_name, email, role').eq('id', userId).single()
 
         if (profileError || !profileData) throw new Error('Could not load your profile.')
         if (profileData.role !== 'customer') { router.replace('/cleaner/dashboard'); return }
 
         const { data: requestData, error: requestError } = await (supabase as any)
-          .from('clean_requests')
-          .select('*')
+          .from('clean_requests').select('*')
           .eq('customer_id', userId)
           .neq('status', 'deleted')
           .order('created_at', { ascending: false })
@@ -328,8 +410,10 @@ export default function CustomerDashboard() {
 
   const handlePause = async (id: string) => {
     const supabase = createClient()
-    await (supabase as any).from('clean_requests').update({ status: 'paused', paused_at: new Date().toISOString() }).eq('id', id)
-    setRequests(r => r.map(req => req.id === id ? { ...req, status: 'paused' as RequestStatus, paused_at: new Date().toISOString() } : req))
+    await (supabase as any).from('clean_requests')
+      .update({ status: 'paused', paused_at: new Date().toISOString() }).eq('id', id)
+    setRequests(r => r.map(req => req.id === id
+      ? { ...req, status: 'paused' as RequestStatus, paused_at: new Date().toISOString() } : req))
     setModal(null)
   }
 
@@ -337,12 +421,10 @@ export default function CustomerDashboard() {
     const req = requests.find(r => r.id === id)
     if (!req) return
     const supabase = createClient()
-    await (supabase as any).from('clean_requests').update({
-      status: 'active',
-      paused_at: new Date().toISOString(),
-      republish_count: req.republish_count + 1,
-    }).eq('id', id)
-    setRequests(r => r.map(req => req.id === id ? { ...req, status: 'active' as RequestStatus, republish_count: req.republish_count + 1 } : req))
+    await (supabase as any).from('clean_requests')
+      .update({ status: 'active', paused_at: new Date().toISOString(), republish_count: req.republish_count + 1 }).eq('id', id)
+    setRequests(r => r.map(req => req.id === id
+      ? { ...req, status: 'active' as RequestStatus, republish_count: req.republish_count + 1 } : req))
     setModal(null)
   }
 
@@ -355,12 +437,7 @@ export default function CustomerDashboard() {
 
   if (loading) {
     return (
-      <div style={{
-        minHeight: '100vh',
-        background: 'linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontFamily: 'DM Sans, sans-serif',
-      }}>
+      <div style={{ minHeight: '100vh', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans', sans-serif" }}>
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: '32px', marginBottom: '12px' }}>🧹</div>
           <p style={{ fontSize: '14px', color: '#64748b' }}>Loading your dashboard…</p>
@@ -371,27 +448,11 @@ export default function CustomerDashboard() {
 
   if (error || !profile) {
     return (
-      <div style={{
-        minHeight: '100vh',
-        background: 'linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontFamily: 'DM Sans, sans-serif', padding: '24px',
-      }}>
-        <div style={{
-          background: 'white', borderRadius: '20px', padding: '40px',
-          maxWidth: '400px', textAlign: 'center', border: '1.5px solid #fecaca',
-        }}>
+      <div style={{ minHeight: '100vh', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans', sans-serif", padding: '24px' }}>
+        <div style={{ background: 'white', borderRadius: '20px', padding: '40px', maxWidth: '400px', textAlign: 'center', border: '1.5px solid #fecaca' }}>
           <div style={{ fontSize: '32px', marginBottom: '12px' }}>⚠️</div>
           <p style={{ fontSize: '14px', color: '#dc2626', margin: '0 0 16px' }}>{error ?? 'Could not load your dashboard.'}</p>
-          <button
-            onClick={() => router.push('/login')}
-            style={{
-              background: '#0f172a', color: 'white', border: 'none',
-              borderRadius: '10px', padding: '10px 24px',
-              fontSize: '14px', fontWeight: 700, cursor: 'pointer',
-              fontFamily: 'DM Sans, sans-serif',
-            }}
-          >
+          <button onClick={() => router.push('/login')} style={{ background: '#0f172a', color: 'white', border: 'none', borderRadius: '10px', padding: '10px 24px', fontSize: '14px', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
             Back to login
           </button>
         </div>
@@ -399,101 +460,88 @@ export default function CustomerDashboard() {
     )
   }
 
+  const firstName = getFirstName(profile.full_name)
+  const liveCount = requests.filter(r => r.status === 'active').length
+  const hasRequests = requests.length > 0
+
   return (
     <>
-      <link rel="preconnect" href="https://fonts.googleapis.com" />
-      <link
-        href="https://fonts.googleapis.com/css2?family=Lora:wght@400;600;700&family=DM+Sans:wght@400;500;600;700;800&display=swap"
-        rel="stylesheet"
-      />
-      <div style={{
-        minHeight: '100vh',
-        background: 'linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%)',
-        fontFamily: 'DM Sans, sans-serif',
-      }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Lora:wght@400;600;700&family=DM+Sans:wght@400;500;600;700;800&display=swap');
+        * { box-sizing: border-box; }
+      `}</style>
 
-        {/* Top bar */}
+      <div style={{ minHeight: '100vh', background: '#f8fafc', fontFamily: "'DM Sans', sans-serif" }}>
+
+        {/* Nav */}
         <div style={{
           background: 'white', borderBottom: '1px solid #f1f5f9',
-          padding: '0 24px', height: '60px',
+          padding: '0 24px', height: '56px',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           position: 'sticky', top: 0, zIndex: 50,
         }}>
           <a href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div style={{
-              width: '32px', height: '32px', borderRadius: '8px',
-              background: 'linear-gradient(135deg, #3b82f6, #6366f1)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <span style={{ fontSize: '16px', fontWeight: 800, color: 'white', fontFamily: 'Lora, serif' }}>V</span>
+            <div style={{ width: '30px', height: '30px', borderRadius: '7px', background: 'linear-gradient(135deg, #3b82f6, #6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ fontSize: '15px', fontWeight: 800, color: 'white', fontFamily: "'Lora', serif" }}>V</span>
             </div>
-            <span style={{ fontSize: '17px', fontWeight: 700, color: '#0f172a', fontFamily: 'Lora, serif' }}>Vouchee</span>
+            <span style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a', fontFamily: "'Lora', serif" }}>Vouchee</span>
           </a>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{
-              width: '32px', height: '32px', borderRadius: '50%',
-              background: 'linear-gradient(135deg, #3b82f6, #6366f1)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '14px', fontWeight: 800, color: 'white',
-            }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <a href="/jobs" style={{ fontSize: '13px', fontWeight: 600, color: '#64748b', textDecoration: 'none' }}>View jobs board</a>
+            <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: 'linear-gradient(135deg, #3b82f6, #6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 800, color: 'white' }}>
               {getInitial(profile.full_name)}
             </div>
-            <button
-              onClick={handleSignOut}
-              style={{
-                background: 'none', border: '1px solid #e2e8f0',
-                borderRadius: '8px', padding: '6px 14px',
-                fontSize: '13px', fontWeight: 600, color: '#64748b',
-                cursor: 'pointer', fontFamily: 'DM Sans, sans-serif',
-              }}
-            >
+            <button onClick={handleSignOut} style={{ background: 'none', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '5px 12px', fontSize: '13px', fontWeight: 600, color: '#64748b', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
               Sign out
             </button>
           </div>
         </div>
 
-        {/* Page heading */}
-        <div style={{ maxWidth: '680px', margin: '0 auto', padding: '40px 24px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-          <div>
-            <h1 style={{
-              fontFamily: 'Lora, serif',
-              fontSize: '28px', fontWeight: 700, color: '#0f172a',
-              margin: '0 0 4px',
-            }}>
-              Your dashboard
-            </h1>
-            <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>{profile.email}</p>
-          </div>
-          {requests.length > 0 && (
-            <button
-              onClick={() => router.push('/request/property')}
-              style={{
-                background: '#3b82f6', color: 'white', border: 'none',
-                borderRadius: '10px', padding: '10px 20px',
-                fontSize: '14px', fontWeight: 700, cursor: 'pointer',
-                fontFamily: 'DM Sans, sans-serif', whiteSpace: 'nowrap',
-              }}
-            >
-              + New request
-            </button>
-          )}
-        </div>
-
         {/* Content */}
-        <div style={{ maxWidth: '680px', margin: '0 auto', padding: '0 24px 60px' }}>
-          {requests.length === 0 ? (
-            <NoRequestsScreen profile={profile} onPost={() => router.push('/request/property')} />
+        <div style={{ maxWidth: '680px', margin: '0 auto', padding: '40px 24px 80px' }}>
+
+          {/* Header */}
+          <div style={{ marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <h1 style={{ fontFamily: "'Lora', serif", fontSize: '30px', fontWeight: 700, color: '#0f172a', marginBottom: '6px' }}>
+                Hey {firstName}! 👋
+              </h1>
+              <p style={{ fontSize: '15px', color: '#64748b' }}>
+                {hasRequests
+                  ? liveCount > 0 ? 'Your request is live — cleaners can apply.' : `You have ${requests.length} listing${requests.length > 1 ? 's' : ''}.`
+                  : 'Post your first cleaning request to get started.'}
+              </p>
+            </div>
+            {hasRequests && (
+              <button onClick={() => router.push('/request/property')} style={{
+                background: '#3b82f6', color: 'white', border: 'none',
+                borderRadius: '10px', padding: '10px 18px',
+                fontSize: '14px', fontWeight: 700, cursor: 'pointer',
+                fontFamily: "'DM Sans', sans-serif", whiteSpace: 'nowrap', flexShrink: 0,
+              }}>
+                + New request
+              </button>
+            )}
+          </div>
+
+          {!hasRequests ? (
+            <NoRequestsScreen firstName={firstName} onPost={() => router.push('/request/property')} />
           ) : (
-            requests.map(req => (
-              <RequestCard
-                key={req.id}
-                request={req}
-                onPause={() => setModal({ type: 'pause', id: req.id })}
-                onRepublish={() => setModal({ type: 'republish', id: req.id })}
-                onDelete={() => setModal({ type: 'delete', id: req.id })}
-                onEdit={() => router.push(`/request/property?edit=${req.id}`)}
-              />
-            ))
+            <>
+              <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '16px' }}>
+                Your listings
+              </div>
+              {requests.map(req => (
+                <RequestCard
+                  key={req.id}
+                  request={req}
+                  onPause={() => setModal({ type: 'pause', id: req.id })}
+                  onRepublish={() => setModal({ type: 'republish', id: req.id })}
+                  onDelete={() => setModal({ type: 'delete', id: req.id })}
+                  onEdit={() => router.push(`/request/property?edit=${req.id}`)}
+                />
+              ))}
+            </>
           )}
         </div>
 
