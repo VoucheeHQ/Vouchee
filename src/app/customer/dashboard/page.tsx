@@ -35,6 +35,16 @@ interface CleaningRequest {
   time_of_day: string | null
 }
 
+interface EditDraft {
+  bedrooms: number
+  bathrooms: number
+  hours_per_session: number
+  hourly_rate: number
+  preferred_days: string[]
+  time_of_day: string
+  tasks: string[]
+}
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const TASK_LABELS: Record<string, string> = {
@@ -48,6 +58,12 @@ const TASK_LABELS: Record<string, string> = {
   ironing: 'Ironing', laundry: 'Laundry', changing_beds: 'Changing beds',
   garage: 'Garage / utility',
 }
+
+const ALL_TASKS = [
+  'general_cleaning', 'hoovering', 'mopping', 'bathroom', 'kitchen',
+  'windows_interior', 'fridge', 'blinds', 'mold', 'ironing', 'laundry',
+  'changing_beds', 'garage',
+]
 
 const ZONE_LABELS: Record<string, string> = {
   central_south_east: 'Central / South East',
@@ -67,6 +83,19 @@ const FREQUENCY_LABEL: Record<Frequency, string> = {
   monthly: 'Monthly',
 }
 
+const TIME_SLOTS = [
+  'Morning (8am - 12pm)',
+  'Afternoon (12pm - 5pm)',
+  'Evening (5pm - 8pm)',
+  'Flexible',
+]
+
+const ALL_DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+const DAY_SHORT: Record<string, string> = {
+  monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed',
+  thursday: 'Thu', friday: 'Fri', saturday: 'Sat', sunday: 'Sun',
+}
+
 const ACTIVE_STATUSES: RequestStatus[] = ['active', 'pending_review', 'pending']
 const PAST_STATUSES: RequestStatus[] = ['deleted', 'paused', 'completed', 'cancelled']
 
@@ -78,11 +107,7 @@ function getFirstName(name: string) {
 
 function formatDays(days: string[] | null) {
   if (!days || days.length === 0) return null
-  const short: Record<string, string> = {
-    monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed',
-    thursday: 'Thu', friday: 'Fri', saturday: 'Sat', sunday: 'Sun',
-  }
-  return days.map(d => short[d.toLowerCase()] ?? d).join(' · ')
+  return days.map(d => DAY_SHORT[d.toLowerCase()] ?? d).join(' · ')
 }
 
 function daysSince(iso: string) {
@@ -90,7 +115,6 @@ function daysSince(iso: string) {
 }
 
 function mockApplicants(id: string) {
-  // Deterministic mock based on id so it doesn't change on re-render
   return (id.charCodeAt(0) + id.charCodeAt(1)) % 8
 }
 
@@ -132,6 +156,247 @@ function ActionBtn({ children, onClick, danger, primary, disabled }: {
     >
       {children}
     </button>
+  )
+}
+
+// ─── Stepper ──────────────────────────────────────────────────────────────────
+
+function Stepper({ label, value, onDown, onUp, min, max, step = 1, prefix = '', suffix = '' }: {
+  label: string
+  value: number
+  onDown: () => void
+  onUp: () => void
+  min: number
+  max: number
+  step?: number
+  prefix?: string
+  suffix?: string
+}) {
+  return (
+    <div style={{ background: '#f8fafc', borderRadius: '12px', padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <span style={{ fontSize: '13px', fontWeight: 600, color: '#475569' }}>{label}</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <button
+          onClick={onDown}
+          disabled={value <= min}
+          style={{
+            width: '32px', height: '32px', borderRadius: '50%',
+            border: '1.5px solid #e2e8f0', background: value <= min ? '#f8fafc' : 'white',
+            fontSize: '18px', fontWeight: 700, color: value <= min ? '#cbd5e1' : '#0f172a',
+            cursor: value <= min ? 'not-allowed' : 'pointer', display: 'flex',
+            alignItems: 'center', justifyContent: 'center', lineHeight: 1,
+          }}
+        >−</button>
+        <span style={{ fontSize: '16px', fontWeight: 800, color: '#0f172a', minWidth: '48px', textAlign: 'center' }}>
+          {prefix}{typeof value === 'number' && !Number.isInteger(value) ? value.toFixed(1) : value}{suffix}
+        </span>
+        <button
+          onClick={onUp}
+          disabled={value >= max}
+          style={{
+            width: '32px', height: '32px', borderRadius: '50%',
+            border: '1.5px solid #e2e8f0', background: value >= max ? '#f8fafc' : 'white',
+            fontSize: '18px', fontWeight: 700, color: value >= max ? '#cbd5e1' : '#0f172a',
+            cursor: value >= max ? 'not-allowed' : 'pointer', display: 'flex',
+            alignItems: 'center', justifyContent: 'center', lineHeight: 1,
+          }}
+        >+</button>
+      </div>
+    </div>
+  )
+}
+
+// ─── Edit Modal ───────────────────────────────────────────────────────────────
+
+function EditModal({ request, onSave, onClose, saving }: {
+  request: CleaningRequest
+  onSave: (id: string, draft: EditDraft) => Promise<void>
+  onClose: () => void
+  saving: boolean
+}) {
+  const [draft, setDraft] = useState<EditDraft>({
+    bedrooms: request.bedrooms ?? 1,
+    bathrooms: request.bathrooms ?? 1,
+    hours_per_session: request.hours_per_session ?? 2,
+    hourly_rate: request.hourly_rate ?? 15,
+    preferred_days: request.preferred_days ?? [],
+    time_of_day: request.time_of_day ?? 'Flexible',
+    tasks: request.tasks ?? [],
+  })
+
+  const estPerSession = (draft.hours_per_session * draft.hourly_rate).toFixed(2)
+
+  const toggleDay = (day: string) => {
+    setDraft(d => ({
+      ...d,
+      preferred_days: d.preferred_days.includes(day)
+        ? d.preferred_days.filter(x => x !== day)
+        : [...d.preferred_days, day],
+    }))
+  }
+
+  const toggleTask = (task: string) => {
+    setDraft(d => ({
+      ...d,
+      tasks: d.tasks.includes(task)
+        ? d.tasks.filter(x => x !== task)
+        : [...d.tasks, task],
+    }))
+  }
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+      display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+      zIndex: 200, padding: '0',
+    }}>
+      <div style={{
+        background: 'white', borderRadius: '24px 24px 0 0',
+        width: '100%', maxWidth: '720px',
+        maxHeight: '90vh', overflowY: 'auto',
+        boxShadow: '0 -8px 40px rgba(0,0,0,0.15)',
+      }}>
+        {/* Handle + header */}
+        <div style={{ position: 'sticky', top: 0, background: 'white', borderBottom: '1px solid #f1f5f9', padding: '16px 24px 14px', zIndex: 10 }}>
+          <div style={{ width: '40px', height: '4px', background: '#e2e8f0', borderRadius: '2px', margin: '0 auto 16px' }} />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <h2 style={{ fontFamily: "'Lora', serif", fontSize: '20px', fontWeight: 700, color: '#0f172a', margin: 0 }}>
+              Edit listing
+            </h2>
+            <button onClick={onClose} style={{
+              background: '#f1f5f9', border: 'none', borderRadius: '50%',
+              width: '32px', height: '32px', fontSize: '16px', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b',
+            }}>✕</button>
+          </div>
+        </div>
+
+        <div style={{ padding: '24px' }}>
+
+          {/* Live summary */}
+          <div style={{ background: '#fefce8', border: '1px solid #fef08a', borderRadius: '12px', padding: '14px 16px', marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <div style={{ fontSize: '10px', fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '2px' }}>Offered rate</div>
+              <div style={{ fontSize: '22px', fontWeight: 800, color: '#78350f' }}>
+                £{draft.hourly_rate.toFixed(2)}<span style={{ fontSize: '13px', fontWeight: 500 }}>/hr</span>
+              </div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: '10px', fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '2px' }}>Est. per session</div>
+              <div style={{ fontSize: '18px', fontWeight: 700, color: '#92400e' }}>~£{estPerSession}</div>
+            </div>
+          </div>
+
+          {/* Steppers */}
+          <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '10px' }}>
+            Property & time
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '24px' }}>
+            <Stepper label="Bedrooms" value={draft.bedrooms} min={1} max={8}
+              onDown={() => setDraft(d => ({ ...d, bedrooms: d.bedrooms - 1 }))}
+              onUp={() => setDraft(d => ({ ...d, bedrooms: d.bedrooms + 1 }))}
+            />
+            <Stepper label="Bathrooms" value={draft.bathrooms} min={1} max={6}
+              onDown={() => setDraft(d => ({ ...d, bathrooms: d.bathrooms - 1 }))}
+              onUp={() => setDraft(d => ({ ...d, bathrooms: d.bathrooms + 1 }))}
+            />
+            <Stepper label="Hours per session" value={draft.hours_per_session} min={1} max={10} step={0.5}
+              onDown={() => setDraft(d => ({ ...d, hours_per_session: Math.max(1, d.hours_per_session - 0.5) }))}
+              onUp={() => setDraft(d => ({ ...d, hours_per_session: Math.min(10, d.hours_per_session + 0.5) }))}
+              suffix=" hrs"
+            />
+            <Stepper label="Hourly rate" value={draft.hourly_rate} min={12} max={40} step={0.5}
+              onDown={() => setDraft(d => ({ ...d, hourly_rate: Math.max(12, +(d.hourly_rate - 0.5).toFixed(2)) }))}
+              onUp={() => setDraft(d => ({ ...d, hourly_rate: Math.min(40, +(d.hourly_rate + 0.5).toFixed(2)) }))}
+              prefix="£"
+              suffix="/hr"
+            />
+          </div>
+
+          {/* Days */}
+          <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '10px' }}>
+            Preferred days
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '24px' }}>
+            {ALL_DAYS.map(day => {
+              const selected = draft.preferred_days.includes(day)
+              return (
+                <button key={day} onClick={() => toggleDay(day)} style={{
+                  padding: '7px 14px', borderRadius: '100px', fontSize: '13px', fontWeight: 600,
+                  border: selected ? '2px solid #3b82f6' : '1.5px solid #e2e8f0',
+                  background: selected ? '#eff6ff' : 'white',
+                  color: selected ? '#1d4ed8' : '#64748b',
+                  cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
+                  transition: 'all 0.15s',
+                }}>
+                  {DAY_SHORT[day]}
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Time slot */}
+          <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '10px' }}>
+            Time of day
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '24px' }}>
+            {TIME_SLOTS.map(slot => {
+              const selected = draft.time_of_day === slot
+              return (
+                <button key={slot} onClick={() => setDraft(d => ({ ...d, time_of_day: slot }))} style={{
+                  padding: '7px 14px', borderRadius: '100px', fontSize: '13px', fontWeight: 600,
+                  border: selected ? '2px solid #3b82f6' : '1.5px solid #e2e8f0',
+                  background: selected ? '#eff6ff' : 'white',
+                  color: selected ? '#1d4ed8' : '#64748b',
+                  cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
+                  transition: 'all 0.15s',
+                }}>
+                  {slot}
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Tasks */}
+          <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '10px' }}>
+            Tasks requested
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '32px' }}>
+            {ALL_TASKS.map(task => {
+              const selected = draft.tasks.includes(task)
+              return (
+                <button key={task} onClick={() => toggleTask(task)} style={{
+                  padding: '7px 14px', borderRadius: '100px', fontSize: '13px', fontWeight: 600,
+                  border: selected ? '2px solid #22c55e' : '1.5px solid #e2e8f0',
+                  background: selected ? '#f0fdf4' : 'white',
+                  color: selected ? '#15803d' : '#64748b',
+                  cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
+                  transition: 'all 0.15s',
+                }}>
+                  {TASK_LABELS[task] ?? task}
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Save button */}
+          <button
+            onClick={() => onSave(request.id, draft)}
+            disabled={saving}
+            style={{
+              width: '100%', padding: '14px',
+              background: saving ? '#94a3b8' : '#0f172a',
+              color: 'white', border: 'none', borderRadius: '12px',
+              fontSize: '15px', fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer',
+              fontFamily: "'DM Sans', sans-serif",
+            }}
+          >
+            {saving ? 'Saving…' : 'Save & update listing →'}
+          </button>
+
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -192,12 +457,13 @@ function ComingSoonBanner({ message, onClose }: { message: string; onClose: () =
 // ─── Active Request Card ──────────────────────────────────────────────────────
 
 function ActiveRequestCard({
-  request, onPause, onRepublish, onDelete,
+  request, onPause, onRepublish, onDelete, onEdit,
 }: {
   request: CleaningRequest
   onPause: () => void
   onRepublish: () => void
   onDelete: () => void
+  onEdit: () => void
 }) {
   const hours = request.hours_per_session ?? 0
   const rate = request.hourly_rate ?? 0
@@ -304,6 +570,9 @@ function ActiveRequestCard({
         )}
 
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          {/* Edit button — shown for all active/pending/paused statuses */}
+          <ActionBtn onClick={onEdit} primary>Edit listing</ActionBtn>
+
           {request.status === 'active' && (
             <>
               {pausesLeft > 0 && <ActionBtn onClick={onPause}>Pause listing</ActionBtn>}
@@ -313,7 +582,7 @@ function ActiveRequestCard({
           {request.status === 'paused' && (
             <>
               {!isRelocked
-                ? <ActionBtn onClick={onRepublish} primary>Republish</ActionBtn>
+                ? <ActionBtn onClick={onRepublish}>Republish</ActionBtn>
                 : <span style={{ fontSize: '12px', color: '#94a3b8', alignSelf: 'center' }}>Available to republish in 24h</span>
               }
               <ActionBtn onClick={onDelete} danger>Remove listing</ActionBtn>
@@ -419,6 +688,8 @@ export default function CustomerDashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [modal, setModal] = useState<{ type: 'pause' | 'delete' | 'republish'; id: string } | null>(null)
+  const [editingRequest, setEditingRequest] = useState<CleaningRequest | null>(null)
+  const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
 
   useEffect(() => {
@@ -482,6 +753,30 @@ export default function CustomerDashboard() {
     await (supabase as any).from('clean_requests').update({ status: 'deleted' }).eq('id', id)
     setRequests(r => r.map(req => req.id === id ? { ...req, status: 'deleted' as RequestStatus } : req))
     setModal(null)
+  }
+
+  const handleSaveEdit = async (id: string, draft: EditDraft) => {
+    setSaving(true)
+    try {
+      const supabase = createClient()
+      const { error } = await (supabase as any).from('clean_requests').update({
+        bedrooms: draft.bedrooms,
+        bathrooms: draft.bathrooms,
+        hours_per_session: draft.hours_per_session,
+        hourly_rate: draft.hourly_rate,
+        preferred_days: draft.preferred_days,
+        time_of_day: draft.time_of_day,
+        tasks: draft.tasks,
+      }).eq('id', id)
+      if (error) throw error
+      setRequests(r => r.map(req => req.id === id ? { ...req, ...draft } : req))
+      setEditingRequest(null)
+      showToast('Listing updated successfully')
+    } catch (err: any) {
+      showToast('Failed to save — please try again')
+    } finally {
+      setSaving(false)
+    }
   }
 
   if (loading) {
@@ -643,6 +938,7 @@ export default function CustomerDashboard() {
                     onPause={() => setModal({ type: 'pause', id: req.id })}
                     onRepublish={() => setModal({ type: 'republish', id: req.id })}
                     onDelete={() => setModal({ type: 'delete', id: req.id })}
+                    onEdit={() => setEditingRequest(req)}
                   />
                 ))}
               </div>
@@ -661,6 +957,7 @@ export default function CustomerDashboard() {
                     onPause={() => setModal({ type: 'pause', id: req.id })}
                     onRepublish={() => setModal({ type: 'republish', id: req.id })}
                     onDelete={() => setModal({ type: 'delete', id: req.id })}
+                    onEdit={() => setEditingRequest(req)}
                   />
                 ))}
               </div>
@@ -691,7 +988,7 @@ export default function CustomerDashboard() {
 
         <Footer />
 
-        {/* Modals */}
+        {/* Confirm Modals */}
         {modal?.type === 'pause' && (
           <ConfirmModal
             message="Pause your request? It won't be visible to cleaners until you republish."
@@ -711,6 +1008,16 @@ export default function CustomerDashboard() {
             message="Permanently remove this request? This cannot be undone."
             onConfirm={() => handleDelete(modal.id)}
             onCancel={() => setModal(null)}
+          />
+        )}
+
+        {/* Edit Modal */}
+        {editingRequest && (
+          <EditModal
+            request={editingRequest}
+            onSave={handleSaveEdit}
+            onClose={() => setEditingRequest(null)}
+            saving={saving}
           />
         )}
 
