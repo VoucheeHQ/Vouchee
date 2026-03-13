@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+import { createSupabaseClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
 
 const supabase = createSupabaseClient(
@@ -107,7 +107,7 @@ function timeAgo(dateStr: string) {
 
 function YourListingBanner({ job, onEdit }: { job: Job; onEdit: () => void }) {
   const zone = job.zone ? ZONE_LABELS[job.zone as HorshamZone] : 'Horsham'
-  const isGrace = job.status === 'pending_review'
+  const isGrace = job.status === 'pending_review' || job.status === 'pending'
 
   return (
     <div style={{
@@ -119,20 +119,18 @@ function YourListingBanner({ job, onEdit }: { job: Job; onEdit: () => void }) {
     }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ position: 'relative' }}>
-            <div style={{
-              width: '10px', height: '10px', borderRadius: '50%',
-              background: '#22c55e',
-              boxShadow: '0 0 0 4px rgba(34,197,94,0.2)',
-            }} />
-          </div>
+          <div style={{
+            width: '10px', height: '10px', borderRadius: '50%',
+            background: '#22c55e',
+            boxShadow: '0 0 0 4px rgba(34,197,94,0.2)',
+          }} />
           <div>
             <div style={{ fontSize: '15px', fontWeight: 700, color: '#14532d', marginBottom: '2px' }}>
               Your listing · {zone}
             </div>
             <div style={{ fontSize: '13px', color: '#16a34a' }}>
               {isGrace
-                ? '⏱ Going live in a few minutes — edit now if needed'
+                ? '⏱ Under review — edit if you need to make changes'
                 : '✅ Accepting applications — cleaners can see and apply'}
             </div>
           </div>
@@ -144,7 +142,7 @@ function YourListingBanner({ job, onEdit }: { job: Job; onEdit: () => void }) {
             background: 'white', border: '1.5px solid #86efac',
             borderRadius: '12px', padding: '8px 16px',
             fontSize: '13px', fontWeight: 600, color: '#15803d',
-            cursor: 'pointer', transition: 'all 0.15s',
+            cursor: 'pointer',
             boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
           }}
         >
@@ -157,12 +155,17 @@ function YourListingBanner({ job, onEdit }: { job: Job; onEdit: () => void }) {
 
 // ─── Job Card ─────────────────────────────────────────
 
-function JobCard({ job, isOwn = false, onEdit }: { job: Job; isOwn?: boolean; onEdit?: () => void }) {
+function JobCard({ job, isOwn = false, userRole, onEdit }: {
+  job: Job
+  isOwn?: boolean
+  userRole: string | null  // 'cleaner' | 'customer' | null (not logged in)
+  onEdit?: () => void
+}) {
   const [notesOpen, setNotesOpen] = useState(false)
   const [tasksExpanded, setTasksExpanded] = useState(false)
 
   const isCompleted = job.status === 'completed' || job.status === 'cancelled' || job.status === 'assigned' || job.status === 'active'
-  const isGrace = job.status === 'pending_review'
+  const isGrace = job.status === 'pending_review' || job.status === 'pending'
   const zone = job.zone ? ZONE_LABELS[job.zone as HorshamZone] : 'Horsham'
   const days = (job.preferred_days?.length ? job.preferred_days : job.preferred_day ? [job.preferred_day] : [])
   const daysLabel = days.length > 0 ? days.map((d: string) => d.slice(0, 3)).join(' · ') : null
@@ -175,6 +178,9 @@ function JobCard({ job, isOwn = false, onEdit }: { job: Job; isOwn?: boolean; on
   const extraTasks = allTasks.filter(t => !REGULAR_TASKS.includes(t))
   const visibleTasks = tasksExpanded ? allTasks : primaryTasks
   const hiddenCount = extraTasks.length
+
+  // Apply button is only shown to cleaners
+  const showApplyBtn = userRole === 'cleaner' && !isOwn && !isCompleted
 
   return (
     <div className={`relative rounded-2xl border bg-white transition-all duration-200 ${
@@ -199,7 +205,7 @@ function JobCard({ job, isOwn = false, onEdit }: { job: Job; isOwn?: boolean; on
         <div className="absolute top-4 right-4 z-10 flex flex-col items-end gap-2">
           {isGrace ? (
             <span style={{ background: '#fef9c3', border: '1px solid #fde047', color: '#854d0e', fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '100px', letterSpacing: '0.04em' }}>
-              ⏱ Going live soon
+              ⏱ Under review
             </span>
           ) : (
             <span style={{ background: '#dcfce7', border: '1px solid #86efac', color: '#166534', fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '100px', letterSpacing: '0.04em' }}>
@@ -310,11 +316,11 @@ function JobCard({ job, isOwn = false, onEdit }: { job: Job; isOwn?: boolean; on
             >
               Edit →
             </button>
-          ) : !isCompleted && (
+          ) : showApplyBtn ? (
             <Link href="/cleaner/apply" className="text-xs font-semibold text-white bg-gray-900 hover:bg-gray-700 rounded-full px-4 py-1.5 transition-colors">
               Apply →
             </Link>
-          )}
+          ) : null}
         </div>
       </div>
     </div>
@@ -334,28 +340,33 @@ export default function JobsPage() {
   const [loading, setLoading] = useState(true)
   const [filters, setFilters] = useState<FilterState>({ status: 'all', service: 'all', zone: 'all' })
   const [myJobId, setMyJobId] = useState<string | null>(null)
+  const [userRole, setUserRole] = useState<string | null>(null)
 
   useEffect(() => {
     async function init() {
       setLoading(true)
 
-      // Check if logged in and find their job
       const authClient = createClient()
       const { data: { session } } = await authClient.auth.getSession()
 
       if (session?.user) {
-        const { data: customer } = await (authClient as any)
-          .from('customers')
-          .select('id')
-          .eq('profile_id', session.user.id)
-          .single() as { data: { id: string } | null }
+        // Get role from profiles
+        const { data: profileData } = await (authClient as any)
+          .from('profiles')
+          .select('role')
+          .eq('id', session.user.id)
+          .single()
 
-        if (customer) {
+        const role = profileData?.role ?? null
+        setUserRole(role)
+
+        // Find the user's own active listing — uses auth user id directly (no customers table)
+        if (role === 'customer') {
           const { data: myJobs } = await (authClient as any)
             .from('clean_requests')
             .select('id')
-            .eq('customer_id', customer.id)
-            .in('status', ['pending', 'pending_review'])
+            .eq('customer_id', session.user.id)
+            .in('status', ['pending', 'pending_review', 'active'])
             .order('created_at', { ascending: false })
             .limit(1)
 
@@ -363,12 +374,12 @@ export default function JobsPage() {
         }
       }
 
-      // Fetch all jobs — include pending_review so owner can see theirs
+      // Fetch all jobs
       const { data, error } = await supabase
         .from('clean_requests')
         .select(`
           id, service_type, zone, bedrooms, bathrooms, has_pets,
-          preferred_day, preferred_days, time_of_day,
+          preferred_day, preferred_days, time_of_day, frequency,
           hourly_rate, hours_per_session, tasks, customer_notes,
           status, created_at, updated_at
         `)
@@ -380,7 +391,8 @@ export default function JobsPage() {
       if (!error && data) {
         const filtered = data.filter((row: any) => {
           if (row.status === 'pending') return true
-          if (row.status === 'pending_review') return true // owner will see it; others filtered below
+          if (row.status === 'pending_review') return true
+          if (row.status === 'active') return true
           const updatedAt = new Date(row.updated_at).getTime()
           return updatedAt > Date.now() - 10 * 24 * 60 * 60 * 1000
         })
@@ -391,21 +403,19 @@ export default function JobsPage() {
     init()
   }, [])
 
-  const openJobs = jobs.filter(j => j.status === 'pending')
-  const recentJobs = jobs.filter(j => j.status !== 'pending' && j.status !== 'pending_review')
+  const openJobs = jobs.filter(j => j.status === 'pending' || j.status === 'active')
+  const recentJobs = jobs.filter(j => j.status !== 'pending' && j.status !== 'pending_review' && j.status !== 'active')
   const myJob = myJobId ? jobs.find(j => j.id === myJobId) : null
 
-  // For the grid: hide pending_review from others, but show to owner
   const filtered = jobs.filter(job => {
-    if (job.status === 'pending_review' && job.id !== myJobId) return false // hide grace period jobs from others
-    if (filters.status === 'open' && job.status !== 'pending' && job.id !== myJobId) return false
-    if (filters.status === 'recent' && (job.status === 'pending' || job.status === 'pending_review')) return false
+    if (job.status === 'pending_review' && job.id !== myJobId) return false
+    if (filters.status === 'open' && job.status !== 'pending' && job.status !== 'active' && job.id !== myJobId) return false
+    if (filters.status === 'recent' && (job.status === 'pending' || job.status === 'pending_review' || job.status === 'active')) return false
     if (filters.service !== 'all' && job.service_type !== filters.service) return false
     if (filters.zone !== 'all' && job.zone !== filters.zone) return false
     return true
   })
 
-  // Sort: own job first
   const sortedFiltered = [...filtered].sort((a, b) => {
     if (a.id === myJobId) return -1
     if (b.id === myJobId) return 1
@@ -442,8 +452,8 @@ export default function JobsPage() {
 
         {/* Your listing banner */}
         {myJob && (
-        <YourListingBanner job={myJob} onEdit={() => router.push('/customer/dashboard')} />
-      )}
+          <YourListingBanner job={myJob} onEdit={() => router.push('/customer/dashboard')} />
+        )}
 
         {/* Stats */}
         <div className="flex flex-wrap items-center gap-4 mb-5">
@@ -515,12 +525,13 @@ export default function JobsPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {sortedFiltered.map(job => (
-               <JobCard
-               key={job.id}
-               job={job}
-               isOwn={job.id === myJobId}
-               onEdit={() => router.push('/customer/dashboard')}
-             />
+              <JobCard
+                key={job.id}
+                job={job}
+                isOwn={job.id === myJobId}
+                userRole={userRole}
+                onEdit={() => router.push('/customer/dashboard')}
+              />
             ))}
           </div>
         )}
