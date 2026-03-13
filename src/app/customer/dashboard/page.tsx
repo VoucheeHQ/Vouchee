@@ -8,7 +8,7 @@ import { Footer } from '@/components/layout/footer'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type RequestStatus = 'active' | 'paused' | 'deleted' | 'pending_review' | 'completed' | 'cancelled'
+type RequestStatus = 'active' | 'paused' | 'deleted' | 'pending_review' | 'pending' | 'completed' | 'cancelled'
 type Frequency = 'weekly' | 'fortnightly' | 'monthly'
 
 interface CustomerProfile {
@@ -67,7 +67,7 @@ const FREQUENCY_LABEL: Record<Frequency, string> = {
   monthly: 'Monthly',
 }
 
-const ACTIVE_STATUSES: RequestStatus[] = ['active', 'pending_review']
+const ACTIVE_STATUSES: RequestStatus[] = ['active', 'pending_review', 'pending']
 const PAST_STATUSES: RequestStatus[] = ['deleted', 'paused', 'completed', 'cancelled']
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -216,6 +216,7 @@ function ActiveRequestCard({
   const statusConfig = {
     active:         { label: 'Live — accepting applications', dot: '#22c55e', border: '#bbf7d0', headerBg: '#f0fdf4', textColor: '#15803d' },
     pending_review: { label: 'Under review',                  dot: '#3b82f6', border: '#bfdbfe', headerBg: '#eff6ff', textColor: '#1d4ed8' },
+    pending:        { label: 'Under review',                  dot: '#3b82f6', border: '#bfdbfe', headerBg: '#eff6ff', textColor: '#1d4ed8' },
     paused:         { label: 'Paused',                        dot: '#eab308', border: '#fef08a', headerBg: '#fefce8', textColor: '#854d0e' },
     deleted:        { label: 'Deleted',                       dot: '#ef4444', border: '#fecaca', headerBg: '#fef2f2', textColor: '#991b1b' },
     completed:      { label: 'Completed',                     dot: '#8b5cf6', border: '#ddd6fe', headerBg: '#f5f3ff', textColor: '#6d28d9' },
@@ -294,7 +295,7 @@ function ActiveRequestCard({
           </div>
         )}
 
-        {request.status === 'pending_review' && (
+        {(request.status === 'pending_review' || request.status === 'pending') && (
           <div style={{ padding: '10px 14px', background: '#eff6ff', borderRadius: '10px', border: '1px solid #bfdbfe', marginBottom: '16px' }}>
             <p style={{ margin: 0, fontSize: '13px', color: '#1d4ed8', lineHeight: 1.5 }}>
               ⏳ Your request is under review. We'll notify you once it's live and visible to cleaners.
@@ -318,7 +319,7 @@ function ActiveRequestCard({
               <ActionBtn onClick={onDelete} danger>Remove listing</ActionBtn>
             </>
           )}
-          {request.status === 'pending_review' && (
+          {(request.status === 'pending_review' || request.status === 'pending') && (
             <ActionBtn onClick={onDelete} danger>Remove listing</ActionBtn>
           )}
         </div>
@@ -344,6 +345,7 @@ function PastListingRow({ request }: { request: CleaningRequest }) {
     cancelled:      { label: 'Cancelled', color: '#94a3b8' },
     active:         { label: 'Active',    color: '#22c55e' },
     pending_review: { label: 'Review',    color: '#3b82f6' },
+    pending:        { label: 'Review',    color: '#3b82f6' },
   }
   const st = statusLabels[request.status] ?? statusLabels.deleted
 
