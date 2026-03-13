@@ -3,7 +3,13 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
+
+const publicClient = createSupabaseClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
 
 // ─── Types ────────────────────────────────────────────
 
@@ -368,8 +374,8 @@ export default function JobsPage() {
         }
       }
 
-      // Fetch all jobs
-      const { data, error } = await (authClient as any)
+      // Fetch all jobs using anon client — covered by public RLS policy
+      const { data, error } = await (publicClient as any)
         .from('clean_requests')
         .select(`
           id, service_type, zone, bedrooms, bathrooms, has_pets,
