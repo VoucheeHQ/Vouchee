@@ -32,7 +32,6 @@ interface Job {
   status: JobStatus
   created_at: string
   updated_at: string
-  frequency?: string | null
 }
 
 // ─── Display helpers ──────────────────────────────────
@@ -227,9 +226,6 @@ function JobCard({ job, isOwn = false, userRole, onEdit }: {
           {job.hours_per_session && (
             <span className="text-xs bg-gray-100 text-gray-700 rounded-full px-2.5 py-1 font-medium">{job.hours_per_session} hrs</span>
           )}
-          {job.frequency && (
-            <span className="text-xs bg-gray-100 text-gray-700 rounded-full px-2.5 py-1 font-medium">{FREQUENCY_LABELS[job.frequency] ?? job.frequency}</span>
-          )}
           {daysLabel && (
             <span className="text-xs bg-gray-100 text-gray-700 rounded-full px-2.5 py-1 font-medium">{daysLabel}</span>
           )}
@@ -373,7 +369,7 @@ export default function JobsPage() {
         .from('clean_requests')
         .select(`
           id, service_type, zone, bedrooms, bathrooms, has_pets,
-          preferred_day, preferred_days, time_of_day, frequency,
+          preferred_day, preferred_days, time_of_day,
           hourly_rate, hours_per_session, tasks, customer_notes,
           status, created_at, updated_at
         `)
