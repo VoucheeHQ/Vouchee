@@ -148,11 +148,13 @@ function YourListingBanner({ job, onEdit }: { job: Job; onEdit: () => void }) {
 
 // ─── Job Card ─────────────────────────────────────────
 
-function JobCard({ job, isOwn = false, userRole, onEdit }: {
+function JobCard({ job, isOwn = false, userRole, onEdit, onApply, alreadyApplied }: {
   job: Job
   isOwn?: boolean
-  userRole: string | null  // 'cleaner' | 'customer' | null (not logged in)
+  userRole: string | null
   onEdit?: () => void
+  onApply?: () => void
+  alreadyApplied?: boolean
 }) {
   const [notesOpen, setNotesOpen] = useState(false)
   const [tasksExpanded, setTasksExpanded] = useState(false)
@@ -174,7 +176,6 @@ function JobCard({ job, isOwn = false, userRole, onEdit }: {
 
   // Apply button is only shown to cleaners
   const showApplyBtn = userRole === 'cleaner' && !isOwn && !isCompleted
-
   return (
     <div className={`relative rounded-2xl border bg-white transition-all duration-200 ${
       isCompleted && !isOwn
@@ -307,10 +308,153 @@ function JobCard({ job, isOwn = false, userRole, onEdit }: {
               Edit →
             </button>
           ) : showApplyBtn ? (
-            <Link href="/cleaner/apply" className="text-xs font-semibold text-white bg-gray-900 hover:bg-gray-700 rounded-full px-4 py-1.5 transition-colors">
-              Apply →
-            </Link>
+            alreadyApplied ? (
+              <span className="text-xs font-semibold text-green-600 bg-green-50 border border-green-200 rounded-full px-4 py-1.5">
+                ✓ Applied
+              </span>
+            ) : (
+              <button onClick={onApply} className="text-xs font-semibold text-white bg-gray-900 hover:bg-gray-700 rounded-full px-4 py-1.5 transition-colors">
+                Apply →
+              </button>
+            )
           ) : null}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Apply Modal ─────────────────────────────────────────
+
+function ApplyModal({ job, cleanerProfile, onClose, onSubmit, submitting }: {
+  job: Job
+  cleanerProfile: { name: string; hasRatings: boolean; completedCleans: number } | null
+  onClose: () => void
+  onSubmit: (message: string) => Promise<void>
+  submitting: boolean
+}) {
+  const [message, setMessage] = useState('')
+  const zone = job.zone ? ZONE_LABELS[job.zone as HorshamZone] : 'Horsham'
+  const estPerSession = job.hourly_rate && job.hours_per_session
+    ? (job.hourly_rate * job.hours_per_session).toFixed(2) : null
+  const days = (job.preferred_days?.length ? job.preferred_days : job.preferred_day ? [job.preferred_day] : [])
+  const daysLabel = days.length > 0 ? days.map((d: string) => d.slice(0, 3)).join(' · ') : null
+  const showNoRatingsTip = cleanerProfile && cleanerProfile.completedCleans === 0
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+      display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+      zIndex: 300, padding: '0',
+    }}>
+      <div style={{
+        background: 'white', borderRadius: '24px 24px 0 0',
+        width: '100%', maxWidth: '640px',
+        maxHeight: '92vh', overflowY: 'auto',
+        boxShadow: '0 -8px 40px rgba(0,0,0,0.2)',
+      }}>
+        {/* Handle + header */}
+        <div style={{ position: 'sticky', top: 0, background: 'white', borderBottom: '1px solid #f1f5f9', padding: '16px 24px 14px', zIndex: 10 }}>
+          <div style={{ width: '40px', height: '4px', background: '#e2e8f0', borderRadius: '2px', margin: '0 auto 16px' }} />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <h2 style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a', margin: 0 }}>Apply for this job</h2>
+            <button onClick={onClose} style={{
+              background: '#f1f5f9', border: 'none', borderRadius: '50%',
+              width: '32px', height: '32px', fontSize: '16px', cursor: 'pointer', color: '#64748b',
+            }}>✕</button>
+          </div>
+        </div>
+
+        <div style={{ padding: '24px' }}>
+
+          {/* Job summary */}
+          <div style={{ background: '#f8fafc', borderRadius: '14px', padding: '16px', marginBottom: '20px' }}>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px' }}>
+              You are applying for
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
+              <span>📍</span>
+              <span style={{ fontSize: '17px', fontWeight: 800, color: '#0f172a' }}>{zone}</span>
+              <span style={{ fontSize: '13px', color: '#64748b', marginLeft: '4px' }}>{SERVICE_LABELS[job.service_type]}</span>
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: job.hourly_rate ? '12px' : '0' }}>
+              {job.bedrooms > 0 && <span style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '100px', padding: '3px 10px', fontSize: '12px', fontWeight: 600, color: '#475569' }}>{job.bedrooms} bed</span>}
+              {job.hours_per_session && <span style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '100px', padding: '3px 10px', fontSize: '12px', fontWeight: 600, color: '#475569' }}>{job.hours_per_session} hrs</span>}
+              {daysLabel && <span style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '100px', padding: '3px 10px', fontSize: '12px', fontWeight: 600, color: '#475569' }}>{daysLabel}</span>}
+              {job.time_of_day && <span style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '100px', padding: '3px 10px', fontSize: '12px', fontWeight: 600, color: '#475569' }}>{job.time_of_day}</span>}
+            </div>
+            {job.hourly_rate && (
+              <div style={{ background: '#fefce8', border: '1px solid #fef08a', borderRadius: '10px', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontSize: '10px', fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Offered rate</div>
+                  <div style={{ fontSize: '20px', fontWeight: 800, color: '#78350f' }}>£{job.hourly_rate.toFixed(2)}<span style={{ fontSize: '12px', fontWeight: 500 }}>/hr</span></div>
+                </div>
+                {estPerSession && (
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '10px', fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Est. per session</div>
+                    <div style={{ fontSize: '16px', fontWeight: 700, color: '#92400e' }}>~£{estPerSession}</div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Credit notice */}
+          <div style={{ background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: '10px', padding: '10px 14px', marginBottom: '20px', fontSize: '13px', color: '#7c3aed' }}>
+            💳 <strong>1 credit</strong> will be used when you submit this application. Credits are free during beta.
+          </div>
+
+          {/* Message tip */}
+          <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', padding: '10px 14px', marginBottom: '16px', fontSize: '13px', color: '#15803d' }}>
+            💡 <strong>Tip:</strong> Cleaners who include a personal message are significantly more likely to be accepted. Introduce yourself and why you'd be a great fit!
+          </div>
+
+          {/* No ratings tip */}
+          {showNoRatingsTip && (
+            <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: '10px', padding: '10px 14px', marginBottom: '16px', fontSize: '13px', color: '#c2410c' }}>
+              ⭐ <strong>New cleaner tip:</strong> Consider offering a discounted first clean to help win work and gain your first ratings on Vouchee.
+            </div>
+          )}
+
+          {/* Message input */}
+          <div style={{ marginBottom: '24px' }}>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#0f172a', marginBottom: '8px' }}>
+              Your message to the customer
+            </label>
+            <textarea
+              value={message}
+              onChange={e => setMessage(e.target.value)}
+              placeholder="Hi, I'm [name] and I'd love to help with your home cleaning. I have X years of experience and..."
+              rows={4}
+              style={{
+                width: '100%', padding: '12px 14px',
+                border: '1.5px solid #e2e8f0', borderRadius: '12px',
+                fontSize: '14px', color: '#0f172a', resize: 'vertical',
+                fontFamily: "'DM Sans', sans-serif", outline: 'none',
+                boxSizing: 'border-box',
+              }}
+            />
+            <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px', textAlign: 'right' }}>
+              {message.length}/500
+            </div>
+          </div>
+
+          {/* Submit */}
+          <button
+            onClick={() => onSubmit(message)}
+            disabled={submitting}
+            style={{
+              width: '100%', padding: '14px',
+              background: submitting ? '#94a3b8' : '#0f172a',
+              color: 'white', border: 'none', borderRadius: '12px',
+              fontSize: '15px', fontWeight: 700,
+              cursor: submitting ? 'not-allowed' : 'pointer',
+              fontFamily: "'DM Sans', sans-serif",
+            }}
+          >
+            {submitting ? 'Submitting…' : 'Submit application →'}
+          </button>
+
         </div>
       </div>
     </div>
@@ -331,6 +475,11 @@ export default function JobsPage() {
   const [filters, setFilters] = useState<FilterState>({ status: 'all', service: 'all', zone: 'all' })
   const [myJobId, setMyJobId] = useState<string | null>(null)
   const [userRole, setUserRole] = useState<string | null>(null)
+  const [cleanerData, setCleanerData] = useState<any>(null)
+  const [profileData, setProfileData] = useState<any>(null)
+  const [appliedJobIds, setAppliedJobIds] = useState<Set<string>>(new Set())
+  const [applyingToJob, setApplyingToJob] = useState<Job | null>(null)
+  const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     async function init() {
@@ -349,6 +498,7 @@ export default function JobsPage() {
 
         const role = profileData?.role ?? null
         setUserRole(role)
+        setProfileData(profileData)
 
         // Find the user's own active listing — uses auth user id directly (no customers table)
         if (role === 'customer') {
@@ -361,6 +511,27 @@ export default function JobsPage() {
             .limit(1)
 
           if (myJobs?.length) setMyJobId(myJobs[0].id)
+        }
+
+        // If cleaner, get their cleaner record + existing applications
+        if (role === 'cleaner') {
+          const { data: cleanerRecord } = await (authClient as any)
+            .from('cleaners')
+            .select('id, dbs_checked, has_insurance, right_to_work, created_at')
+            .eq('profile_id', session.user.id)
+            .single()
+
+          if (cleanerRecord) {
+            setCleanerData(cleanerRecord)
+            // Get jobs they've already applied to
+            const { data: existingApps } = await (authClient as any)
+              .from('applications')
+              .select('request_id')
+              .eq('cleaner_id', cleanerRecord.id)
+            if (existingApps) {
+              setAppliedJobIds(new Set(existingApps.map((a: any) => a.request_id)))
+            }
+          }
         }
       }
 
@@ -392,6 +563,82 @@ export default function JobsPage() {
     }
     init()
   }, [])
+
+  const handleApply = async (message: string) => {
+    if (!applyingToJob || !cleanerData) return
+    setSubmitting(true)
+    try {
+      const authClient = createClient()
+
+      // Save application to DB
+      const { error: appError } = await (authClient as any)
+        .from('applications')
+        .insert({
+          request_id: applyingToJob.id,
+          cleaner_id: cleanerData.id,
+          message: message.trim() || null,
+          status: 'pending',
+        })
+
+      if (appError) throw appError
+
+      // Mark as applied locally
+      setAppliedJobIds(prev => new Set([...prev, applyingToJob.id]))
+
+      // Get customer email for notification
+      const { data: requestData } = await (authClient as any)
+        .from('clean_requests')
+        .select('customer_id')
+        .eq('id', applyingToJob.id)
+        .single()
+
+      if (requestData?.customer_id) {
+        const { data: customerProfile } = await (authClient as any)
+          .from('profiles')
+          .select('email, full_name')
+          .eq('id', requestData.customer_id)
+          .single()
+
+        if (customerProfile?.email) {
+          const cleanerName = profileData?.full_name ?? 'A cleaner'
+          const memberSince = cleanerData.created_at
+            ? new Date(cleanerData.created_at).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
+            : 'Recently'
+
+          await fetch('/api/send-application-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              customerEmail: customerProfile.email,
+              customerName: customerProfile.full_name ?? 'there',
+              cleanerName,
+              cleanerInitial: cleanerName[0].toUpperCase(),
+              cleanerMemberSince: memberSince,
+              cleanerDbs: cleanerData.dbs_checked,
+              cleanerInsured: cleanerData.has_insurance,
+              cleanerRightToWork: cleanerData.right_to_work,
+              cleanerRating: '5.0',
+              cleanerCompletedCleans: 0,
+              message: message.trim(),
+              jobZone: applyingToJob.zone ? ZONE_LABELS[applyingToJob.zone as HorshamZone] : 'Horsham',
+              jobBedrooms: applyingToJob.bedrooms,
+              jobBathrooms: applyingToJob.bathrooms,
+              jobHours: applyingToJob.hours_per_session,
+              jobRate: applyingToJob.hourly_rate,
+              applicationId: null,
+              requestId: applyingToJob.id,
+            }),
+          })
+        }
+      }
+
+      setApplyingToJob(null)
+    } catch (err) {
+      console.error('Apply error:', err)
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   const openJobs = jobs.filter(j => j.status === 'pending' || j.status === 'active')
   const recentJobs = jobs.filter(j => j.status !== 'pending' && j.status !== 'pending_review' && j.status !== 'active')
@@ -521,11 +768,28 @@ export default function JobsPage() {
                 isOwn={job.id === myJobId}
                 userRole={userRole}
                 onEdit={() => router.push('/customer/dashboard')}
+                onApply={() => setApplyingToJob(job)}
+                alreadyApplied={appliedJobIds.has(job.id)}
               />
             ))}
           </div>
         )}
       </section>
+
+      {/* Apply Modal */}
+      {applyingToJob && (
+        <ApplyModal
+          job={applyingToJob}
+          cleanerProfile={cleanerData ? {
+            name: profileData?.full_name ?? 'You',
+            hasRatings: false,
+            completedCleans: 0,
+          } : null}
+          onClose={() => setApplyingToJob(null)}
+          onSubmit={handleApply}
+          submitting={submitting}
+        />
+      )}
 
       {/* CTA */}
       <section className="bg-white border-t border-gray-100 py-12 mt-8">
