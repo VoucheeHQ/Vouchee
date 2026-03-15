@@ -225,7 +225,7 @@ function EditModal({ request, onSave, onClose, saving }: {
     bathrooms: request.bathrooms ?? 1,
     hours_per_session: request.hours_per_session ?? 2,
     hourly_rate: request.hourly_rate ?? 15,
-    preferred_days: request.preferred_days ?? [],
+    preferred_days: (request.preferred_days ?? []).map(d => d.toLowerCase()),
     time_of_day: request.time_of_day ?? 'Flexible',
     tasks: request.tasks ?? [],
   })
