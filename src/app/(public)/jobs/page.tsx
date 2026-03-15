@@ -158,7 +158,7 @@ function JobCard({ job, isOwn = false, userRole, onEdit }: {
   const [tasksExpanded, setTasksExpanded] = useState(false)
 
   const isCompleted = job.status === 'completed' || job.status === 'cancelled' || job.status === 'assigned' || job.status === 'active'
-  const isGrace = job.status === 'pending_review' || job.status === 'pending'
+  const isGrace = job.status === 'pending_review'
   const zone = job.zone ? ZONE_LABELS[job.zone as HorshamZone] : 'Horsham'
   const days = (job.preferred_days?.length ? job.preferred_days : job.preferred_day ? [job.preferred_day] : [])
   const daysLabel = days.length > 0 ? days.map((d: string) => d.slice(0, 3)).join(' · ') : null
