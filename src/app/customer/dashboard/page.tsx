@@ -45,6 +45,16 @@ interface EditDraft {
   tasks: string[]
 }
 
+interface Application {
+  id: string
+  cleaner_id: string
+  request_id: string
+  status: string
+  created_at: string
+  cleaner_name?: string
+  cleaner_email?: string
+}
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const TASK_LABELS: Record<string, string> = {
@@ -112,10 +122,6 @@ function formatDays(days: string[] | null) {
 
 function daysSince(iso: string) {
   return Math.floor((Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60 * 24))
-}
-
-function mockApplicants(id: string) {
-  return (id.charCodeAt(0) + id.charCodeAt(1)) % 8
 }
 
 // ─── Small components ─────────────────────────────────────────────────────────
@@ -256,7 +262,6 @@ function EditModal({ request, onSave, onClose, saving }: {
         maxHeight: '90vh', overflowY: 'auto',
         boxShadow: '0 -8px 40px rgba(0,0,0,0.15)',
       }}>
-        {/* Handle + header */}
         <div style={{ position: 'sticky', top: 0, background: 'white', borderBottom: '1px solid #f1f5f9', padding: '16px 24px 14px', zIndex: 10 }}>
           <div style={{ width: '40px', height: '4px', background: '#e2e8f0', borderRadius: '2px', margin: '0 auto 16px' }} />
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -272,8 +277,6 @@ function EditModal({ request, onSave, onClose, saving }: {
         </div>
 
         <div style={{ padding: '24px' }}>
-
-          {/* Live summary */}
           <div style={{ background: '#fefce8', border: '1px solid #fef08a', borderRadius: '12px', padding: '14px 16px', marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <div style={{ fontSize: '10px', fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '2px' }}>Offered rate</div>
@@ -287,10 +290,7 @@ function EditModal({ request, onSave, onClose, saving }: {
             </div>
           </div>
 
-          {/* Steppers */}
-          <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '10px' }}>
-            Property & time
-          </div>
+          <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '10px' }}>Property & time</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '24px' }}>
             <Stepper label="Bedrooms" value={draft.bedrooms} min={1} max={8}
               onDown={() => setDraft(d => ({ ...d, bedrooms: d.bedrooms - 1 }))}
@@ -308,15 +308,11 @@ function EditModal({ request, onSave, onClose, saving }: {
             <Stepper label="Hourly rate" value={draft.hourly_rate} min={12} max={40} step={0.5}
               onDown={() => setDraft(d => ({ ...d, hourly_rate: Math.max(12, +(d.hourly_rate - 0.5).toFixed(2)) }))}
               onUp={() => setDraft(d => ({ ...d, hourly_rate: Math.min(40, +(d.hourly_rate + 0.5).toFixed(2)) }))}
-              prefix="£"
-              suffix="/hr"
+              prefix="£" suffix="/hr"
             />
           </div>
 
-          {/* Days */}
-          <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '10px' }}>
-            Preferred days
-          </div>
+          <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '10px' }}>Preferred days</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '24px' }}>
             {ALL_DAYS.map(day => {
               const selected = draft.preferred_days.includes(day)
@@ -326,8 +322,7 @@ function EditModal({ request, onSave, onClose, saving }: {
                   border: selected ? '2px solid #3b82f6' : '1.5px solid #e2e8f0',
                   background: selected ? '#eff6ff' : 'white',
                   color: selected ? '#1d4ed8' : '#64748b',
-                  cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
-                  transition: 'all 0.15s',
+                  cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", transition: 'all 0.15s',
                 }}>
                   {DAY_SHORT[day]}
                 </button>
@@ -335,10 +330,7 @@ function EditModal({ request, onSave, onClose, saving }: {
             })}
           </div>
 
-          {/* Time slot */}
-          <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '10px' }}>
-            Time of day
-          </div>
+          <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '10px' }}>Time of day</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '24px' }}>
             {TIME_SLOTS.map(slot => {
               const selected = draft.time_of_day === slot
@@ -348,8 +340,7 @@ function EditModal({ request, onSave, onClose, saving }: {
                   border: selected ? '2px solid #3b82f6' : '1.5px solid #e2e8f0',
                   background: selected ? '#eff6ff' : 'white',
                   color: selected ? '#1d4ed8' : '#64748b',
-                  cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
-                  transition: 'all 0.15s',
+                  cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", transition: 'all 0.15s',
                 }}>
                   {slot}
                 </button>
@@ -357,10 +348,7 @@ function EditModal({ request, onSave, onClose, saving }: {
             })}
           </div>
 
-          {/* Tasks */}
-          <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '10px' }}>
-            Tasks requested
-          </div>
+          <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '10px' }}>Tasks requested</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '32px' }}>
             {ALL_TASKS.map(task => {
               const selected = draft.tasks.includes(task)
@@ -370,8 +358,7 @@ function EditModal({ request, onSave, onClose, saving }: {
                   border: selected ? '2px solid #22c55e' : '1.5px solid #e2e8f0',
                   background: selected ? '#f0fdf4' : 'white',
                   color: selected ? '#15803d' : '#64748b',
-                  cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
-                  transition: 'all 0.15s',
+                  cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", transition: 'all 0.15s',
                 }}>
                   {TASK_LABELS[task] ?? task}
                 </button>
@@ -379,7 +366,6 @@ function EditModal({ request, onSave, onClose, saving }: {
             })}
           </div>
 
-          {/* Save button */}
           <button
             onClick={() => onSave(request.id, draft)}
             disabled={saving}
@@ -393,7 +379,6 @@ function EditModal({ request, onSave, onClose, saving }: {
           >
             {saving ? 'Saving…' : 'Save & update listing →'}
           </button>
-
         </div>
       </div>
     </div>
@@ -434,7 +419,7 @@ function ConfirmModal({ message, onConfirm, onCancel }: {
   )
 }
 
-// ─── Coming Soon Toast ────────────────────────────────────────────────────────
+// ─── Toast ────────────────────────────────────────────────────────────────────
 
 function ComingSoonBanner({ message, onClose }: { message: string; onClose: () => void }) {
   return (
@@ -479,10 +464,12 @@ function ActiveRequestCard({
   const visibleTasks = (request.tasks ?? []).slice(0, 6)
   const extraTasks = (request.tasks ?? []).length - 6
 
+  // pending = just submitted, not yet manually reviewed by Vouchee admin
+  // active = approved and live
   const statusConfig = {
     active:         { label: 'Live — accepting applications', dot: '#22c55e', border: '#bbf7d0', headerBg: '#f0fdf4', textColor: '#15803d' },
-    pending_review: { label: 'Under review',                  dot: '#3b82f6', border: '#bfdbfe', headerBg: '#eff6ff', textColor: '#1d4ed8' },
-    pending:        { label: 'Under review',                  dot: '#3b82f6', border: '#bfdbfe', headerBg: '#eff6ff', textColor: '#1d4ed8' },
+    pending_review: { label: 'Under review',                  dot: '#f59e0b', border: '#fde68a', headerBg: '#fffbeb', textColor: '#92400e' },
+    pending:        { label: 'Live — accepting applications', dot: '#22c55e', border: '#bbf7d0', headerBg: '#f0fdf4', textColor: '#15803d' },
     paused:         { label: 'Paused',                        dot: '#eab308', border: '#fef08a', headerBg: '#fefce8', textColor: '#854d0e' },
     deleted:        { label: 'Deleted',                       dot: '#ef4444', border: '#fecaca', headerBg: '#fef2f2', textColor: '#991b1b' },
     completed:      { label: 'Completed',                     dot: '#8b5cf6', border: '#ddd6fe', headerBg: '#f5f3ff', textColor: '#6d28d9' },
@@ -497,7 +484,6 @@ function ActiveRequestCard({
       boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
       marginBottom: '16px', overflow: 'hidden',
     }}>
-      {/* Status header */}
       <div style={{ background: sc.headerBg, padding: '12px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: sc.dot, display: 'inline-block' }} />
@@ -508,7 +494,6 @@ function ActiveRequestCard({
         </span>
       </div>
 
-      {/* Body */}
       <div style={{ padding: '20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '14px' }}>
           <span style={{ fontSize: '16px' }}>📍</span>
@@ -561,16 +546,15 @@ function ActiveRequestCard({
           </div>
         )}
 
-        {(request.status === 'pending_review' || request.status === 'pending') && (
-          <div style={{ padding: '10px 14px', background: '#eff6ff', borderRadius: '10px', border: '1px solid #bfdbfe', marginBottom: '16px' }}>
-            <p style={{ margin: 0, fontSize: '13px', color: '#1d4ed8', lineHeight: 1.5 }}>
-              ⏳ Your request is under review. We'll notify you once it's live and visible to cleaners.
+        {request.status === 'pending_review' && (
+          <div style={{ padding: '10px 14px', background: '#fffbeb', borderRadius: '10px', border: '1px solid #fde68a', marginBottom: '16px' }}>
+            <p style={{ margin: 0, fontSize: '13px', color: '#92400e', lineHeight: 1.5 }}>
+              ⏳ Your request is under review. We'll notify you once it's approved and visible to cleaners.
             </p>
           </div>
         )}
 
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          {/* Edit button — shown for all active/pending/paused statuses */}
           <ActionBtn onClick={onEdit} primary>Edit listing</ActionBtn>
 
           {request.status === 'active' && (
@@ -578,6 +562,12 @@ function ActiveRequestCard({
               {pausesLeft > 0 && <ActionBtn onClick={onPause}>Pause listing</ActionBtn>}
               <ActionBtn onClick={onDelete} danger>Remove listing</ActionBtn>
             </>
+          )}
+          {(request.status === 'pending' || request.status === 'active') && request.status !== 'active' && (
+            <ActionBtn onClick={onDelete} danger>Remove listing</ActionBtn>
+          )}
+          {request.status === 'pending' && (
+            <ActionBtn onClick={onDelete} danger>Remove listing</ActionBtn>
           )}
           {request.status === 'paused' && (
             <>
@@ -588,7 +578,7 @@ function ActiveRequestCard({
               <ActionBtn onClick={onDelete} danger>Remove listing</ActionBtn>
             </>
           )}
-          {(request.status === 'pending_review' || request.status === 'pending') && (
+          {request.status === 'pending_review' && (
             <ActionBtn onClick={onDelete} danger>Remove listing</ActionBtn>
           )}
         </div>
@@ -601,7 +591,6 @@ function ActiveRequestCard({
 
 function PastListingRow({ request }: { request: CleaningRequest }) {
   const [expanded, setExpanded] = useState(false)
-  const applicants = mockApplicants(request.id)
   const daysOpen = daysSince(request.created_at)
   const rate = request.hourly_rate ?? 0
   const hours = request.hours_per_session ?? 0
@@ -613,8 +602,8 @@ function PastListingRow({ request }: { request: CleaningRequest }) {
     completed:      { label: 'Completed', color: '#8b5cf6' },
     cancelled:      { label: 'Cancelled', color: '#94a3b8' },
     active:         { label: 'Active',    color: '#22c55e' },
-    pending_review: { label: 'Review',    color: '#3b82f6' },
-    pending:        { label: 'Review',    color: '#3b82f6' },
+    pending_review: { label: 'Review',    color: '#f59e0b' },
+    pending:        { label: 'Live',      color: '#22c55e' },
   }
   const st = statusLabels[request.status] ?? statusLabels.deleted
 
@@ -640,9 +629,7 @@ function PastListingRow({ request }: { request: CleaningRequest }) {
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexShrink: 0, marginLeft: '12px' }}>
-          <span style={{ fontSize: '12px', color: '#64748b' }}>
-            {applicants} applicant{applicants !== 1 ? 's' : ''} · {daysOpen}d open
-          </span>
+          <span style={{ fontSize: '12px', color: '#64748b' }}>{daysOpen}d ago</span>
           <span style={{ fontSize: '12px', fontWeight: 700, color: st.color }}>{st.label}</span>
           <span style={{ fontSize: '12px', color: '#94a3b8' }}>{expanded ? '▲' : '▼'}</span>
         </div>
@@ -652,16 +639,16 @@ function PastListingRow({ request }: { request: CleaningRequest }) {
         <div style={{ padding: '0 18px 16px', borderTop: '1px solid #f1f5f9' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginTop: '14px', marginBottom: '14px' }}>
             <div style={{ background: '#f8fafc', borderRadius: '10px', padding: '12px' }}>
-              <div style={{ fontSize: '10px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '4px' }}>Applicants</div>
-              <div style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a' }}>{applicants}</div>
-            </div>
-            <div style={{ background: '#f8fafc', borderRadius: '10px', padding: '12px' }}>
               <div style={{ fontSize: '10px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '4px' }}>Days open</div>
               <div style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a' }}>{daysOpen}</div>
             </div>
             <div style={{ background: '#f8fafc', borderRadius: '10px', padding: '12px' }}>
               <div style={{ fontSize: '10px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '4px' }}>Offered rate</div>
               <div style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a' }}>{rate ? `£${rate}` : '—'}</div>
+            </div>
+            <div style={{ background: '#f8fafc', borderRadius: '10px', padding: '12px' }}>
+              <div style={{ fontSize: '10px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '4px' }}>Hours/session</div>
+              <div style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a' }}>{hours || '—'}</div>
             </div>
           </div>
           {(request.tasks ?? []).length > 0 && (
@@ -673,6 +660,99 @@ function PastListingRow({ request }: { request: CleaningRequest }) {
               ))}
             </div>
           )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Applications Section ─────────────────────────────────────────────────────
+
+function ApplicationsSection({ requestIds }: { requestIds: string[] }) {
+  const [applications, setApplications] = useState<Application[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!requestIds.length) { setLoading(false); return }
+    const fetchApplications = async () => {
+      const supabase = createClient()
+      // Try to fetch from applications table — gracefully handle if table doesn't exist yet
+      const { data, error } = await (supabase as any)
+        .from('applications')
+        .select('*')
+        .in('request_id', requestIds)
+        .order('created_at', { ascending: false })
+
+      if (!error && data) {
+        setApplications(data)
+      }
+      setLoading(false)
+    }
+    fetchApplications()
+  }, [requestIds.join(',')])
+
+  return (
+    <div style={{ marginBottom: '36px' }}>
+      <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '14px' }}>
+        Applications
+      </div>
+
+      {loading ? (
+        <div style={{ background: 'white', borderRadius: '14px', border: '1px solid #e2e8f0', padding: '24px', textAlign: 'center' }}>
+          <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0 }}>Loading applications…</p>
+        </div>
+      ) : applications.length === 0 ? (
+        <div style={{
+          background: 'white', borderRadius: '14px', border: '1.5px dashed #e2e8f0',
+          padding: '32px 24px', textAlign: 'center',
+        }}>
+          <div style={{ fontSize: '28px', marginBottom: '10px' }}>👀</div>
+          <p style={{ fontSize: '14px', fontWeight: 600, color: '#475569', margin: '0 0 4px' }}>No applications yet</p>
+          <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0 }}>
+            Once cleaners apply to your listing, you'll be able to review their profiles here.
+          </p>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {applications.map(app => (
+            <div key={app.id} style={{
+              background: 'white', borderRadius: '12px', border: '1px solid #e2e8f0',
+              padding: '16px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{
+                  width: '38px', height: '38px', borderRadius: '50%',
+                  background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '18px',
+                }}>🧹</div>
+                <div>
+                  <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>
+                    {app.cleaner_name ?? 'Cleaner'}
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#94a3b8' }}>
+                    Applied {daysSince(app.created_at) === 0 ? 'today' : `${daysSince(app.created_at)}d ago`}
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{
+                  fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '100px',
+                  background: app.status === 'pending' ? '#f1f5f9' : app.status === 'accepted' ? '#f0fdf4' : '#fef2f2',
+                  color: app.status === 'pending' ? '#64748b' : app.status === 'accepted' ? '#15803d' : '#dc2626',
+                }}>
+                  {app.status === 'pending' ? 'New' : app.status === 'accepted' ? 'Accepted' : 'Declined'}
+                </span>
+                <button style={{
+                  background: '#0f172a', color: 'white', border: 'none',
+                  borderRadius: '8px', padding: '6px 14px',
+                  fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+                  fontFamily: "'DM Sans', sans-serif",
+                }}>
+                  View profile →
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -810,6 +890,7 @@ export default function CustomerDashboard() {
   const pausedRequests = requests.filter(r => r.status === 'paused')
   const hasActive = activeRequests.length > 0
   const hasPaused = pausedRequests.length > 0
+  const activeRequestIds = activeRequests.map(r => r.id)
 
   return (
     <>
@@ -847,8 +928,10 @@ export default function CustomerDashboard() {
                   {hasActive && (
                     <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.7)', borderRadius: '14px', zIndex: 1 }} />
                   )}
-                  <div style={{ fontSize: '24px', marginBottom: '8px' }}>🧹</div>
-                  <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '4px' }}>Regular clean</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+                    <span style={{ fontSize: '22px' }}>🧹</span>
+                    <span style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>Regular clean</span>
+                  </div>
                   <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '14px', lineHeight: 1.4 }}>Weekly or fortnightly recurring clean</div>
                   {hasActive ? (
                     <div style={{ fontSize: '12px', color: '#94a3b8', fontStyle: 'italic' }}>
@@ -868,8 +951,10 @@ export default function CustomerDashboard() {
 
                 {/* End of tenancy */}
                 <div style={{ background: 'white', borderRadius: '14px', border: '1.5px solid #e2e8f0', padding: '18px' }}>
-                  <div style={{ fontSize: '24px', marginBottom: '8px' }}>🏠</div>
-                  <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '4px' }}>End of tenancy</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+                    <span style={{ fontSize: '22px' }}>🏠</span>
+                    <span style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>End of tenancy</span>
+                  </div>
                   <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '14px', lineHeight: 1.4 }}>Deep clean for move-out or move-in</div>
                   <button onClick={() => showToast('End of tenancy cleans — contact us at contact@vouchee.co.uk')} style={{
                     background: '#f1f5f9', color: '#64748b', border: '1px solid #e2e8f0',
@@ -883,8 +968,10 @@ export default function CustomerDashboard() {
 
                 {/* Cover clean */}
                 <div style={{ background: 'white', borderRadius: '14px', border: '1.5px solid #e2e8f0', padding: '18px' }}>
-                  <div style={{ fontSize: '24px', marginBottom: '8px' }}>🔄</div>
-                  <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '4px' }}>Cover clean</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+                    <span style={{ fontSize: '22px' }}>🔄</span>
+                    <span style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>Cover clean</span>
+                  </div>
                   <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '10px', lineHeight: 1.4 }}>One-off cover when your regular cleaner is away</div>
                   <div style={{ marginBottom: '12px', padding: '8px 10px', background: '#eff6ff', borderRadius: '8px', border: '1px solid #bfdbfe' }}>
                     <div style={{ fontSize: '11px', fontWeight: 700, color: '#1d4ed8', marginBottom: '2px' }}>📣 Instant alerts</div>
@@ -902,8 +989,10 @@ export default function CustomerDashboard() {
 
                 {/* Oven clean */}
                 <div style={{ background: 'white', borderRadius: '14px', border: '1.5px solid #e2e8f0', padding: '18px' }}>
-                  <div style={{ fontSize: '24px', marginBottom: '8px' }}>🫙</div>
-                  <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '4px' }}>Oven clean</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+                    <span style={{ fontSize: '22px' }}>🫙</span>
+                    <span style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>Oven clean</span>
+                  </div>
                   <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '14px', lineHeight: 1.4 }}>Specialist one-off oven deep clean</div>
                   <button onClick={() => showToast('Oven cleans — contact us at contact@vouchee.co.uk')} style={{
                     background: '#f1f5f9', color: '#64748b', border: '1px solid #e2e8f0',
@@ -917,7 +1006,6 @@ export default function CustomerDashboard() {
 
               </div>
 
-              {/* Paused nudge */}
               {hasPaused && !hasActive && (
                 <div style={{ marginTop: '12px', padding: '12px 16px', background: '#fefce8', border: '1px solid #fef08a', borderRadius: '10px', fontSize: '13px', color: '#92400e' }}>
                   💡 You have a paused listing. Consider editing or deleting it to keep things tidy before posting a new request.
@@ -944,7 +1032,7 @@ export default function CustomerDashboard() {
               </div>
             )}
 
-            {/* Paused listings (shown separately when no active) */}
+            {/* Paused listings */}
             {!hasActive && pausedRequests.length > 0 && (
               <div style={{ marginBottom: '36px' }}>
                 <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '14px' }}>
@@ -963,6 +1051,11 @@ export default function CustomerDashboard() {
               </div>
             )}
 
+            {/* Applications */}
+            {activeRequestIds.length > 0 && (
+              <ApplicationsSection requestIds={activeRequestIds} />
+            )}
+
             {/* Past listings */}
             {pastRequests.filter(r => r.status !== 'paused').length > 0 && (
               <div>
@@ -975,7 +1068,6 @@ export default function CustomerDashboard() {
               </div>
             )}
 
-            {/* Empty state */}
             {requests.length === 0 && (
               <div style={{ textAlign: 'center', padding: '40px 0', color: '#94a3b8' }}>
                 <div style={{ fontSize: '40px', marginBottom: '12px' }}>🧹</div>
@@ -988,7 +1080,6 @@ export default function CustomerDashboard() {
 
         <Footer />
 
-        {/* Confirm Modals */}
         {modal?.type === 'pause' && (
           <ConfirmModal
             message="Pause your request? It won't be visible to cleaners until you republish."
@@ -1011,7 +1102,6 @@ export default function CustomerDashboard() {
           />
         )}
 
-        {/* Edit Modal */}
         {editingRequest && (
           <EditModal
             request={editingRequest}
@@ -1021,7 +1111,6 @@ export default function CustomerDashboard() {
           />
         )}
 
-        {/* Toast */}
         {toast && <ComingSoonBanner message={toast} onClose={() => setToast(null)} />}
 
       </div>
