@@ -751,7 +751,7 @@ export default function CustomerDashboard() {
   const [requests, setRequests] = useState<CleaningRequest[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [modal, setModal] = useState<{ type: 'pause' | 'delete' | 'republish'; id: string } | null>(null)
+  const [modal, setModal] = useState<{ type: 'pause' | 'delete' | 'republish' | 'signout'; id: string } | null>(null)
   const [editingRequest, setEditingRequest] = useState<CleaningRequest | null>(null)
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
@@ -792,6 +792,12 @@ export default function CustomerDashboard() {
   const showToast = (msg: string) => {
     setToast(msg)
     setTimeout(() => setToast(null), 3500)
+  }
+
+  const handleSignOut = async () => {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    router.replace('/login')
   }
 
   const handlePause = async (id: string) => {
@@ -1059,7 +1065,28 @@ export default function CustomerDashboard() {
           </div>
         </main>
 
+        <div style={{ borderTop: '1px solid #e2e8f0', padding: '32px 24px', display: 'flex', justifyContent: 'center' }}>
+          <button
+            onClick={() => setModal({ type: 'signout', id: '' })}
+            style={{
+              background: 'none', border: '1px solid #e2e8f0', borderRadius: '8px',
+              padding: '8px 20px', fontSize: '13px', fontWeight: 600, color: '#94a3b8',
+              cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
+            }}
+          >
+            Sign out
+          </button>
+        </div>
+
         <Footer />
+
+        {modal?.type === 'signout' && (
+          <ConfirmModal
+            message="Are you sure you want to sign out?"
+            onConfirm={handleSignOut}
+            onCancel={() => setModal(null)}
+          />
+        )}
 
         {modal?.type === 'pause' && (
           <ConfirmModal
