@@ -797,7 +797,8 @@ export default function CustomerDashboard() {
   const handleSignOut = async () => {
     const supabase = createClient()
     await supabase.auth.signOut()
-    router.replace('/login')
+    router.refresh()
+    router.replace('/')
   }
 
   const handlePause = async (id: string) => {
