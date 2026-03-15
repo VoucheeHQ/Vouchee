@@ -556,31 +556,15 @@ function ActiveRequestCard({
 
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           <ActionBtn onClick={onEdit} primary>Edit listing</ActionBtn>
-
-          {request.status === 'active' && (
-            <>
-              {pausesLeft > 0 && <ActionBtn onClick={onPause}>Pause listing</ActionBtn>}
-              <ActionBtn onClick={onDelete} danger>Remove listing</ActionBtn>
-            </>
-          )}
-          {(request.status === 'pending' || request.status === 'active') && request.status !== 'active' && (
-            <ActionBtn onClick={onDelete} danger>Remove listing</ActionBtn>
-          )}
-          {request.status === 'pending' && (
-            <ActionBtn onClick={onDelete} danger>Remove listing</ActionBtn>
+          {request.status === 'active' && pausesLeft > 0 && (
+            <ActionBtn onClick={onPause}>Pause listing</ActionBtn>
           )}
           {request.status === 'paused' && (
-            <>
-              {!isRelocked
-                ? <ActionBtn onClick={onRepublish}>Republish</ActionBtn>
-                : <span style={{ fontSize: '12px', color: '#94a3b8', alignSelf: 'center' }}>Available to republish in 24h</span>
-              }
-              <ActionBtn onClick={onDelete} danger>Remove listing</ActionBtn>
-            </>
+            !isRelocked
+              ? <ActionBtn onClick={onRepublish}>Republish</ActionBtn>
+              : <span style={{ fontSize: '12px', color: '#94a3b8', alignSelf: 'center' }}>Available to republish in 24h</span>
           )}
-          {request.status === 'pending_review' && (
-            <ActionBtn onClick={onDelete} danger>Remove listing</ActionBtn>
-          )}
+          <ActionBtn onClick={onDelete} danger>Remove listing</ActionBtn>
         </div>
       </div>
     </div>
