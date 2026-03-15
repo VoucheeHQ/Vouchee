@@ -1,14 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
+import { createClient } from '@supabase/supabase-js'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
+
+// Service role client — bypasses RLS, only used server-side
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const {
-      customerEmail,
-      customerName,
+      customerId,
       cleanerName,
       cleanerInitial,
       cleanerMemberSince,
@@ -23,10 +29,22 @@ export async function POST(request: NextRequest) {
       jobBathrooms,
       jobHours,
       jobRate,
-      applicationId,
       requestId,
     } = body
 
+    // Look up customer email server-side using service role (bypasses RLS)
+    const { data: customerProfile, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .select('email, full_name')
+      .eq('id', customerId)
+      .single()
+
+    if (profileError || !customerProfile?.email) {
+      console.error('Customer profile lookup failed:', profileError)
+      return NextResponse.json({ error: 'Customer not found' }, { status: 404 })
+    }
+
+    const { email: customerEmail, full_name: customerName } = customerProfile
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.vouchee.co.uk'
 
     const html = `
@@ -42,8 +60,6 @@ export async function POST(request: NextRequest) {
     <tr>
       <td align="center">
         <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
-
-          <!-- Header -->
           <tr>
             <td style="padding:0 0 24px;">
               <table cellpadding="0" cellspacing="0">
@@ -56,38 +72,16 @@ export async function POST(request: NextRequest) {
               </table>
             </td>
           </tr>
-
-          <!-- Main card -->
           <tr>
             <td style="background:white;border-radius:20px;padding:36px;border:1px solid #e2e8f0;">
-
-              <!-- Title -->
-              <p style="margin:0 0 6px;font-size:22px;font-weight:800;color:#0f172a;">
-                🎉 A cleaner has applied to your request!
-              </p>
-              <p style="margin:0 0 28px;font-size:14px;color:#64748b;">
-                Someone in ${jobZone} wants to clean your home. Review their application below.
-              </p>
-
-              <!-- Job summary -->
+              <p style="margin:0 0 6px;font-size:22px;font-weight:800;color:#0f172a;">🎉 A cleaner has applied to your request!</p>
+              <p style="margin:0 0 28px;font-size:14px;color:#64748b;">Hi ${customerName ?? 'there'} — someone in ${jobZone} wants to clean your home. Review their application below.</p>
               <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border-radius:12px;padding:16px;margin-bottom:28px;">
-                <tr>
-                  <td style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.08em;padding-bottom:8px;">Your request</td>
-                </tr>
-                <tr>
-                  <td style="font-size:15px;font-weight:700;color:#0f172a;padding-bottom:6px;">📍 ${jobZone}</td>
-                </tr>
-                <tr>
-                  <td style="font-size:13px;color:#64748b;">
-                    ${jobBedrooms} bed · ${jobBathrooms} bath · ${jobHours} hrs · £${jobRate}/hr
-                  </td>
-                </tr>
+                <tr><td style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.08em;padding-bottom:8px;">Your request</td></tr>
+                <tr><td style="font-size:15px;font-weight:700;color:#0f172a;padding-bottom:6px;">📍 ${jobZone}</td></tr>
+                <tr><td style="font-size:13px;color:#64748b;">${jobBedrooms} bed · ${jobBathrooms} bath · ${jobHours} hrs · £${jobRate}/hr</td></tr>
               </table>
-
-              <!-- Cleaner card -->
               <table width="100%" cellpadding="0" cellspacing="0" style="border:1.5px solid #e2e8f0;border-radius:16px;overflow:hidden;margin-bottom:20px;">
-                
-                <!-- Cleaner header -->
                 <tr>
                   <td style="padding:20px 20px 16px;">
                     <table width="100%" cellpadding="0" cellspacing="0">
@@ -116,8 +110,6 @@ export async function POST(request: NextRequest) {
                     </table>
                   </td>
                 </tr>
-
-                <!-- Message -->
                 ${message ? `
                 <tr>
                   <td style="padding:0 20px 16px;">
@@ -135,10 +127,7 @@ export async function POST(request: NextRequest) {
                       </tr>
                     </table>
                   </td>
-                </tr>
-                ` : ''}
-
-                <!-- Rating -->
+                </tr>` : ''}
                 <tr>
                   <td style="padding:0 20px 20px;">
                     <span style="color:#f59e0b;font-size:16px;">★★★★★</span>
@@ -146,55 +135,39 @@ export async function POST(request: NextRequest) {
                     <span style="font-size:13px;color:#94a3b8;margin-left:4px;">· ${cleanerCompletedCleans ?? 0} cleans completed</span>
                   </td>
                 </tr>
-
-                <!-- CTA buttons -->
                 <tr>
                   <td style="padding:16px 20px 20px;border-top:1px solid #f1f5f9;">
                     <table cellpadding="0" cellspacing="0">
                       <tr>
                         <td style="padding-right:10px;">
-                          <a href="${appUrl}/customer/dashboard" style="display:inline-block;background:#16a34a;color:white;font-size:14px;font-weight:700;padding:10px 20px;border-radius:10px;text-decoration:none;">
-                            ✓ Accept &amp; chat
-                          </a>
+                          <a href="${appUrl}/customer/dashboard" style="display:inline-block;background:#16a34a;color:white;font-size:14px;font-weight:700;padding:10px 20px;border-radius:10px;text-decoration:none;">✓ Accept &amp; chat</a>
                         </td>
                         <td>
-                          <a href="${appUrl}/customer/dashboard" style="display:inline-block;background:white;color:#64748b;font-size:14px;font-weight:600;padding:10px 20px;border-radius:10px;text-decoration:none;border:1px solid #e2e8f0;">
-                            ✕ Decline
-                          </a>
+                          <a href="${appUrl}/customer/dashboard" style="display:inline-block;background:white;color:#64748b;font-size:14px;font-weight:600;padding:10px 20px;border-radius:10px;text-decoration:none;border:1px solid #e2e8f0;">✕ Decline</a>
                         </td>
                       </tr>
                     </table>
                   </td>
                 </tr>
-
               </table>
-
               <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.5;">
-                You can also manage all your applications from your 
-                <a href="${appUrl}/customer/dashboard" style="color:#2563eb;">Vouchee dashboard</a>.
+                Manage all your applications from your <a href="${appUrl}/customer/dashboard" style="color:#2563eb;">Vouchee dashboard</a>.
               </p>
-
             </td>
           </tr>
-
-          <!-- Footer -->
           <tr>
             <td style="padding:24px 0 0;text-align:center;">
               <p style="margin:0;font-size:12px;color:#94a3b8;">
-                © 2026 Vouchee · 
-                <a href="${appUrl}" style="color:#94a3b8;">vouchee.co.uk</a> · 
-                <a href="mailto:hello@vouchee.co.uk" style="color:#94a3b8;">hello@vouchee.co.uk</a>
+                © 2026 Vouchee · <a href="${appUrl}" style="color:#94a3b8;">vouchee.co.uk</a> · <a href="mailto:hello@vouchee.co.uk" style="color:#94a3b8;">hello@vouchee.co.uk</a>
               </p>
             </td>
           </tr>
-
         </table>
       </td>
     </tr>
   </table>
 </body>
-</html>
-    `
+</html>`
 
     const { data, error } = await resend.emails.send({
       from: 'Vouchee <hello@vouchee.co.uk>',

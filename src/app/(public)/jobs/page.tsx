@@ -615,7 +615,10 @@ export default function JobsPage() {
   }, [])
 
   const handleApply = async (message: string) => {
-    if (!applyingToJob || !cleanerData) return
+    if (!applyingToJob || !cleanerData) {
+      console.error('Apply blocked — applyingToJob:', applyingToJob, 'cleanerData:', cleanerData)
+      return
+    }
     setSubmitting(true)
     try {
       const authClient = createClient()
@@ -630,56 +633,53 @@ export default function JobsPage() {
           status: 'pending',
         })
 
-      if (appError) throw appError
+      if (appError) {
+        console.error('Application insert error:', appError)
+        throw appError
+      }
 
       // Mark as applied locally
       setAppliedJobIds(prev => new Set([...prev, applyingToJob.id]))
 
       // Get customer email for notification
-      const { data: requestData } = await (authClient as any)
+      const { data: requestData, error: requestError } = await (authClient as any)
         .from('clean_requests')
         .select('customer_id')
         .eq('id', applyingToJob.id)
         .single()
 
+      if (requestError) console.error('Request lookup error:', requestError)
+
       if (requestData?.customer_id) {
-        const { data: customerProfile } = await (authClient as any)
-          .from('profiles')
-          .select('email, full_name')
-          .eq('id', requestData.customer_id)
-          .single()
+        const cleanerName = profileData?.full_name ?? 'A cleaner'
+        const memberSince = cleanerData.created_at
+          ? new Date(cleanerData.created_at).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
+          : 'Recently'
 
-        if (customerProfile?.email) {
-          const cleanerName = profileData?.full_name ?? 'A cleaner'
-          const memberSince = cleanerData.created_at
-            ? new Date(cleanerData.created_at).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
-            : 'Recently'
-
-          await fetch('/api/send-application-email', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              customerEmail: customerProfile.email,
-              customerName: customerProfile.full_name ?? 'there',
-              cleanerName,
-              cleanerInitial: cleanerName[0].toUpperCase(),
-              cleanerMemberSince: memberSince,
-              cleanerDbs: cleanerData.dbs_checked,
-              cleanerInsured: cleanerData.has_insurance,
-              cleanerRightToWork: cleanerData.right_to_work,
-              cleanerRating: '5.0',
-              cleanerCompletedCleans: 0,
-              message: message.trim(),
-              jobZone: applyingToJob.zone ? ZONE_LABELS[applyingToJob.zone as HorshamZone] : 'Horsham',
-              jobBedrooms: applyingToJob.bedrooms,
-              jobBathrooms: applyingToJob.bathrooms,
-              jobHours: applyingToJob.hours_per_session,
-              jobRate: applyingToJob.hourly_rate,
-              applicationId: null,
-              requestId: applyingToJob.id,
-            }),
-          })
-        }
+        const emailRes = await fetch('/api/send-application-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            customerId: requestData.customer_id,
+            cleanerName,
+            cleanerInitial: cleanerName[0].toUpperCase(),
+            cleanerMemberSince: memberSince,
+            cleanerDbs: cleanerData.dbs_checked,
+            cleanerInsured: cleanerData.has_insurance,
+            cleanerRightToWork: cleanerData.right_to_work,
+            cleanerRating: '5.0',
+            cleanerCompletedCleans: 0,
+            message: message.trim(),
+            jobZone: applyingToJob.zone ? ZONE_LABELS[applyingToJob.zone as HorshamZone] : 'Horsham',
+            jobBedrooms: applyingToJob.bedrooms,
+            jobBathrooms: applyingToJob.bathrooms,
+            jobHours: applyingToJob.hours_per_session,
+            jobRate: applyingToJob.hourly_rate,
+            requestId: applyingToJob.id,
+          }),
+        })
+        const emailData = await emailRes.json()
+        console.log('Email API response:', emailData)
       }
 
       setApplyingToJob(null)
