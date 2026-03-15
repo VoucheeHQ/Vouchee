@@ -334,33 +334,46 @@ function ApplyModal({ job, cleanerProfile, onClose, onSubmit, submitting }: {
   submitting: boolean
 }) {
   const [message, setMessage] = useState('')
+  const [tasksOpen, setTasksOpen] = useState(false)
+  const [showMessageTip, setShowMessageTip] = useState(true)
+  const [showNewCleanerTip, setShowNewCleanerTip] = useState(true)
+
   const zone = job.zone ? ZONE_LABELS[job.zone as HorshamZone] : 'Horsham'
   const estPerSession = job.hourly_rate && job.hours_per_session
     ? (job.hourly_rate * job.hours_per_session).toFixed(2) : null
   const days = (job.preferred_days?.length ? job.preferred_days : job.preferred_day ? [job.preferred_day] : [])
   const daysLabel = days.length > 0 ? days.map((d: string) => d.slice(0, 3)).join(' · ') : null
-  const showNoRatingsTip = cleanerProfile && cleanerProfile.completedCleans === 0
+  const showNoRatingsTip = showNewCleanerTip && cleanerProfile && cleanerProfile.completedCleans === 0
+  const allTasks = job.tasks ?? []
+  const regularTasks = allTasks.filter(t => REGULAR_TASKS.includes(t))
+  const specialTasks = allTasks.filter(t => !REGULAR_TASKS.includes(t))
+
+  const chip = (text: string) => ({
+    background: 'white', border: '1px solid #e2e8f0',
+    borderRadius: '100px', padding: '3px 10px',
+    fontSize: '12px', fontWeight: 600, color: '#475569',
+  } as React.CSSProperties)
 
   return (
     <div style={{
       position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
-      display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-      zIndex: 300, padding: '0',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      zIndex: 300, padding: '20px',
     }}>
       <div style={{
-        background: 'white', borderRadius: '24px 24px 0 0',
-        width: '100%', maxWidth: '640px',
-        maxHeight: '92vh', overflowY: 'auto',
-        boxShadow: '0 -8px 40px rgba(0,0,0,0.2)',
+        background: 'white', borderRadius: '24px',
+        width: '100%', maxWidth: '580px',
+        maxHeight: '90vh', overflowY: 'auto',
+        boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
       }}>
-        {/* Handle + header */}
-        <div style={{ position: 'sticky', top: 0, background: 'white', borderBottom: '1px solid #f1f5f9', padding: '16px 24px 14px', zIndex: 10 }}>
-          <div style={{ width: '40px', height: '4px', background: '#e2e8f0', borderRadius: '2px', margin: '0 auto 16px' }} />
+        {/* Header */}
+        <div style={{ position: 'sticky', top: 0, background: 'white', borderBottom: '1px solid #f1f5f9', padding: '18px 24px', zIndex: 10, borderRadius: '24px 24px 0 0' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <h2 style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a', margin: 0 }}>Apply for this job</h2>
             <button onClick={onClose} style={{
               background: '#f1f5f9', border: 'none', borderRadius: '50%',
               width: '32px', height: '32px', fontSize: '16px', cursor: 'pointer', color: '#64748b',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>✕</button>
           </div>
         </div>
@@ -377,12 +390,50 @@ function ApplyModal({ job, cleanerProfile, onClose, onSubmit, submitting }: {
               <span style={{ fontSize: '17px', fontWeight: 800, color: '#0f172a' }}>{zone}</span>
               <span style={{ fontSize: '13px', color: '#64748b', marginLeft: '4px' }}>{SERVICE_LABELS[job.service_type]}</span>
             </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: job.hourly_rate ? '12px' : '0' }}>
-              {job.bedrooms > 0 && <span style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '100px', padding: '3px 10px', fontSize: '12px', fontWeight: 600, color: '#475569' }}>{job.bedrooms} bed</span>}
-              {job.hours_per_session && <span style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '100px', padding: '3px 10px', fontSize: '12px', fontWeight: 600, color: '#475569' }}>{job.hours_per_session} hrs</span>}
-              {daysLabel && <span style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '100px', padding: '3px 10px', fontSize: '12px', fontWeight: 600, color: '#475569' }}>{daysLabel}</span>}
-              {job.time_of_day && <span style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '100px', padding: '3px 10px', fontSize: '12px', fontWeight: 600, color: '#475569' }}>{job.time_of_day}</span>}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '12px' }}>
+              {job.bedrooms > 0 && <span style={chip('')}>{job.bedrooms} bed</span>}
+              {job.bathrooms > 0 && <span style={chip('')}>{job.bathrooms} bath</span>}
+              {job.hours_per_session && <span style={chip('')}>{job.hours_per_session} hrs</span>}
+              {(job as any).frequency && <span style={chip('')}>{FREQUENCY_LABELS[(job as any).frequency] ?? (job as any).frequency}</span>}
+              {daysLabel && <span style={chip('')}>{daysLabel}</span>}
+              {job.time_of_day && <span style={chip('')}>{job.time_of_day}</span>}
             </div>
+
+            {/* Tasks dropdown */}
+            {allTasks.length > 0 && (
+              <div style={{ marginBottom: '12px' }}>
+                <button
+                  onClick={() => setTasksOpen(o => !o)}
+                  style={{
+                    background: 'white', border: '1px solid #e2e8f0', borderRadius: '100px',
+                    padding: '4px 12px', fontSize: '12px', fontWeight: 600, color: '#475569',
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px',
+                  }}
+                >
+                  📋 {allTasks.length} task{allTasks.length !== 1 ? 's' : ''} required
+                  <span style={{ fontSize: '10px' }}>{tasksOpen ? '▲' : '▼'}</span>
+                </button>
+                {tasksOpen && (
+                  <div style={{ marginTop: '10px', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                    {regularTasks.map(t => (
+                      <span key={t} style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '100px', padding: '3px 10px', fontSize: '12px', fontWeight: 600, color: '#15803d' }}>
+                        {TASK_LABELS[t]?.label ?? t}
+                      </span>
+                    ))}
+                    {specialTasks.map(t => (
+                      <span key={t} style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '100px', padding: '3px 10px', fontSize: '12px', fontWeight: 600, color: '#92400e' }}>
+                        {TASK_LABELS[t]?.label ?? t}
+                      </span>
+                    ))}
+                    <div style={{ width: '100%', fontSize: '11px', color: '#94a3b8', marginTop: '4px' }}>
+                      🟢 Standard tasks · 🟡 Special requests
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Rate */}
             {job.hourly_rate && (
               <div style={{ background: '#fefce8', border: '1px solid #fef08a', borderRadius: '10px', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
@@ -399,20 +450,19 @@ function ApplyModal({ job, cleanerProfile, onClose, onSubmit, submitting }: {
             )}
           </div>
 
-          {/* Credit notice */}
-          <div style={{ background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: '10px', padding: '10px 14px', marginBottom: '20px', fontSize: '13px', color: '#7c3aed' }}>
-            💳 <strong>1 credit</strong> will be used when you submit this application. Credits are free during beta.
-          </div>
-
           {/* Message tip */}
-          <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', padding: '10px 14px', marginBottom: '16px', fontSize: '13px', color: '#15803d' }}>
-            💡 <strong>Tip:</strong> Cleaners who include a personal message are significantly more likely to be accepted. Introduce yourself and why you'd be a great fit!
-          </div>
+          {showMessageTip && (
+            <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', padding: '10px 14px', marginBottom: '12px', fontSize: '13px', color: '#15803d', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
+              <span>💡 <strong>Tip:</strong> Cleaners who include a personal message are significantly more likely to be accepted. Introduce yourself and why you'd be a great fit!</span>
+              <button onClick={() => setShowMessageTip(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#86efac', fontSize: '14px', flexShrink: 0, padding: '0' }}>✕</button>
+            </div>
+          )}
 
-          {/* No ratings tip */}
+          {/* New cleaner tip */}
           {showNoRatingsTip && (
-            <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: '10px', padding: '10px 14px', marginBottom: '16px', fontSize: '13px', color: '#c2410c' }}>
-              ⭐ <strong>New cleaner tip:</strong> Consider offering a discounted first clean to help win work and gain your first ratings on Vouchee.
+            <div style={{ background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: '10px', padding: '10px 14px', marginBottom: '12px', fontSize: '13px', color: '#7c3aed', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
+              <span>⭐ <strong>New cleaner tip:</strong> Consider offering a discounted first clean to help win work and gain your first ratings on Vouchee.</span>
+              <button onClick={() => setShowNewCleanerTip(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#c4b5fd', fontSize: '14px', flexShrink: 0, padding: '0' }}>✕</button>
             </div>
           )}
 
@@ -423,7 +473,7 @@ function ApplyModal({ job, cleanerProfile, onClose, onSubmit, submitting }: {
             </label>
             <textarea
               value={message}
-              onChange={e => setMessage(e.target.value)}
+              onChange={e => setMessage(e.target.value.slice(0, 500))}
               placeholder="Hi, I'm [name] and I'd love to help with your home cleaning. I have X years of experience and..."
               rows={4}
               style={{
@@ -434,7 +484,7 @@ function ApplyModal({ job, cleanerProfile, onClose, onSubmit, submitting }: {
                 boxSizing: 'border-box',
               }}
             />
-            <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px', textAlign: 'right' }}>
+            <div style={{ fontSize: '12px', color: message.length >= 450 ? '#f59e0b' : '#94a3b8', marginTop: '4px', textAlign: 'right' }}>
               {message.length}/500
             </div>
           </div>
