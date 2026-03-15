@@ -100,7 +100,7 @@ function timeAgo(dateStr: string) {
 
 function YourListingBanner({ job, onEdit }: { job: Job; onEdit: () => void }) {
   const zone = job.zone ? ZONE_LABELS[job.zone as HorshamZone] : 'Horsham'
-  const isGrace = job.status === 'pending_review' || job.status === 'pending'
+  const isUnderReview = job.status === 'pending_review'
 
   return (
     <div style={{
@@ -122,7 +122,7 @@ function YourListingBanner({ job, onEdit }: { job: Job; onEdit: () => void }) {
               Your listing · {zone}
             </div>
             <div style={{ fontSize: '13px', color: '#16a34a' }}>
-              {isGrace
+              {isUnderReview
                 ? '⏱ Under review — edit if you need to make changes'
                 : '✅ Accepting applications — cleaners can see and apply'}
             </div>
