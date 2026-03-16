@@ -76,25 +76,36 @@ export async function POST(request: NextRequest) {
             <td style="background:white;border-radius:20px;padding:36px;border:1px solid #e2e8f0;">
               <p style="margin:0 0 6px;font-size:22px;font-weight:800;color:#0f172a;">🎉 A cleaner has applied to your request!</p>
               <p style="margin:0 0 28px;font-size:14px;color:#64748b;">Hi ${customerName ?? 'there'} — someone in ${jobZone} wants to clean your home. Review their application below.</p>
+
+              <!-- Job summary -->
               <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border-radius:12px;padding:16px;margin-bottom:28px;">
                 <tr><td style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.08em;padding-bottom:8px;">Your request</td></tr>
                 <tr><td style="font-size:15px;font-weight:700;color:#0f172a;padding-bottom:6px;">📍 ${jobZone}</td></tr>
                 <tr><td style="font-size:13px;color:#64748b;">${jobBedrooms} bed · ${jobBathrooms} bath · ${jobHours} hrs · £${jobRate}/hr</td></tr>
               </table>
+
+              <!-- Cleaner card -->
               <table width="100%" cellpadding="0" cellspacing="0" style="border:1.5px solid #e2e8f0;border-radius:16px;overflow:hidden;margin-bottom:20px;">
+
+                <!-- Header row: avatar + name/since + badges -->
                 <tr>
-                  <td style="padding:20px 20px 16px;">
+                  <td style="padding:20px 20px 14px;">
                     <table width="100%" cellpadding="0" cellspacing="0">
                       <tr>
-                        <td style="vertical-align:top;">
+                        <td style="vertical-align:middle;">
                           <table cellpadding="0" cellspacing="0">
                             <tr>
                               <td style="background:#2563eb;border-radius:50%;width:48px;height:48px;text-align:center;vertical-align:middle;">
                                 <span style="color:white;font-size:20px;font-weight:800;line-height:48px;">${cleanerInitial}</span>
                               </td>
                               <td style="padding-left:12px;vertical-align:middle;">
-                                <div style="font-size:16px;font-weight:700;color:#0f172a;">${cleanerName}</div>
+                                <div style="font-size:17px;font-weight:800;color:#0f172a;">${cleanerName}</div>
                                 <div style="font-size:12px;color:#94a3b8;">Member since ${cleanerMemberSince}</div>
+                                <div style="margin-top:4px;">
+                                  <span style="color:#f59e0b;font-size:14px;">★★★★★</span>
+                                  <span style="font-size:13px;font-weight:700;color:#0f172a;margin-left:4px;">${cleanerRating ?? '5.0'}</span>
+                                  <span style="font-size:12px;color:#94a3b8;margin-left:4px;">· ${cleanerCompletedCleans ?? 0} cleans completed</span>
+                                </div>
                               </td>
                             </tr>
                           </table>
@@ -110,46 +121,59 @@ export async function POST(request: NextRequest) {
                     </table>
                   </td>
                 </tr>
+
+                <!-- Blurred reviews -->
+                <tr>
+                  <td style="padding:0 20px 14px;border-top:1px solid #f8fafc;">
+                    <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Reviews</div>
+                    <div style="filter:blur(4px);pointer-events:none;user-select:none;opacity:0.7;">
+                      <div style="margin-bottom:8px;">
+                        <span style="color:#f59e0b;font-size:13px;">★★★★★</span>
+                        <div style="font-size:13px;color:#475569;margin-top:2px;">Absolutely brilliant — left the house spotless. Would highly recommend to anyone looking for a reliable cleaner.</div>
+                        <div style="font-size:11px;color:#94a3b8;margin-top:2px;">— Sarah T.</div>
+                      </div>
+                      <div>
+                        <span style="color:#f59e0b;font-size:13px;">★★★★★</span>
+                        <div style="font-size:13px;color:#475569;margin-top:2px;">Very professional and thorough. Always on time and incredibly easy to communicate with. A real gem!</div>
+                        <div style="font-size:11px;color:#94a3b8;margin-top:2px;">— James H.</div>
+                      </div>
+                    </div>
+                    <div style="font-size:12px;color:#94a3b8;margin-top:8px;font-style:italic;">Accept a cleaner's application to view their reviews.</div>
+                  </td>
+                </tr>
+
+                <!-- Message bubble -->
                 ${message ? `
                 <tr>
-                  <td style="padding:0 20px 16px;">
+                  <td style="padding:0 20px 16px;border-top:1px solid #f1f5f9;">
+                    <div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:8px;">${cleanerName} :</div>
                     <table width="100%" cellpadding="0" cellspacing="0" style="background:#eff6ff;border-radius:12px;padding:14px 16px;">
                       <tr>
-                        <td style="vertical-align:top;padding-right:10px;">
-                          <div style="background:#2563eb;border-radius:50%;width:28px;height:28px;text-align:center;line-height:28px;">
-                            <span style="color:white;font-size:12px;font-weight:700;">${cleanerInitial}</span>
-                          </div>
-                        </td>
                         <td style="vertical-align:top;">
-                          <p style="margin:0;font-size:14px;color:#1e40af;font-style:italic;line-height:1.5;">"${message}"</p>
-                          <p style="margin:6px 0 0;font-size:12px;color:#93c5fd;">${cleanerName} · Just now</p>
+                          <p style="margin:0;font-size:14px;color:#1e40af;font-weight:600;line-height:1.5;">${message}</p>
                         </td>
                       </tr>
                     </table>
                   </td>
                 </tr>` : ''}
-                <tr>
-                  <td style="padding:0 20px 20px;">
-                    <span style="color:#f59e0b;font-size:16px;">★★★★★</span>
-                    <span style="font-size:14px;font-weight:700;color:#0f172a;margin-left:4px;">${cleanerRating ?? '5.0'}</span>
-                    <span style="font-size:13px;color:#94a3b8;margin-left:4px;">· ${cleanerCompletedCleans ?? 0} cleans completed</span>
-                  </td>
-                </tr>
+
+                <!-- CTA buttons -->
                 <tr>
                   <td style="padding:16px 20px 20px;border-top:1px solid #f1f5f9;">
                     <table cellpadding="0" cellspacing="0">
                       <tr>
                         <td style="padding-right:10px;">
-                          <a href="${appUrl}/customer/dashboard" style="display:inline-block;background:#16a34a;color:white;font-size:14px;font-weight:700;padding:10px 20px;border-radius:10px;text-decoration:none;">✓ Accept &amp; chat</a>
+                          <a href="${appUrl}/customer/dashboard" style="display:inline-block;background:#16a34a;color:white;font-size:14px;font-weight:700;padding:12px 24px;border-radius:10px;text-decoration:none;">✓ Accept &amp; chat</a>
                         </td>
                         <td>
-                          <a href="${appUrl}/customer/dashboard" style="display:inline-block;background:white;color:#64748b;font-size:14px;font-weight:600;padding:10px 20px;border-radius:10px;text-decoration:none;border:1px solid #e2e8f0;">✕ Decline</a>
+                          <a href="${appUrl}/customer/dashboard" style="display:inline-block;background:#ef4444;color:white;font-size:14px;font-weight:700;padding:12px 24px;border-radius:10px;text-decoration:none;">✕ Decline</a>
                         </td>
                       </tr>
                     </table>
                   </td>
                 </tr>
               </table>
+
               <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.5;">
                 Manage all your applications from your <a href="${appUrl}/customer/dashboard" style="color:#2563eb;">Vouchee dashboard</a>.
               </p>
@@ -172,7 +196,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = await resend.emails.send({
       from: 'Vouchee <hello@vouchee.co.uk>',
       to: customerEmail,
-      subject: `${cleanerName} has applied to clean your home 🎉`,
+      subject: `New application from ${cleanerName} — review now`,
       html,
     })
 

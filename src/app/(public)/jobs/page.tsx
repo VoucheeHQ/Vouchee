@@ -542,7 +542,7 @@ export default function JobsPage() {
         // Get role from profiles
         const { data: profileData } = await (authClient as any)
           .from('profiles')
-          .select('role')
+          .select('role, full_name')
           .eq('id', session.user.id)
           .single()
 
@@ -651,7 +651,11 @@ export default function JobsPage() {
       if (requestError) console.error('Request lookup error:', requestError)
 
       if (requestData?.customer_id) {
-        const cleanerName = profileData?.full_name ?? 'A cleaner'
+        const fullName = profileData?.full_name ?? ''
+        const nameParts = fullName.trim().split(' ')
+        const cleanerName = nameParts.length >= 2
+          ? `${nameParts[0]} ${nameParts[nameParts.length - 1][0]}.`
+          : fullName || 'A cleaner'
         const memberSince = cleanerData.created_at
           ? new Date(cleanerData.created_at).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
           : 'Recently'
