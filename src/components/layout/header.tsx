@@ -1,11 +1,12 @@
 'use client'
 
 import Link from 'next/link'
-import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { Menu, X } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
+import LogoText from '@/assets/vouchee-logo-text.svg'
+import LogoMark from '@/assets/vouchee-logo.svg'
 
 interface HeaderProps {
   userRole: string | null
@@ -30,22 +31,8 @@ export function Header({ userRole }: HeaderProps) {
       <nav className="container flex h-16 items-center justify-between">
 
         <Link href="/" className="flex items-center">
-          <Image
-            src="/vouchee-logo-text.svg"
-            alt="Vouchee"
-            width={120}
-            height={28}
-            priority
-            className="hidden md:block"
-          />
-          <Image
-            src="/vouchee-logo.svg"
-            alt="Vouchee"
-            width={28}
-            height={28}
-            priority
-            className="block md:hidden"
-          />
+          <LogoText className="hidden md:block h-7 w-auto" />
+          <LogoMark className="block md:hidden h-7 w-auto" />
         </Link>
 
         <div className="hidden items-center gap-6 md:flex">
