@@ -29,15 +29,17 @@ export function Header({ userRole }: HeaderProps) {
       <nav className="container flex h-16 items-center justify-between">
 
         <Link href="/" className="flex items-center">
-          {/* Full logo for desktop */}
           <img
             src="/vouchee-logo-text.svg"
+            alt="Vouchee"
+            style={{ height: '28px', width: 'auto' }}
+            className="hidden md:block"
           />
-          {/* Mark only for mobile */}
           <img
             src="/vouchee-logo.svg"
             alt="Vouchee"
-            className="block md:hidden h-8 w-auto"
+            style={{ height: '28px', width: 'auto' }}
+            className="block md:hidden"
           />
         </Link>
 
