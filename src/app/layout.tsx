@@ -36,7 +36,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'en_GB',
-    url: 'https://vouchee.com',
+    url: 'https://vouchee.co.uk',
     title: 'Vouchee - Connect with Local Cleaners',
     description: 'Find trusted local cleaners in Horsham and surrounding areas.',
     siteName: 'Vouchee',
@@ -51,8 +51,7 @@ export const metadata: Metadata = {
     follow: true,
   },
   icons: {
-    icon: '/favicon.png',
-    apple: '/favicon.png',
+    icon: '/favicon.svg',
   },
 }
 
