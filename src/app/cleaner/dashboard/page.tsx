@@ -163,14 +163,9 @@ function PendingScreen({ profile, cleaner, emailConfirmed }: { profile: CleanerP
 
   return (
     <div style={{ maxWidth: '640px', margin: '0 auto', padding: '0 0 60px' }}>
-
-      {/* Hero */}
       <div style={{
-        background: 'white',
-        borderRadius: '20px',
-        padding: '32px',
-        border: '1.5px solid #e2e8f0',
-        marginBottom: '20px',
+        background: 'white', borderRadius: '20px', padding: '32px',
+        border: '1.5px solid #e2e8f0', marginBottom: '20px',
         boxShadow: '0 2px 16px rgba(0,0,0,0.05)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
@@ -190,17 +185,15 @@ function PendingScreen({ profile, cleaner, emailConfirmed }: { profile: CleanerP
             <StatusBadge status={cleaner.application_status} />
           </div>
         </div>
-
         <p style={{ fontSize: '15px', color: '#475569', lineHeight: 1.7, margin: 0 }}>
           Thanks for applying to join Vouchee. We've received your application and will be in touch within <strong>1–3 working days</strong>. In the meantime, here's a summary of what you submitted.
         </p>
       </div>
 
-      {/* Progress steps */}
       <div style={{
-        background: 'white', borderRadius: '20px',
-        padding: '28px 32px', border: '1.5px solid #e2e8f0',
-        marginBottom: '20px', boxShadow: '0 2px 16px rgba(0,0,0,0.05)',
+        background: 'white', borderRadius: '20px', padding: '28px 32px',
+        border: '1.5px solid #e2e8f0', marginBottom: '20px',
+        boxShadow: '0 2px 16px rgba(0,0,0,0.05)',
       }}>
         <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 24px' }}>
           What happens next
@@ -208,7 +201,6 @@ function PendingScreen({ profile, cleaner, emailConfirmed }: { profile: CleanerP
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
           {steps.map((step, i) => (
             <div key={i} style={{ display: 'flex', gap: '16px', position: 'relative' }}>
-              {/* Line */}
               {i < steps.length - 1 && (
                 <div style={{
                   position: 'absolute', left: '19px', top: '40px',
@@ -216,18 +208,15 @@ function PendingScreen({ profile, cleaner, emailConfirmed }: { profile: CleanerP
                   background: step.done ? '#86efac' : '#e2e8f0',
                 }} />
               )}
-              {/* Icon */}
               <div style={{
                 width: '40px', height: '40px', borderRadius: '50%', flexShrink: 0,
                 background: step.done ? '#dcfce7' : step.active ? '#eff6ff' : '#f8fafc',
                 border: `2px solid ${step.done ? '#86efac' : step.active ? '#93c5fd' : '#e2e8f0'}`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '16px',
-                zIndex: 1,
+                fontSize: '16px', zIndex: 1,
               }}>
                 {step.done ? '✓' : step.icon}
               </div>
-              {/* Text */}
               <div style={{ paddingBottom: i < steps.length - 1 ? '24px' : '0', flex: 1 }}>
                 <div style={{
                   fontSize: '14px', fontWeight: 700,
@@ -245,22 +234,18 @@ function PendingScreen({ profile, cleaner, emailConfirmed }: { profile: CleanerP
         </div>
       </div>
 
-      {/* Application summary */}
       <div style={{
-        background: 'white', borderRadius: '20px',
-        padding: '28px 32px', border: '1.5px solid #e2e8f0',
-        marginBottom: '20px', boxShadow: '0 2px 16px rgba(0,0,0,0.05)',
+        background: 'white', borderRadius: '20px', padding: '28px 32px',
+        border: '1.5px solid #e2e8f0', marginBottom: '20px',
+        boxShadow: '0 2px 16px rgba(0,0,0,0.05)',
       }}>
         <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 4px' }}>
           Your application summary
         </h3>
-
         <SummaryRow label="Name" value={profile.full_name} />
         <SummaryRow label="Email" value={profile.email} />
         <SummaryRow label="Phone" value={profile.phone ?? '—'} />
         <SummaryRow label="Own supplies" value={cleaner.own_supplies ? 'Yes' : 'No'} />
-
-        {/* Credentials */}
         <div style={{ padding: '12px 0', borderBottom: '1px solid #f1f5f9' }}>
           <div style={{ fontSize: '13px', color: '#64748b', fontWeight: 500, marginBottom: '10px' }}>Credentials</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
@@ -274,8 +259,6 @@ function PendingScreen({ profile, cleaner, emailConfirmed }: { profile: CleanerP
             </p>
           )}
         </div>
-
-        {/* Zones */}
         <div style={{ padding: '12px 0' }}>
           <div style={{ fontSize: '13px', color: '#64748b', fontWeight: 500, marginBottom: '10px' }}>Areas you cover</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
@@ -287,11 +270,10 @@ function PendingScreen({ profile, cleaner, emailConfirmed }: { profile: CleanerP
         </div>
       </div>
 
-      {/* Notification preferences */}
       <div style={{
-        background: 'white', borderRadius: '20px',
-        padding: '28px 32px', border: '1.5px solid #e2e8f0',
-        marginBottom: '20px', boxShadow: '0 2px 16px rgba(0,0,0,0.05)',
+        background: 'white', borderRadius: '20px', padding: '28px 32px',
+        border: '1.5px solid #e2e8f0', marginBottom: '20px',
+        boxShadow: '0 2px 16px rgba(0,0,0,0.05)',
       }}>
         <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 16px' }}>
           Notification preferences
@@ -317,11 +299,9 @@ function PendingScreen({ profile, cleaner, emailConfirmed }: { profile: CleanerP
         ))}
       </div>
 
-      {/* Help */}
       <div style={{
         background: '#f8faff', borderRadius: '16px',
-        padding: '20px 24px', border: '1px solid #e0e7ff',
-        textAlign: 'center',
+        padding: '20px 24px', border: '1px solid #e0e7ff', textAlign: 'center',
       }}>
         <p style={{ fontSize: '14px', color: '#475569', margin: 0, lineHeight: 1.6 }}>
           Questions about your application?{' '}
@@ -330,7 +310,6 @@ function PendingScreen({ profile, cleaner, emailConfirmed }: { profile: CleanerP
           </a>
         </p>
       </div>
-
     </div>
   )
 }
@@ -342,13 +321,10 @@ function ApprovedShell({ profile }: { profile: CleanerProfile }) {
 
   return (
     <div style={{ maxWidth: '640px', margin: '0 auto', padding: '0 0 60px' }}>
-
-      {/* Welcome card */}
       <div style={{
         background: 'linear-gradient(135deg, #3b82f6, #6366f1)',
-        borderRadius: '20px', padding: '32px',
-        marginBottom: '20px', color: 'white',
-        boxShadow: '0 8px 32px rgba(59,130,246,0.25)',
+        borderRadius: '20px', padding: '32px', marginBottom: '20px',
+        color: 'white', boxShadow: '0 8px 32px rgba(59,130,246,0.25)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
           <div style={{
@@ -356,8 +332,7 @@ function ApprovedShell({ profile }: { profile: CleanerProfile }) {
             background: 'rgba(255,255,255,0.2)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: '22px', fontWeight: 800, color: 'white',
-            fontFamily: 'Lora, serif', border: '2px solid rgba(255,255,255,0.3)',
-            flexShrink: 0,
+            fontFamily: 'Lora, serif', border: '2px solid rgba(255,255,255,0.3)', flexShrink: 0,
           }}>
             {getInitial(profile.full_name)}
           </div>
@@ -375,31 +350,14 @@ function ApprovedShell({ profile }: { profile: CleanerProfile }) {
         </p>
       </div>
 
-      {/* Coming soon panels */}
       {[
-        {
-          icon: '🔔',
-          title: 'Job alerts',
-          desc: "You'll be notified when a customer posts a request in your area. Check your email to manage notification preferences.",
-          colour: '#eff6ff', border: '#bfdbfe', iconBg: '#dbeafe',
-        },
-        {
-          icon: '⭐',
-          title: 'Reviews & profile link',
-          desc: 'Share your personal Vouchee profile link with existing customers to collect reviews. Coming soon.',
-          colour: '#fefce8', border: '#fde68a', iconBg: '#fef9c3',
-        },
-        {
-          icon: '💬',
-          title: 'Messages',
-          desc: "When a customer accepts your application, your conversation will appear here.",
-          colour: '#f0fdf4', border: '#86efac', iconBg: '#dcfce7',
-        },
+        { icon: '🔔', title: 'Job alerts', desc: "You'll be notified when a customer posts a request in your area. Check your email to manage notification preferences.", colour: '#eff6ff', border: '#bfdbfe', iconBg: '#dbeafe' },
+        { icon: '⭐', title: 'Reviews & profile link', desc: 'Share your personal Vouchee profile link with existing customers to collect reviews. Coming soon.', colour: '#fefce8', border: '#fde68a', iconBg: '#fef9c3' },
+        { icon: '💬', title: 'Messages', desc: "When a customer accepts your application, your conversation will appear here.", colour: '#f0fdf4', border: '#86efac', iconBg: '#dcfce7' },
       ].map(panel => (
         <div key={panel.title} style={{
           background: panel.colour, border: `1.5px solid ${panel.border}`,
-          borderRadius: '16px', padding: '24px',
-          marginBottom: '16px',
+          borderRadius: '16px', padding: '24px', marginBottom: '16px',
           display: 'flex', gap: '16px', alignItems: 'flex-start',
         }}>
           <div style={{
@@ -416,11 +374,9 @@ function ApprovedShell({ profile }: { profile: CleanerProfile }) {
         </div>
       ))}
 
-      {/* Help */}
       <div style={{
         background: '#f8faff', borderRadius: '16px',
-        padding: '20px 24px', border: '1px solid #e0e7ff',
-        textAlign: 'center',
+        padding: '20px 24px', border: '1px solid #e0e7ff', textAlign: 'center',
       }}>
         <p style={{ fontSize: '14px', color: '#475569', margin: 0, lineHeight: 1.6 }}>
           Need help?{' '}
@@ -429,7 +385,6 @@ function ApprovedShell({ profile }: { profile: CleanerProfile }) {
           </a>
         </p>
       </div>
-
     </div>
   )
 }
@@ -455,14 +410,11 @@ function BlockedScreen({ status }: { status: 'rejected' | 'suspended' }) {
             ? "Unfortunately we weren't able to approve your application at this time. Please get in touch if you have any questions."
             : "Your account has been suspended. Please contact us to find out more."}
         </p>
-        <a
-          href="mailto:cleaners@vouchee.co.uk"
-          style={{
-            display: 'inline-block', background: '#0f172a', color: 'white',
-            padding: '12px 28px', borderRadius: '12px',
-            fontSize: '14px', fontWeight: 700, textDecoration: 'none',
-          }}
-        >
+        <a href="mailto:cleaners@vouchee.co.uk" style={{
+          display: 'inline-block', background: '#0f172a', color: 'white',
+          padding: '12px 28px', borderRadius: '12px',
+          fontSize: '14px', fontWeight: 700, textDecoration: 'none',
+        }}>
           Contact us
         </a>
       </div>
@@ -484,34 +436,27 @@ export default function CleanerDashboardPage() {
     const init = async () => {
       try {
         const supabase = createClient()
-        const { data: { session } } = await supabase.auth.getSession()
+        const { data: { user } } = await supabase.auth.getUser()
 
-        if (!session?.user) {
+        if (!user) {
           router.replace('/login')
           return
         }
 
-        const userId = session.user.id
-        setEmailConfirmed(!!session.user.email_confirmed_at)
+        setEmailConfirmed(!!user.email_confirmed_at)
 
-        // Fetch profile
-        const { data: profileData, error: profileError } = await (supabase as any)
+        const { data: profileData, error: profileError } = await supabase
           .from('profiles')
-          .select('full_name, email, phone, role')
-          .eq('id', userId)
+          .select('full_name, email, phone')
+          .eq('id', user.id)
           .single()
 
         if (profileError || !profileData) throw new Error('Could not load your profile.')
-        if (profileData.role !== 'cleaner') {
-          router.replace('/customer/dashboard')
-          return
-        }
 
-        // Fetch cleaner row
-        const { data: cleanerData, error: cleanerError } = await (supabase as any)
+        const { data: cleanerData, error: cleanerError } = await supabase
           .from('cleaners')
           .select('application_status, zones, dbs_checked, right_to_work, has_insurance, needs_credentials_help, cover_cleans_notify, job_notify, marketing_opt_in, own_supplies, created_at')
-          .eq('profile_id', userId)
+          .eq('profile_id', user.id)
           .single()
 
         if (cleanerError || !cleanerData) throw new Error('Could not load your cleaner profile.')
@@ -534,7 +479,6 @@ export default function CleanerDashboardPage() {
     router.push('/')
   }
 
-  // ── Loading ──
   if (loading) {
     return (
       <div style={{
@@ -551,7 +495,6 @@ export default function CleanerDashboardPage() {
     )
   }
 
-  // ── Error ──
   if (error || !profile || !cleaner) {
     return (
       <div style={{
@@ -596,7 +539,6 @@ export default function CleanerDashboardPage() {
         background: 'linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%)',
         fontFamily: 'DM Sans, sans-serif',
       }}>
-
         {/* Top bar */}
         <div style={{
           background: 'white', borderBottom: '1px solid #f1f5f9',
@@ -614,7 +556,6 @@ export default function CleanerDashboardPage() {
             </div>
             <span style={{ fontSize: '17px', fontWeight: 700, color: '#0f172a', fontFamily: 'Lora, serif' }}>Vouchee</span>
           </a>
-
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <StatusBadge status={status} />
             <button
@@ -634,15 +575,12 @@ export default function CleanerDashboardPage() {
         {/* Page heading */}
         <div style={{ maxWidth: '640px', margin: '0 auto', padding: '40px 24px 20px' }}>
           <h1 style={{
-            fontFamily: 'Lora, serif',
-            fontSize: '28px', fontWeight: 700, color: '#0f172a',
-            margin: '0 0 4px',
+            fontFamily: 'Lora, serif', fontSize: '28px', fontWeight: 700,
+            color: '#0f172a', margin: '0 0 4px',
           }}>
             {status === 'approved' ? 'Your dashboard' : 'Application status'}
           </h1>
-          <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>
-            {profile.email}
-          </p>
+          <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>{profile.email}</p>
         </div>
 
         {/* Main content */}
@@ -650,14 +588,11 @@ export default function CleanerDashboardPage() {
           {(status === 'submitted' || status === 'pending') && (
             <PendingScreen profile={profile} cleaner={cleaner} emailConfirmed={emailConfirmed} />
           )}
-          {status === 'approved' && (
-            <ApprovedShell profile={profile} />
-          )}
+          {status === 'approved' && <ApprovedShell profile={profile} />}
           {(status === 'rejected' || status === 'suspended') && (
             <BlockedScreen status={status} />
           )}
         </div>
-
       </div>
     </>
   )
