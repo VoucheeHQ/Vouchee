@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { Menu, X } from 'lucide-react'
 import { useState } from 'react'
@@ -29,16 +30,20 @@ export function Header({ userRole }: HeaderProps) {
       <nav className="container flex h-16 items-center justify-between">
 
         <Link href="/" className="flex items-center">
-          <img
+          <Image
             src="/vouchee-logo-text.svg"
             alt="Vouchee"
-            style={{ height: '28px', width: 'auto' }}
+            width={120}
+            height={28}
+            priority
             className="hidden md:block"
           />
-          <img
+          <Image
             src="/vouchee-logo.svg"
             alt="Vouchee"
-            style={{ height: '28px', width: 'auto' }}
+            width={28}
+            height={28}
+            priority
             className="block md:hidden"
           />
         </Link>
