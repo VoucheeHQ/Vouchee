@@ -28,11 +28,17 @@ export function Header({ userRole }: HeaderProps) {
     <header className="sticky top-0 z-50 w-full border-b border-ink/5 bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/60">
       <nav className="container flex h-16 items-center justify-between">
 
-        <Link href="/" className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600">
-            <span className="text-lg font-bold text-white">V</span>
-          </div>
-          <span className="text-lg font-semibold text-ink">Vouchee</span>
+        <Link href="/" className="flex items-center">
+          {/* Full logo for desktop */}
+          <img
+            src="/vouchee-logo-text.svg"
+          />
+          {/* Mark only for mobile */}
+          <img
+            src="/vouchee-logo.svg"
+            alt="Vouchee"
+            className="block md:hidden h-8 w-auto"
+          />
         </Link>
 
         <div className="hidden items-center gap-6 md:flex">
