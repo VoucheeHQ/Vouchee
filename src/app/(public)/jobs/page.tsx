@@ -148,16 +148,18 @@ function YourListingBanner({ job, onEdit }: { job: Job; onEdit: () => void }) {
 
 // ─── Job Card ─────────────────────────────────────────
 
-function JobCard({ job, isOwn = false, userRole, onEdit, onApply, alreadyApplied }: {
+function JobCard({ job, isOwn = false, userRole, cleanerApproved, onEdit, onApply, alreadyApplied }: {
   job: Job
   isOwn?: boolean
   userRole: string | null
+  cleanerApproved: boolean
   onEdit?: () => void
   onApply?: () => void
   alreadyApplied?: boolean
 }) {
   const [notesOpen, setNotesOpen] = useState(false)
   const [tasksExpanded, setTasksExpanded] = useState(false)
+  const router = useRouter()
 
   const isCompleted = job.status === 'completed' || job.status === 'cancelled' || job.status === 'assigned' || job.status === 'active'
   const isGrace = job.status === 'pending_review'
@@ -174,8 +176,20 @@ function JobCard({ job, isOwn = false, userRole, onEdit, onApply, alreadyApplied
   const visibleTasks = tasksExpanded ? allTasks : primaryTasks
   const hiddenCount = extraTasks.length
 
-  // Apply button is only shown to cleaners
+  function handleApplyClick() {
+    if (!userRole) {
+      // Unauthenticated — redirect to login
+      router.push('/login?redirect=/jobs')
+      return
+    }
+    if (onApply) onApply()
+  }
+
+  // Determine apply button state
   const showApplyBtn = userRole === 'cleaner' && !isOwn && !isCompleted
+  const isPendingApproval = userRole === 'cleaner' && !cleanerApproved
+  const showSignUpPrompt = !userRole && !isCompleted
+
   return (
     <div className={`relative rounded-2xl border bg-white transition-all duration-200 ${
       isCompleted && !isOwn
@@ -185,7 +199,6 @@ function JobCard({ job, isOwn = false, userRole, onEdit, onApply, alreadyApplied
         : 'border-gray-200 shadow-sm hover:shadow-md hover:-translate-y-0.5'
     }`}>
 
-      {/* Filled stamp */}
       {isCompleted && !isOwn && (
         <div className="absolute top-4 right-4 z-10">
           <span className="text-xs font-semibold tracking-widest uppercase text-gray-400 border border-gray-300 rounded-full px-2.5 py-1">
@@ -194,7 +207,6 @@ function JobCard({ job, isOwn = false, userRole, onEdit, onApply, alreadyApplied
         </div>
       )}
 
-      {/* Own listing badges */}
       {isOwn && (
         <div className="absolute top-4 right-4 z-10 flex flex-col items-end gap-2">
           {isGrace ? (
@@ -210,7 +222,6 @@ function JobCard({ job, isOwn = false, userRole, onEdit, onApply, alreadyApplied
       )}
 
       <div className="p-5">
-        {/* Header */}
         <div className="mb-3">
           <div className="flex items-start gap-2 mb-1">
             <span className="text-base">📍</span>
@@ -219,7 +230,6 @@ function JobCard({ job, isOwn = false, userRole, onEdit, onApply, alreadyApplied
           <p className="text-sm text-gray-500 ml-6">{SERVICE_LABELS[job.service_type]}</p>
         </div>
 
-        {/* Tag row */}
         <div className="flex flex-wrap gap-1.5 mb-4">
           {job.bedrooms > 0 && (
             <span className="text-xs bg-gray-100 text-gray-700 rounded-full px-2.5 py-1 font-medium">{job.bedrooms} bed</span>
@@ -238,7 +248,6 @@ function JobCard({ job, isOwn = false, userRole, onEdit, onApply, alreadyApplied
           )}
         </div>
 
-        {/* Tasks */}
         {allTasks.length > 0 && (
           <div className="mb-4">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Tasks</p>
@@ -271,7 +280,6 @@ function JobCard({ job, isOwn = false, userRole, onEdit, onApply, alreadyApplied
           </div>
         )}
 
-        {/* Rate */}
         {job.hourly_rate && (
           <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 mb-3">
             <p className="text-xs font-semibold text-amber-600 uppercase tracking-wider mb-0.5">Offered rate</p>
@@ -284,7 +292,6 @@ function JobCard({ job, isOwn = false, userRole, onEdit, onApply, alreadyApplied
           </div>
         )}
 
-        {/* Customer notes */}
         {job.customer_notes && (
           <div className="border border-gray-100 rounded-xl overflow-hidden">
             <button onClick={() => setNotesOpen(!notesOpen)} className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50 transition-colors">
@@ -297,7 +304,6 @@ function JobCard({ job, isOwn = false, userRole, onEdit, onApply, alreadyApplied
           </div>
         )}
 
-        {/* Footer */}
         <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
           <span className="text-xs text-gray-400">{timeAgo(job.created_at)}</span>
           {isOwn ? (
@@ -312,11 +318,28 @@ function JobCard({ job, isOwn = false, userRole, onEdit, onApply, alreadyApplied
               <span className="text-xs font-semibold text-green-600 bg-green-50 border border-green-200 rounded-full px-4 py-1.5">
                 ✓ Applied
               </span>
+            ) : isPendingApproval ? (
+              <span
+                title="Your application is under review"
+                className="text-xs font-semibold text-gray-400 bg-gray-100 border border-gray-200 rounded-full px-4 py-1.5 cursor-not-allowed"
+              >
+                Under review
+              </span>
             ) : (
-              <button onClick={onApply} className="text-xs font-semibold text-white bg-gray-900 hover:bg-gray-700 rounded-full px-4 py-1.5 transition-colors">
+              <button
+                onClick={handleApplyClick}
+                className="text-xs font-semibold text-white bg-gray-900 hover:bg-gray-700 rounded-full px-4 py-1.5 transition-colors"
+              >
                 Apply →
               </button>
             )
+          ) : showSignUpPrompt ? (
+            <button
+              onClick={handleApplyClick}
+              className="text-xs font-semibold text-white bg-gray-900 hover:bg-gray-700 rounded-full px-4 py-1.5 transition-colors"
+            >
+              Apply →
+            </button>
           ) : null}
         </div>
       </div>
@@ -348,7 +371,7 @@ function ApplyModal({ job, cleanerProfile, onClose, onSubmit, submitting }: {
   const regularTasks = allTasks.filter(t => REGULAR_TASKS.includes(t))
   const specialTasks = allTasks.filter(t => !REGULAR_TASKS.includes(t))
 
-  const chip = (text: string) => ({
+  const chip = () => ({
     background: 'white', border: '1px solid #e2e8f0',
     borderRadius: '100px', padding: '3px 10px',
     fontSize: '12px', fontWeight: 600, color: '#475569',
@@ -366,7 +389,6 @@ function ApplyModal({ job, cleanerProfile, onClose, onSubmit, submitting }: {
         maxHeight: '90vh', overflowY: 'auto',
         boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
       }}>
-        {/* Header */}
         <div style={{ position: 'sticky', top: 0, background: 'white', borderBottom: '1px solid #f1f5f9', padding: '18px 24px', zIndex: 10, borderRadius: '24px 24px 0 0' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <h2 style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a', margin: 0 }}>Apply for this job</h2>
@@ -379,8 +401,6 @@ function ApplyModal({ job, cleanerProfile, onClose, onSubmit, submitting }: {
         </div>
 
         <div style={{ padding: '24px' }}>
-
-          {/* Job summary */}
           <div style={{ background: '#f8fafc', borderRadius: '14px', padding: '16px', marginBottom: '20px' }}>
             <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px' }}>
               You are applying for
@@ -391,15 +411,13 @@ function ApplyModal({ job, cleanerProfile, onClose, onSubmit, submitting }: {
               <span style={{ fontSize: '13px', color: '#64748b', marginLeft: '4px' }}>{SERVICE_LABELS[job.service_type]}</span>
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '12px' }}>
-              {job.bedrooms > 0 && <span style={chip('')}>{job.bedrooms} bed</span>}
-              {job.bathrooms > 0 && <span style={chip('')}>{job.bathrooms} bath</span>}
-              {job.hours_per_session && <span style={chip('')}>{job.hours_per_session} hrs</span>}
-              {(job as any).frequency && <span style={chip('')}>{FREQUENCY_LABELS[(job as any).frequency] ?? (job as any).frequency}</span>}
-              {daysLabel && <span style={chip('')}>{daysLabel}</span>}
-              {job.time_of_day && <span style={chip('')}>{job.time_of_day}</span>}
+              {job.bedrooms > 0 && <span style={chip()}>{job.bedrooms} bed</span>}
+              {job.bathrooms > 0 && <span style={chip()}>{job.bathrooms} bath</span>}
+              {job.hours_per_session && <span style={chip()}>{job.hours_per_session} hrs</span>}
+              {daysLabel && <span style={chip()}>{daysLabel}</span>}
+              {job.time_of_day && <span style={chip()}>{job.time_of_day}</span>}
             </div>
 
-            {/* Tasks dropdown */}
             {allTasks.length > 0 && (
               <div style={{ marginBottom: '12px' }}>
                 <button
@@ -433,7 +451,6 @@ function ApplyModal({ job, cleanerProfile, onClose, onSubmit, submitting }: {
               </div>
             )}
 
-            {/* Rate */}
             {job.hourly_rate && (
               <div style={{ background: '#fefce8', border: '1px solid #fef08a', borderRadius: '10px', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
@@ -450,7 +467,6 @@ function ApplyModal({ job, cleanerProfile, onClose, onSubmit, submitting }: {
             )}
           </div>
 
-          {/* Message tip */}
           {showMessageTip && (
             <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', padding: '10px 14px', marginBottom: '12px', fontSize: '13px', color: '#15803d', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
               <span>💡 <strong>Tip:</strong> Cleaners who include a personal message are significantly more likely to be accepted. Introduce yourself and why you'd be a great fit!</span>
@@ -458,7 +474,6 @@ function ApplyModal({ job, cleanerProfile, onClose, onSubmit, submitting }: {
             </div>
           )}
 
-          {/* New cleaner tip */}
           {showNoRatingsTip && (
             <div style={{ background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: '10px', padding: '10px 14px', marginBottom: '12px', fontSize: '13px', color: '#7c3aed', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
               <span>⭐ <strong>New cleaner tip:</strong> Consider offering a discounted first clean to help win work and gain your first ratings on Vouchee.</span>
@@ -466,7 +481,6 @@ function ApplyModal({ job, cleanerProfile, onClose, onSubmit, submitting }: {
             </div>
           )}
 
-          {/* Message input */}
           <div style={{ marginBottom: '24px' }}>
             <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#0f172a', marginBottom: '8px' }}>
               Your message to the customer
@@ -489,7 +503,6 @@ function ApplyModal({ job, cleanerProfile, onClose, onSubmit, submitting }: {
             </div>
           </div>
 
-          {/* Submit */}
           <button
             onClick={() => onSubmit(message)}
             disabled={submitting}
@@ -504,7 +517,6 @@ function ApplyModal({ job, cleanerProfile, onClose, onSubmit, submitting }: {
           >
             {submitting ? 'Submitting…' : 'Submit application →'}
           </button>
-
         </div>
       </div>
     </div>
@@ -525,6 +537,7 @@ export default function JobsPage() {
   const [filters, setFilters] = useState<FilterState>({ status: 'all', service: 'all', zone: 'all' })
   const [myJobId, setMyJobId] = useState<string | null>(null)
   const [userRole, setUserRole] = useState<string | null>(null)
+  const [cleanerApproved, setCleanerApproved] = useState(false)
   const [cleanerData, setCleanerData] = useState<any>(null)
   const [profileData, setProfileData] = useState<any>(null)
   const [appliedJobIds, setAppliedJobIds] = useState<Set<string>>(new Set())
@@ -534,59 +547,63 @@ export default function JobsPage() {
   useEffect(() => {
     async function init() {
       setLoading(true)
-
       const authClient = createClient()
-      const { data: { session } } = await authClient.auth.getSession()
+      const { data: { user } } = await authClient.auth.getUser()
 
-      if (session?.user) {
-        // Get role from profiles
-        const { data: profileData } = await (authClient as any)
+      if (user) {
+        const { data: profile } = await authClient
           .from('profiles')
           .select('role, full_name')
-          .eq('id', session.user.id)
-          .single()
+          .eq('id', user.id)
+          .single<{ role: string; full_name: string }>()
 
-        const role = profileData?.role ?? null
+        const role = profile?.role ?? null
         setUserRole(role)
-        setProfileData(profileData)
+        setProfileData(profile)
 
-        // Find the user's own active listing — uses auth user id directly (no customers table)
         if (role === 'customer') {
-          const { data: myJobs } = await (authClient as any)
+          const { data: myJobs } = await authClient
             .from('clean_requests')
             .select('id')
-            .eq('customer_id', session.user.id)
+            .eq('customer_id', user.id)
             .in('status', ['pending', 'pending_review', 'active'])
             .order('created_at', { ascending: false })
             .limit(1)
 
-          if (myJobs?.length) setMyJobId(myJobs[0].id)
+          if (myJobs?.length) setMyJobId((myJobs as any[])[0].id)
         }
 
-        // If cleaner, get their cleaner record + existing applications
         if (role === 'cleaner') {
-          const { data: cleanerRecord } = await (authClient as any)
+          const { data: cleanerRecord } = await authClient
             .from('cleaners')
-            .select('id, dbs_checked, has_insurance, right_to_work, created_at')
-            .eq('profile_id', session.user.id)
-            .single()
+            .select('id, dbs_checked, has_insurance, right_to_work, created_at, application_status')
+            .eq('profile_id', user.id)
+            .single<{
+              id: string
+              dbs_checked: boolean
+              has_insurance: boolean
+              right_to_work: boolean
+              created_at: string
+              application_status: string
+            }>()
 
           if (cleanerRecord) {
             setCleanerData(cleanerRecord)
-            // Get jobs they've already applied to
-            const { data: existingApps } = await (authClient as any)
+            setCleanerApproved(cleanerRecord.application_status === 'approved')
+
+            const { data: existingApps } = await authClient
               .from('applications')
               .select('request_id')
               .eq('cleaner_id', cleanerRecord.id)
+
             if (existingApps) {
-              setAppliedJobIds(new Set(existingApps.map((a: any) => a.request_id)))
+              setAppliedJobIds(new Set((existingApps as any[]).map(a => a.request_id)))
             }
           }
         }
       }
 
-      // Fetch all jobs — USING (true) RLS policy allows all authenticated reads
-      const { data, error } = await (authClient as any)
+      const { data, error } = await authClient
         .from('clean_requests')
         .select(`
           id, service_type, zone, bedrooms, bathrooms, has_pets,
@@ -597,10 +614,10 @@ export default function JobsPage() {
         .order('created_at', { ascending: false })
         .limit(100)
 
-      if (error) console.log('Supabase error:', error)
+      if (error) console.error('Supabase error:', error)
 
       if (!error && data) {
-        const filtered = data.filter((row: any) => {
+        const filtered = (data as any[]).filter(row => {
           if (row.status === 'pending') return true
           if (row.status === 'pending_review') return true
           if (row.status === 'active') return true
@@ -615,76 +632,54 @@ export default function JobsPage() {
   }, [])
 
   const handleApply = async (message: string) => {
-    if (!applyingToJob || !cleanerData) {
-      console.error('Apply blocked — applyingToJob:', applyingToJob, 'cleanerData:', cleanerData)
-      return
-    }
+    if (!applyingToJob || !cleanerData) return
     setSubmitting(true)
     try {
       const authClient = createClient()
 
-      // Save application to DB
-      const { error: appError } = await (authClient as any)
+      const { error: appError } = await authClient
         .from('applications')
         .insert({
           request_id: applyingToJob.id,
-          cleaner_id: cleanerData.id,
+          cleaner_id: cleanerData.id, // cleaners table PK — confirmed correct
           message: message.trim() || null,
           status: 'pending',
-        })
+        } as any)
 
-      if (appError) {
-        console.error('Application insert error:', appError)
-        throw appError
-      }
+      if (appError) throw appError
 
-      // Mark as applied locally
       setAppliedJobIds(prev => new Set([...prev, applyingToJob.id]))
 
-      // Get customer email for notification
-      const { data: requestData, error: requestError } = await (authClient as any)
-        .from('clean_requests')
-        .select('customer_id')
-        .eq('id', applyingToJob.id)
-        .single()
+      // Fire notification email
+      const fullName = profileData?.full_name ?? ''
+      const nameParts = fullName.trim().split(' ')
+      const cleanerName = nameParts.length >= 2
+        ? `${nameParts[0]} ${nameParts[nameParts.length - 1][0]}.`
+        : fullName || 'A cleaner'
+      const memberSince = cleanerData.created_at
+        ? new Date(cleanerData.created_at).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
+        : 'Recently'
 
-      if (requestError) console.error('Request lookup error:', requestError)
-
-      if (requestData?.customer_id) {
-        const fullName = profileData?.full_name ?? ''
-        const nameParts = fullName.trim().split(' ')
-        const cleanerName = nameParts.length >= 2
-          ? `${nameParts[0]} ${nameParts[nameParts.length - 1][0]}.`
-          : fullName || 'A cleaner'
-        const memberSince = cleanerData.created_at
-          ? new Date(cleanerData.created_at).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
-          : 'Recently'
-
-        const emailRes = await fetch('/api/send-application-email', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            customerId: requestData.customer_id,
-            cleanerName,
-            cleanerInitial: cleanerName[0].toUpperCase(),
-            cleanerMemberSince: memberSince,
-            cleanerDbs: cleanerData.dbs_checked,
-            cleanerInsured: cleanerData.has_insurance,
-            cleanerRightToWork: cleanerData.right_to_work,
-            cleanerRating: '5.0',
-            cleanerCompletedCleans: 0,
-            message: message.trim(),
-            jobZone: applyingToJob.zone ? ZONE_LABELS[applyingToJob.zone as HorshamZone] : 'Horsham',
-            jobBedrooms: applyingToJob.bedrooms,
-            jobBathrooms: applyingToJob.bathrooms,
-            jobHours: applyingToJob.hours_per_session,
-            jobRate: applyingToJob.hourly_rate,
-            requestId: applyingToJob.id,
-          }),
-        })
-        const emailData = await emailRes.json()
-        console.log('Email API response:', emailData)
-      }
+      await fetch('/api/send-application-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerId: applyingToJob.id, // will be looked up server-side from request
+          cleanerName,
+          cleanerInitial: cleanerName[0].toUpperCase(),
+          cleanerMemberSince: memberSince,
+          cleanerDbs: cleanerData.dbs_checked,
+          cleanerInsured: cleanerData.has_insurance,
+          cleanerRightToWork: cleanerData.right_to_work,
+          message: message.trim(),
+          jobZone: applyingToJob.zone ? ZONE_LABELS[applyingToJob.zone as HorshamZone] : 'Horsham',
+          jobBedrooms: applyingToJob.bedrooms,
+          jobBathrooms: applyingToJob.bathrooms,
+          jobHours: applyingToJob.hours_per_session,
+          jobRate: applyingToJob.hourly_rate,
+          requestId: applyingToJob.id,
+        }),
+      })
 
       setApplyingToJob(null)
     } catch (err) {
@@ -740,13 +735,10 @@ export default function JobsPage() {
       </section>
 
       <section className="container max-w-5xl mx-auto px-4 py-6">
-
-        {/* Your listing banner */}
         {myJob && (
           <YourListingBanner job={myJob} onEdit={() => router.push('/customer/dashboard')} />
         )}
 
-        {/* Stats */}
         <div className="flex flex-wrap items-center gap-4 mb-5">
           <div className="flex items-center gap-4 text-sm">
             <span className="flex items-center gap-1.5">
@@ -764,7 +756,6 @@ export default function JobsPage() {
           </div>
         </div>
 
-        {/* Filter bar */}
         <div className="flex flex-wrap items-center gap-3 mb-6">
           <div className="flex bg-white border border-gray-200 rounded-full p-1 gap-1">
             {(['all', 'open', 'recent'] as FilterStatus[]).map(s => (
@@ -793,7 +784,6 @@ export default function JobsPage() {
           </select>
         </div>
 
-        {/* Jobs grid */}
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {[...Array(6)].map((_, i) => (
@@ -821,6 +811,7 @@ export default function JobsPage() {
                 job={job}
                 isOwn={job.id === myJobId}
                 userRole={userRole}
+                cleanerApproved={cleanerApproved}
                 onEdit={() => router.push('/customer/dashboard')}
                 onApply={() => setApplyingToJob(job)}
                 alreadyApplied={appliedJobIds.has(job.id)}
@@ -830,7 +821,6 @@ export default function JobsPage() {
         )}
       </section>
 
-      {/* Apply Modal */}
       {applyingToJob && (
         <ApplyModal
           job={applyingToJob}
@@ -845,7 +835,6 @@ export default function JobsPage() {
         />
       )}
 
-      {/* CTA */}
       <section className="bg-white border-t border-gray-100 py-12 mt-8">
         <div className="container max-w-5xl mx-auto px-4 text-center">
           <h2 className="text-xl font-bold text-gray-900 mb-2">Want to pick up cleaning work in Horsham?</h2>
