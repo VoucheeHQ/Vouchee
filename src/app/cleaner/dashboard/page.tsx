@@ -110,9 +110,7 @@ function SummaryRow({ label, value }: { label: string; value: React.ReactNode })
   return (
     <div style={{
       display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
-      padding: '12px 0',
-      borderBottom: '1px solid #f1f5f9',
-      gap: '12px',
+      padding: '12px 0', borderBottom: '1px solid #f1f5f9', gap: '12px',
     }}>
       <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 500, flexShrink: 0 }}>{label}</span>
       <span style={{ fontSize: '13px', color: '#0f172a', fontWeight: 600, textAlign: 'right' }}>{value}</span>
@@ -127,61 +125,22 @@ function PendingScreen({ profile, cleaner, emailConfirmed }: { profile: CleanerP
   const zones = (cleaner.zones ?? []).map(z => ZONE_LABELS[z] ?? z)
 
   const steps = [
-    {
-      icon: '✅',
-      title: 'Application received',
-      desc: `Submitted on ${formatDate(cleaner.created_at)}`,
-      done: true,
-    },
-    {
-      icon: '📧',
-      title: 'Email confirmed',
-      desc: emailConfirmed ? 'Your email address has been verified' : 'Please check your inbox and click the confirmation link',
-      done: emailConfirmed,
-      active: !emailConfirmed,
-    },
-    {
-      icon: '🔍',
-      title: 'Application review',
-      desc: "We're reviewing your details — this usually takes 1–3 working days",
-      done: false,
-      active: true,
-    },
-    {
-      icon: '📞',
-      title: 'Get to know you',
-      desc: "We'll reach out for a short call to get to know you and answer any questions.",
-      done: false,
-    },
-    {
-      icon: '🎉',
-      title: 'Account approved',
-      desc: "You'll be notified by email once you're live on Vouchee",
-      done: false,
-    },
+    { icon: '✅', title: 'Application received', desc: `Submitted on ${formatDate(cleaner.created_at)}`, done: true },
+    { icon: '📧', title: 'Email confirmed', desc: emailConfirmed ? 'Your email address has been verified' : 'Please check your inbox and click the confirmation link', done: emailConfirmed, active: !emailConfirmed },
+    { icon: '🔍', title: 'Application review', desc: "We're reviewing your details — this usually takes 1–3 working days", done: false, active: true },
+    { icon: '📞', title: 'Get to know you', desc: "We'll reach out for a short call to get to know you and answer any questions.", done: false },
+    { icon: '🎉', title: 'Account approved', desc: "You'll be notified by email once you're live on Vouchee", done: false },
   ]
 
   return (
     <div style={{ maxWidth: '640px', margin: '0 auto', padding: '0 0 60px' }}>
-      <div style={{
-        background: 'white', borderRadius: '20px', padding: '32px',
-        border: '1.5px solid #e2e8f0', marginBottom: '20px',
-        boxShadow: '0 2px 16px rgba(0,0,0,0.05)',
-      }}>
+      <div style={{ background: 'white', borderRadius: '20px', padding: '32px', border: '1.5px solid #e2e8f0', marginBottom: '20px', boxShadow: '0 2px 16px rgba(0,0,0,0.05)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
-          <div style={{
-            width: '56px', height: '56px', borderRadius: '50%',
-            background: 'linear-gradient(135deg, #3b82f6, #6366f1)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '22px', fontWeight: 800, color: 'white',
-            fontFamily: 'Lora, serif', flexShrink: 0,
-          }}>
+          <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'linear-gradient(135deg, #3b82f6, #6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', fontWeight: 800, color: 'white', fontFamily: 'Lora, serif', flexShrink: 0 }}>
             {getInitial(profile.full_name)}
           </div>
           <div>
-            <h2 style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a', margin: '0 0 4px', fontFamily: 'Lora, serif' }}>
-              Hi {firstName}!
-            </h2>
+            <h2 style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a', margin: '0 0 4px', fontFamily: 'Lora, serif' }}>Hi {firstName}!</h2>
             <StatusBadge status={cleaner.application_status} />
           </div>
         </div>
@@ -190,58 +149,28 @@ function PendingScreen({ profile, cleaner, emailConfirmed }: { profile: CleanerP
         </p>
       </div>
 
-      <div style={{
-        background: 'white', borderRadius: '20px', padding: '28px 32px',
-        border: '1.5px solid #e2e8f0', marginBottom: '20px',
-        boxShadow: '0 2px 16px rgba(0,0,0,0.05)',
-      }}>
-        <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 24px' }}>
-          What happens next
-        </h3>
+      <div style={{ background: 'white', borderRadius: '20px', padding: '28px 32px', border: '1.5px solid #e2e8f0', marginBottom: '20px', boxShadow: '0 2px 16px rgba(0,0,0,0.05)' }}>
+        <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 24px' }}>What happens next</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
           {steps.map((step, i) => (
             <div key={i} style={{ display: 'flex', gap: '16px', position: 'relative' }}>
               {i < steps.length - 1 && (
-                <div style={{
-                  position: 'absolute', left: '19px', top: '40px',
-                  width: '2px', height: 'calc(100% - 8px)',
-                  background: step.done ? '#86efac' : '#e2e8f0',
-                }} />
+                <div style={{ position: 'absolute', left: '19px', top: '40px', width: '2px', height: 'calc(100% - 8px)', background: step.done ? '#86efac' : '#e2e8f0' }} />
               )}
-              <div style={{
-                width: '40px', height: '40px', borderRadius: '50%', flexShrink: 0,
-                background: step.done ? '#dcfce7' : step.active ? '#eff6ff' : '#f8fafc',
-                border: `2px solid ${step.done ? '#86efac' : step.active ? '#93c5fd' : '#e2e8f0'}`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '16px', zIndex: 1,
-              }}>
+              <div style={{ width: '40px', height: '40px', borderRadius: '50%', flexShrink: 0, background: step.done ? '#dcfce7' : step.active ? '#eff6ff' : '#f8fafc', border: `2px solid ${step.done ? '#86efac' : step.active ? '#93c5fd' : '#e2e8f0'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', zIndex: 1 }}>
                 {step.done ? '✓' : step.icon}
               </div>
               <div style={{ paddingBottom: i < steps.length - 1 ? '24px' : '0', flex: 1 }}>
-                <div style={{
-                  fontSize: '14px', fontWeight: 700,
-                  color: step.done ? '#15803d' : step.active ? '#1d4ed8' : '#94a3b8',
-                  marginBottom: '2px',
-                }}>
-                  {step.title}
-                </div>
-                <div style={{ fontSize: '13px', color: '#64748b', lineHeight: 1.5 }}>
-                  {step.desc}
-                </div>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: step.done ? '#15803d' : step.active ? '#1d4ed8' : '#94a3b8', marginBottom: '2px' }}>{step.title}</div>
+                <div style={{ fontSize: '13px', color: '#64748b', lineHeight: 1.5 }}>{step.desc}</div>
               </div>
             </div>
           ))}
         </div>
       </div>
 
-      <div style={{
-        background: 'white', borderRadius: '20px', padding: '28px 32px',
-        border: '1.5px solid #e2e8f0', marginBottom: '20px',
-        boxShadow: '0 2px 16px rgba(0,0,0,0.05)',
-      }}>
-        <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 4px' }}>
-          Your application summary
-        </h3>
+      <div style={{ background: 'white', borderRadius: '20px', padding: '28px 32px', border: '1.5px solid #e2e8f0', marginBottom: '20px', boxShadow: '0 2px 16px rgba(0,0,0,0.05)' }}>
+        <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 4px' }}>Your application summary</h3>
         <SummaryRow label="Name" value={profile.full_name} />
         <SummaryRow label="Email" value={profile.email} />
         <SummaryRow label="Phone" value={profile.phone ?? '—'} />
@@ -262,52 +191,31 @@ function PendingScreen({ profile, cleaner, emailConfirmed }: { profile: CleanerP
         <div style={{ padding: '12px 0' }}>
           <div style={{ fontSize: '13px', color: '#64748b', fontWeight: 500, marginBottom: '10px' }}>Areas you cover</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-            {zones.length > 0
-              ? zones.map(z => <ZoneChip key={z} label={z} />)
-              : <span style={{ fontSize: '13px', color: '#94a3b8' }}>None selected</span>
-            }
+            {zones.length > 0 ? zones.map(z => <ZoneChip key={z} label={z} />) : <span style={{ fontSize: '13px', color: '#94a3b8' }}>None selected</span>}
           </div>
         </div>
       </div>
 
-      <div style={{
-        background: 'white', borderRadius: '20px', padding: '28px 32px',
-        border: '1.5px solid #e2e8f0', marginBottom: '20px',
-        boxShadow: '0 2px 16px rgba(0,0,0,0.05)',
-      }}>
-        <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 16px' }}>
-          Notification preferences
-        </h3>
+      <div style={{ background: 'white', borderRadius: '20px', padding: '28px 32px', border: '1.5px solid #e2e8f0', marginBottom: '20px', boxShadow: '0 2px 16px rgba(0,0,0,0.05)' }}>
+        <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 16px' }}>Notification preferences</h3>
         {[
           { label: 'Cover clean alerts', value: cleaner.cover_cleans_notify },
           { label: 'New job request alerts', value: cleaner.job_notify },
           { label: 'Marketing & updates', value: cleaner.marketing_opt_in },
         ].map(({ label, value }) => (
-          <div key={label} style={{
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            padding: '10px 0', borderBottom: '1px solid #f8fafc',
-          }}>
+          <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #f8fafc' }}>
             <span style={{ fontSize: '14px', color: '#475569', fontWeight: 500 }}>{label}</span>
-            <span style={{
-              fontSize: '12px', fontWeight: 700, padding: '3px 10px', borderRadius: '100px',
-              background: value ? '#dcfce7' : '#f1f5f9',
-              color: value ? '#15803d' : '#94a3b8',
-            }}>
+            <span style={{ fontSize: '12px', fontWeight: 700, padding: '3px 10px', borderRadius: '100px', background: value ? '#dcfce7' : '#f1f5f9', color: value ? '#15803d' : '#94a3b8' }}>
               {value ? 'On' : 'Off'}
             </span>
           </div>
         ))}
       </div>
 
-      <div style={{
-        background: '#f8faff', borderRadius: '16px',
-        padding: '20px 24px', border: '1px solid #e0e7ff', textAlign: 'center',
-      }}>
+      <div style={{ background: '#f8faff', borderRadius: '16px', padding: '20px 24px', border: '1px solid #e0e7ff', textAlign: 'center' }}>
         <p style={{ fontSize: '14px', color: '#475569', margin: 0, lineHeight: 1.6 }}>
           Questions about your application?{' '}
-          <a href="mailto:cleaners@vouchee.co.uk" style={{ color: '#3b82f6', fontWeight: 700, textDecoration: 'none' }}>
-            cleaners@vouchee.co.uk
-          </a>
+          <a href="mailto:cleaners@vouchee.co.uk" style={{ color: '#3b82f6', fontWeight: 700, textDecoration: 'none' }}>cleaners@vouchee.co.uk</a>
         </p>
       </div>
     </div>
@@ -321,50 +229,47 @@ function ApprovedShell({ profile }: { profile: CleanerProfile }) {
 
   return (
     <div style={{ maxWidth: '640px', margin: '0 auto', padding: '0 0 60px' }}>
+
+      {/* Welcome card */}
       <div style={{
         background: 'linear-gradient(135deg, #3b82f6, #6366f1)',
         borderRadius: '20px', padding: '32px', marginBottom: '20px',
         color: 'white', boxShadow: '0 8px 32px rgba(59,130,246,0.25)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
-          <div style={{
-            width: '56px', height: '56px', borderRadius: '50%',
-            background: 'rgba(255,255,255,0.2)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '22px', fontWeight: 800, color: 'white',
-            fontFamily: 'Lora, serif', border: '2px solid rgba(255,255,255,0.3)', flexShrink: 0,
-          }}>
+          <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', fontWeight: 800, color: 'white', fontFamily: 'Lora, serif', border: '2px solid rgba(255,255,255,0.3)', flexShrink: 0 }}>
             {getInitial(profile.full_name)}
           </div>
           <div>
-            <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.8, marginBottom: '4px' }}>
-              Approved cleaner
-            </div>
-            <h2 style={{ fontSize: '22px', fontWeight: 800, margin: 0, fontFamily: 'Lora, serif' }}>
-              Welcome, {firstName}!
-            </h2>
+            <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.8, marginBottom: '4px' }}>Approved cleaner</div>
+            <h2 style={{ fontSize: '22px', fontWeight: 800, margin: 0, fontFamily: 'Lora, serif' }}>Welcome, {firstName}!</h2>
           </div>
         </div>
-        <p style={{ fontSize: '14px', opacity: 0.9, lineHeight: 1.6, margin: 0 }}>
+        <p style={{ fontSize: '14px', opacity: 0.9, lineHeight: 1.6, margin: '0 0 20px' }}>
           You're live on Vouchee. Customers in your areas can now see your application when they post a cleaning request.
         </p>
+        <a
+          href="/jobs"
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: '8px',
+            background: 'white', color: '#2563eb',
+            borderRadius: '12px', padding: '10px 20px',
+            fontSize: '14px', fontWeight: 700, textDecoration: 'none',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+          }}
+        >
+          Browse available jobs →
+        </a>
       </div>
 
+      {/* Info panels */}
       {[
         { icon: '🔔', title: 'Job alerts', desc: "You'll be notified when a customer posts a request in your area. Check your email to manage notification preferences.", colour: '#eff6ff', border: '#bfdbfe', iconBg: '#dbeafe' },
         { icon: '⭐', title: 'Reviews & profile link', desc: 'Share your personal Vouchee profile link with existing customers to collect reviews. Coming soon.', colour: '#fefce8', border: '#fde68a', iconBg: '#fef9c3' },
         { icon: '💬', title: 'Messages', desc: "When a customer accepts your application, your conversation will appear here.", colour: '#f0fdf4', border: '#86efac', iconBg: '#dcfce7' },
       ].map(panel => (
-        <div key={panel.title} style={{
-          background: panel.colour, border: `1.5px solid ${panel.border}`,
-          borderRadius: '16px', padding: '24px', marginBottom: '16px',
-          display: 'flex', gap: '16px', alignItems: 'flex-start',
-        }}>
-          <div style={{
-            width: '44px', height: '44px', borderRadius: '12px',
-            background: panel.iconBg, display: 'flex', alignItems: 'center',
-            justifyContent: 'center', fontSize: '20px', flexShrink: 0,
-          }}>
+        <div key={panel.title} style={{ background: panel.colour, border: `1.5px solid ${panel.border}`, borderRadius: '16px', padding: '24px', marginBottom: '16px', display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
+          <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: panel.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', flexShrink: 0 }}>
             {panel.icon}
           </div>
           <div>
@@ -374,15 +279,10 @@ function ApprovedShell({ profile }: { profile: CleanerProfile }) {
         </div>
       ))}
 
-      <div style={{
-        background: '#f8faff', borderRadius: '16px',
-        padding: '20px 24px', border: '1px solid #e0e7ff', textAlign: 'center',
-      }}>
+      <div style={{ background: '#f8faff', borderRadius: '16px', padding: '20px 24px', border: '1px solid #e0e7ff', textAlign: 'center' }}>
         <p style={{ fontSize: '14px', color: '#475569', margin: 0, lineHeight: 1.6 }}>
           Need help?{' '}
-          <a href="mailto:cleaners@vouchee.co.uk" style={{ color: '#3b82f6', fontWeight: 700, textDecoration: 'none' }}>
-            cleaners@vouchee.co.uk
-          </a>
+          <a href="mailto:cleaners@vouchee.co.uk" style={{ color: '#3b82f6', fontWeight: 700, textDecoration: 'none' }}>cleaners@vouchee.co.uk</a>
         </p>
       </div>
     </div>
@@ -394,14 +294,8 @@ function ApprovedShell({ profile }: { profile: CleanerProfile }) {
 function BlockedScreen({ status }: { status: 'rejected' | 'suspended' }) {
   return (
     <div style={{ maxWidth: '480px', margin: '0 auto', padding: '0 0 60px' }}>
-      <div style={{
-        background: 'white', borderRadius: '20px', padding: '40px',
-        border: '1.5px solid #fecaca', textAlign: 'center',
-        boxShadow: '0 2px 16px rgba(0,0,0,0.05)',
-      }}>
-        <div style={{ fontSize: '48px', marginBottom: '16px' }}>
-          {status === 'rejected' ? '😔' : '⚠️'}
-        </div>
+      <div style={{ background: 'white', borderRadius: '20px', padding: '40px', border: '1.5px solid #fecaca', textAlign: 'center', boxShadow: '0 2px 16px rgba(0,0,0,0.05)' }}>
+        <div style={{ fontSize: '48px', marginBottom: '16px' }}>{status === 'rejected' ? '😔' : '⚠️'}</div>
         <h2 style={{ fontFamily: 'Lora, serif', fontSize: '22px', fontWeight: 700, color: '#0f172a', margin: '0 0 12px' }}>
           {status === 'rejected' ? 'Application unsuccessful' : 'Account suspended'}
         </h2>
@@ -410,11 +304,7 @@ function BlockedScreen({ status }: { status: 'rejected' | 'suspended' }) {
             ? "Unfortunately we weren't able to approve your application at this time. Please get in touch if you have any questions."
             : "Your account has been suspended. Please contact us to find out more."}
         </p>
-        <a href="mailto:cleaners@vouchee.co.uk" style={{
-          display: 'inline-block', background: '#0f172a', color: 'white',
-          padding: '12px 28px', borderRadius: '12px',
-          fontSize: '14px', fontWeight: 700, textDecoration: 'none',
-        }}>
+        <a href="mailto:cleaners@vouchee.co.uk" style={{ display: 'inline-block', background: '#0f172a', color: 'white', padding: '12px 28px', borderRadius: '12px', fontSize: '14px', fontWeight: 700, textDecoration: 'none' }}>
           Contact us
         </a>
       </div>
@@ -437,28 +327,17 @@ export default function CleanerDashboardPage() {
       try {
         const supabase = createClient()
         const { data: { user } } = await supabase.auth.getUser()
-
-        if (!user) {
-          router.replace('/login')
-          return
-        }
-
+        if (!user) { router.replace('/login'); return }
         setEmailConfirmed(!!user.email_confirmed_at)
 
         const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('full_name, email, phone')
-          .eq('id', user.id)
-          .single()
-
+          .from('profiles').select('full_name, email, phone').eq('id', user.id).single()
         if (profileError || !profileData) throw new Error('Could not load your profile.')
 
         const { data: cleanerData, error: cleanerError } = await supabase
           .from('cleaners')
           .select('application_status, zones, dbs_checked, right_to_work, has_insurance, needs_credentials_help, cover_cleans_notify, job_notify, marketing_opt_in, own_supplies, created_at')
-          .eq('profile_id', user.id)
-          .single()
-
+          .eq('profile_id', user.id).single()
         if (cleanerError || !cleanerData) throw new Error('Could not load your cleaner profile.')
 
         setProfile(profileData)
@@ -469,7 +348,6 @@ export default function CleanerDashboardPage() {
         setLoading(false)
       }
     }
-
     init()
   }, [router])
 
@@ -481,12 +359,7 @@ export default function CleanerDashboardPage() {
 
   if (loading) {
     return (
-      <div style={{
-        minHeight: '100vh',
-        background: 'linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontFamily: 'DM Sans, sans-serif',
-      }}>
+      <div style={{ minHeight: '100vh', background: 'linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'DM Sans, sans-serif' }}>
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: '32px', marginBottom: '12px' }}>🧹</div>
           <p style={{ fontSize: '14px', color: '#64748b' }}>Loading your dashboard…</p>
@@ -497,27 +370,11 @@ export default function CleanerDashboardPage() {
 
   if (error || !profile || !cleaner) {
     return (
-      <div style={{
-        minHeight: '100vh',
-        background: 'linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontFamily: 'DM Sans, sans-serif', padding: '24px',
-      }}>
-        <div style={{
-          background: 'white', borderRadius: '20px', padding: '40px',
-          maxWidth: '400px', textAlign: 'center', border: '1.5px solid #fecaca',
-        }}>
+      <div style={{ minHeight: '100vh', background: 'linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'DM Sans, sans-serif', padding: '24px' }}>
+        <div style={{ background: 'white', borderRadius: '20px', padding: '40px', maxWidth: '400px', textAlign: 'center', border: '1.5px solid #fecaca' }}>
           <div style={{ fontSize: '32px', marginBottom: '12px' }}>⚠️</div>
           <p style={{ fontSize: '14px', color: '#dc2626', margin: '0 0 16px' }}>{error ?? 'Could not load your dashboard.'}</p>
-          <button
-            onClick={() => router.push('/login')}
-            style={{
-              background: '#0f172a', color: 'white', border: 'none',
-              borderRadius: '10px', padding: '10px 24px',
-              fontSize: '14px', fontWeight: 700, cursor: 'pointer',
-              fontFamily: 'DM Sans, sans-serif',
-            }}
-          >
+          <button onClick={() => router.push('/login')} style={{ background: '#0f172a', color: 'white', border: 'none', borderRadius: '10px', padding: '10px 24px', fontSize: '14px', fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
             Back to login
           </button>
         </div>
@@ -530,43 +387,20 @@ export default function CleanerDashboardPage() {
   return (
     <>
       <link rel="preconnect" href="https://fonts.googleapis.com" />
-      <link
-        href="https://fonts.googleapis.com/css2?family=Lora:wght@400;600;700&family=DM+Sans:wght@400;500;600;700;800&display=swap"
-        rel="stylesheet"
-      />
-      <div style={{
-        minHeight: '100vh',
-        background: 'linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%)',
-        fontFamily: 'DM Sans, sans-serif',
-      }}>
+      <link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;600;700&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+      <div style={{ minHeight: '100vh', background: 'linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%)', fontFamily: 'DM Sans, sans-serif' }}>
+
         {/* Top bar */}
-        <div style={{
-          background: 'white', borderBottom: '1px solid #f1f5f9',
-          padding: '0 24px', height: '60px',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          position: 'sticky', top: 0, zIndex: 50,
-        }}>
+        <div style={{ background: 'white', borderBottom: '1px solid #f1f5f9', padding: '0 24px', height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 50 }}>
           <a href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div style={{
-              width: '32px', height: '32px', borderRadius: '8px',
-              background: 'linear-gradient(135deg, #3b82f6, #6366f1)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
+            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'linear-gradient(135deg, #3b82f6, #6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <span style={{ fontSize: '16px', fontWeight: 800, color: 'white', fontFamily: 'Lora, serif' }}>V</span>
             </div>
             <span style={{ fontSize: '17px', fontWeight: 700, color: '#0f172a', fontFamily: 'Lora, serif' }}>Vouchee</span>
           </a>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <StatusBadge status={status} />
-            <button
-              onClick={handleSignOut}
-              style={{
-                background: 'none', border: '1px solid #e2e8f0',
-                borderRadius: '8px', padding: '6px 14px',
-                fontSize: '13px', fontWeight: 600, color: '#64748b',
-                cursor: 'pointer', fontFamily: 'DM Sans, sans-serif',
-              }}
-            >
+            <button onClick={handleSignOut} style={{ background: 'none', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '6px 14px', fontSize: '13px', fontWeight: 600, color: '#64748b', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
               Sign out
             </button>
           </div>
@@ -574,10 +408,7 @@ export default function CleanerDashboardPage() {
 
         {/* Page heading */}
         <div style={{ maxWidth: '640px', margin: '0 auto', padding: '40px 24px 20px' }}>
-          <h1 style={{
-            fontFamily: 'Lora, serif', fontSize: '28px', fontWeight: 700,
-            color: '#0f172a', margin: '0 0 4px',
-          }}>
+          <h1 style={{ fontFamily: 'Lora, serif', fontSize: '28px', fontWeight: 700, color: '#0f172a', margin: '0 0 4px' }}>
             {status === 'approved' ? 'Your dashboard' : 'Application status'}
           </h1>
           <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>{profile.email}</p>
