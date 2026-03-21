@@ -69,6 +69,7 @@ interface RequestData {
   hourlyRate?: number
   hoursPerSession?: number
   finalNotes?: string
+  sessionNotes?: string
 }
 
 const STORAGE_KEY = "cleanRequest"
@@ -562,10 +563,10 @@ export default function ReviewPublishPage() {
         <SectionCard title="Schedule preference" icon="📅" onEdit={() => router.push("/request/property")}>
           <Row label="Days" value={data.preferredDays?.length ? data.preferredDays.join(", ") : "No preference"} />
           <Row label="Time" value={data.preferredTime || "No preference"} />
-          {data.scheduleNotes && (
+          {(data.sessionNotes || data.scheduleNotes) && (
             <div style={{ marginTop: "8px" }}>
-              <div style={{ fontSize: "12px", color: "#94a3b8", marginBottom: "4px" }}>Notes</div>
-              <div style={{ fontSize: "13px", color: "#475569", fontStyle: "italic" }}>"{data.scheduleNotes}"</div>
+              <div style={{ fontSize: "12px", color: "#94a3b8", marginBottom: "4px" }}>Notes for cleaner</div>
+              <div style={{ fontSize: "13px", color: "#475569", fontStyle: "italic" }}>"{data.sessionNotes || data.scheduleNotes}"</div>
             </div>
           )}
         </SectionCard>

@@ -5,36 +5,39 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { getPostcodeSector, isValidHorshamPostcode } from '@/lib/postcode-sectors'
 
 const CLEANING_TASKS = [
-  { id: 'general',          label: 'General cleaning',    description: 'Dusting, tidying, surfaces' },
-  { id: 'hoovering',        label: 'Hoovering',           description: 'Carpets and hard floors' },
-  { id: 'mopping',          label: 'Mopping',             description: 'Hard floors' },
-  { id: 'bathroom',         label: 'Bathroom clean',      description: 'Toilet, sink, shower, bath' },
-  { id: 'kitchen',          label: 'Kitchen clean',       description: 'Counters, hob, sink, appliances' },
-  { id: 'bins',             label: 'Emptying all bins',   description: 'All rooms and kitchen' },
+  { id: 'general',      label: 'General cleaning', description: 'Dusting, tidying, surfaces' },
+  { id: 'hoovering',    label: 'Hoovering',         description: 'Carpets and hard floors' },
+  { id: 'mopping',      label: 'Mopping',           description: 'Hard floors' },
+  { id: 'bathroom',     label: 'Bathroom clean',    description: 'Toilet, sink, shower, bath' },
+  { id: 'kitchen',      label: 'Kitchen clean',     description: 'Counters, hob, sink, appliances' },
+  { id: 'bins',         label: 'Emptying all bins', description: 'All rooms and kitchen' },
 ]
 
 const ADDITIONAL_TASKS = [
-  { id: 'kitchen_deep',      label: 'Kitchen deep clean',          description: 'Inside cupboards, behind appliances' },
-  { id: 'bathroom_deep',     label: 'Bathroom deep clean',         description: 'Grout, limescale, full scrub' },
-  { id: 'conservatory',      label: 'Conservatory clean',          description: 'Interior windows and surfaces' },
-  { id: 'changing_beds',     label: 'Changing beds',               description: 'Strip and remake beds' },
-  { id: 'ironing',           label: 'Ironing',                     description: 'Clothes and linens' },
-  { id: 'laundry',           label: 'Laundry',                     description: 'Washing and folding' },
-  { id: 'windows_interior',  label: 'Interior windows',            description: 'Inside window cleaning' },
-  { id: 'fridge',            label: 'Fridge deep clean',           description: 'Inside and out' },
-  { id: 'blinds',            label: 'Blinds',                      description: 'Dusting and wiping blinds' },
-  { id: 'skirting',          label: 'Skirting boards & doorframes', description: 'Wiping down edges and frames' },
+  { id: 'kitchen_deep',     label: 'Kitchen deep clean',           description: 'Inside cupboards, behind appliances' },
+  { id: 'bathroom_deep',    label: 'Bathroom deep clean',          description: 'Grout, limescale, full scrub' },
+  { id: 'conservatory',     label: 'Conservatory clean',           description: 'Interior windows and surfaces' },
+  { id: 'changing_beds',    label: 'Changing beds',                description: 'Strip and remake beds' },
+  { id: 'ironing',          label: 'Ironing',                      description: 'Clothes and linens' },
+  { id: 'laundry',          label: 'Laundry',                      description: 'Washing and folding' },
+  { id: 'windows_interior', label: 'Interior windows',             description: 'Inside window cleaning' },
+  { id: 'fridge',           label: 'Fridge deep clean',            description: 'Inside and out' },
+  { id: 'blinds',           label: 'Blinds',                       description: 'Dusting and wiping blinds' },
+  { id: 'skirting',         label: 'Skirting boards & doorframes', description: 'Wiping down edges and frames' },
 ]
 
 const DEEP_CLEAN_TASKS = ['bathroom_deep', 'kitchen_deep', 'fridge', 'conservatory']
+
 const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 const TIME_SLOTS = ['Morning (8am - 12pm)', 'Afternoon (12pm - 5pm)', 'Evening (5pm - 8pm)']
+
 const HOURS_OPTIONS = [
-  { value: 2,   label: '2 hours' },
-  { value: 2.5, label: '2.5 hours' },
-  { value: 3,   label: '3 hours' },
-  { value: 3.5, label: '3.5 hours' },
-  { value: 4,   label: '4+ hours' },
+  { value: 2,    label: '2 hours' },
+  { value: 2.5,  label: '2.5 hours' },
+  { value: 3,    label: '3 hours' },
+  { value: 3.5,  label: '3.5 hours' },
+  { value: 4,    label: '4 hours' },
+  { value: 4.5,  label: '4+ hours' },
 ]
 
 const SECTOR_TO_ZONE: Record<string, string> = {
@@ -43,36 +46,29 @@ const SECTOR_TO_ZONE: Record<string, string> = {
   "RH125": "north_west",         "RH126": "warnham_north",
   "RH127": "warnham_north",      "RH128": "north_west",
   "RH129": "north_west",
-  "RH130": "christs_hospital",
-  "RH131": "christs_hospital",   "RH132": "south_west",
-  "RH133": "mannings_heath",     "RH134": "mannings_heath",
-  "RH135": "central_south_east", "RH136": "mannings_heath",
-  "RH137": "broadbridge_heath",  "RH138": "broadbridge_heath",
-  "RH139": "broadbridge_heath",
+  "RH130": "christs_hospital",   "RH131": "christs_hospital",
+  "RH132": "south_west",         "RH133": "mannings_heath",
+  "RH134": "mannings_heath",     "RH135": "central_south_east",
+  "RH136": "mannings_heath",     "RH137": "broadbridge_heath",
+  "RH138": "broadbridge_heath",  "RH139": "broadbridge_heath",
   "RH110": "faygate_kilnwood_vale", "RH111": "faygate_kilnwood_vale",
   "RH112": "faygate_kilnwood_vale", "RH113": "faygate_kilnwood_vale",
 }
 
 function getZoneFromPostcode(postcode: string): string | null {
   const clean = postcode.toUpperCase().replace(/\s+/g, "")
-  const key5 = clean.slice(0, 5)
-  const key4 = clean.slice(0, 4)
-  return SECTOR_TO_ZONE[key5] ?? SECTOR_TO_ZONE[key4] ?? null
+  return SECTOR_TO_ZONE[clean.slice(0, 5)] ?? SECTOR_TO_ZONE[clean.slice(0, 4)] ?? null
 }
 
 function getSuggestedHours(bedrooms: number, bathrooms: number, tasks: string[] = []) {
-  const extraBaths = Math.max(0, bathrooms - 1)
-  const bathBonus  = Math.round((extraBaths * 0.5) / 0.5) * 0.5
-  const hasDeep    = tasks.some(t => DEEP_CLEAN_TASKS.includes(t))
-  const deepBonus  = hasDeep ? 0.5 : 0
-
+  const bathBonus = Math.round((Math.max(0, bathrooms - 1) * 0.5) / 0.5) * 0.5
+  const deepBonus = tasks.some(t => DEEP_CLEAN_TASKS.includes(t)) ? 0.5 : 0
   let base: { min: number; max: number; preselect: number }
   if (bedrooms <= 1)       base = { min: 2,   max: 3,   preselect: 2   }
   else if (bedrooms === 2) base = { min: 2,   max: 3,   preselect: 2.5 }
   else if (bedrooms === 3) base = { min: 2.5, max: 3.5, preselect: 3   }
   else if (bedrooms === 4) base = { min: 3,   max: 4,   preselect: 3.5 }
   else                     base = { min: 3.5, max: 4,   preselect: 4   }
-
   return {
     min:       Math.min(base.min + bathBonus + deepBonus, 4),
     max:       Math.min(base.max + bathBonus + deepBonus, 4),
@@ -96,10 +92,10 @@ function RequestStep1Content() {
   const [showAdditional, setShowAdditional]   = useState(false)
   const [preferredDays, setPreferredDays]     = useState<string[]>([])
   const [preferredTime, setPreferredTime]     = useState('')
-  const [hoursPerSession, setHoursPerSession] = useState<number | null>(2)
-  const [hoursTouched, setHoursTouched]       = useState(false)
+  const [hoursPerSession, setHoursPerSession] = useState<number | null>(null)
+  const [sessionNotes, setSessionNotes]       = useState('')
   const [userPickedHours, setUserPickedHours] = useState(false)
-  const [extraHoursNote, setExtraHoursNote]   = useState('')
+  const [showErrors, setShowErrors]           = useState(false)
 
   useEffect(() => { window.scrollTo(0, 0) }, [])
 
@@ -108,20 +104,17 @@ function RequestStep1Content() {
     const isBackNav = sessionStorage.getItem('_voucheeStep') === 'frequency'
     if (!stored || !isBackNav) return
     try {
-      const data = JSON.parse(stored)
-      if (data.bedrooms)        setBedrooms(data.bedrooms)
-      if (data.bathrooms)       setBathrooms(data.bathrooms)
-      if (data.postcode) {
-        setPostcode(data.postcode)
-        if (data.sector) setDetectedSector(data.sector)
-      }
-      if (data.addressLine1)    setAddressLine1(data.addressLine1)
-      if (data.addressLine2)    setAddressLine2(data.addressLine2)
-      if (data.tasks?.length)   setSelectedTasks(data.tasks)
-      if (data.preferredDays)   setPreferredDays(data.preferredDays)
-      if (data.preferredTime)   setPreferredTime(data.preferredTime)
-      if (data.hoursPerSession) { setHoursPerSession(data.hoursPerSession); setUserPickedHours(true) }
-      if (data.extraHoursNote)  setExtraHoursNote(data.extraHoursNote)
+      const d = JSON.parse(stored)
+      if (d.bedrooms)        setBedrooms(d.bedrooms)
+      if (d.bathrooms)       setBathrooms(d.bathrooms)
+      if (d.postcode) { setPostcode(d.postcode); if (d.sector) setDetectedSector(d.sector) }
+      if (d.addressLine1)    setAddressLine1(d.addressLine1)
+      if (d.addressLine2)    setAddressLine2(d.addressLine2)
+      if (d.tasks?.length)   setSelectedTasks(d.tasks)
+      if (d.preferredDays)   setPreferredDays(d.preferredDays)
+      if (d.preferredTime)   setPreferredTime(d.preferredTime)
+      if (d.hoursPerSession) { setHoursPerSession(d.hoursPerSession); setUserPickedHours(true) }
+      if (d.sessionNotes)    setSessionNotes(d.sessionNotes)
     } catch {}
   }, [])
 
@@ -163,23 +156,30 @@ function RequestStep1Content() {
     setPreferredDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day])
 
   const handleNext = () => {
-    if (!postcode || postcodeError) { setPostcodeError('Please enter a valid postcode'); return }
-    if (detectedSector && !addressLine1.trim()) { alert('Please enter your house number or name'); return }
-    if (selectedTasks.length === 0) { alert('Please select at least one cleaning task'); return }
-    if (!hoursPerSession) { setHoursTouched(true); return }
+    const errors = []
+    if (!postcode || postcodeError) errors.push('postcode')
+    if (detectedSector && !addressLine1.trim()) errors.push('address')
+    if (selectedTasks.length === 0) errors.push('tasks')
+    if (!hoursPerSession) errors.push('hours')
+    if (preferredDays.length === 0) errors.push('days')
+    if (!preferredTime) errors.push('time')
+
+    if (errors.length > 0) { setShowErrors(true); return }
+
     sessionStorage.setItem('cleanRequest', JSON.stringify({
       bedrooms, bathrooms, postcode, sector: detectedSector,
       zone: getZoneFromPostcode(postcode),
       addressLine1: addressLine1.trim(),
       addressLine2: addressLine2.trim(),
-      tasks: selectedTasks, preferredDays, preferredTime, hoursPerSession,
-      extraHoursNote,
+      tasks: selectedTasks, preferredDays, preferredTime,
+      hoursPerSession, sessionNotes,
     }))
     sessionStorage.setItem('_voucheeStep', 'frequency')
     router.push(`/request/frequency${frequencyPreset ? `?preset=${frequencyPreset}` : ''}`)
   }
 
   const allTasks = [...CLEANING_TASKS, ...ADDITIONAL_TASKS]
+
   const hoursHintState = hoursPerSession !== null ? (() => {
     if (hoursPerSession < suggested.min) return 'low'
     if (hoursPerSession > suggested.max) return 'high'
@@ -196,14 +196,18 @@ function RequestStep1Content() {
         .task-btn:hover { border-color: #93c5fd !important; }
         .vou-select { width: 100%; background: rgba(255,255,255,0.8); border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 11px 14px; font-family: 'DM Sans', sans-serif; font-size: 14px; color: #1e293b; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; }
         .vou-select:focus { outline: none; border-color: #3b82f6; background-color: white; }
+        .vou-select.error { border-color: #ef4444; }
         .vou-input { width: 100%; background: rgba(255,255,255,0.8); border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 11px 14px; font-family: 'DM Sans', sans-serif; font-size: 14px; color: #1e293b; }
         .vou-input:focus { outline: none; border-color: #3b82f6; background: white; }
         .vou-input::placeholder { color: #94a3b8; }
-        .vou-textarea { width: 100%; background: rgba(255,255,255,0.8); border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 11px 14px; font-family: 'DM Sans', sans-serif; font-size: 13px; color: #1e293b; resize: vertical; min-height: 72px; line-height: 1.55; }
+        .vou-input.error { border-color: #ef4444; }
+        .vou-textarea { width: 100%; background: rgba(255,255,255,0.8); border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 11px 14px; font-family: 'DM Sans', sans-serif; font-size: 13px; color: #1e293b; resize: vertical; min-height: 80px; line-height: 1.55; }
         .vou-textarea:focus { outline: none; border-color: #3b82f6; background: white; }
         .vou-textarea::placeholder { color: #94a3b8; }
-        .continue-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(59,130,246,0.35) !important; }
-        .continue-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .continue-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(59,130,246,0.35) !important; }
+        .day-btn { padding: 8px 4px; border-radius: 10px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; border: 2px solid #e2e8f0; background: rgba(255,255,255,0.6); color: #64748b; }
+        .day-btn.active { border-color: #3b82f6; background: rgba(59,130,246,0.08); color: #1e40af; }
+        .day-btn.error-ring { border-color: #ef4444; }
       `}</style>
 
       <div style={{ minHeight: '100vh', background: 'linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%)', fontFamily: "'DM Sans', sans-serif", padding: '24px 16px 48px' }}>
@@ -246,37 +250,39 @@ function RequestStep1Content() {
           </div>
 
           {/* Address */}
-          <div style={{ background: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(16px)', borderRadius: '20px', border: '1.5px solid rgba(255,255,255,0.9)', boxShadow: '0 2px 16px rgba(0,0,0,0.05)', padding: '24px', marginBottom: '12px' }}>
+          <div style={{ background: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(16px)', borderRadius: '20px', border: `1.5px solid ${showErrors && (!postcode || postcodeError) ? '#fecaca' : 'rgba(255,255,255,0.9)'}`, boxShadow: '0 2px 16px rgba(0,0,0,0.05)', padding: '24px', marginBottom: '12px' }}>
             <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '16px' }}>Your address</div>
 
             <label style={{ fontSize: '13px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '6px' }}>Postcode</label>
             <input
-              className="vou-input"
+              className={`vou-input${showErrors && (!postcode || postcodeError) ? ' error' : ''}`}
               placeholder="RH12 1AB"
               value={postcode}
               onChange={e => handlePostcodeChange(e.target.value)}
-              style={{ fontSize: '16px', borderColor: postcodeError ? '#ef4444' : undefined, marginBottom: '8px' }}
+              style={{ fontSize: '16px', marginBottom: '8px' }}
             />
             {postcodeError && <p style={{ fontSize: '13px', color: '#ef4444', margin: '0 0 8px' }}>{postcodeError}</p>}
+            {showErrors && !postcode && !postcodeError && <p style={{ fontSize: '13px', color: '#ef4444', margin: '0 0 8px' }}>Please enter your postcode</p>}
 
             {detectedSector && (
               <>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600, color: '#0f172a', margin: '4px 0 14px' }}>
-                  <span>📍</span> Area: <strong>{detectedSector}</strong>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600, color: '#15803d', margin: '4px 0 14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '8px 12px' }}>
+                  <span>📍</span> Your area: <strong>{detectedSector}</strong>
                 </div>
 
                 <label style={{ fontSize: '13px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '6px' }}>
                   House number or name <span style={{ color: '#ef4444' }}>*</span>
                 </label>
                 <input
-                  className="vou-input"
+                  className={`vou-input${showErrors && !addressLine1.trim() ? ' error' : ''}`}
                   placeholder="e.g. 14 or Rosewood Cottage"
                   value={addressLine1}
                   onChange={e => setAddressLine1(e.target.value)}
-                  style={{ marginBottom: '10px' }}
+                  style={{ marginBottom: '4px' }}
                 />
+                {showErrors && !addressLine1.trim() && <p style={{ fontSize: '13px', color: '#ef4444', margin: '0 0 8px' }}>Please enter your house number or name</p>}
 
-                <label style={{ fontSize: '13px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '6px' }}>
+                <label style={{ fontSize: '13px', fontWeight: 600, color: '#475569', display: 'block', margin: '10px 0 6px' }}>
                   Street name <span style={{ fontSize: '11px', fontWeight: 400, color: '#94a3b8' }}>optional</span>
                 </label>
                 <input
@@ -287,10 +293,10 @@ function RequestStep1Content() {
                   style={{ marginBottom: '12px' }}
                 />
 
-                <div style={{ padding: '10px 14px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0', display: 'flex', gap: '8px' }}>
+                <div style={{ padding: '10px 14px', background: '#f0fdf4', borderRadius: '10px', border: '1px solid #bbf7d0', display: 'flex', gap: '8px' }}>
                   <span style={{ fontSize: '14px', flexShrink: 0 }}>🔒</span>
-                  <span style={{ fontSize: '12px', color: '#64748b', lineHeight: 1.5 }}>
-                    Only your area is public. Upon agreeing a start date with a cleaner, they will be emailed your full address.
+                  <span style={{ fontSize: '12px', color: '#166534', lineHeight: 1.5 }}>
+                    Only your area will be displayed. Your chosen cleaner will be emailed your full address once you have selected one.
                   </span>
                 </div>
               </>
@@ -304,12 +310,7 @@ function RequestStep1Content() {
               {CLEANING_TASKS.map(task => {
                 const selected = selectedTasks.includes(task.id)
                 return (
-                  <button key={task.id} className="task-btn" type="button" onClick={() => toggleTask(task.id)} style={{
-                    display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '12px',
-                    borderRadius: '14px', border: `2px solid ${selected ? '#3b82f6' : '#e2e8f0'}`,
-                    background: selected ? 'rgba(59,130,246,0.06)' : 'rgba(255,255,255,0.6)',
-                    cursor: 'pointer', textAlign: 'left',
-                  }}>
+                  <button key={task.id} className="task-btn" type="button" onClick={() => toggleTask(task.id)} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '12px', borderRadius: '14px', border: `2px solid ${selected ? '#3b82f6' : '#e2e8f0'}`, background: selected ? 'rgba(59,130,246,0.06)' : 'rgba(255,255,255,0.6)', cursor: 'pointer', textAlign: 'left' }}>
                     <div style={{ width: '18px', height: '18px', borderRadius: '50%', flexShrink: 0, marginTop: '1px', border: selected ? '2px solid #3b82f6' : '2px solid #cbd5e1', background: selected ? '#3b82f6' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       {selected && <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                     </div>
@@ -355,7 +356,9 @@ function RequestStep1Content() {
                     if (!task) return null
                     const isSpecial = ADDITIONAL_TASKS.some(t => t.id === id)
                     return (
-                      <span key={id} style={{ fontSize: '12px', fontWeight: 600, padding: '3px 10px', borderRadius: '100px', background: isSpecial ? '#fef3c7' : '#eff6ff', color: isSpecial ? '#92400e' : '#1e40af', border: `1px solid ${isSpecial ? '#fde68a' : '#bfdbfe'}` }}>{task.label}</span>
+                      <span key={id} style={{ fontSize: '12px', fontWeight: 600, padding: '3px 10px', borderRadius: '100px', background: isSpecial ? '#fef3c7' : '#eff6ff', color: isSpecial ? '#92400e' : '#1e40af', border: `1px solid ${isSpecial ? '#fde68a' : '#bfdbfe'}` }}>
+                        {task.label}
+                      </span>
                     )
                   })}
                 </div>
@@ -363,54 +366,105 @@ function RequestStep1Content() {
             )}
           </div>
 
-          {/* Schedule */}
-          <div style={{ background: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(16px)', borderRadius: '20px', border: '1.5px solid rgba(255,255,255,0.9)', boxShadow: '0 2px 16px rgba(0,0,0,0.05)', padding: '24px', marginBottom: '12px' }}>
-            <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '16px' }}>📅 Preferred schedule <span style={{ fontSize: '12px', fontWeight: 400, color: '#94a3b8' }}>— optional</span></div>
+          {/* Hours per clean */}
+          <div style={{ background: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(16px)', borderRadius: '20px', border: `1.5px solid ${showErrors && !hoursPerSession ? '#fecaca' : 'rgba(255,255,255,0.9)'}`, boxShadow: '0 2px 16px rgba(0,0,0,0.05)', padding: '24px', marginBottom: '12px' }}>
+            <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '4px' }}>⏱ How many hours per clean?</div>
+            <p style={{ fontSize: '13px', color: '#64748b', margin: '0 0 14px', lineHeight: 1.55 }}>
+              For a <strong>{bedrooms}-bed / {bathrooms}-bath</strong> home, most customers find between{' '}
+              <strong>{suggested.min === 4 ? '3.5–4' : `${suggested.min}–${suggested.max === 4 ? '4' : suggested.max}`} hours</strong> works well.
+            </p>
+
+            <select
+              className={`vou-select${showErrors && !hoursPerSession ? ' error' : ''}`}
+              value={hoursPerSession?.toString() ?? ''}
+              onChange={e => {
+                const val = parseFloat(e.target.value)
+                setHoursPerSession(isNaN(val) ? null : val)
+                setUserPickedHours(true)
+              }}
+            >
+              <option value="" disabled>Select hours</option>
+              {HOURS_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+            </select>
+
+            {showErrors && !hoursPerSession && (
+              <p style={{ fontSize: '13px', color: '#ef4444', marginTop: '6px' }}>Please select a session length</p>
+            )}
+
+            {hoursPerSession !== null && hoursHintState && (
+              <div style={{ marginTop: '10px', padding: '12px 14px', borderRadius: '12px', background: hoursHintState === 'low' ? '#fffbeb' : '#f0fdf4', border: `1px solid ${hoursHintState === 'low' ? '#fde68a' : '#bbf7d0'}`, fontSize: '13px', lineHeight: 1.55 }}>
+                {hoursHintState === 'low' && (
+                  <p style={{ fontWeight: 600, color: '#92400e', margin: 0 }}>⚠️ On the lower end — typical for this property is {suggested.min}–{suggested.max} hours. Your cleaner may not be able to cover everything, but you can agree this with them directly.</p>
+                )}
+                {hoursHintState === 'inRange' && (
+                  <p style={{ fontWeight: 600, color: '#166534', margin: 0 }}>✅ This is within the typical range for your home. 💡 Consider asking your cleaner for an extra hour on the first visit to get on top of things.</p>
+                )}
+                {hoursHintState === 'high' && (
+                  <p style={{ fontWeight: 600, color: '#166534', margin: 0 }}>✅ Generous — your cleaner will have plenty of time for a thorough clean.</p>
+                )}
+              </div>
+            )}
+
+            {/* Notes — always visible */}
+            <div style={{ marginTop: '16px' }}>
+              <label style={{ fontSize: '13px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '6px' }}>
+                Any notes for your cleaner?{' '}
+                <span style={{ fontSize: '11px', fontWeight: 400, color: '#94a3b8' }}>optional</span>
+              </label>
+              <textarea
+                className="vou-textarea"
+                placeholder="e.g. please focus extra time on the kitchen each visit, or avoid the top floor on alternate weeks…"
+                value={sessionNotes}
+                onChange={e => setSessionNotes(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Preferred schedule — required */}
+          <div style={{ background: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(16px)', borderRadius: '20px', border: `1.5px solid ${showErrors && (preferredDays.length === 0 || !preferredTime) ? '#fecaca' : 'rgba(255,255,255,0.9)'}`, boxShadow: '0 2px 16px rgba(0,0,0,0.05)', padding: '24px', marginBottom: '24px' }}>
+            <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '16px' }}>📅 Preferred schedule</div>
+
             <div style={{ marginBottom: '16px' }}>
               <label style={{ fontSize: '13px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '8px' }}>Preferred days</label>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
                 {DAYS_OF_WEEK.map(day => {
                   const active = preferredDays.includes(day)
                   return (
-                    <button key={day} type="button" onClick={() => toggleDay(day)} style={{ padding: '8px 4px', borderRadius: '10px', fontSize: '12px', fontWeight: 600, border: `2px solid ${active ? '#3b82f6' : '#e2e8f0'}`, background: active ? 'rgba(59,130,246,0.08)' : 'rgba(255,255,255,0.6)', color: active ? '#1e40af' : '#64748b', cursor: 'pointer', transition: 'all 0.15s' }}>{day.substring(0, 3)}</button>
+                    <button key={day} type="button" onClick={() => toggleDay(day)}
+                      className={`day-btn${active ? ' active' : ''}${showErrors && preferredDays.length === 0 ? ' error-ring' : ''}`}
+                    >
+                      {day.substring(0, 3)}
+                    </button>
                   )
                 })}
               </div>
-              <p style={{ fontSize: '12px', color: '#94a3b8', margin: '6px 0 0' }}>Leave blank if you have no preference</p>
+              {showErrors && preferredDays.length === 0 && (
+                <p style={{ fontSize: '13px', color: '#ef4444', margin: '6px 0 0' }}>Please select at least one preferred day</p>
+              )}
             </div>
+
             <div>
               <label style={{ fontSize: '13px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '6px' }}>Preferred time</label>
-              <select className="vou-select" value={preferredTime} onChange={e => setPreferredTime(e.target.value)}>
-                <option value="">No preference</option>
+              <select
+                className={`vou-select${showErrors && !preferredTime ? ' error' : ''}`}
+                value={preferredTime}
+                onChange={e => setPreferredTime(e.target.value)}
+              >
+                <option value="" disabled>Select a time preference</option>
                 {TIME_SLOTS.map(slot => <option key={slot} value={slot}>{slot}</option>)}
               </select>
+              {showErrors && !preferredTime && (
+                <p style={{ fontSize: '13px', color: '#ef4444', margin: '6px 0 0' }}>Please select a preferred time</p>
+              )}
             </div>
-          </div>
-
-          {/* Hours */}
-          <div style={{ background: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(16px)', borderRadius: '20px', border: '1.5px solid rgba(255,255,255,0.9)', boxShadow: '0 2px 16px rgba(0,0,0,0.05)', padding: '24px', marginBottom: '12px' }}>
-            <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '4px' }}>⏱ How many hours per clean?</div>
-            <p style={{ fontSize: '13px', color: '#64748b', margin: '0 0 14px', lineHeight: 1.55 }}>
-              Customers with <strong>{bedrooms}-bed / {bathrooms}-bathroom</strong> homes are usually happiest with a clean lasting between{' '}
-              <strong>{suggested.min === 4 ? '3.5–4+' : `${suggested.min}–${suggested.max === 4 ? '4+' : suggested.max}`} hours</strong>.
-            </p>
-            <select className="vou-select" value={hoursPerSession?.toString() ?? ''} onChange={e => { const val = parseFloat(e.target.value); setHoursPerSession(isNaN(val) ? null : val); setHoursTouched(true); setUserPickedHours(true) }}>
-              <option value="">Select session length</option>
-              {HOURS_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-            </select>
-
-            {hoursPerSession !== null && hoursHintState && (
-              <div style={{ marginTop: '10px', padding: '12px 14px', borderRadius: '12px', background: hoursHintState === 'low' ? '#fffbeb' : '#f0fdf4', border: `1px solid ${hoursHintState === 'low' ? '#fde68a' : '#bbf7d0'}`, fontSize: '13px', lineHeight: 1.55 }}>
-                {hoursHintState === 'low' && (<><p style={{ fontWeight: 600, color: '#92400e', margin: '0 0 3px' }}>⚠️ On the lower end for a {bedrooms}-bed / {bathrooms}-bath home</p><p style={{ color: '#b45309', margin: 0 }}>Homes like yours typically need {suggested.min}–{suggested.max} hours.</p></>)}
-                {hoursHintState === 'inRange' && (<><p style={{ fontWeight: 600, color: '#166534', margin: '0 0 3px' }}>✅ Within the typical range for your home</p><p style={{ color: '#15803d', margin: 0 }}>💡 Consider asking for an extra hour on the first visit.</p></>)}
-                {hoursHintState === 'high' && (<><p style={{ fontWeight: 600, color: '#166534', margin: '0 0 3px' }}>✅ Generous allowance — your cleaner will appreciate the time</p>{hoursHintState === 'high' && <textarea className="vou-textarea" placeholder="e.g. deep clean the kitchen monthly…" value={extraHoursNote} onChange={e => setExtraHoursNote(e.target.value)} style={{ marginTop: '8px' }} />}</>)}
-              </div>
-            )}
-            {hoursTouched && !hoursPerSession && <p style={{ fontSize: '13px', color: '#ef4444', marginTop: '6px' }}>Please select a session length</p>}
           </div>
 
           {/* CTA */}
-          <button className="continue-btn" onClick={handleNext} style={{ width: '100%', padding: '18px', borderRadius: '16px', border: 'none', background: 'linear-gradient(135deg, #2563eb, #3b82f6)', color: 'white', fontSize: '17px', fontWeight: 700, fontFamily: "'Plus Jakarta Sans', sans-serif", cursor: 'pointer', boxShadow: '0 4px 20px rgba(37,99,235,0.3)', transition: 'transform 0.2s, box-shadow 0.2s' }}>
+          <button
+            className="continue-btn"
+            onClick={handleNext}
+            style={{ width: '100%', padding: '18px', borderRadius: '16px', border: 'none', background: 'linear-gradient(135deg, #2563eb, #3b82f6)', color: 'white', fontSize: '17px', fontWeight: 700, fontFamily: "'Plus Jakarta Sans', sans-serif", cursor: 'pointer', boxShadow: '0 4px 20px rgba(37,99,235,0.3)', transition: 'transform 0.2s, box-shadow 0.2s' }}
+          >
             Continue to pricing →
           </button>
 
