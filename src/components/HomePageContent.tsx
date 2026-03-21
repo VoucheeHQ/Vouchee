@@ -157,7 +157,7 @@ export default function HomePageContent({ location = 'Horsham' }: HomePageProps)
                 <CardHeader>
                   <CardTitle>Monthly</CardTitle>
                   <div className="mt-4">
-                    <span className="text-4xl font-bold text-ink">£19.99</span>
+                    <span className="text-4xl font-bold text-ink">£24.99</span>
                     <span className="text-ink-secondary"> / month</span>
                   </div>
                   <CardDescription className="mt-2">Flat rate</CardDescription>

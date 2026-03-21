@@ -37,8 +37,8 @@ const PRICING_TIERS = [
   {
     frequency: 'monthly' as FrequencyType,
     title: 'Monthly',
-    pricePerSession: 19.99,
-    monthlyCharge: 19.99,
+    pricePerSession: 24.99,
+    monthlyCharge: 24.99,
     description: 'Once per month',
     sessionsPerMonth: '1',
   },
