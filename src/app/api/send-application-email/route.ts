@@ -13,26 +13,57 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const {
-      customerId, cleanerName, cleanerInitial, cleanerMemberSince,
+      customerId, applicationId, requestId,
+      cleanerName, cleanerInitial, cleanerMemberSince,
       cleanerDbs, cleanerInsured, cleanerRightToWork,
       cleanerReviews, cleanerJobsCompleted, cleanerRating,
       message, jobZone, jobBedrooms, jobBathrooms, jobHours, jobRate,
     } = body
 
-    const { data: customerProfile, error: profileError } = await supabaseAdmin
+    // customerId may be either a profiles UUID or a customers UUID
+    // Try profiles first, then fall back to looking up via customers table
+    let customerEmail: string | null = null
+    let customerFullName: string | null = null
+
+    const { data: directProfile } = await supabaseAdmin
       .from('profiles')
       .select('email, full_name')
       .eq('id', customerId)
       .single()
 
-    if (profileError || !customerProfile?.email) {
-      console.error('Customer profile lookup failed:', profileError)
+    if (directProfile?.email) {
+      customerEmail = directProfile.email
+      customerFullName = directProfile.full_name
+    } else {
+      // customerId is a customers table UUID — look up profile_id first
+      const { data: customerRecord } = await supabaseAdmin
+        .from('customers')
+        .select('profile_id')
+        .eq('id', customerId)
+        .single()
+
+      if (customerRecord?.profile_id) {
+        const { data: profileViaCustomer } = await supabaseAdmin
+          .from('profiles')
+          .select('email, full_name')
+          .eq('id', customerRecord.profile_id)
+          .single()
+
+        customerEmail = profileViaCustomer?.email ?? null
+        customerFullName = profileViaCustomer?.full_name ?? null
+      }
+    }
+
+    if (!customerEmail) {
+      console.error('Customer profile lookup failed for customerId:', customerId)
       return NextResponse.json({ error: 'Customer not found' }, { status: 404 })
     }
 
-    const { email: customerEmail, full_name: customerFullName } = customerProfile
     const customerFirstName = customerFullName?.split(' ')?.[0] ?? 'there'
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.vouchee.co.uk'
+
+    const acceptUrl = `${appUrl}/customer/dashboard?accept=${applicationId}&request=${requestId}`
+    const declineUrl = `${appUrl}/customer/dashboard?decline=${applicationId}`
 
     const hasReviews = cleanerReviews && cleanerReviews.length > 0
     const jobsCompleted = cleanerJobsCompleted ?? 0
@@ -55,7 +86,7 @@ export async function POST(request: NextRequest) {
     ` : `
       <div style="padding:16px;background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;text-align:center;">
         <p style="margin:0 0 6px;font-size:14px;font-weight:700;color:#0f172a;">✨ New to Vouchee</p>
-        <p style="margin:0;font-size:13px;color:#64748b;line-height:1.6;">This cleaner hasn't received any reviews just yet — but rest assured, all cleaners are interviewed before joining the platform. Feel free to ask them about their previous experience to make sure you feel comfortable.</p>
+        <p style="margin:0;font-size:13px;color:#64748b;line-height:1.6;">This cleaner hasn't received any reviews just yet — but rest assured, all cleaners are interviewed before joining the platform.</p>
       </div>
     `
 
@@ -72,7 +103,6 @@ export async function POST(request: NextRequest) {
       <td align="center">
         <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
 
-          <!-- Logo -->
           <tr>
             <td style="padding:0 0 24px;">
               <table cellpadding="0" cellspacing="0">
@@ -99,41 +129,29 @@ export async function POST(request: NextRequest) {
             </td>
           </tr>
 
-          <!-- Main card -->
           <tr>
             <td style="background:white;border-radius:20px;padding:36px;border:1px solid #e2e8f0;">
-
               <p style="margin:0 0 6px;font-size:22px;font-weight:800;color:#0f172a;">🎉 A cleaner has applied to your request!</p>
-              <p style="margin:0 0 28px;font-size:14px;color:#64748b;line-height:1.6;">Congratulations ${customerFirstName} — a cleaner wants to clean your home. Review their application and start chatting with them below.</p>
+              <p style="margin:0 0 28px;font-size:14px;color:#64748b;line-height:1.6;">Hey ${customerFirstName} — a cleaner wants to clean your home. Review their application below.</p>
 
-              <!-- Job summary -->
               <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border-radius:14px;padding:18px 20px;margin-bottom:24px;border:1px solid #e2e8f0;">
-                <tr>
-                  <td style="padding-bottom:10px;">
-                    <span style="font-size:15px;">📍</span>
-                    <span style="font-size:16px;font-weight:800;color:#0f172a;margin-left:6px;">${jobZone}</span>
-                    <span style="font-size:13px;color:#64748b;margin-left:8px;">Regular Clean</span>
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding-bottom:14px;">
-                    <span style="display:inline-block;background:white;border:1px solid #e2e8f0;border-radius:100px;padding:4px 12px;font-size:12px;font-weight:600;color:#475569;margin-right:4px;">${jobBedrooms} bed</span>
-                    <span style="display:inline-block;background:white;border:1px solid #e2e8f0;border-radius:100px;padding:4px 12px;font-size:12px;font-weight:600;color:#475569;margin-right:4px;">${jobBathrooms} bath</span>
-                    <span style="display:inline-block;background:white;border:1px solid #e2e8f0;border-radius:100px;padding:4px 12px;font-size:12px;font-weight:600;color:#475569;margin-right:4px;">${jobHours} hrs</span>
-                    <span style="display:inline-block;background:#fefce8;border:1px solid #fef08a;border-radius:100px;padding:4px 12px;font-size:12px;font-weight:700;color:#92400e;">£${jobRate}/hr</span>
-                  </td>
-                </tr>
-                <tr>
-                  <td>
-                    <a href="${appUrl}/customer/dashboard" style="display:inline-block;background:white;border:1.5px solid #e2e8f0;border-radius:8px;padding:7px 16px;font-size:13px;font-weight:600;color:#0f172a;text-decoration:none;">View your listing →</a>
-                  </td>
-                </tr>
+                <tr><td style="padding-bottom:10px;">
+                  <span style="font-size:15px;">📍</span>
+                  <span style="font-size:16px;font-weight:800;color:#0f172a;margin-left:6px;">${jobZone}</span>
+                  <span style="font-size:13px;color:#64748b;margin-left:8px;">Regular Clean</span>
+                </td></tr>
+                <tr><td style="padding-bottom:14px;">
+                  <span style="display:inline-block;background:white;border:1px solid #e2e8f0;border-radius:100px;padding:4px 12px;font-size:12px;font-weight:600;color:#475569;margin-right:4px;">${jobBedrooms} bed</span>
+                  <span style="display:inline-block;background:white;border:1px solid #e2e8f0;border-radius:100px;padding:4px 12px;font-size:12px;font-weight:600;color:#475569;margin-right:4px;">${jobBathrooms} bath</span>
+                  <span style="display:inline-block;background:white;border:1px solid #e2e8f0;border-radius:100px;padding:4px 12px;font-size:12px;font-weight:600;color:#475569;margin-right:4px;">${jobHours} hrs</span>
+                  <span style="display:inline-block;background:#fefce8;border:1px solid #fef08a;border-radius:100px;padding:4px 12px;font-size:12px;font-weight:700;color:#92400e;">£${jobRate}/hr</span>
+                </td></tr>
+                <tr><td>
+                  <a href="${appUrl}/customer/dashboard" style="display:inline-block;background:white;border:1.5px solid #e2e8f0;border-radius:8px;padding:7px 16px;font-size:13px;font-weight:600;color:#0f172a;text-decoration:none;">View your listing →</a>
+                </td></tr>
               </table>
 
-              <!-- Cleaner card -->
               <table width="100%" cellpadding="0" cellspacing="0" style="border:1.5px solid #e2e8f0;border-radius:16px;overflow:hidden;margin-bottom:20px;">
-
-                <!-- Avatar + name + badges -->
                 <tr>
                   <td style="padding:20px 20px 16px;">
                     <table width="100%" cellpadding="0" cellspacing="0">
@@ -142,7 +160,7 @@ export async function POST(request: NextRequest) {
                           <table cellpadding="0" cellspacing="0">
                             <tr>
                               <td style="vertical-align:middle;">
-                                <div style="width:52px;height:52px;min-width:52px;border-radius:50%;background:#2563eb;text-align:center;vertical-align:middle;display:table-cell;font-size:22px;font-weight:800;color:white;line-height:52px;">${cleanerInitial}</div>
+                                <div style="width:52px;height:52px;min-width:52px;border-radius:50%;background:#2563eb;text-align:center;display:table-cell;font-size:22px;font-weight:800;color:white;line-height:52px;">${cleanerInitial}</div>
                               </td>
                               <td style="padding-left:14px;vertical-align:middle;">
                                 <div style="font-size:17px;font-weight:800;color:#0f172a;line-height:1.2;">${cleanerName}</div>
@@ -162,8 +180,6 @@ export async function POST(request: NextRequest) {
                     </table>
                   </td>
                 </tr>
-
-                <!-- Stats row -->
                 <tr>
                   <td style="padding:12px 20px;border-top:1px solid #f1f5f9;background:#fafafa;">
                     <table width="100%" cellpadding="0" cellspacing="0">
@@ -181,16 +197,12 @@ export async function POST(request: NextRequest) {
                     </table>
                   </td>
                 </tr>
-
-                <!-- Reviews -->
                 <tr>
                   <td style="padding:16px 20px;border-top:1px solid #f1f5f9;background:#fafafa;">
                     <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;">Reviews</div>
                     ${reviewsSection}
                   </td>
                 </tr>
-
-                <!-- Message -->
                 ${message ? `
                 <tr>
                   <td style="padding:16px 20px;border-top:1px solid #f1f5f9;">
@@ -200,33 +212,28 @@ export async function POST(request: NextRequest) {
                     </div>
                   </td>
                 </tr>` : ''}
-
-                <!-- Buttons -->
                 <tr>
                   <td style="padding:16px 20px 20px;border-top:1px solid #f1f5f9;">
                     <table width="100%" cellpadding="0" cellspacing="0">
                       <tr>
                         <td style="width:50%;padding-right:6px;">
-                          <a href="${appUrl}/customer/dashboard" style="display:block;background:#16a34a;color:white;font-size:14px;font-weight:700;padding:14px 0;border-radius:10px;text-decoration:none;text-align:center;">✓ Accept &amp; chat</a>
+                          <a href="${acceptUrl}" style="display:block;background:#16a34a;color:white;font-size:14px;font-weight:700;padding:14px 0;border-radius:10px;text-decoration:none;text-align:center;">✓ Accept &amp; chat</a>
                         </td>
                         <td style="width:50%;padding-left:6px;">
-                          <a href="${appUrl}/customer/dashboard" style="display:block;background:white;color:#ef4444;font-size:14px;font-weight:700;padding:14px 0;border-radius:10px;text-decoration:none;text-align:center;border:1.5px solid #fecaca;">✕ Decline</a>
+                          <a href="${declineUrl}" style="display:block;background:white;color:#ef4444;font-size:14px;font-weight:700;padding:14px 0;border-radius:10px;text-decoration:none;text-align:center;border:1.5px solid #fecaca;">✕ Decline</a>
                         </td>
                       </tr>
                     </table>
                   </td>
                 </tr>
-
               </table>
 
               <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.5;text-align:center;">
                 Manage all your applications from your <a href="${appUrl}/customer/dashboard" style="color:#2563eb;">Vouchee dashboard</a>.
               </p>
-
             </td>
           </tr>
 
-          <!-- Footer -->
           <tr>
             <td style="padding:24px 0 0;text-align:center;">
               <p style="margin:0;font-size:12px;color:#94a3b8;">
