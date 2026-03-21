@@ -25,37 +25,35 @@ export async function POST(request: NextRequest) {
     let customerEmail: string | null = null
     let customerFullName: string | null = null
 
-    const { data: directProfile } = await supabaseAdmin
-      .from('profiles')
-      .select('email, full_name')
-      .eq('id', customerId)
-      .single()
+    // Primary path: use requestId to join clean_requests -> customers -> profiles
+    // This avoids RLS issues since service role can read clean_requests
+    if (requestId) {
+      const { data: reqData } = await supabaseAdmin
+        .from('clean_requests')
+        .select('customers(profile_id, profiles(email, full_name))')
+        .eq('id', requestId)
+        .single() as { data: any }
 
-    if (directProfile?.email) {
-      customerEmail = directProfile.email
-      customerFullName = directProfile.full_name
-    } else {
-      // customerId is a customers table UUID — look up profile_id first
-      const { data: customerRecord } = await supabaseAdmin
-        .from('customers')
-        .select('profile_id')
-        .eq('id', customerId)
-        .single()
-
-      if (customerRecord?.profile_id) {
-        const { data: profileViaCustomer } = await supabaseAdmin
-          .from('profiles')
-          .select('email, full_name')
-          .eq('id', customerRecord.profile_id)
-          .single()
-
-        customerEmail = profileViaCustomer?.email ?? null
-        customerFullName = profileViaCustomer?.full_name ?? null
+      const profile = reqData?.customers?.profiles
+      if (profile?.email) {
+        customerEmail = profile.email
+        customerFullName = profile.full_name
       }
     }
 
+    // Fallback: customerId as direct profiles UUID (legacy)
+    if (!customerEmail && customerId) {
+      const { data: directProfile } = await supabaseAdmin
+        .from('profiles')
+        .select('email, full_name')
+        .eq('id', customerId)
+        .single()
+      customerEmail = directProfile?.email ?? null
+      customerFullName = directProfile?.full_name ?? null
+    }
+
     if (!customerEmail) {
-      console.error('Customer profile lookup failed for customerId:', customerId)
+      console.error('Customer lookup failed — customerId:', customerId, 'requestId:', requestId)
       return NextResponse.json({ error: 'Customer not found' }, { status: 404 })
     }
 
