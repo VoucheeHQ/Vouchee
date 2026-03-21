@@ -7,48 +7,33 @@ import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 
 const TASK_LABELS: Record<string, string> = {
-  general: "General cleaning",
-  hoovering: "Hoovering",
-  mopping: "Mopping",
-  bathroom: "Bathroom clean",
-  kitchen: "Kitchen clean",
-  windows_interior: "Interior windows",
-  oven: "Oven cleaning",
-  bathroom_deep: "Bathroom deep clean",
-  kitchen_deep: "Kitchen deep clean",
-  fridge: "Fridge clean",
-  blinds: "Blinds",
-  mold: "Mould removal",
-  ironing: "Ironing",
-  laundry: "Laundry",
-  changing_beds: "Changing beds",
-  garage: "Garage / utility",
+  general: "General cleaning", hoovering: "Hoovering", mopping: "Mopping",
+  bathroom: "Bathroom clean", kitchen: "Kitchen clean",
+  windows_interior: "Interior windows", oven: "Oven cleaning",
+  bathroom_deep: "Bathroom deep clean", kitchen_deep: "Kitchen deep clean",
+  fridge: "Fridge clean", blinds: "Blinds", mold: "Mould removal",
+  ironing: "Ironing", laundry: "Laundry", changing_beds: "Changing beds",
+  garage: "Garage / utility", bins: "Emptying all bins",
+  skirting: "Skirting boards & doorframes", conservatory: "Conservatory clean",
 }
 
-const PRICING: Record<string, { pricePerSession: number; monthlyCharge: number; sessionsPerMonth: string; label: string }> = {
-  weekly:      { pricePerSession: 9.99,  monthlyCharge: 43.33, sessionsPerMonth: "~4.33 sessions/month", label: "Weekly" },
-  fortnightly: { pricePerSession: 14.99, monthlyCharge: 32.48, sessionsPerMonth: "~2.17 sessions/month", label: "Fortnightly" },
-  monthly:     { pricePerSession: 19.99, monthlyCharge: 19.99, sessionsPerMonth: "1 session/month",      label: "Monthly" },
+const PRICING: Record<string, { pricePerSession: number; monthlyCharge: number; label: string }> = {
+  weekly:      { pricePerSession: 9.99,  monthlyCharge: 43.33, label: "Weekly" },
+  fortnightly: { pricePerSession: 14.99, monthlyCharge: 32.48, label: "Fortnightly" },
+  monthly:     { pricePerSession: 24.99, monthlyCharge: 24.99, label: "Monthly" },
 }
 
-// Map postcode sector → zone enum
 const SECTOR_TO_ZONE: Record<string, string> = {
-  "RH121": "central_south_east",
-  "RH122": "central_south_east",
-  "RH125": "north_west",
-  "RH124": "north_east_roffey",
-  "RH123": "south_west",
-  "RH126": "warnham_north",
-  "RH138": "broadbridge_heath",
-  "RH136": "mannings_heath",
-  "RH110": "faygate_kilnwood_vale",
-  "RH130": "christs_hospital",
+  "RH121": "central_south_east", "RH122": "central_south_east",
+  "RH125": "north_west",         "RH124": "north_east_roffey",
+  "RH123": "south_west",         "RH126": "warnham_north",
+  "RH138": "broadbridge_heath",  "RH136": "mannings_heath",
+  "RH110": "faygate_kilnwood_vale", "RH130": "christs_hospital",
 }
 
 function getSectorFromPostcode(postcode: string): string | null {
   if (!postcode) return null
-  const clean = postcode.toUpperCase().replace(/\s+/g, " ").trim()
-  // Try matching known sectors
+  const clean = postcode.toUpperCase().replace(/\s+/g, "").trim()
   for (const sector of Object.keys(SECTOR_TO_ZONE)) {
     if (clean.startsWith(sector.replace(" ", ""))) return SECTOR_TO_ZONE[sector]
   }
@@ -61,41 +46,29 @@ interface RequestData {
   postcode?: string
   sector?: string
   zone?: string
+  addressLine1?: string
+  addressLine2?: string
   tasks?: string[]
   preferredDays?: string[]
   preferredTime?: string
   scheduleNotes?: string
+  sessionNotes?: string
   frequency?: string
   hourlyRate?: number
   hoursPerSession?: number
   finalNotes?: string
 }
 
-// ── Storage helpers ────────────────────────────────────────────
-
 const STORAGE_KEY = "cleanRequest"
 const BACKUP_KEY = "cleanRequest_backup"
 const PUBLISHED_KEY = "cleanRequest_published_id"
 
-function saveRequestData(data: Partial<RequestData>) {
-  try {
-    const existing = getRequestData() ?? {}
-    const merged = JSON.stringify({ ...existing, ...data })
-    sessionStorage.setItem(STORAGE_KEY, merged)
-    localStorage.setItem(BACKUP_KEY, merged)
-  } catch {}
-}
-
 function getRequestData(): RequestData | null {
   try {
-    // Try sessionStorage first, fall back to localStorage backup
     const session = sessionStorage.getItem(STORAGE_KEY)
     if (session) return JSON.parse(session)
     const backup = localStorage.getItem(BACKUP_KEY)
-    if (backup) {
-      sessionStorage.setItem(STORAGE_KEY, backup)
-      return JSON.parse(backup)
-    }
+    if (backup) { sessionStorage.setItem(STORAGE_KEY, backup); return JSON.parse(backup) }
     return null
   } catch { return null }
 }
@@ -116,62 +89,44 @@ function setPublishedId(id: string) {
   try { localStorage.setItem(PUBLISHED_KEY, id) } catch {}
 }
 
-// ── Supabase publish ───────────────────────────────────────────
-
 async function publishRequest(data: RequestData, userId: string): Promise<string> {
   const supabase = createClient()
 
-  // 1. Upsert profile full_name if available
-  // (already handled in preview page, but do it again in case they came via OAuth)
-  // No-op if full_name is already set
-
-  // 2. Ensure customer record exists
   const { data: existingCustomer } = await (supabase as any)
-  .from("customers")
-  .select("id")
-  .eq("profile_id", userId)
-  .single() as { data: { id: string } | null }
+    .from("customers").select("id").eq("profile_id", userId).single() as { data: { id: string } | null }
 
   let customerId: string
 
   if (existingCustomer) {
     customerId = existingCustomer.id
-    // Update frequency in case it changed
-    await (supabase as any)
-    .from("customers")
-    .update({ frequency: data.frequency ?? "fortnightly" })
-    .eq("id", customerId)
+    await (supabase as any).from("customers").update({
+      frequency: data.frequency ?? "fortnightly",
+      address_line1: data.addressLine1 ?? "",
+      address_line2: data.addressLine2 ?? "",
+      postcode: data.postcode ?? "",
+    }).eq("id", customerId)
   } else {
-    // Create customer record
     const { data: newCustomer, error: customerError } = await (supabase as any)
-      .from("customers")
-      .insert({
+      .from("customers").insert({
         profile_id: userId,
         postcode: data.postcode ?? "",
         city: "Horsham",
-        address_line1: "",
+        address_line1: data.addressLine1 ?? "",
+        address_line2: data.addressLine2 ?? "",
         frequency: (data.frequency ?? "fortnightly") as any,
         subscription_status: "pending",
-      })
-      .select("id")
-      .single()
-
+      }).select("id").single()
     if (customerError || !newCustomer) throw new Error("Failed to create customer record")
     customerId = newCustomer.id
   }
 
-  // 3. Derive zone from postcode or sector label
-  const zone = data.zone
-    || (data.postcode ? getSectorFromPostcode(data.postcode) : null)
-    || null
+  const zone = data.zone || (data.postcode ? getSectorFromPostcode(data.postcode) : null) || null
 
-  // 4. Insert the clean request
   const { data: inserted, error: insertError } = await (supabase as any)
-    .from("clean_requests")
-    .insert({
+    .from("clean_requests").insert({
       customer_id: customerId,
       status: "pending",
-      service_type: "regular" as any, // default; can be updated
+      service_type: "regular" as any,
       zone: zone as any,
       bedrooms: data.bedrooms ?? 2,
       bathrooms: data.bathrooms ?? 1,
@@ -182,315 +137,207 @@ async function publishRequest(data: RequestData, userId: string): Promise<string
       hourly_rate: data.hourlyRate ?? null,
       hours_per_session: data.hoursPerSession ?? null,
       tasks: data.tasks ?? [],
-      customer_notes: data.finalNotes ?? null,
-      price_per_session: data.hourlyRate && data.hoursPerSession
-        ? data.hourlyRate * data.hoursPerSession
-        : null,
-    })
-    .select("id")
-    .single()
+      customer_notes: data.sessionNotes ?? data.finalNotes ?? null,
+      price_per_session: data.hourlyRate && data.hoursPerSession ? data.hourlyRate * data.hoursPerSession : null,
+    }).select("id").single()
 
-  if (insertError || !inserted) {
-    console.error("Insert error:", insertError)
-    throw new Error(insertError?.message ?? "Failed to publish request")
-  }
-
+  if (insertError || !inserted) throw new Error(insertError?.message ?? "Failed to publish request")
   return inserted.id
 }
 
-// ── UI helpers ─────────────────────────────────────────────────
+// ── Edit Modal (same pattern as dashboard) ─────────────────────────────────
 
-function SectionCard({ title, icon, onEdit, children }: {
-  title: string; icon: string; onEdit: () => void; children: React.ReactNode
-}) {
-  return (
-    <div style={{
-      background: "rgba(255,255,255,0.82)", backdropFilter: "blur(16px)",
-      borderRadius: "20px", border: "1.5px solid rgba(255,255,255,0.9)",
-      boxShadow: "0 2px 16px rgba(0,0,0,0.05)", overflow: "hidden", marginBottom: "12px",
-    }}>
-      <div style={{
-        padding: "14px 20px", display: "flex", alignItems: "center",
-        justifyContent: "space-between", borderBottom: "1px solid #f1f5f9",
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <span style={{ fontSize: "17px" }}>{icon}</span>
-          <span style={{ fontSize: "14px", fontWeight: 700, color: "#0f172a" }}>{title}</span>
-        </div>
-        <button onClick={onEdit} style={{
-          fontSize: "13px", fontWeight: 600, color: "#3b82f6", background: "none",
-          border: "none", cursor: "pointer", padding: "4px 10px", borderRadius: "8px",
-          fontFamily: "'DM Sans', sans-serif",
-        }}
-          onMouseEnter={e => (e.currentTarget.style.background = "#eff6ff")}
-          onMouseLeave={e => (e.currentTarget.style.background = "none")}
-        >Edit</button>
-      </div>
-      <div style={{ padding: "16px 20px" }}>{children}</div>
-    </div>
-  )
-}
+const ALL_TASKS_EDIT = [
+  { id: 'general', label: 'General cleaning' }, { id: 'hoovering', label: 'Hoovering' },
+  { id: 'mopping', label: 'Mopping' }, { id: 'bathroom', label: 'Bathroom clean' },
+  { id: 'kitchen', label: 'Kitchen clean' }, { id: 'bins', label: 'Emptying all bins' },
+  { id: 'bathroom_deep', label: 'Bathroom deep clean' }, { id: 'kitchen_deep', label: 'Kitchen deep clean' },
+  { id: 'ironing', label: 'Ironing' }, { id: 'laundry', label: 'Laundry' },
+  { id: 'changing_beds', label: 'Changing beds' }, { id: 'windows_interior', label: 'Interior windows' },
+  { id: 'fridge', label: 'Fridge clean' }, { id: 'blinds', label: 'Blinds' },
+  { id: 'skirting', label: 'Skirting boards' }, { id: 'conservatory', label: 'Conservatory' },
+]
 
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px", marginBottom: "6px" }}>
-      <span style={{ fontSize: "13px", color: "#94a3b8", flexShrink: 0 }}>{label}</span>
-      <span style={{ fontSize: "13px", color: "#1e293b", fontWeight: 500, textAlign: "right" }}>{value}</span>
-    </div>
-  )
-}
+const TIME_SLOTS = ['Morning (8am - 12pm)', 'Afternoon (12pm - 5pm)', 'Evening (5pm - 8pm)']
+const ALL_DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+const DAY_SHORT: Record<string, string> = { monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed', thursday: 'Thu', friday: 'Fri', saturday: 'Sat', sunday: 'Sun' }
 
-function Tag({ label }: { label: string }) {
-  return (
-    <span style={{
-      display: "inline-block",
-      background: "linear-gradient(135deg, #eff6ff, #dbeafe)",
-      color: "#2563eb", fontSize: "12px", fontWeight: 600,
-      padding: "4px 10px", borderRadius: "100px", margin: "3px",
-    }}>{label}</span>
-  )
-}
-
-// ── Published preview ──────────────────────────────────────────
-
-function PublishedPreview({ data, pricing, rate, hours, estimated }: {
+function EditModal({ data, onSave, onClose }: {
   data: RequestData
-  pricing: typeof PRICING[string]
-  rate: number
-  hours: number | null
-  estimated: number | null
+  onSave: (updated: Partial<RequestData>) => void
+  onClose: () => void
 }) {
-  const taskLabels = (data.tasks ?? []).map(id => TASK_LABELS[id] ?? id)
+  const [bedrooms, setBedrooms] = useState(data.bedrooms ?? 2)
+  const [bathrooms, setBathrooms] = useState(data.bathrooms ?? 1)
+  const [hours, setHours] = useState(data.hoursPerSession ?? 3)
+  const [rate, setRate] = useState(data.hourlyRate ?? 16)
+  const [days, setDays] = useState<string[]>((data.preferredDays ?? []).map(d => d.toLowerCase()))
+  const [time, setTime] = useState(data.preferredTime ?? '')
+  const [tasks, setTasks] = useState<string[]>(data.tasks ?? [])
+  const [notes, setNotes] = useState(data.sessionNotes ?? '')
+
+  const toggleDay = (d: string) => setDays(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d])
+  const toggleTask = (t: string) => setTasks(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t])
+
+  const estPerSession = (hours * rate).toFixed(2)
 
   return (
-    <div style={{
-      background: "rgba(255,255,255,0.95)", borderRadius: "24px",
-      border: "1.5px solid rgba(255,255,255,0.9)",
-      boxShadow: "0 8px 40px rgba(59,130,246,0.12)",
-      overflow: "hidden", marginBottom: "24px",
-    }}>
-      <div style={{
-        background: "linear-gradient(135deg, #1e40af, #3b82f6)",
-        padding: "14px 20px", display: "flex", alignItems: "center", justifyContent: "space-between",
-      }}>
-        <div style={{ fontSize: "12px", fontWeight: 700, color: "rgba(255,255,255,0.9)", letterSpacing: "0.06em", textTransform: "uppercase" }}>
-          📋 Your published request
-        </div>
-        <div style={{ background: "rgba(255,255,255,0.2)", borderRadius: "100px", padding: "3px 10px", fontSize: "11px", fontWeight: 700, color: "white" }}>
-          Live preview
-        </div>
-      </div>
-      <div style={{ padding: "20px" }}>
-        <div style={{ marginBottom: "16px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
-            <span style={{ fontSize: "16px" }}>📍</span>
-            <span style={{ fontSize: "17px", fontWeight: 800, color: "#0f172a" }}>
-              {data.sector || data.postcode || "Your area"}
-            </span>
-          </div>
-          <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-            {[
-              data.bedrooms ? `${data.bedrooms} bed` : null,
-              data.bathrooms ? `${data.bathrooms} bath` : null,
-              pricing.label,
-            ].filter(Boolean).map((tag, i) => (
-              <span key={i} style={{ background: "#f1f5f9", borderRadius: "100px", padding: "3px 10px", fontSize: "12px", fontWeight: 500, color: "#64748b" }}>{tag}</span>
-            ))}
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 200 }}>
+      <div style={{ background: 'white', borderRadius: '24px 24px 0 0', width: '100%', maxWidth: '640px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 -8px 40px rgba(0,0,0,0.15)', fontFamily: "'DM Sans', sans-serif" }}>
+        <div style={{ position: 'sticky', top: 0, background: 'white', borderBottom: '1px solid #f1f5f9', padding: '16px 24px', zIndex: 10 }}>
+          <div style={{ width: '40px', height: '4px', background: '#e2e8f0', borderRadius: '2px', margin: '0 auto 16px' }} />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ fontSize: '18px', fontWeight: 700, color: '#0f172a' }}>Edit your request</div>
+            <button onClick={onClose} style={{ background: '#f1f5f9', border: 'none', borderRadius: '50%', width: '32px', height: '32px', fontSize: '16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>✕</button>
           </div>
         </div>
-        {taskLabels.length > 0 && (
-          <div style={{ marginBottom: "16px" }}>
-            <div style={{ fontSize: "11px", fontWeight: 700, color: "#94a3b8", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-              What's needed
-            </div>
-            <div style={{ display: "flex", flexWrap: "wrap", margin: "-2px" }}>
-              {taskLabels.map((t, i) => (
-                <span key={i} style={{ display: "inline-block", margin: "2px", background: "linear-gradient(135deg, #f0fdf4, #dcfce7)", color: "#166534", fontSize: "12px", fontWeight: 600, padding: "4px 10px", borderRadius: "100px" }}>{t}</span>
+
+        <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
+          {/* Property */}
+          <div>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '10px' }}>Property</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {[
+                { label: 'Bedrooms', val: bedrooms, set: setBedrooms, min: 1, max: 8 },
+                { label: 'Bathrooms', val: bathrooms, set: setBathrooms, min: 1, max: 6 },
+                { label: 'Hours per session', val: hours, set: setHours, min: 1, max: 10, step: 0.5, suffix: ' hrs' },
+                { label: 'Hourly rate', val: rate, set: setRate, min: 12, max: 40, step: 0.5, prefix: '£', suffix: '/hr' },
+              ].map(({ label, val, set, min, max, step = 1, prefix = '', suffix = '' }) => (
+                <div key={label} style={{ background: '#f8fafc', borderRadius: '12px', padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '13px', fontWeight: 600, color: '#475569' }}>{label}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <button onClick={() => set((v: number) => Math.max(min, parseFloat((v - step).toFixed(2))))} disabled={val <= min} style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1.5px solid #e2e8f0', background: val <= min ? '#f8fafc' : 'white', fontSize: '18px', color: val <= min ? '#cbd5e1' : '#0f172a', cursor: val <= min ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>−</button>
+                    <span style={{ fontSize: '15px', fontWeight: 800, color: '#0f172a', minWidth: '56px', textAlign: 'center' }}>{prefix}{typeof val === 'number' && !Number.isInteger(val) ? val.toFixed(1) : val}{suffix}</span>
+                    <button onClick={() => set((v: number) => Math.min(max, parseFloat((v + step).toFixed(2))))} disabled={val >= max} style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1.5px solid #e2e8f0', background: val >= max ? '#f8fafc' : 'white', fontSize: '18px', color: val >= max ? '#cbd5e1' : '#0f172a', cursor: val >= max ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
+                  </div>
+                </div>
               ))}
             </div>
-          </div>
-        )}
-        {(data.preferredDays?.length || data.preferredTime) && (
-          <div style={{ marginBottom: "16px" }}>
-            <div style={{ fontSize: "11px", fontWeight: 700, color: "#94a3b8", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-              Preferred schedule
-            </div>
-            <div style={{ fontSize: "13px", color: "#475569" }}>
-              {data.preferredDays?.length ? data.preferredDays.join(", ") : "Flexible on days"}
-              {data.preferredTime ? ` · ${data.preferredTime}` : ""}
+            <div style={{ marginTop: '8px', padding: '10px 14px', background: '#fefce8', border: '1px solid #fef08a', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+              <span style={{ color: '#92400e', fontWeight: 600 }}>Est. per session</span>
+              <span style={{ color: '#78350f', fontWeight: 800 }}>~£{estPerSession}</span>
             </div>
           </div>
-        )}
-        <div style={{ background: "linear-gradient(135deg, #fefce8, rgba(254,240,138,0.2))", border: "1.5px solid #fef08a", borderRadius: "14px", padding: "14px 16px", display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+
+          {/* Tasks */}
           <div>
-            <div style={{ fontSize: "11px", color: "#92400e", fontWeight: 600 }}>Offered rate</div>
-            <div style={{ fontSize: "22px", fontWeight: 800, color: "#78350f" }}>
-              £{rate.toFixed(2)}<span style={{ fontSize: "13px", fontWeight: 500 }}>/hr</span>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '10px' }}>Tasks</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              {ALL_TASKS_EDIT.map(task => {
+                const sel = tasks.includes(task.id)
+                return (
+                  <button key={task.id} onClick={() => toggleTask(task.id)} style={{ padding: '7px 14px', borderRadius: '100px', fontSize: '13px', fontWeight: 600, border: sel ? '2px solid #22c55e' : '1.5px solid #e2e8f0', background: sel ? '#f0fdf4' : 'white', color: sel ? '#15803d' : '#64748b', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
+                    {task.label}
+                  </button>
+                )
+              })}
             </div>
-            {hours && <div style={{ fontSize: "12px", color: "#92400e", marginTop: "2px" }}>~{hours} hrs per session</div>}
           </div>
-          {estimated && (
-            <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: "11px", color: "#92400e", fontWeight: 600 }}>Est. per session</div>
-              <div style={{ fontSize: "18px", fontWeight: 700, color: "#78350f" }}>~£{estimated.toFixed(2)}</div>
+
+          {/* Schedule */}
+          <div>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '10px' }}>Preferred days</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
+              {ALL_DAYS.map(day => {
+                const sel = days.includes(day)
+                return <button key={day} onClick={() => toggleDay(day)} style={{ padding: '7px 14px', borderRadius: '100px', fontSize: '13px', fontWeight: 600, border: sel ? '2px solid #3b82f6' : '1.5px solid #e2e8f0', background: sel ? '#eff6ff' : 'white', color: sel ? '#1d4ed8' : '#64748b', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>{DAY_SHORT[day]}</button>
+              })}
             </div>
-          )}
-        </div>
-        <div style={{ marginTop: "12px", padding: "10px 14px", background: "rgba(59,130,246,0.06)", borderRadius: "10px", display: "flex", gap: "8px" }}>
-          <span style={{ fontSize: "13px", flexShrink: 0 }}>🔒</span>
-          <span style={{ fontSize: "12px", color: "#475569", lineHeight: 1.5 }}>
-            Your full address is never shown on your listing.
-          </span>
-        </div>
-      </div>
-    </div>
-  )
-}
+            <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '10px' }}>Preferred time</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
+              {TIME_SLOTS.map(slot => {
+                const sel = time === slot
+                return <button key={slot} onClick={() => setTime(sel ? '' : slot)} style={{ padding: '7px 14px', borderRadius: '100px', fontSize: '13px', fontWeight: 600, border: sel ? '2px solid #3b82f6' : '1.5px solid #e2e8f0', background: sel ? '#eff6ff' : 'white', color: sel ? '#1d4ed8' : '#64748b', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>{slot}</button>
+              })}
+            </div>
+          </div>
 
-// ── Confirmation popup ─────────────────────────────────────────
+          {/* Notes */}
+          <div>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '10px' }}>Notes for your cleaner</div>
+            <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="e.g. focus extra time on the kitchen, avoid the top floor on alternate weeks…" style={{ width: '100%', padding: '11px 14px', border: '1.5px solid #e2e8f0', borderRadius: '12px', fontSize: '13px', fontFamily: "'DM Sans', sans-serif", resize: 'vertical', minHeight: '72px', outline: 'none', color: '#0f172a', boxSizing: 'border-box' }} />
+          </div>
 
-function ConfirmationPopup({ onConfirm, onCancel, isPublishing }: {
-  onConfirm: () => void; onCancel: () => void; isPublishing: boolean
-}) {
-  const [checks, setChecks] = useState({ rate: false, details: false, directDebit: false, address: false })
-  const allChecked = Object.values(checks).every(Boolean)
-  const toggle = (k: keyof typeof checks) => setChecks(p => ({ ...p, [k]: !p[k] }))
-
-  const items: [keyof typeof checks, string][] = [
-    ["rate",        "I'm happy with the hourly rate I've advertised"],
-    ["details",     "My tasks and property details are accurate"],
-    ["directDebit", "I understand my Direct Debit only starts once I've chosen a cleaner and confirmed a start date"],
-    ["address",     "I will share my full address directly with my chosen cleaner before the first session"],
-  ]
-
-  return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(15,23,42,0.6)", backdropFilter: "blur(6px)", display: "flex", alignItems: "flex-end", justifyContent: "center", padding: "0 16px 32px" }}>
-      <div style={{ width: "100%", maxWidth: "520px", background: "white", borderRadius: "28px", padding: "28px 24px 24px", boxShadow: "0 -8px 40px rgba(0,0,0,0.15)", animation: "slideUp 0.3s ease" }}>
-        <style>{`@keyframes slideUp { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }`}</style>
-        <div style={{ textAlign: "center", marginBottom: "20px" }}>
-          <div style={{ fontSize: "36px", marginBottom: "10px" }}>🚀</div>
-          <h3 style={{ fontSize: "20px", fontWeight: 800, color: "#0f172a", margin: "0 0 6px" }}>Ready to go live?</h3>
-          <p style={{ fontSize: "14px", color: "#64748b", margin: 0, lineHeight: 1.5 }}>
-            Cleaners in your area will be able to see and apply to your request.
-          </p>
-        </div>
-        <div style={{ background: "#f8fafc", borderRadius: "16px", padding: "16px", marginBottom: "16px", display: "flex", flexDirection: "column", gap: "12px" }}>
-          <div style={{ fontSize: "11px", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em" }}>Confirm before publishing</div>
-          {items.map(([key, label]) => (
-            <label key={key} style={{ display: "flex", gap: "12px", alignItems: "flex-start", cursor: "pointer" }}>
-              <div onClick={() => toggle(key)} style={{ width: "22px", height: "22px", borderRadius: "6px", flexShrink: 0, marginTop: "1px", border: checks[key] ? "2px solid #3b82f6" : "2px solid #cbd5e1", background: checks[key] ? "linear-gradient(135deg, #3b82f6, #2563eb)" : "white", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.15s ease", cursor: "pointer" }}>
-                {checks[key] && <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M2.5 7L5.5 10L11.5 4" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-              </div>
-              <span style={{ fontSize: "13px", color: "#374151", lineHeight: 1.5 }}>{label}</span>
-            </label>
-          ))}
-        </div>
-        <div style={{ background: "linear-gradient(135deg, #fef2f2, #fee2e2)", border: "1.5px solid #fca5a5", borderRadius: "12px", padding: "10px 14px", marginBottom: "20px", display: "flex", gap: "8px" }}>
-          <span style={{ fontSize: "13px", flexShrink: 0 }}>⚠️</span>
-          <span style={{ fontSize: "12px", color: "#991b1b", lineHeight: 1.5 }}>You can pause or remove your request at any time from your dashboard.</span>
-        </div>
-        <div style={{ display: "flex", gap: "10px" }}>
-          <button onClick={onCancel} disabled={isPublishing} style={{ flex: 1, padding: "14px", borderRadius: "14px", border: "1.5px solid #e2e8f0", background: "white", fontSize: "15px", fontWeight: 600, color: "#64748b", cursor: isPublishing ? "not-allowed" : "pointer", fontFamily: "'DM Sans', sans-serif" }}>
-            Go back
-          </button>
           <button
-            onClick={allChecked && !isPublishing ? onConfirm : undefined}
-            style={{ flex: 2, padding: "14px", borderRadius: "14px", border: "none", background: allChecked && !isPublishing ? "linear-gradient(135deg, #16a34a, #22c55e)" : "#e2e8f0", color: allChecked && !isPublishing ? "white" : "#94a3b8", fontSize: "15px", fontWeight: 700, cursor: allChecked && !isPublishing ? "pointer" : "not-allowed", fontFamily: "'DM Sans', sans-serif", boxShadow: allChecked && !isPublishing ? "0 4px 16px rgba(22,163,74,0.3)" : "none", transition: "all 0.2s ease" }}
+            onClick={() => onSave({ bedrooms, bathrooms, hoursPerSession: hours, hourlyRate: rate, preferredDays: days, preferredTime: time, tasks, sessionNotes: notes })}
+            style={{ width: '100%', padding: '14px', background: '#0f172a', color: 'white', border: 'none', borderRadius: '12px', fontSize: '15px', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
           >
-            {isPublishing ? "Publishing…" : "🚀 Go live"}
+            Save changes
           </button>
         </div>
-        {!allChecked && !isPublishing && (
-          <p style={{ textAlign: "center", fontSize: "12px", color: "#94a3b8", marginTop: "10px" }}>Tick all four to continue</p>
-        )}
       </div>
     </div>
   )
 }
 
-// ── Main page ──────────────────────────────────────────────────
+// ── Main page ──────────────────────────────────────────────────────────────────
 
 export default function ReviewPublishPage() {
   const router = useRouter()
   const [data, setData] = useState<RequestData | null>(null)
-  const [showPopup, setShowPopup] = useState(false)
+  const [showEdit, setShowEdit] = useState(false)
   const [isPublishing, setIsPublishing] = useState(false)
   const [published, setPublished] = useState(false)
   const [publishedZone, setPublishedZone] = useState<string>("")
   const [userId, setUserId] = useState<string | null>(null)
   const [authChecked, setAuthChecked] = useState(false)
-  const publishLock = useRef(false) // Prevents double-publish
+  const publishLock = useRef(false)
 
-  // ── On mount: restore data + check auth ─────────────────────
   useEffect(() => {
     const loaded = getRequestData()
-    if (!loaded) {
-      router.push("/request/property")
-      return
-    }
+    if (!loaded) { router.push("/request/property"); return }
     setData(loaded)
 
-    // Check if already published this session
-    const alreadyPublishedId = getPublishedId()
-    if (alreadyPublishedId) {
+    if (getPublishedId()) {
       setPublished(true)
       setPublishedZone(loaded.sector ?? loaded.postcode ?? "your area")
       return
     }
 
-    // Check auth state (handles OAuth redirect return)
     const supabase = createClient()
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setUserId(session.user.id)
-      }
+      if (session?.user) setUserId(session.user.id)
       setAuthChecked(true)
     })
 
-    // Listen for auth changes (OAuth provider switches, login events)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        setUserId(session.user.id)
-      } else {
-        setUserId(null)
-      }
+      if (session?.user) setUserId(session.user.id)
+      else setUserId(null)
     })
 
     return () => subscription.unsubscribe()
   }, [router])
 
-  // ── Publish handler ──────────────────────────────────────────
+  const handleSaveEdit = (updated: Partial<RequestData>) => {
+    const newData = { ...data, ...updated }
+    setData(newData)
+    try {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(newData))
+      localStorage.setItem(BACKUP_KEY, JSON.stringify(newData))
+    } catch {}
+    setShowEdit(false)
+  }
+
   const handlePublish = async () => {
-    // Guard: prevent double-publish
     if (publishLock.current || isPublishing) return
     publishLock.current = true
-
     if (!data) { publishLock.current = false; return }
     if (!userId) {
       toast.error("Please sign in before publishing.")
-      setShowPopup(false)
-      router.push("/auth/login?redirectTo=/request/review")
+      router.push("/auth/login?redirectTo=/request/preview")
       publishLock.current = false
       return
     }
-
-    setShowPopup(false)
     setIsPublishing(true)
-
     try {
       const requestId = await publishRequest(data, userId)
-
-      // Mark as published so page refresh doesn't re-publish
       setPublishedId(requestId)
-
-      // Clear the form data
       clearRequestData()
-
       setPublishedZone(data.sector ?? data.postcode ?? "your area")
       setPublished(true)
       toast.success("Your request is live!")
     } catch (err: any) {
-      console.error("Publish error:", err)
       toast.error(err.message ?? "Something went wrong. Please try again.")
       publishLock.current = false
     } finally {
@@ -498,14 +345,12 @@ export default function ReviewPublishPage() {
     }
   }
 
-  // ── Loading state ────────────────────────────────────────────
   if (!data || !authChecked) return (
     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'DM Sans', sans-serif" }}>
       <div style={{ fontSize: "14px", color: "#94a3b8" }}>Loading…</div>
     </div>
   )
 
-  // ── Success state ────────────────────────────────────────────
   if (published) return (
     <div style={{ minHeight: "100vh", background: "linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'DM Sans', sans-serif", padding: "24px", textAlign: "center" }}>
       <div style={{ maxWidth: "400px" }}>
@@ -515,7 +360,7 @@ export default function ReviewPublishPage() {
           Your request is now visible to cleaners in {publishedZone}. You'll be notified as soon as someone applies.
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-          <button onClick={() => router.push("/dashboard")} style={{ padding: "16px 32px", borderRadius: "14px", border: "none", background: "linear-gradient(135deg, #2563eb, #3b82f6)", color: "white", fontSize: "16px", fontWeight: 700, fontFamily: "'DM Sans', sans-serif", cursor: "pointer", boxShadow: "0 4px 20px rgba(37,99,235,0.35)" }}>
+          <button onClick={() => router.push("/customer/dashboard")} style={{ padding: "16px 32px", borderRadius: "14px", border: "none", background: "linear-gradient(135deg, #2563eb, #3b82f6)", color: "white", fontSize: "16px", fontWeight: 700, fontFamily: "'DM Sans', sans-serif", cursor: "pointer", boxShadow: "0 4px 20px rgba(37,99,235,0.35)" }}>
             Go to my dashboard →
           </button>
           <Link href="/jobs" style={{ padding: "14px 32px", borderRadius: "14px", border: "1.5px solid #e2e8f0", background: "white", color: "#64748b", fontSize: "14px", fontWeight: 600, fontFamily: "'DM Sans', sans-serif", textDecoration: "none", display: "block" }}>
@@ -526,136 +371,179 @@ export default function ReviewPublishPage() {
     </div>
   )
 
-  // ── Derive display values ────────────────────────────────────
   const pricing = PRICING[data.frequency ?? ""] ?? PRICING.fortnightly
   const taskLabels = (data.tasks ?? []).map(id => TASK_LABELS[id] ?? id)
   const rate = typeof data.hourlyRate === "number" ? data.hourlyRate : 0
   const hours = typeof data.hoursPerSession === "number" ? data.hoursPerSession : null
-  const estimated = rate > 0 && hours ? rate * hours : null
+  const estPerSession = rate > 0 && hours ? rate * hours : null
+  const daysLabel = data.preferredDays?.length ? data.preferredDays.map(d => d.slice(0,3)).join(' · ') : null
 
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%)", fontFamily: "'DM Sans', sans-serif", padding: "24px 16px 48px" }}>
-      <div style={{ maxWidth: "600px", margin: "0 auto" }}>
+    <>
+      <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+      <div style={{ minHeight: "100vh", background: "linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%)", fontFamily: "'DM Sans', sans-serif", padding: "24px 16px 48px" }}>
+        <div style={{ maxWidth: "540px", margin: "0 auto" }}>
 
-        {/* Progress */}
-        <div style={{ marginBottom: "28px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
-            <div style={{ fontSize: "13px", fontWeight: 600, color: "#3b82f6", letterSpacing: "0.05em", textTransform: "uppercase" }}>Step 5 of 5</div>
-            <div style={{ fontSize: "12px", fontWeight: 600, color: "#22c55e", background: "#f0fdf4", padding: "2px 10px", borderRadius: "100px" }}>Almost there!</div>
-          </div>
-          <div style={{ height: "4px", background: "#e2e8f0", borderRadius: "100px", overflow: "hidden" }}>
-            <div style={{ height: "100%", width: "100%", background: "linear-gradient(90deg, #3b82f6, #22c55e)", borderRadius: "100px" }} />
-          </div>
-        </div>
-
-        {/* Header */}
-        <div style={{ marginBottom: "24px" }}>
-          <h1 style={{ fontSize: "28px", fontWeight: 800, color: "#0f172a", margin: "0 0 8px", lineHeight: 1.2 }}>Review & publish</h1>
-          <p style={{ fontSize: "15px", color: "#64748b", lineHeight: 1.6, margin: 0 }}>
-            Check everything looks right, then publish your request for cleaners to see.
-          </p>
-        </div>
-
-        {/* Not signed in warning */}
-        {!userId && (
-          <div style={{ background: "#fffbeb", border: "1.5px solid #fcd34d", borderRadius: "16px", padding: "14px 18px", marginBottom: "20px", display: "flex", gap: "10px", alignItems: "flex-start" }}>
-            <span style={{ fontSize: "16px", flexShrink: 0 }}>⚠️</span>
-            <div>
-              <div style={{ fontSize: "14px", fontWeight: 700, color: "#92400e", marginBottom: "4px" }}>You're not signed in</div>
-              <div style={{ fontSize: "13px", color: "#a16207", lineHeight: 1.5 }}>
-                Your request details are saved. <Link href="/request/preview" style={{ color: "#2563eb", fontWeight: 600, textDecoration: "none" }}>Sign in or create an account</Link> to publish.
-              </div>
+          {/* Progress */}
+          <div style={{ marginBottom: "28px" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
+              <div style={{ fontSize: "13px", fontWeight: 600, color: "#3b82f6", letterSpacing: "0.05em", textTransform: "uppercase" }}>Almost there</div>
+              <button onClick={() => router.back()} style={{ fontSize: "13px", fontWeight: 600, color: "#94a3b8", background: "none", border: "none", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>← Back</button>
+            </div>
+            <div style={{ height: "4px", background: "#e2e8f0", borderRadius: "100px", overflow: "hidden" }}>
+              <div style={{ height: "100%", width: "100%", background: "linear-gradient(90deg, #3b82f6, #22c55e)", borderRadius: "100px" }} />
             </div>
           </div>
-        )}
 
-        {/* Preview */}
-        <PublishedPreview data={data} pricing={pricing} rate={rate} hours={hours} estimated={estimated} />
-
-        {/* Editable sections */}
-        <div style={{ fontSize: "12px", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "12px" }}>Your details</div>
-
-        <SectionCard title="Property" icon="🏠" onEdit={() => router.push("/request/property")}>
-          <Row label="Area" value={data.sector || data.postcode || "—"} />
-          <Row label="Bedrooms" value={data.bedrooms ? `${data.bedrooms}` : "—"} />
-          <Row label="Bathrooms" value={data.bathrooms ? `${data.bathrooms}` : "—"} />
-          <div style={{ marginTop: "10px", padding: "10px 12px", background: "rgba(59,130,246,0.06)", borderRadius: "10px", display: "flex", gap: "8px" }}>
-            <span style={{ fontSize: "13px" }}>🔒</span>
-            <span style={{ fontSize: "12px", color: "#64748b", lineHeight: 1.5 }}>Your full address is not shown on your listing.</span>
+          {/* Header */}
+          <div style={{ marginBottom: "24px" }}>
+            <h1 style={{ fontSize: "26px", fontWeight: 800, color: "#0f172a", margin: "0 0 6px" }}>Here's your listing</h1>
+            <p style={{ fontSize: "14px", color: "#64748b", margin: 0 }}>This is exactly what cleaners will see. Happy with it? Go live.</p>
           </div>
-        </SectionCard>
 
-        <SectionCard title="What needs doing" icon="✅" onEdit={() => router.push("/request/property")}>
-          {taskLabels.length > 0
-            ? <div style={{ display: "flex", flexWrap: "wrap", margin: "-3px" }}>{taskLabels.map((t, i) => <Tag key={i} label={t} />)}</div>
-            : <span style={{ fontSize: "13px", color: "#94a3b8" }}>No tasks selected</span>}
-        </SectionCard>
-
-        <SectionCard title="Schedule preference" icon="📅" onEdit={() => router.push("/request/property")}>
-          <Row label="Days" value={data.preferredDays?.length ? data.preferredDays.join(", ") : "No preference"} />
-          <Row label="Time" value={data.preferredTime || "No preference"} />
-          {data.scheduleNotes && (
-            <div style={{ marginTop: "8px" }}>
-              <div style={{ fontSize: "12px", color: "#94a3b8", marginBottom: "4px" }}>Notes</div>
-              <div style={{ fontSize: "13px", color: "#475569", fontStyle: "italic" }}>"{data.scheduleNotes}"</div>
+          {/* Not signed in warning */}
+          {!userId && (
+            <div style={{ background: "#fffbeb", border: "1.5px solid #fcd34d", borderRadius: "16px", padding: "14px 18px", marginBottom: "20px", display: "flex", gap: "10px", alignItems: "flex-start" }}>
+              <span style={{ fontSize: "16px", flexShrink: 0 }}>⚠️</span>
+              <div>
+                <div style={{ fontSize: "14px", fontWeight: 700, color: "#92400e", marginBottom: "4px" }}>You're not signed in</div>
+                <div style={{ fontSize: "13px", color: "#a16207", lineHeight: 1.5 }}>
+                  <Link href="/request/preview" style={{ color: "#2563eb", fontWeight: 600, textDecoration: "none" }}>Sign in or create an account</Link> to publish your request.
+                </div>
+              </div>
             </div>
           )}
-        </SectionCard>
 
-        <SectionCard title="Payments" icon="💷" onEdit={() => router.push("/request/frequency")}>
-          <div style={{ background: "linear-gradient(135deg, #f0fdf4, #dcfce7)", borderRadius: "14px", padding: "14px 16px" }}>
-            <div style={{ fontSize: "11px", fontWeight: 700, color: "#166534", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "6px" }}>Paid directly to your cleaner</div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+          {/* Preview card */}
+          <div style={{ background: "white", borderRadius: "20px", border: "1.5px solid #e2e8f0", boxShadow: "0 4px 24px rgba(0,0,0,0.07)", overflow: "hidden", marginBottom: "16px" }}>
+
+            {/* Card header */}
+            <div style={{ background: "linear-gradient(135deg, #1e40af, #3b82f6)", padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div>
-                <div style={{ fontSize: "24px", fontWeight: 800, color: "#166534" }}>
-                  {rate > 0 ? `£${rate.toFixed(2)}` : "Not set"}<span style={{ fontSize: "13px", fontWeight: 500 }}>{rate > 0 ? "/hr" : ""}</span>
+                <div style={{ fontSize: "11px", fontWeight: 700, color: "rgba(255,255,255,0.7)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "2px" }}>Your listing preview</div>
+                <div style={{ fontSize: "18px", fontWeight: 800, color: "white" }}>
+                  📍 {data.sector || data.postcode || "Your area"}
                 </div>
-                {hours && <div style={{ fontSize: "12px", color: "#16a34a", marginTop: "2px" }}>~{hours} hrs per session</div>}
               </div>
-              {estimated && (
-                <div style={{ textAlign: "right" }}>
-                  <div style={{ fontSize: "11px", color: "#16a34a", fontWeight: 600 }}>Est. per session</div>
-                  <div style={{ fontSize: "20px", fontWeight: 800, color: "#166534" }}>~£{estimated.toFixed(2)}</div>
+              <button
+                onClick={() => setShowEdit(true)}
+                style={{ background: "rgba(255,255,255,0.15)", border: "1.5px solid rgba(255,255,255,0.3)", borderRadius: "10px", padding: "8px 16px", fontSize: "13px", fontWeight: 700, color: "white", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}
+              >
+                ✏️ Edit
+              </button>
+            </div>
+
+            <div style={{ padding: "20px" }}>
+
+              {/* Property + schedule chips */}
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "16px" }}>
+                {data.bedrooms && <span style={{ background: "#f1f5f9", borderRadius: "100px", padding: "4px 12px", fontSize: "12px", fontWeight: 600, color: "#475569" }}>{data.bedrooms} bed</span>}
+                {data.bathrooms && <span style={{ background: "#f1f5f9", borderRadius: "100px", padding: "4px 12px", fontSize: "12px", fontWeight: 600, color: "#475569" }}>{data.bathrooms} bath</span>}
+                {hours && <span style={{ background: "#f1f5f9", borderRadius: "100px", padding: "4px 12px", fontSize: "12px", fontWeight: 600, color: "#475569" }}>{hours} hrs</span>}
+                {pricing && <span style={{ background: "#f1f5f9", borderRadius: "100px", padding: "4px 12px", fontSize: "12px", fontWeight: 600, color: "#475569" }}>{pricing.label}</span>}
+                {daysLabel && <span style={{ background: "#f1f5f9", borderRadius: "100px", padding: "4px 12px", fontSize: "12px", fontWeight: 600, color: "#475569" }}>{daysLabel}</span>}
+                {data.preferredTime && <span style={{ background: "#f1f5f9", borderRadius: "100px", padding: "4px 12px", fontSize: "12px", fontWeight: 600, color: "#475569" }}>{data.preferredTime}</span>}
+              </div>
+
+              {/* Tasks */}
+              {taskLabels.length > 0 && (
+                <div style={{ marginBottom: "16px" }}>
+                  <div style={{ fontSize: "11px", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "8px" }}>Tasks</div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                    {taskLabels.map((t, i) => (
+                      <span key={i} style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#15803d", fontSize: "12px", fontWeight: 600, padding: "4px 10px", borderRadius: "100px" }}>{t}</span>
+                    ))}
+                  </div>
                 </div>
               )}
+
+              {/* Notes */}
+              {(data.sessionNotes || data.scheduleNotes) && (
+                <div style={{ marginBottom: "16px", padding: "10px 14px", background: "#f8fafc", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
+                  <div style={{ fontSize: "11px", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "4px" }}>Notes</div>
+                  <div style={{ fontSize: "13px", color: "#475569", fontStyle: "italic" }}>"{data.sessionNotes || data.scheduleNotes}"</div>
+                </div>
+              )}
+
+              {/* Address privacy notice */}
+              <div style={{ padding: "10px 14px", background: "rgba(59,130,246,0.05)", borderRadius: "10px", display: "flex", gap: "8px" }}>
+                <span style={{ fontSize: "13px", flexShrink: 0 }}>🔒</span>
+                <span style={{ fontSize: "12px", color: "#475569", lineHeight: 1.5 }}>Only your area is shown publicly. Your full address is only shared with your chosen cleaner.</span>
+              </div>
             </div>
           </div>
-        </SectionCard>
 
-        {/* What happens next */}
-        <div style={{ background: "rgba(255,255,255,0.7)", backdropFilter: "blur(16px)", borderRadius: "20px", padding: "20px", border: "1.5px solid rgba(255,255,255,0.9)", marginBottom: "24px" }}>
-          <div style={{ fontSize: "14px", fontWeight: 700, color: "#0f172a", marginBottom: "14px" }}>What happens next</div>
-          {[
-            { icon: "👀", text: "Cleaners in your area see your request and can apply" },
-            { icon: "📩", text: "You're notified when someone applies — accept or decline each one" },
-            { icon: "💬", text: "Open a chat with cleaners you're interested in before committing" },
-            { icon: "✅", text: "Choose your cleaner, confirm a start date — your Direct Debit begins then" },
-          ].map((step, i) => (
-            <div key={i} style={{ display: "flex", gap: "12px", alignItems: "flex-start", marginBottom: i < 3 ? "10px" : 0 }}>
-              <span style={{ fontSize: "17px", flexShrink: 0 }}>{step.icon}</span>
-              <span style={{ fontSize: "13px", color: "#475569", lineHeight: 1.5 }}>{step.text}</span>
+          {/* Payment summary */}
+          <div style={{ background: "white", borderRadius: "20px", border: "1.5px solid #e2e8f0", padding: "20px", marginBottom: "24px", boxShadow: "0 2px 12px rgba(0,0,0,0.05)" }}>
+            <div style={{ fontSize: "13px", fontWeight: 700, color: "#0f172a", marginBottom: "14px" }}>💷 Payment summary</div>
+
+            {/* Cleaner payment — primary */}
+            <div style={{ background: "#fefce8", border: "1px solid #fef08a", borderRadius: "12px", padding: "14px 16px", marginBottom: "10px" }}>
+              <div style={{ fontSize: "11px", fontWeight: 700, color: "#92400e", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "8px" }}>Paid directly to your cleaner</div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+                <div>
+                  <div style={{ fontSize: "22px", fontWeight: 800, color: "#78350f", lineHeight: 1 }}>
+                    £{rate > 0 ? rate.toFixed(2) : "—"}<span style={{ fontSize: "13px", fontWeight: 500 }}>/hr</span>
+                  </div>
+                  {hours && <div style={{ fontSize: "12px", color: "#92400e", marginTop: "3px" }}>{hours} hrs per session</div>}
+                </div>
+                {estPerSession && (
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontSize: "11px", color: "#92400e", fontWeight: 600 }}>Est. per session</div>
+                    <div style={{ fontSize: "18px", fontWeight: 800, color: "#78350f" }}>~£{estPerSession.toFixed(2)}</div>
+                  </div>
+                )}
+              </div>
             </div>
-          ))}
+
+            {/* Vouchee fee — secondary */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", background: "#f8fafc", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
+              <div>
+                <div style={{ fontSize: "12px", fontWeight: 600, color: "#475569" }}>Vouchee platform fee</div>
+                <div style={{ fontSize: "11px", color: "#94a3b8", marginTop: "2px" }}>{pricing.label} plan · billed monthly</div>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <div style={{ fontSize: "15px", fontWeight: 700, color: "#64748b" }}>£{pricing.pricePerSession.toFixed(2)}/clean</div>
+                <div style={{ fontSize: "11px", color: "#94a3b8" }}>£{pricing.monthlyCharge.toFixed(2)}/month</div>
+              </div>
+            </div>
+
+            <p style={{ fontSize: "11px", color: "#94a3b8", margin: "10px 0 0", lineHeight: 1.5 }}>
+              Your Direct Debit doesn't start until you've chosen your cleaner and confirmed a start date.
+            </p>
+          </div>
+
+          {/* Go live CTA */}
+          <button
+            onClick={() => userId ? handlePublish() : router.push("/auth/login?redirectTo=/request/preview")}
+            disabled={isPublishing}
+            style={{
+              width: "100%", padding: "20px", borderRadius: "16px", border: "none",
+              background: isPublishing ? "#e2e8f0" : "linear-gradient(135deg, #16a34a, #22c55e)",
+              color: isPublishing ? "#94a3b8" : "white",
+              fontSize: "18px", fontWeight: 800,
+              fontFamily: "'Plus Jakarta Sans', sans-serif",
+              cursor: isPublishing ? "not-allowed" : "pointer",
+              boxShadow: isPublishing ? "none" : "0 6px 24px rgba(22,163,74,0.35)",
+              transition: "all 0.2s ease",
+            }}
+            onMouseEnter={e => { if (!isPublishing) (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-2px)" }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = "translateY(0)" }}
+          >
+            {isPublishing ? "Publishing…" : userId ? "🚀 Go live" : "Sign in to publish →"}
+          </button>
+
+          <p style={{ textAlign: "center", fontSize: "12px", color: "#94a3b8", marginTop: "12px", lineHeight: 1.5 }}>
+            You can pause or remove your listing at any time from your dashboard.{" "}
+            <Link href="/legal/terms" style={{ color: "#3b82f6", textDecoration: "none" }}>Full terms</Link>
+          </p>
+
         </div>
-
-        {/* Publish CTA */}
-        <button
-        onClick={() => userId ? setShowPopup(true) : router.push("/auth/login?redirectTo=/request/review")}
-          disabled={isPublishing}
-          style={{ width: "100%", padding: "20px", borderRadius: "16px", border: "none", background: isPublishing ? "#e2e8f0" : "linear-gradient(135deg, #16a34a, #22c55e)", color: isPublishing ? "#94a3b8" : "white", fontSize: "18px", fontWeight: 800, fontFamily: "'DM Sans', sans-serif", cursor: isPublishing ? "not-allowed" : "pointer", boxShadow: isPublishing ? "none" : "0 6px 24px rgba(22,163,74,0.35)", transition: "all 0.25s ease" }}
-          onMouseEnter={e => { if (!isPublishing) (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-2px)" }}
-          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = "translateY(0)" }}
-        >
-          {isPublishing ? "Publishing…" : userId ? "🚀 Publish my request" : "Sign in to publish →"}
-        </button>
-
-        <p style={{ textAlign: "center", fontSize: "12px", color: "#94a3b8", marginTop: "12px", lineHeight: 1.5 }}>
-          Your Direct Debit does not start until you've accepted a cleaner.{" "}
-          <Link href="/legal/terms" style={{ color: "#3b82f6", textDecoration: "none", fontWeight: 500 }}>Full terms</Link>
-        </p>
       </div>
 
-      {showPopup && <ConfirmationPopup onConfirm={handlePublish} onCancel={() => setShowPopup(false)} isPublishing={isPublishing} />}
-    </div>
+      {showEdit && (
+        <EditModal data={data} onSave={handleSaveEdit} onClose={() => setShowEdit(false)} />
+      )}
+    </>
   )
 }
