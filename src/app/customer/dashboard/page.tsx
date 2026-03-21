@@ -112,7 +112,7 @@ const FREQUENCY_LABEL: Record<Frequency, string> = {
   weekly: 'Weekly', fortnightly: 'Fortnightly', monthly: 'Monthly',
 }
 
-const TIME_SLOTS = ['Morning (8am - 12pm)', 'Afternoon (12pm - 5pm)', 'Evening (5pm - 8pm)', 'Flexible']
+const TIME_SLOTS = ['Morning (8am - 12pm)', 'During the day (8am - 5pm)', 'Afternoon (12pm - 5pm)', 'Evening (5pm - 8pm)', 'Flexible']
 const ALL_DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
 const DAY_SHORT: Record<string, string> = {
   monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed',
@@ -211,7 +211,6 @@ function ChatPanel({ conversation, currentUserId, onClose }: {
     }
     loadMessages()
 
-    // Realtime subscription
     const channel = supabase
       .channel(`messages:${conversation.id}`)
       .on('postgres_changes', {
@@ -233,17 +232,14 @@ function ChatPanel({ conversation, currentUserId, onClose }: {
 
   const handleSend = async () => {
     if (!input.trim() || sending) return
-
     if (checkWatchlist(input)) {
       setShowWarning(true)
       setWarningShown(true)
       return
     }
-
     setSending(true)
     const content = input.trim()
     setInput('')
-
     await (supabase as any).from('messages').insert({
       conversation_id: conversation.id,
       sender_id: currentUserId,
@@ -256,20 +252,8 @@ function ChatPanel({ conversation, currentUserId, onClose }: {
   const displayName = conversation.cleaner_name ?? 'Your cleaner'
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, zIndex: 300,
-      background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)',
-      display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-    }}>
-      <div style={{
-        width: '100%', maxWidth: '680px',
-        height: '85vh', background: 'white',
-        borderRadius: '20px 20px 0 0',
-        display: 'flex', flexDirection: 'column',
-        boxShadow: '0 -8px 40px rgba(0,0,0,0.15)',
-        fontFamily: "'DM Sans', sans-serif",
-      }}>
-        {/* Header */}
+    <div style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+      <div style={{ width: '100%', maxWidth: '680px', height: '85vh', background: 'white', borderRadius: '20px 20px 0 0', display: 'flex', flexDirection: 'column', boxShadow: '0 -8px 40px rgba(0,0,0,0.15)', fontFamily: "'DM Sans', sans-serif" }}>
         <div style={{ padding: '16px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', fontWeight: 800, color: 'white' }}>
@@ -277,15 +261,11 @@ function ChatPanel({ conversation, currentUserId, onClose }: {
             </div>
             <div>
               <div style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a' }}>{displayName}</div>
-              <div style={{ fontSize: '12px', color: '#94a3b8' }}>
-                {conversation.cleaner_zone ? ZONE_LABELS[conversation.cleaner_zone] ?? conversation.cleaner_zone : 'Horsham'}
-              </div>
+              <div style={{ fontSize: '12px', color: '#94a3b8' }}>{conversation.cleaner_zone ? ZONE_LABELS[conversation.cleaner_zone] ?? conversation.cleaner_zone : 'Horsham'}</div>
             </div>
           </div>
           <button onClick={onClose} style={{ background: '#f1f5f9', border: 'none', borderRadius: '50%', width: '32px', height: '32px', fontSize: '16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>✕</button>
         </div>
-
-        {/* Safety warning */}
         {showWarning && (
           <div style={{ padding: '12px 16px', background: '#fffbeb', borderBottom: '1px solid #fde68a', display: 'flex', gap: '10px', alignItems: 'flex-start', flexShrink: 0 }}>
             <span style={{ fontSize: '16px', flexShrink: 0 }}>⚠️</span>
@@ -296,8 +276,6 @@ function ChatPanel({ conversation, currentUserId, onClose }: {
             <button onClick={() => { setShowWarning(false); setSending(false) }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#92400e', fontSize: '16px', flexShrink: 0 }}>✕</button>
           </div>
         )}
-
-        {/* Messages */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
           {loading ? (
             <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: '13px', paddingTop: '40px' }}>Loading messages…</div>
@@ -312,15 +290,9 @@ function ChatPanel({ conversation, currentUserId, onClose }: {
               const isMe = msg.sender_role === 'customer'
               return (
                 <div key={msg.id} style={{ display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start', marginBottom: '12px' }}>
-                  <div style={{
-                    maxWidth: '75%', padding: '10px 14px', borderRadius: isMe ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                    background: isMe ? '#2563eb' : '#f1f5f9',
-                    color: isMe ? 'white' : '#0f172a', fontSize: '14px', lineHeight: 1.5,
-                  }}>
+                  <div style={{ maxWidth: '75%', padding: '10px 14px', borderRadius: isMe ? '16px 16px 4px 16px' : '16px 16px 16px 4px', background: isMe ? '#2563eb' : '#f1f5f9', color: isMe ? 'white' : '#0f172a', fontSize: '14px', lineHeight: 1.5 }}>
                     {msg.content}
-                    <div style={{ fontSize: '10px', color: isMe ? 'rgba(255,255,255,0.6)' : '#94a3b8', marginTop: '4px', textAlign: 'right' }}>
-                      {formatTime(msg.created_at)}
-                    </div>
+                    <div style={{ fontSize: '10px', color: isMe ? 'rgba(255,255,255,0.6)' : '#94a3b8', marginTop: '4px', textAlign: 'right' }}>{formatTime(msg.created_at)}</div>
                   </div>
                 </div>
               )
@@ -328,33 +300,19 @@ function ChatPanel({ conversation, currentUserId, onClose }: {
           )}
           <div ref={bottomRef} />
         </div>
-
-        {/* Suggested questions */}
         {messages.length === 0 && !loading && (
           <div style={{ padding: '0 16px 12px', flexShrink: 0 }}>
             <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>Suggested questions</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
               {SUGGESTED_QUESTIONS.map((q, i) => (
-                <button key={i} onClick={() => setInput(q)} style={{ padding: '6px 12px', borderRadius: '100px', border: '1.5px solid #e2e8f0', background: 'white', fontSize: '12px', fontWeight: 600, color: '#475569', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
-                  {q}
-                </button>
+                <button key={i} onClick={() => setInput(q)} style={{ padding: '6px 12px', borderRadius: '100px', border: '1.5px solid #e2e8f0', background: 'white', fontSize: '12px', fontWeight: 600, color: '#475569', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>{q}</button>
               ))}
             </div>
           </div>
         )}
-
-        {/* Input */}
         <div style={{ padding: '12px 16px', borderTop: '1px solid #f1f5f9', display: 'flex', gap: '8px', flexShrink: 0 }}>
-          <input
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
-            placeholder="Type a message…"
-            style={{ flex: 1, padding: '10px 14px', borderRadius: '12px', border: '1.5px solid #e2e8f0', fontSize: '14px', fontFamily: "'DM Sans', sans-serif", outline: 'none', color: '#0f172a' }}
-          />
-          <button onClick={handleSend} disabled={!input.trim() || sending} style={{ padding: '10px 18px', borderRadius: '12px', border: 'none', background: input.trim() ? '#2563eb' : '#e2e8f0', color: input.trim() ? 'white' : '#94a3b8', fontWeight: 700, fontSize: '14px', cursor: input.trim() ? 'pointer' : 'not-allowed', fontFamily: "'DM Sans', sans-serif", transition: 'all 0.15s' }}>
-            Send
-          </button>
+          <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }} placeholder="Type a message…" style={{ flex: 1, padding: '10px 14px', borderRadius: '12px', border: '1.5px solid #e2e8f0', fontSize: '14px', fontFamily: "'DM Sans', sans-serif", outline: 'none', color: '#0f172a' }} />
+          <button onClick={handleSend} disabled={!input.trim() || sending} style={{ padding: '10px 18px', borderRadius: '12px', border: 'none', background: input.trim() ? '#2563eb' : '#e2e8f0', color: input.trim() ? 'white' : '#94a3b8', fontWeight: 700, fontSize: '14px', cursor: input.trim() ? 'pointer' : 'not-allowed', fontFamily: "'DM Sans', sans-serif", transition: 'all 0.15s' }}>Send</button>
         </div>
       </div>
     </div>
@@ -543,7 +501,7 @@ function ActiveRequestCard({ request, onPause, onRepublish, onDelete, onEdit }: 
             </div>
             {estPerSession && (
               <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '10px', fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '4px' }}>Est. per session</div>
+                <div style={{ fontSize: '10px', fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '4px' }}>Est. per clean</div>
                 <div style={{ fontSize: '20px', fontWeight: 700, color: '#92400e' }}>{estPerSession}</div>
               </div>
             )}
@@ -597,7 +555,7 @@ function PastListingRow({ request }: { request: CleaningRequest }) {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginTop: '14px', marginBottom: '14px' }}>
             <div style={{ background: '#f8fafc', borderRadius: '10px', padding: '12px' }}><div style={{ fontSize: '10px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '4px' }}>Days open</div><div style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a' }}>{daysOpen}</div></div>
             <div style={{ background: '#f8fafc', borderRadius: '10px', padding: '12px' }}><div style={{ fontSize: '10px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '4px' }}>Offered rate</div><div style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a' }}>{rate ? `£${rate}` : '—'}</div></div>
-            <div style={{ background: '#f8fafc', borderRadius: '10px', padding: '12px' }}><div style={{ fontSize: '10px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '4px' }}>Hours/session</div><div style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a' }}>{hours || '—'}</div></div>
+            <div style={{ background: '#f8fafc', borderRadius: '10px', padding: '12px' }}><div style={{ fontSize: '10px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '4px' }}>Hours/clean</div><div style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a' }}>{hours || '—'}</div></div>
           </div>
           {(request.tasks ?? []).length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
@@ -639,7 +597,6 @@ function ApplicationsSection({ requestIds, onAccept }: {
     setAccepting(app.id)
     await onAccept(app.id, app.request_id)
     setAccepting(null)
-    // Update local state to show accepted
     setApplications(prev => prev.map(a => a.id === app.id ? { ...a, status: 'accepted' } : a))
   }
 
@@ -673,19 +630,12 @@ function ApplicationsSection({ requestIds, onAccept }: {
                     {app.status === 'pending' ? 'New' : app.status === 'accepted' ? 'Chatting' : 'Declined'}
                   </span>
                   {app.status === 'pending' && (
-                    <button
-                      onClick={() => handleAccept(app)}
-                      disabled={accepting === app.id}
-                      style={{ background: '#16a34a', color: 'white', border: 'none', borderRadius: '8px', padding: '6px 14px', fontSize: '12px', fontWeight: 700, cursor: accepting === app.id ? 'not-allowed' : 'pointer', fontFamily: "'DM Sans', sans-serif", opacity: accepting === app.id ? 0.7 : 1 }}
-                    >
+                    <button onClick={() => handleAccept(app)} disabled={accepting === app.id} style={{ background: '#16a34a', color: 'white', border: 'none', borderRadius: '8px', padding: '6px 14px', fontSize: '12px', fontWeight: 700, cursor: accepting === app.id ? 'not-allowed' : 'pointer', fontFamily: "'DM Sans', sans-serif", opacity: accepting === app.id ? 0.7 : 1 }}>
                       {accepting === app.id ? 'Opening…' : '✓ Accept & chat'}
                     </button>
                   )}
                   {app.status === 'accepted' && (
-                    <button
-                      onClick={() => onAccept(app.id, app.request_id)}
-                      style={{ background: '#2563eb', color: 'white', border: 'none', borderRadius: '8px', padding: '6px 14px', fontSize: '12px', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
-                    >
+                    <button onClick={() => onAccept(app.id, app.request_id)} style={{ background: '#2563eb', color: 'white', border: 'none', borderRadius: '8px', padding: '6px 14px', fontSize: '12px', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
                       💬 Open chat
                     </button>
                   )}
@@ -735,8 +685,16 @@ function CustomerDashboardContent() {
         if (profileError || !profileData) throw new Error('Could not load your profile.')
         if (profileData.role !== 'customer') { router.replace('/cleaner/dashboard'); return }
 
-        const { data: requestData, error: requestError } = await (supabase as any)
-          .from('clean_requests').select('*').eq('customer_id', user.id).order('created_at', { ascending: false })
+        // ✅ KEY FIX: look up customers UUID first — clean_requests.customer_id is NOT the auth UUID
+        const { data: customerRecord } = await (supabase as any)
+          .from('customers').select('id').eq('profile_id', user.id).single()
+
+        const customerId = customerRecord?.id ?? null
+
+        const { data: requestData, error: requestError } = customerId
+          ? await (supabase as any)
+              .from('clean_requests').select('*').eq('customer_id', customerId).order('created_at', { ascending: false })
+          : { data: [], error: null }
 
         if (requestError) throw new Error(requestError.message)
 
@@ -747,9 +705,7 @@ function CustomerDashboardContent() {
         const acceptAppId = searchParams.get('accept')
         const acceptReqId = searchParams.get('request')
         if (acceptAppId && acceptReqId) {
-          // Call accept API then open chat
           handleAcceptApplication(acceptAppId, acceptReqId, user.id)
-          // Clean URL
           router.replace('/customer/dashboard')
         }
       } catch (err: any) {
@@ -774,7 +730,6 @@ function CustomerDashboardContent() {
         return
       }
 
-      // Load conversation details for the chat panel
       const supabase = createClient()
       const { data: conv } = await (supabase as any)
         .from('conversations')
@@ -783,7 +738,6 @@ function CustomerDashboardContent() {
         .single()
 
       if (conv) {
-        // Get cleaner name
         const { data: cleaner } = await (supabase as any)
           .from('cleaners')
           .select('profile_id, profiles(full_name), zones')
@@ -900,7 +854,6 @@ function CustomerDashboardContent() {
               <p style={{ fontSize: '15px', color: '#64748b' }}>{hasActive ? 'Your request is live — cleaners can apply.' : 'Manage your cleaning requests below.'}</p>
             </div>
 
-            {/* Request type buttons */}
             <div style={{ marginBottom: '36px' }}>
               <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '14px' }}>Request a clean</div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
@@ -941,7 +894,6 @@ function CustomerDashboardContent() {
               )}
             </div>
 
-            {/* Active listings */}
             {activeRequests.length > 0 && (
               <div style={{ marginBottom: '36px' }}>
                 <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '14px' }}>Your listing</div>
@@ -951,7 +903,6 @@ function CustomerDashboardContent() {
               </div>
             )}
 
-            {/* Paused listings */}
             {!hasActive && pausedRequests.length > 0 && (
               <div style={{ marginBottom: '36px' }}>
                 <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '14px' }}>Paused listing</div>
@@ -961,15 +912,10 @@ function CustomerDashboardContent() {
               </div>
             )}
 
-            {/* Applications */}
             {activeRequestIds.length > 0 && (
-              <ApplicationsSection
-                requestIds={activeRequestIds}
-                onAccept={handleAcceptApplication}
-              />
+              <ApplicationsSection requestIds={activeRequestIds} onAccept={handleAcceptApplication} />
             )}
 
-            {/* Past listings */}
             {pastRequests.filter(r => r.status !== 'paused').length > 0 && (
               <div>
                 <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '14px' }}>Past listings</div>
@@ -999,13 +945,8 @@ function CustomerDashboardContent() {
         {editingRequest && <EditModal request={editingRequest} onSave={handleSaveEdit} onClose={() => setEditingRequest(null)} saving={saving} />}
         {toast && <ComingSoonBanner message={toast} onClose={() => setToast(null)} />}
 
-        {/* Chat panel */}
         {activeConversation && currentUserId && (
-          <ChatPanel
-            conversation={activeConversation}
-            currentUserId={currentUserId}
-            onClose={() => setActiveConversation(null)}
-          />
+          <ChatPanel conversation={activeConversation} currentUserId={currentUserId} onClose={() => setActiveConversation(null)} />
         )}
       </div>
     </>

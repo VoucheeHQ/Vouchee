@@ -29,7 +29,13 @@ const ADDITIONAL_TASKS = [
 const DEEP_CLEAN_TASKS = ['bathroom_deep', 'kitchen_deep', 'fridge', 'conservatory']
 
 const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-const TIME_SLOTS = ['Morning (8am - 12pm)', 'Afternoon (12pm - 5pm)', 'Evening (5pm - 8pm)']
+// Updated: added "During the day" option
+const TIME_SLOTS = [
+  'Morning (8am - 12pm)',
+  'During the day (8am - 5pm)',
+  'Afternoon (12pm - 5pm)',
+  'Evening (5pm - 8pm)',
+]
 
 const HOURS_OPTIONS = [
   { value: 2,    label: '2 hours' },
@@ -420,7 +426,7 @@ function RequestStep1Content() {
             </div>
           </div>
 
-          {/* Preferred schedule — required */}
+          {/* Preferred schedule */}
           <div style={{ background: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(16px)', borderRadius: '20px', border: `1.5px solid ${showErrors && (preferredDays.length === 0 || !preferredTime) ? '#fecaca' : 'rgba(255,255,255,0.9)'}`, boxShadow: '0 2px 16px rgba(0,0,0,0.05)', padding: '24px', marginBottom: '24px' }}>
             <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '16px' }}>📅 Preferred schedule</div>
 
