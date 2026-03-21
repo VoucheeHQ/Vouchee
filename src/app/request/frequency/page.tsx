@@ -44,7 +44,6 @@ const PRICING_TIERS = [
   },
 ]
 
-// Tasks that indicate a heavier-than-usual clean — matched to property page task IDs
 const DEEP_CLEAN_TASKS = ['bathroom_deep', 'kitchen_deep', 'fridge', 'conservatory']
 
 const RATE_MIN = 13.00
@@ -100,7 +99,6 @@ function getRateSuggestion(
   const mid = Math.round((low + high) / 2 / 0.5) * 0.5
   const defaultRate = Math.min(mid, high).toFixed(2)
 
-  const deepNote = hasDeepCleanTasks ? ', including specialist tasks' : ''
   const freqLabel = isMonthly ? 'monthly' : frequency
   let reason = ''
   if (isMonthly) {
@@ -118,9 +116,7 @@ export default function RequestFrequencyPage() {
   const [selectedFrequency, setSelectedFrequency] = useState<FrequencyType>('weekly')
   const [hourlyRate, setHourlyRate] = useState<number | null>(null)
 
-  useEffect(() => {
-    window.scrollTo(0, 0)
-  }, [])
+  useEffect(() => { window.scrollTo(0, 0) }, [])
 
   useEffect(() => {
     const stored = sessionStorage.getItem('cleanRequest')
@@ -182,84 +178,46 @@ export default function RequestFrequencyPage() {
         .back-btn:hover { color: #3b82f6; }
       `}</style>
 
-      <div style={{
-        minHeight: '100vh',
-        background: 'linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%)',
-        fontFamily: "'DM Sans', sans-serif",
-        padding: '24px 16px 48px',
-      }}>
+      <div style={{ minHeight: '100vh', background: 'linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%)', fontFamily: "'DM Sans', sans-serif", padding: '24px 16px 48px' }}>
         <div style={{ maxWidth: '600px', margin: '0 auto' }}>
 
-          {/* ── Step tracker ── */}
+          {/* Step tracker */}
           <div style={{ marginBottom: '32px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <div style={{ fontSize: '13px', fontWeight: 600, color: '#3b82f6', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-                Step 2 of 4
-              </div>
-              <button className="back-btn" onClick={() => router.back()} style={{ fontSize: '13px', fontWeight: 600, color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", transition: 'color 0.15s' }}>
-                ← Back
-              </button>
+              <div style={{ fontSize: '13px', fontWeight: 600, color: '#3b82f6', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Step 2 of 4</div>
+              <button className="back-btn" onClick={() => router.back()} style={{ fontSize: '13px', fontWeight: 600, color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", transition: 'color 0.15s' }}>← Back</button>
             </div>
             <div style={{ height: '4px', background: '#e2e8f0', borderRadius: '100px', overflow: 'hidden' }}>
               <div style={{ height: '100%', width: '50%', background: 'linear-gradient(90deg, #3b82f6 0%, #facc15 50%, #22c55e 100%)', borderRadius: '100px' }} />
             </div>
           </div>
 
-          {/* ── Header ── */}
+          {/* Header */}
           <div style={{ marginBottom: '28px' }}>
-            <h1 style={{ fontSize: '28px', fontWeight: 800, color: '#0f172a', margin: '0 0 8px', lineHeight: 1.2 }}>
-              Set your rate & frequency
-            </h1>
-            <p style={{ fontSize: '15px', color: '#64748b', lineHeight: 1.6, margin: 0 }}>
-              You set the price — cleaners apply to your listing and you choose who you want.
-            </p>
+            <h1 style={{ fontSize: '28px', fontWeight: 800, color: '#0f172a', margin: '0 0 8px', lineHeight: 1.2 }}>Set your rate & frequency</h1>
+            <p style={{ fontSize: '15px', color: '#64748b', lineHeight: 1.6, margin: 0 }}>You set the price — cleaners apply to your listing and you choose who you want.</p>
           </div>
 
-          {/* ── Frequency ── */}
+          {/* Frequency */}
           <div style={{ background: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(16px)', borderRadius: '20px', border: '1.5px solid rgba(255,255,255,0.9)', boxShadow: '0 2px 16px rgba(0,0,0,0.05)', padding: '24px', marginBottom: '12px' }}>
-
-
             <div style={{ padding: '10px 14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '12px', marginBottom: '16px', display: 'flex', gap: '8px' }}>
               <span style={{ fontSize: '14px', flexShrink: 0 }}>✅</span>
-              <span style={{ fontSize: '13px', color: '#166534', fontWeight: 500 }}>
-                Your Direct Debit doesn't start until you've selected your cleaner and agreed a start date.
-              </span>
+              <span style={{ fontSize: '13px', color: '#166534', fontWeight: 500 }}>Your Direct Debit doesn't start until you've selected your cleaner and agreed a start date.</span>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '8px' }}>
               {PRICING_TIERS.map(tier => {
                 const selected = selectedFrequency === tier.frequency
                 return (
-                  <div
-                    key={tier.frequency}
-                    className="freq-card"
-                    onClick={() => {
-                      setSelectedFrequency(tier.frequency)
-                    }}
-                    style={{
-                      position: 'relative', padding: '18px 14px', borderRadius: '16px',
-                      border: `2px solid ${selected ? '#3b82f6' : '#e2e8f0'}`,
-                      background: selected ? 'rgba(59,130,246,0.06)' : 'rgba(255,255,255,0.7)',
-                      textAlign: 'center',
-                    }}
-                  >
+                  <div key={tier.frequency} className="freq-card" onClick={() => setSelectedFrequency(tier.frequency)} style={{ position: 'relative', padding: '18px 14px', borderRadius: '16px', border: `2px solid ${selected ? '#3b82f6' : '#e2e8f0'}`, background: selected ? 'rgba(59,130,246,0.06)' : 'rgba(255,255,255,0.7)', textAlign: 'center' }}>
                     {tier.popular && (
-                      <div style={{
-                        position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)',
-                        background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
-                        color: 'white', fontSize: '10px', fontWeight: 700,
-                        padding: '3px 10px', borderRadius: '100px', whiteSpace: 'nowrap',
-                      }}>Most popular</div>
+                      <div style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', background: 'linear-gradient(135deg, #3b82f6, #2563eb)', color: 'white', fontSize: '10px', fontWeight: 700, padding: '3px 10px', borderRadius: '100px', whiteSpace: 'nowrap' }}>Most popular</div>
                     )}
                     <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '2px' }}>{tier.title}</div>
                     <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '12px' }}>{tier.description}</div>
-                    <div style={{ fontSize: '26px', fontWeight: 800, color: selected ? '#1e40af' : '#0f172a', lineHeight: 1 }}>
-                      {formatPrice(tier.pricePerSession)}
-                    </div>
+                    <div style={{ fontSize: '26px', fontWeight: 800, color: selected ? '#1e40af' : '#0f172a', lineHeight: 1 }}>{formatPrice(tier.pricePerSession)}</div>
                     <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '10px' }}>per clean</div>
-                    <div style={{ fontSize: '12px', fontWeight: 600, color: selected ? '#1e40af' : '#475569', marginTop: '2px' }}>
-                      {formatPrice(tier.monthlyCharge)}/month
-                    </div>
+                    <div style={{ fontSize: '12px', fontWeight: 600, color: selected ? '#1e40af' : '#475569', marginTop: '2px' }}>{formatPrice(tier.monthlyCharge)}/month</div>
                     {selected && (
                       <div style={{ position: 'absolute', top: '10px', right: '10px' }}>
                         <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -272,103 +230,57 @@ export default function RequestFrequencyPage() {
               })}
             </div>
 
-            <p style={{ fontSize: '11px', color: '#94a3b8', textAlign: 'center', margin: '12px 0 0' }}>
-              * Based on 52 weeks per year, averaged across 12 months
-            </p>
+            <p style={{ fontSize: '11px', color: '#94a3b8', textAlign: 'center', margin: '12px 0 0' }}>* Based on 52 weeks per year, averaged across 12 months</p>
             <div style={{ textAlign: 'center', marginTop: '10px' }}>
-              <a href="/why-vouchee?from=frequency" style={{ fontSize: '13px', color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>
-                Why find cleaners through Vouchee? →
-              </a>
+              <a href="/why-vouchee?from=frequency" style={{ fontSize: '13px', color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>Why find cleaners through Vouchee? →</a>
             </div>
           </div>
 
-          {/* ── Hourly rate ── */}
+          {/* Hourly rate */}
           <div style={{ background: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(16px)', borderRadius: '20px', border: '1.5px solid rgba(255,255,255,0.9)', boxShadow: '0 2px 16px rgba(0,0,0,0.05)', padding: '24px', marginBottom: '12px' }}>
-            <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '6px' }}>
-              💷 Offered hourly rate
-            </div>
-            {/* Stepper */}
+            <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '6px' }}>💷 Offered hourly rate</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0', marginBottom: '12px', border: '1.5px solid #e2e8f0', borderRadius: '14px', overflow: 'hidden', background: 'rgba(255,255,255,0.9)' }}>
-              <button
-                type="button"
-                onClick={() => setHourlyRate(r => Math.max(RATE_MIN, parseFloat(((r ?? RATE_MIN) - RATE_STEP).toFixed(2))))}
-                disabled={hourlyRate === null || hourlyRate <= RATE_MIN}
-                style={{ width: '56px', height: '56px', fontSize: '24px', fontWeight: 300, color: (hourlyRate === null || hourlyRate <= RATE_MIN) ? '#cbd5e1' : '#0f172a', background: 'transparent', border: 'none', cursor: (hourlyRate === null || hourlyRate <= RATE_MIN) ? 'not-allowed' : 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRight: '1.5px solid #e2e8f0' }}
-              >−</button>
+              <button type="button" onClick={() => setHourlyRate(r => Math.max(RATE_MIN, parseFloat(((r ?? RATE_MIN) - RATE_STEP).toFixed(2))))} disabled={hourlyRate === null || hourlyRate <= RATE_MIN} style={{ width: '56px', height: '56px', fontSize: '24px', fontWeight: 300, color: (hourlyRate === null || hourlyRate <= RATE_MIN) ? '#cbd5e1' : '#0f172a', background: 'transparent', border: 'none', cursor: (hourlyRate === null || hourlyRate <= RATE_MIN) ? 'not-allowed' : 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRight: '1.5px solid #e2e8f0' }}>−</button>
               <div style={{ flex: 1, textAlign: 'center' }}>
-                <div style={{ fontSize: '26px', fontWeight: 800, color: hourlyRate === null ? '#94a3b8' : '#0f172a', lineHeight: 1 }}>
-                  {hourlyRate === null ? '—' : formatRate(hourlyRate)}
-                </div>
+                <div style={{ fontSize: '26px', fontWeight: 800, color: hourlyRate === null ? '#94a3b8' : '#0f172a', lineHeight: 1 }}>{hourlyRate === null ? '—' : formatRate(hourlyRate)}</div>
                 <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 500, marginTop: '2px' }}>per hour</div>
               </div>
-              <button
-                type="button"
-                onClick={() => setHourlyRate(r => Math.min(RATE_MAX, parseFloat(((r ?? RATE_MIN) + RATE_STEP).toFixed(2))))}
-                disabled={hourlyRate === null || hourlyRate >= RATE_MAX}
-                style={{ width: '56px', height: '56px', fontSize: '24px', fontWeight: 300, color: (hourlyRate === null || hourlyRate >= RATE_MAX) ? '#cbd5e1' : '#0f172a', background: 'transparent', border: 'none', cursor: (hourlyRate === null || hourlyRate >= RATE_MAX) ? 'not-allowed' : 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderLeft: '1.5px solid #e2e8f0' }}
-              >+</button>
+              <button type="button" onClick={() => setHourlyRate(r => Math.min(RATE_MAX, parseFloat(((r ?? RATE_MIN) + RATE_STEP).toFixed(2))))} disabled={hourlyRate === null || hourlyRate >= RATE_MAX} style={{ width: '56px', height: '56px', fontSize: '24px', fontWeight: 300, color: (hourlyRate === null || hourlyRate >= RATE_MAX) ? '#cbd5e1' : '#0f172a', background: 'transparent', border: 'none', cursor: (hourlyRate === null || hourlyRate >= RATE_MAX) ? 'not-allowed' : 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderLeft: '1.5px solid #e2e8f0' }}>+</button>
             </div>
 
-            {/* Live feedback hint */}
-            <div className="rate-hint" style={{
-              marginTop: '12px', padding: '12px 14px', borderRadius: '12px',
-              background: !selectedFrequency ? '#f8fafc' : rateInRange ? '#eff6ff' : rateLow ? '#fefce8' : '#f0fdf4',
-              border: `1px solid ${!selectedFrequency ? '#e2e8f0' : rateInRange ? '#bfdbfe' : rateLow ? '#fde68a' : '#bbf7d0'}`,
-            }}>
-              {(!selectedFrequency || hourlyRate === null) && (
-                <p style={{ fontSize: '13px', fontWeight: 500, color: '#94a3b8', margin: 0 }}>
-                  💡 Select a frequency above and we'll suggest a rate range for your property.
-                </p>
-              )}
+            <div className="rate-hint" style={{ marginTop: '12px', padding: '12px 14px', borderRadius: '12px', background: !selectedFrequency ? '#f8fafc' : rateInRange ? '#eff6ff' : rateLow ? '#fefce8' : '#f0fdf4', border: `1px solid ${!selectedFrequency ? '#e2e8f0' : rateInRange ? '#bfdbfe' : rateLow ? '#fde68a' : '#bbf7d0'}` }}>
+              {(!selectedFrequency || hourlyRate === null) && <p style={{ fontSize: '13px', fontWeight: 500, color: '#94a3b8', margin: 0 }}>💡 Select a frequency above and we'll suggest a rate range for your property.</p>}
               {selectedFrequency && rateInRange && (
                 <>
-                  <p style={{ fontSize: '13px', fontWeight: 600, color: '#1e40af', margin: '0 0 4px' }}>
-                    ✅ Within the suggested range — £{suggestion.low}–£{suggestion.high}/hr
-                  </p>
+                  <p style={{ fontSize: '13px', fontWeight: 600, color: '#1e40af', margin: '0 0 4px' }}>✅ Within the suggested range — £{suggestion.low}–£{suggestion.high}/hr</p>
                   <p style={{ fontSize: '12px', color: '#3b82f6', margin: 0, lineHeight: 1.55 }}>{suggestion.reason}</p>
-                  {selectedFrequency === 'monthly' && (
-                    <p style={{ fontSize: '12px', color: '#3b82f6', margin: '8px 0 0', padding: '8px 10px', background: 'rgba(59,130,246,0.06)', borderRadius: '8px', lineHeight: 1.55 }}>
-                      💡 Tip: Monthly cleans often take longer per visit than weekly or fortnightly cleans.
-                    </p>
-                  )}
+                  {selectedFrequency === 'monthly' && <p style={{ fontSize: '12px', color: '#3b82f6', margin: '8px 0 0', padding: '8px 10px', background: 'rgba(59,130,246,0.06)', borderRadius: '8px', lineHeight: 1.55 }}>💡 Tip: Monthly cleans often take longer per visit than weekly or fortnightly cleans.</p>}
                 </>
               )}
               {selectedFrequency && rateLow && (
                 <>
-                  <p style={{ fontSize: '13px', fontWeight: 600, color: '#92400e', margin: '0 0 3px' }}>
-                    ⚠️ Below the suggested range of £{suggestion.low}–£{suggestion.high}/hr
-                  </p>
-                  <p style={{ fontSize: '12px', color: '#b45309', margin: 0, lineHeight: 1.5 }}>
-                    A lower rate may reduce the number of cleaners who apply. You can always adjust once you've seen who's interested.
-                  </p>
+                  <p style={{ fontSize: '13px', fontWeight: 600, color: '#92400e', margin: '0 0 3px' }}>⚠️ Below the suggested range of £{suggestion.low}–£{suggestion.high}/hr</p>
+                  <p style={{ fontSize: '12px', color: '#b45309', margin: 0, lineHeight: 1.5 }}>A lower rate may reduce the number of cleaners who apply.</p>
                 </>
               )}
               {selectedFrequency && rateHigh && (
                 <>
-                  <p style={{ fontSize: '13px', fontWeight: 600, color: '#166534', margin: '0 0 3px' }}>
-                    💚 Above the suggested range — you'll attract a strong field of applicants
-                  </p>
-                  <p style={{ fontSize: '12px', color: '#16a34a', margin: 0, lineHeight: 1.5 }}>
-                    Offering above the typical rate gives you the best pick of available cleaners in Horsham.
-                  </p>
+                  <p style={{ fontSize: '13px', fontWeight: 600, color: '#166534', margin: '0 0 3px' }}>💚 Above the suggested range — you'll attract a strong field of applicants</p>
+                  <p style={{ fontSize: '12px', color: '#16a34a', margin: 0, lineHeight: 1.5 }}>Offering above the typical rate gives you the best pick of available cleaners in Horsham.</p>
                 </>
               )}
             </div>
 
-            <p style={{ fontSize: '11px', color: '#94a3b8', margin: '10px 0 0', lineHeight: 1.5 }}>
-              This is an offer — your cleaner may discuss the rate with you before agreeing to start.
-            </p>
+            <p style={{ fontSize: '11px', color: '#94a3b8', margin: '10px 0 0', lineHeight: 1.5 }}>This is an offer — your cleaner may discuss the rate with you before agreeing to start.</p>
           </div>
 
-          {/* ── Why Vouchee ── */}
+          {/* Why Vouchee */}
           <div style={{ background: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(16px)', borderRadius: '20px', border: '1.5px solid rgba(255,255,255,0.9)', boxShadow: '0 2px 16px rgba(0,0,0,0.05)', padding: '24px', marginBottom: '24px' }}>
-            <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '14px' }}>
-              What you can expect from Vouchee
-            </div>
+            <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '14px' }}>What you can expect from Vouchee</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {[
                 'Local vetted and vouched cleaners',
-                                                "You choose which cleaners you'd like to chat with",
+                "You choose which cleaners you'd like to chat with",
                 'Last-minute cover clean support',
                 'Cancel anytime with only 30 days notice required',
               ].map((point, i) => (
@@ -382,21 +294,8 @@ export default function RequestFrequencyPage() {
             </div>
           </div>
 
-          {/* ── CTA ── */}
-          <button
-            className="continue-btn"
-            onClick={handleContinue}
-            disabled={!selectedFrequency}
-            style={{
-              width: '100%', padding: '18px', borderRadius: '16px', border: 'none',
-              background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
-              color: 'white', fontSize: '17px', fontWeight: 700,
-              fontFamily: "'Plus Jakarta Sans', sans-serif",
-              cursor: selectedFrequency ? 'pointer' : 'not-allowed',
-              boxShadow: '0 4px 20px rgba(37,99,235,0.3)',
-              transition: 'transform 0.2s, box-shadow 0.2s',
-            }}
-          >
+          {/* CTA */}
+          <button className="continue-btn" onClick={handleContinue} disabled={!selectedFrequency} style={{ width: '100%', padding: '18px', borderRadius: '16px', border: 'none', background: 'linear-gradient(135deg, #2563eb, #3b82f6)', color: 'white', fontSize: '17px', fontWeight: 700, fontFamily: "'Plus Jakarta Sans', sans-serif", cursor: selectedFrequency ? 'pointer' : 'not-allowed', boxShadow: '0 4px 20px rgba(37,99,235,0.3)', transition: 'transform 0.2s, box-shadow 0.2s' }}>
             Continue →
           </button>
 

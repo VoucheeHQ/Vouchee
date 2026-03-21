@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { CheckCircle, Sparkles, Shield, Clock } from 'lucide-react'
 
 interface HomePageProps {
-  location?: string // e.g. "Horsham" — used for copy personalisation
+  location?: string
 }
 
 export default function HomePageContent({ location = 'Horsham' }: HomePageProps) {
