@@ -217,7 +217,7 @@ function JobCard({ job, isOwn = false, userRole, cleanerApproved, onEdit, onAppl
           <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 mb-3">
             <p className="text-xs font-semibold text-amber-600 uppercase tracking-wider mb-0.5">Offered rate</p>
             <p className="text-2xl font-bold text-amber-700">£{job.hourly_rate.toFixed(2)}<span className="text-base font-normal text-amber-600">/hr</span></p>
-            {estPerSession && <p className="text-xs text-amber-600 mt-0.5">Est. £{estPerSession} per session</p>}
+            {estPerSession && <p className="text-xs text-amber-600 mt-0.5">Est. £{estPerSession} per clean</p>}
           </div>
         )}
         {job.customer_notes && (
@@ -322,7 +322,7 @@ function ApplyModal({ job, cleanerProfile, onClose, onSubmit, submitting }: {
                 </div>
                 {estPerSession && (
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '10px', fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Est. per session</div>
+                    <div style={{ fontSize: '10px', fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Est. per clean</div>
                     <div style={{ fontSize: '16px', fontWeight: 700, color: '#92400e' }}>~£{estPerSession}</div>
                   </div>
                 )}
@@ -472,6 +472,15 @@ export default function JobsPage() {
 
       setAppliedJobIds(prev => new Set([...prev, applyingToJob.id]))
 
+      // Look up the customer's profile_id (email route needs profiles UUID not customers UUID)
+      const { data: customerRecord } = await authClient
+        .from('customers')
+        .select('profile_id')
+        .eq('id', applyingToJob.customer_id)
+        .single() as { data: { profile_id: string } | null }
+
+      const customerProfileId = customerRecord?.profile_id ?? applyingToJob.customer_id
+
       // Build cleaner display name
       const fullName = profileData?.full_name ?? ''
       const nameParts = fullName.trim().split(' ')
@@ -482,13 +491,12 @@ export default function JobsPage() {
         ? new Date(cleanerData.created_at).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
         : 'Recently'
 
-      // Fire notification email — now includes applicationId and requestId
-      // so the Accept button in the email can open the right chat
+      // Fire notification email
       await fetch('/api/send-application-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          customerId: applyingToJob.customer_id,  // ✅ actual customer profile ID
+          customerId: customerProfileId,  // ✅ profiles UUID for email lookup
           applicationId: (newApp as any).id,       // ✅ application row ID
           requestId: applyingToJob.id,             // ✅ clean_request ID
           cleanerName,
