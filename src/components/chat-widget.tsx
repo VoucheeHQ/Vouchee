@@ -485,7 +485,7 @@ export function ChatWidget() {
     init()
   }, [])
 
-  // Listen for auth changes
+  // Listen for auth changes — only handle sign out
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_OUT') {
@@ -495,10 +495,6 @@ export function ChatWidget() {
         setCurrentUserId(null)
         setCurrentRole(null)
         setReady(false)
-      }
-      if (event === 'SIGNED_IN') {
-        // Re-init on sign in — simple reload approach
-        window.location.reload()
       }
     })
     return () => subscription.unsubscribe()
