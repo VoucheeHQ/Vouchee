@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 
-export default async function CleanerLayout({
+export default async function CleanerDashboardLayout({
   children,
 }: {
   children: React.ReactNode
