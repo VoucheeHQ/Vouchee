@@ -3,6 +3,7 @@ import { Inter, Lora, DM_Sans } from 'next/font/google'
 import './globals.css'
 import { Toaster } from 'sonner'
 import { AuthListener } from '@/components/auth-listener'
+import { ChatWidget } from '@/components/chat-widget'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -65,6 +66,7 @@ export default function RootLayout({
       <body>
         <AuthListener />
         {children}
+        <ChatWidget />
         <Toaster position="top-right" richColors closeButton />
       </body>
     </html>

@@ -57,25 +57,6 @@ interface Application {
   cleaner_name?: string
 }
 
-interface Conversation {
-  id: string
-  cleaner_id: string
-  clean_request_id: string
-  status: string
-  cleaner_name?: string
-  cleaner_zone?: string
-  conversation_index?: number
-}
-
-interface Message {
-  id: string
-  conversation_id: string
-  sender_id: string
-  sender_role: 'customer' | 'cleaner'
-  content: string
-  created_at: string
-}
-
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const TASK_LABELS: Record<string, string> = {
@@ -122,13 +103,6 @@ const DAY_SHORT: Record<string, string> = {
 const ACTIVE_STATUSES: RequestStatus[] = ['active', 'pending_review', 'pending']
 const PAST_STATUSES: RequestStatus[] = ['deleted', 'paused', 'completed', 'cancelled']
 
-const SUGGESTED_QUESTIONS = [
-  "When are you next available?",
-  "Do you bring your own supplies?",
-  "Have you cleaned a similar-sized property before?",
-  "Are you flexible on timing?",
-]
-
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getFirstName(name: string) {
@@ -142,11 +116,6 @@ function formatDays(days: string[] | null) {
 
 function daysSince(iso: string) {
   return Math.floor((Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60 * 24))
-}
-
-function formatTime(iso: string) {
-  const d = new Date(iso)
-  return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
 }
 
 // ─── Small components ─────────────────────────────────────────────────────────
@@ -172,150 +141,6 @@ function ActionBtn({ children, onClick, danger, primary, disabled }: {
     }}>
       {children}
     </button>
-  )
-}
-
-// ─── Chat Panel ───────────────────────────────────────────────────────────────
-
-function ChatPanel({ conversation, currentUserId, onClose }: {
-  conversation: Conversation
-  currentUserId: string
-  onClose: () => void
-}) {
-  const [messages, setMessages] = useState<Message[]>([])
-  const [input, setInput] = useState('')
-  const [sending, setSending] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [warningShown, setWarningShown] = useState(false)
-  const [showWarning, setShowWarning] = useState(false)
-  const bottomRef = useRef<HTMLDivElement>(null)
-  const supabase = createClient()
-
-  const WATCHLIST = ['07', '+44', 'whatsapp', 'email', '@', 'bank', 'address', 'go direct', 'go private', 'direct payment', 'cash']
-
-  const checkWatchlist = (text: string) => {
-    if (warningShown) return false
-    const lower = text.toLowerCase()
-    return WATCHLIST.some(w => lower.includes(w))
-  }
-
-  useEffect(() => {
-    const loadMessages = async () => {
-      const { data } = await (supabase as any)
-        .from('messages')
-        .select('*')
-        .eq('conversation_id', conversation.id)
-        .order('created_at', { ascending: true })
-      setMessages(data ?? [])
-      setLoading(false)
-    }
-    loadMessages()
-
-    const channel = supabase
-      .channel(`messages:${conversation.id}`)
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'messages',
-        filter: `conversation_id=eq.${conversation.id}`,
-      }, payload => {
-        setMessages(prev => [...prev, payload.new as Message])
-      })
-      .subscribe()
-
-    return () => { supabase.removeChannel(channel) }
-  }, [conversation.id])
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
-
-  const handleSend = async () => {
-    if (!input.trim() || sending) return
-    if (checkWatchlist(input)) {
-      setShowWarning(true)
-      setWarningShown(true)
-      return
-    }
-    setSending(true)
-    const content = input.trim()
-    setInput('')
-    await (supabase as any).from('messages').insert({
-      conversation_id: conversation.id,
-      sender_id: currentUserId,
-      sender_role: 'customer',
-      content,
-    })
-    setSending(false)
-  }
-
-  const displayName = conversation.cleaner_name ?? 'Your cleaner'
-
-  return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-      <div style={{ width: '100%', maxWidth: '680px', height: '85vh', background: 'white', borderRadius: '20px 20px 0 0', display: 'flex', flexDirection: 'column', boxShadow: '0 -8px 40px rgba(0,0,0,0.15)', fontFamily: "'DM Sans', sans-serif" }}>
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', fontWeight: 800, color: 'white' }}>
-              {displayName[0]?.toUpperCase()}
-            </div>
-            <div>
-              <div style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a' }}>{displayName}</div>
-              <div style={{ fontSize: '12px', color: '#94a3b8' }}>{conversation.cleaner_zone ? ZONE_LABELS[conversation.cleaner_zone] ?? conversation.cleaner_zone : 'Horsham'}</div>
-            </div>
-          </div>
-          <button onClick={onClose} style={{ background: '#f1f5f9', border: 'none', borderRadius: '50%', width: '32px', height: '32px', fontSize: '16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>✕</button>
-        </div>
-        {showWarning && (
-          <div style={{ padding: '12px 16px', background: '#fffbeb', borderBottom: '1px solid #fde68a', display: 'flex', gap: '10px', alignItems: 'flex-start', flexShrink: 0 }}>
-            <span style={{ fontSize: '16px', flexShrink: 0 }}>⚠️</span>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: '13px', fontWeight: 700, color: '#92400e', marginBottom: '2px' }}>Keep conversations on Vouchee</div>
-              <div style={{ fontSize: '12px', color: '#b45309', lineHeight: 1.5 }}>Your message may contain contact details or off-platform references. To protect both parties, please keep all communication within Vouchee.</div>
-            </div>
-            <button onClick={() => { setShowWarning(false); setSending(false) }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#92400e', fontSize: '16px', flexShrink: 0 }}>✕</button>
-          </div>
-        )}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
-          {loading ? (
-            <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: '13px', paddingTop: '40px' }}>Loading messages…</div>
-          ) : messages.length === 0 ? (
-            <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: '13px', paddingTop: '40px' }}>
-              <div style={{ fontSize: '32px', marginBottom: '12px' }}>💬</div>
-              <div style={{ fontWeight: 600, color: '#475569', marginBottom: '4px' }}>Start the conversation</div>
-              <div>Ask {displayName} a question to get started</div>
-            </div>
-          ) : (
-            messages.map(msg => {
-              const isMe = msg.sender_role === 'customer'
-              return (
-                <div key={msg.id} style={{ display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start', marginBottom: '12px' }}>
-                  <div style={{ maxWidth: '75%', padding: '10px 14px', borderRadius: isMe ? '16px 16px 4px 16px' : '16px 16px 16px 4px', background: isMe ? '#2563eb' : '#f1f5f9', color: isMe ? 'white' : '#0f172a', fontSize: '14px', lineHeight: 1.5 }}>
-                    {msg.content}
-                    <div style={{ fontSize: '10px', color: isMe ? 'rgba(255,255,255,0.6)' : '#94a3b8', marginTop: '4px', textAlign: 'right' }}>{formatTime(msg.created_at)}</div>
-                  </div>
-                </div>
-              )
-            })
-          )}
-          <div ref={bottomRef} />
-        </div>
-        {messages.length === 0 && !loading && (
-          <div style={{ padding: '0 16px 12px', flexShrink: 0 }}>
-            <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>Suggested questions</div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-              {SUGGESTED_QUESTIONS.map((q, i) => (
-                <button key={i} onClick={() => setInput(q)} style={{ padding: '6px 12px', borderRadius: '100px', border: '1.5px solid #e2e8f0', background: 'white', fontSize: '12px', fontWeight: 600, color: '#475569', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>{q}</button>
-              ))}
-            </div>
-          </div>
-        )}
-        <div style={{ padding: '12px 16px', borderTop: '1px solid #f1f5f9', display: 'flex', gap: '8px', flexShrink: 0 }}>
-          <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }} placeholder="Type a message…" style={{ flex: 1, padding: '10px 14px', borderRadius: '12px', border: '1.5px solid #e2e8f0', fontSize: '14px', fontFamily: "'DM Sans', sans-serif", outline: 'none', color: '#0f172a' }} />
-          <button onClick={handleSend} disabled={!input.trim() || sending} style={{ padding: '10px 18px', borderRadius: '12px', border: 'none', background: input.trim() ? '#2563eb' : '#e2e8f0', color: input.trim() ? 'white' : '#94a3b8', fontWeight: 700, fontSize: '14px', cursor: input.trim() ? 'pointer' : 'not-allowed', fontFamily: "'DM Sans', sans-serif", transition: 'all 0.15s' }}>Send</button>
-        </div>
-      </div>
-    </div>
   )
 }
 
@@ -667,8 +492,6 @@ function CustomerDashboardContent() {
   const [editingRequest, setEditingRequest] = useState<CleaningRequest | null>(null)
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
-  const [activeConversation, setActiveConversation] = useState<Conversation | null>(null)
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
 
   useEffect(() => {
     const init = async () => {
@@ -676,8 +499,6 @@ function CustomerDashboardContent() {
         const supabase = createClient()
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) { router.replace('/login'); return }
-
-        setCurrentUserId(user.id)
 
         const { data: profileData, error: profileError } = await (supabase as any)
           .from('profiles').select('full_name, email, role').eq('id', user.id).single()
@@ -705,7 +526,7 @@ function CustomerDashboardContent() {
         const acceptAppId = searchParams.get('accept')
         const acceptReqId = searchParams.get('request')
         if (acceptAppId && acceptReqId) {
-          handleAcceptApplication(acceptAppId, acceptReqId, user.id)
+          handleAcceptApplication(acceptAppId, acceptReqId)
           router.replace('/customer/dashboard')
         }
       } catch (err: any) {
@@ -717,7 +538,7 @@ function CustomerDashboardContent() {
     init()
   }, [router])
 
-  const handleAcceptApplication = async (applicationId: string, requestId: string, userId?: string) => {
+  const handleAcceptApplication = async (applicationId: string, requestId: string) => {
     try {
       const res = await fetch('/api/accept-application', {
         method: 'POST',
@@ -730,36 +551,10 @@ function CustomerDashboardContent() {
         return
       }
 
-      const supabase = createClient()
-      const { data: conv } = await (supabase as any)
-        .from('conversations')
-        .select('id, cleaner_id, clean_request_id, status')
-        .eq('id', data.conversationId)
-        .single()
-
-      if (conv) {
-        const { data: cleaner } = await (supabase as any)
-          .from('cleaners')
-          .select('profile_id, profiles(full_name), zones')
-          .eq('id', conv.cleaner_id)
-          .single()
-
-        const cleanerName = cleaner?.profiles?.full_name
-          ? (() => {
-              const parts = cleaner.profiles.full_name.trim().split(' ')
-              return parts.length > 1 ? `${parts[0]} ${parts[parts.length - 1][0]}.` : parts[0]
-            })()
-          : 'Your cleaner'
-
-        setActiveConversation({
-          id: conv.id,
-          cleaner_id: conv.cleaner_id,
-          clean_request_id: conv.clean_request_id,
-          status: conv.status,
-          cleaner_name: cleanerName,
-          cleaner_zone: cleaner?.zones?.[0] ?? null,
-        })
-      }
+      // Dispatch event so the global ChatWidget picks it up
+      window.dispatchEvent(new CustomEvent('vouchee:open-chat', {
+        detail: { conversationId: data.conversationId },
+      }))
     } catch (err) {
       showToast('Something went wrong — please try again')
     }
@@ -944,10 +739,6 @@ function CustomerDashboardContent() {
         {modal?.type === 'delete' && <ConfirmModal message="Permanently remove this request? This cannot be undone." onConfirm={() => handleDelete(modal.id)} onCancel={() => setModal(null)} />}
         {editingRequest && <EditModal request={editingRequest} onSave={handleSaveEdit} onClose={() => setEditingRequest(null)} saving={saving} />}
         {toast && <ComingSoonBanner message={toast} onClose={() => setToast(null)} />}
-
-        {activeConversation && currentUserId && (
-          <ChatPanel conversation={activeConversation} currentUserId={currentUserId} onClose={() => setActiveConversation(null)} />
-        )}
       </div>
     </>
   )
