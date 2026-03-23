@@ -366,6 +366,103 @@ function ChatTab({ conversation, onClick }: {
   )
 }
 
+// ─── Enrich helper (shared between init and refresh) ──────────────────────────
+
+async function enrichConversations(
+  supabase: any,
+  convos: Conversation[],
+  role: 'customer' | 'cleaner',
+  existingConversations?: EnrichedConversation[]
+): Promise<EnrichedConversation[]> {
+  const enriched: EnrichedConversation[] = await Promise.all(
+    convos.map(async (conv) => {
+      // Reuse existing enrichment if available
+      if (existingConversations) {
+        const existing = existingConversations.find(c => c.id === conv.id)
+        if (existing) return existing
+      }
+
+      let displayName = 'Chat'
+      let zone = 'Horsham'
+
+      if (role === 'customer') {
+        const { data: cleaner } = await (supabase as any)
+          .from('cleaners')
+          .select('profile_id, profiles(full_name), zones')
+          .eq('id', conv.cleaner_id)
+          .single()
+        if (cleaner?.profiles?.full_name) {
+          displayName = formatFirstLastInitial(cleaner.profiles.full_name)
+        }
+        zone = cleaner?.zones?.[0] ? (ZONE_LABELS[cleaner.zones[0]] ?? cleaner.zones[0]) : 'Horsham'
+      } else {
+        const { data: req } = await (supabase as any)
+          .from('clean_requests')
+          .select('zone')
+          .eq('id', conv.clean_request_id)
+          .single()
+        const zoneKey = req?.zone ?? 'central_south_east'
+        zone = ZONE_LABELS[zoneKey] ?? zoneKey
+        displayName = zone
+      }
+
+      const { data: lastMsg } = await (supabase as any)
+        .from('messages')
+        .select('content, created_at')
+        .eq('conversation_id', conv.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+
+      return {
+        ...conv,
+        displayName,
+        zone,
+        lastMessage: lastMsg?.content ?? '',
+        lastMessageTime: lastMsg?.created_at ?? null,
+        unread: false,
+      }
+    })
+  )
+
+  // For cleaners: if multiple chats in same zone, add index
+  if (role === 'cleaner') {
+    const zoneCounts: Record<string, number> = {}
+    enriched.forEach(c => { zoneCounts[c.zone] = (zoneCounts[c.zone] ?? 0) + 1 })
+    const zoneIndexes: Record<string, number> = {}
+    enriched.forEach(c => {
+      if (zoneCounts[c.zone] > 1) {
+        zoneIndexes[c.zone] = (zoneIndexes[c.zone] ?? 0) + 1
+        c.conversationIndex = zoneIndexes[c.zone]
+        c.displayName = `${c.zone} ${c.conversationIndex}`
+      }
+    })
+  }
+
+  return enriched
+}
+
+async function fetchUserConversations(supabase: any, userId: string, role: 'customer' | 'cleaner'): Promise<Conversation[]> {
+  if (role === 'customer') {
+    const { data: cust } = await (supabase as any)
+      .from('customers').select('id').eq('profile_id', userId).single()
+    if (cust) {
+      const { data } = await (supabase as any)
+        .from('conversations').select('*').eq('customer_id', cust.id)
+      return data ?? []
+    }
+  } else {
+    const { data: cl } = await (supabase as any)
+      .from('cleaners').select('id').eq('profile_id', userId).single()
+    if (cl) {
+      const { data } = await (supabase as any)
+        .from('conversations').select('*').eq('cleaner_id', cl.id)
+      return data ?? []
+    }
+  }
+  return []
+}
+
 // ─── Main Widget ──────────────────────────────────────────────────────────────
 
 export function ChatWidget() {
@@ -374,113 +471,35 @@ export function ChatWidget() {
   const [minimizedIds, setMinimizedIds] = useState<Set<string>>(new Set())
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [currentRole, setCurrentRole] = useState<'customer' | 'cleaner' | null>(null)
-  const [ready, setReady] = useState(false)
+  const [initialized, setInitialized] = useState(false)
+  const conversationsRef = useRef<EnrichedConversation[]>([])
   const supabase = createClient()
 
-  // Load user & conversations
+  // Keep ref in sync
+  useEffect(() => {
+    conversationsRef.current = conversations
+  }, [conversations])
+
+  // Load user & conversations on mount
   useEffect(() => {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      if (!user) { setInitialized(true); return }
 
       setCurrentUserId(user.id)
 
       const { data: profile } = await (supabase as any)
         .from('profiles').select('role').eq('id', user.id).single()
-      if (!profile) return
+      if (!profile) { setInitialized(true); return }
 
       const role = profile.role as 'customer' | 'cleaner'
       setCurrentRole(role)
 
-      let convos: Conversation[] = []
-
-      if (role === 'customer') {
-        // Get customer UUID
-        const { data: cust } = await (supabase as any)
-          .from('customers').select('id').eq('profile_id', user.id).single()
-        if (cust) {
-          const { data } = await (supabase as any)
-            .from('conversations').select('*').eq('customer_id', cust.id)
-          convos = data ?? []
-        }
-      } else {
-        // Get cleaner UUID
-        const { data: cl } = await (supabase as any)
-          .from('cleaners').select('id').eq('profile_id', user.id).single()
-        if (cl) {
-          const { data } = await (supabase as any)
-            .from('conversations').select('*').eq('cleaner_id', cl.id)
-          convos = data ?? []
-        }
-      }
-
-      // Enrich conversations with display names and zones
-      const enriched: EnrichedConversation[] = await Promise.all(
-        convos.map(async (conv) => {
-          let displayName = 'Chat'
-          let zone = 'Horsham'
-
-          if (role === 'customer') {
-            // Customer sees cleaner as "First L."
-            const { data: cleaner } = await (supabase as any)
-              .from('cleaners')
-              .select('profile_id, profiles(full_name), zones')
-              .eq('id', conv.cleaner_id)
-              .single()
-            if (cleaner?.profiles?.full_name) {
-              displayName = formatFirstLastInitial(cleaner.profiles.full_name)
-            }
-            zone = cleaner?.zones?.[0] ? (ZONE_LABELS[cleaner.zones[0]] ?? cleaner.zones[0]) : 'Horsham'
-          } else {
-            // Cleaner sees customer as zone label
-            const { data: req } = await (supabase as any)
-              .from('clean_requests')
-              .select('zone')
-              .eq('id', conv.clean_request_id)
-              .single()
-            const zoneKey = req?.zone ?? 'central_south_east'
-            zone = ZONE_LABELS[zoneKey] ?? zoneKey
-            displayName = zone
-          }
-
-          // Get last message
-          const { data: lastMsg } = await (supabase as any)
-            .from('messages')
-            .select('content, created_at')
-            .eq('conversation_id', conv.id)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .single()
-
-          return {
-            ...conv,
-            displayName,
-            zone,
-            lastMessage: lastMsg?.content ?? '',
-            lastMessageTime: lastMsg?.created_at ?? null,
-            unread: false,
-          }
-        })
-      )
-
-      // For cleaners: if multiple chats in same zone, add index
-      if (role === 'cleaner') {
-        const zoneCounts: Record<string, number> = {}
-        enriched.forEach(c => {
-          zoneCounts[c.zone] = (zoneCounts[c.zone] ?? 0) + 1
-        })
-        const zoneIndexes: Record<string, number> = {}
-        enriched.forEach(c => {
-          if (zoneCounts[c.zone] > 1) {
-            zoneIndexes[c.zone] = (zoneIndexes[c.zone] ?? 0) + 1
-            c.conversationIndex = zoneIndexes[c.zone]
-            c.displayName = `${c.zone} ${c.conversationIndex}`
-          }
-        })
-      }
+      const convos = await fetchUserConversations(supabase, user.id, role)
+      const enriched = await enrichConversations(supabase, convos, role)
 
       setConversations(enriched)
-      setReady(true)
+      setInitialized(true)
     }
     init()
   }, [])
@@ -494,129 +513,80 @@ export function ChatWidget() {
         setMinimizedIds(new Set())
         setCurrentUserId(null)
         setCurrentRole(null)
-        setReady(false)
+        setInitialized(false)
       }
     })
     return () => subscription.unsubscribe()
   }, [])
 
-  // Listen for custom event (in-page "Accept & chat" button)
+  // Listen for custom event — ALWAYS registered, regardless of ready state
   useEffect(() => {
-    const handler = (e: Event) => {
+    const handler = async (e: Event) => {
       const detail = (e as CustomEvent).detail
-      if (detail?.conversationId) {
-        openConversation(detail.conversationId)
-        // If conversation not loaded yet, fetch it
-        if (!conversations.find(c => c.id === detail.conversationId)) {
-          refreshConversations(detail.conversationId)
-        }
+      if (!detail?.conversationId) return
+
+      const convId = detail.conversationId
+
+      // If we already have this conversation loaded, just open it
+      const existing = conversationsRef.current.find(c => c.id === convId)
+      if (existing) {
+        setOpenIds(prev => new Set(prev).add(convId))
+        setMinimizedIds(prev => {
+          const next = new Set(prev)
+          next.delete(convId)
+          return next
+        })
+        return
       }
+
+      // Otherwise, re-fetch all conversations to pick up the new one
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { data: profile } = await (supabase as any)
+        .from('profiles').select('role').eq('id', user.id).single()
+      if (!profile) return
+
+      const role = profile.role as 'customer' | 'cleaner'
+      setCurrentUserId(user.id)
+      setCurrentRole(role)
+
+      const convos = await fetchUserConversations(supabase, user.id, role)
+      const enriched = await enrichConversations(supabase, convos, role, conversationsRef.current)
+
+      setConversations(enriched)
+      setInitialized(true)
+
+      // Open the requested conversation
+      setOpenIds(prev => new Set(prev).add(convId))
+      setMinimizedIds(prev => {
+        const next = new Set(prev)
+        next.delete(convId)
+        return next
+      })
     }
+
     window.addEventListener('vouchee:open-chat', handler)
     return () => window.removeEventListener('vouchee:open-chat', handler)
-  }, [conversations])
+  }, [])
 
   // Listen for URL param (?chat=conversationId)
   useEffect(() => {
-    if (!ready) return
+    if (!initialized) return
     const params = new URLSearchParams(window.location.search)
     const chatId = params.get('chat')
     if (chatId) {
-      openConversation(chatId)
       // Clean URL
       const url = new URL(window.location.href)
       url.searchParams.delete('chat')
       window.history.replaceState({}, '', url.toString())
-      // Fetch if not loaded
-      if (!conversations.find(c => c.id === chatId)) {
-        refreshConversations(chatId)
-      }
+
+      // Dispatch as event so the handler above deals with it
+      window.dispatchEvent(new CustomEvent('vouchee:open-chat', {
+        detail: { conversationId: chatId },
+      }))
     }
-  }, [ready])
-
-  const refreshConversations = async (openId?: string) => {
-    // Quick re-fetch — for when a new conversation is created
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-
-    const { data: profile } = await (supabase as any)
-      .from('profiles').select('role').eq('id', user.id).single()
-    if (!profile) return
-
-    const role = profile.role as 'customer' | 'cleaner'
-    let convos: Conversation[] = []
-
-    if (role === 'customer') {
-      const { data: cust } = await (supabase as any)
-        .from('customers').select('id').eq('profile_id', user.id).single()
-      if (cust) {
-        const { data } = await (supabase as any)
-          .from('conversations').select('*').eq('customer_id', cust.id)
-        convos = data ?? []
-      }
-    } else {
-      const { data: cl } = await (supabase as any)
-        .from('cleaners').select('id').eq('profile_id', user.id).single()
-      if (cl) {
-        const { data } = await (supabase as any)
-          .from('conversations').select('*').eq('cleaner_id', cl.id)
-        convos = data ?? []
-      }
-    }
-
-    const enriched: EnrichedConversation[] = await Promise.all(
-      convos.map(async (conv) => {
-        // Check if we already have this one enriched
-        const existing = conversations.find(c => c.id === conv.id)
-        if (existing) return existing
-
-        let displayName = 'Chat'
-        let zone = 'Horsham'
-
-        if (role === 'customer') {
-          const { data: cleaner } = await (supabase as any)
-            .from('cleaners')
-            .select('profile_id, profiles(full_name), zones')
-            .eq('id', conv.cleaner_id)
-            .single()
-          if (cleaner?.profiles?.full_name) {
-            displayName = formatFirstLastInitial(cleaner.profiles.full_name)
-          }
-          zone = cleaner?.zones?.[0] ? (ZONE_LABELS[cleaner.zones[0]] ?? cleaner.zones[0]) : 'Horsham'
-        } else {
-          const { data: req } = await (supabase as any)
-            .from('clean_requests').select('zone').eq('id', conv.clean_request_id).single()
-          const zoneKey = req?.zone ?? 'central_south_east'
-          zone = ZONE_LABELS[zoneKey] ?? zoneKey
-          displayName = zone
-        }
-
-        const { data: lastMsg } = await (supabase as any)
-          .from('messages').select('content, created_at').eq('conversation_id', conv.id)
-          .order('created_at', { ascending: false }).limit(1).single()
-
-        return {
-          ...conv,
-          displayName,
-          zone,
-          lastMessage: lastMsg?.content ?? '',
-          lastMessageTime: lastMsg?.created_at ?? null,
-          unread: false,
-        }
-      })
-    )
-
-    setConversations(enriched)
-
-    if (openId) {
-      setOpenIds(prev => new Set(prev).add(openId))
-      setMinimizedIds(prev => {
-        const next = new Set(prev)
-        next.delete(openId)
-        return next
-      })
-    }
-  }
+  }, [initialized])
 
   const openConversation = useCallback((id: string) => {
     setOpenIds(prev => new Set(prev).add(id))
@@ -644,8 +614,10 @@ export function ChatWidget() {
     })
   }, [])
 
-  // Don't render if not logged in or no conversations
-  if (!ready || !currentUserId || !currentRole || conversations.length === 0) return null
+  // Don't render if not initialized or not logged in
+  if (!initialized || !currentUserId || !currentRole) return null
+  // Don't render if no conversations AND none are open (allows rendering when event opens one)
+  if (conversations.length === 0 && openIds.size === 0) return null
 
   const openExpanded = conversations.filter(c => openIds.has(c.id) && !minimizedIds.has(c.id))
   const collapsed = conversations.filter(c => !openIds.has(c.id) || minimizedIds.has(c.id))
