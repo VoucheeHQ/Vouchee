@@ -55,6 +55,8 @@ interface Application {
   created_at: string
   message?: string
   cleaner_name?: string
+  cleaner_initial?: string
+  cleaner_member_since?: string
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -107,6 +109,12 @@ const PAST_STATUSES: RequestStatus[] = ['deleted', 'paused', 'completed', 'cance
 
 function getFirstName(name: string) {
   return name?.trim()?.split(' ')?.[0] ?? 'there'
+}
+
+function formatFirstLastInitial(name: string): string {
+  const parts = (name ?? '').trim().split(' ')
+  if (parts.length > 1) return `${parts[0]} ${parts[parts.length - 1][0]}.`
+  return parts[0] || 'Cleaner'
 }
 
 function formatDays(days: string[] | null) {
@@ -393,11 +401,132 @@ function PastListingRow({ request }: { request: CleaningRequest }) {
   )
 }
 
+// ─── Application Card (email-style) ──────────────────────────────────────────
+
+function ApplicationCard({ app, onAccept, onOpenChat, accepting }: {
+  app: Application
+  onAccept: () => void
+  onOpenChat: () => void
+  accepting: boolean
+}) {
+  const displayName = app.cleaner_name || 'Cleaner'
+  const initial = displayName[0]?.toUpperCase() || 'C'
+  const memberSince = app.cleaner_member_since || 'recently'
+  const appliedLabel = daysSince(app.created_at) === 0 ? 'Applied today' : `Applied ${daysSince(app.created_at)}d ago`
+
+  return (
+    <div style={{ background: 'white', borderRadius: '16px', border: '1.5px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
+      {/* Header — avatar, name, badges */}
+      <div style={{ padding: '20px 20px 16px' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{
+              width: '52px', height: '52px', borderRadius: '50%', background: '#2563eb',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '22px', fontWeight: 800, color: 'white', flexShrink: 0,
+            }}>
+              {initial}
+            </div>
+            <div>
+              <div style={{ fontSize: '17px', fontWeight: 800, color: '#0f172a', lineHeight: 1.2 }}>{displayName}</div>
+              <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '3px' }}>Member since {memberSince}</div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end', flexShrink: 0 }}>
+            {['DBS checked', 'Right to work', 'Insured'].map(badge => (
+              <span key={badge} style={{
+                display: 'flex', alignItems: 'center', gap: '3px',
+                background: '#f0fdf4', border: '1px solid #bbf7d0',
+                borderRadius: '100px', padding: '3px 8px',
+                fontSize: '10px', fontWeight: 700, color: '#15803d', whiteSpace: 'nowrap',
+              }}>
+                ✓ {badge}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Status bar */}
+      <div style={{ padding: '0 20px 16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <span style={{
+          fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '100px',
+          background: app.status === 'pending' ? '#f1f5f9' : app.status === 'accepted' ? '#f0fdf4' : '#fef2f2',
+          color: app.status === 'pending' ? '#64748b' : app.status === 'accepted' ? '#15803d' : '#dc2626',
+        }}>
+          {app.status === 'pending' ? 'New' : app.status === 'accepted' ? 'Chatting' : 'Declined'}
+        </span>
+        <span style={{ fontSize: '12px', color: '#94a3b8' }}>{appliedLabel}</span>
+      </div>
+
+      {/* Reviews placeholder (blurred like email) */}
+      <div style={{ padding: '0 20px 16px' }}>
+        <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>Reviews</div>
+        <div style={{ filter: 'blur(4px)', pointerEvents: 'none' }}>
+          <div style={{ padding: '10px 12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '6px' }}>
+            <span style={{ color: '#f59e0b', fontSize: '12px' }}>★★★★★</span>
+            <div style={{ fontSize: '13px', color: '#475569', marginTop: '3px', lineHeight: 1.4 }}>Absolutely brilliant — left the house spotless. Would highly recommend to anyone.</div>
+            <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '3px' }}>— Sarah T.</div>
+          </div>
+          <div style={{ padding: '10px 12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+            <span style={{ color: '#f59e0b', fontSize: '12px' }}>★★★★★</span>
+            <div style={{ fontSize: '13px', color: '#475569', marginTop: '3px', lineHeight: 1.4 }}>Very professional and thorough. Always on time and incredibly easy to communicate with.</div>
+            <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '3px' }}>— James H.</div>
+          </div>
+        </div>
+        <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '10px', textAlign: 'center', fontStyle: 'italic' }}>🔒 Accept this application to unlock their full reviews</div>
+      </div>
+
+      {/* Message bubble */}
+      {app.message && (
+        <div style={{ padding: '0 20px 16px', borderTop: '1px solid #f1f5f9' }}>
+          <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px', marginTop: '16px' }}>{displayName}'s message</div>
+          <div style={{ background: '#eff6ff', borderRadius: '12px', padding: '14px 16px', borderLeft: '3px solid #2563eb' }}>
+            <p style={{ margin: 0, fontSize: '14px', color: '#1e40af', lineHeight: 1.6 }}>{app.message}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Action buttons */}
+      <div style={{ padding: '16px 20px 20px', borderTop: '1px solid #f1f5f9', display: 'flex', gap: '12px' }}>
+        {app.status === 'pending' && (
+          <>
+            <button onClick={onAccept} disabled={accepting} style={{
+              flex: 1, background: '#16a34a', color: 'white', border: 'none', borderRadius: '10px',
+              padding: '14px 0', fontSize: '14px', fontWeight: 700, cursor: accepting ? 'not-allowed' : 'pointer',
+              fontFamily: "'DM Sans', sans-serif", opacity: accepting ? 0.7 : 1,
+            }}>
+              {accepting ? 'Opening…' : '✓ Accept & chat'}
+            </button>
+            <button style={{
+              flex: 1, background: 'white', color: '#ef4444', border: '1.5px solid #fecaca', borderRadius: '10px',
+              padding: '14px 0', fontSize: '14px', fontWeight: 700, cursor: 'pointer',
+              fontFamily: "'DM Sans', sans-serif",
+            }}>
+              ✕ Decline
+            </button>
+          </>
+        )}
+        {app.status === 'accepted' && (
+          <button onClick={onOpenChat} style={{
+            flex: 1, background: '#2563eb', color: 'white', border: 'none', borderRadius: '10px',
+            padding: '14px 0', fontSize: '14px', fontWeight: 700, cursor: 'pointer',
+            fontFamily: "'DM Sans', sans-serif",
+          }}>
+            💬 Open chat
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ─── Applications Section ─────────────────────────────────────────────────────
 
-function ApplicationsSection({ requestIds, onAccept }: {
+function ApplicationsSection({ requestIds, onAccept, onOpenChat }: {
   requestIds: string[]
   onAccept: (applicationId: string, requestId: string) => void
+  onOpenChat: (applicationId: string, requestId: string) => void
 }) {
   const [applications, setApplications] = useState<Application[]>([])
   const [loading, setLoading] = useState(true)
@@ -407,12 +536,39 @@ function ApplicationsSection({ requestIds, onAccept }: {
     if (!requestIds.length) { setLoading(false); return }
     const fetchApplications = async () => {
       const supabase = createClient()
-      const { data, error } = await (supabase as any)
+
+      // Fetch applications
+      const { data: appData, error } = await (supabase as any)
         .from('applications')
         .select('*')
         .in('request_id', requestIds)
         .order('created_at', { ascending: false })
-      if (!error && data) setApplications(data)
+
+      if (error || !appData) { setLoading(false); return }
+
+      // Enrich with cleaner names by joining cleaners → profiles
+      const enriched: Application[] = await Promise.all(
+        appData.map(async (app: any) => {
+          const { data: cleaner } = await (supabase as any)
+            .from('cleaners')
+            .select('profile_id, created_at, profiles(full_name)')
+            .eq('id', app.cleaner_id)
+            .single()
+
+          const fullName = cleaner?.profiles?.full_name ?? ''
+          const cleanerCreatedAt = cleaner?.created_at ? new Date(cleaner.created_at) : new Date()
+          const memberSince = cleanerCreatedAt.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
+
+          return {
+            ...app,
+            cleaner_name: fullName ? formatFirstLastInitial(fullName) : 'Cleaner',
+            cleaner_initial: fullName ? fullName[0]?.toUpperCase() : 'C',
+            cleaner_member_since: memberSince,
+          }
+        })
+      )
+
+      setApplications(enriched)
       setLoading(false)
     }
     fetchApplications()
@@ -427,7 +583,11 @@ function ApplicationsSection({ requestIds, onAccept }: {
 
   return (
     <div style={{ marginBottom: '36px' }}>
-      <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '14px' }}>Applications</div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+        <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+          Applications {applications.length > 0 ? `(${applications.length})` : ''}
+        </div>
+      </div>
       {loading ? (
         <div style={{ background: 'white', borderRadius: '14px', border: '1px solid #e2e8f0', padding: '24px', textAlign: 'center' }}>
           <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0 }}>Loading applications…</p>
@@ -439,39 +599,15 @@ function ApplicationsSection({ requestIds, onAccept }: {
           <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0 }}>Once cleaners apply to your listing, you'll be able to review their profiles here.</p>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {applications.map(app => (
-            <div key={app.id} style={{ background: 'white', borderRadius: '12px', border: '1px solid #e2e8f0', padding: '16px 18px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: app.message ? '12px' : '0' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>🧹</div>
-                  <div>
-                    <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>{app.cleaner_name ?? 'Cleaner'}</div>
-                    <div style={{ fontSize: '12px', color: '#94a3b8' }}>Applied {daysSince(app.created_at) === 0 ? 'today' : `${daysSince(app.created_at)}d ago`}</div>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '100px', background: app.status === 'pending' ? '#f1f5f9' : app.status === 'accepted' ? '#f0fdf4' : '#fef2f2', color: app.status === 'pending' ? '#64748b' : app.status === 'accepted' ? '#15803d' : '#dc2626' }}>
-                    {app.status === 'pending' ? 'New' : app.status === 'accepted' ? 'Chatting' : 'Declined'}
-                  </span>
-                  {app.status === 'pending' && (
-                    <button onClick={() => handleAccept(app)} disabled={accepting === app.id} style={{ background: '#16a34a', color: 'white', border: 'none', borderRadius: '8px', padding: '6px 14px', fontSize: '12px', fontWeight: 700, cursor: accepting === app.id ? 'not-allowed' : 'pointer', fontFamily: "'DM Sans', sans-serif", opacity: accepting === app.id ? 0.7 : 1 }}>
-                      {accepting === app.id ? 'Opening…' : '✓ Accept & chat'}
-                    </button>
-                  )}
-                  {app.status === 'accepted' && (
-                    <button onClick={() => onAccept(app.id, app.request_id)} style={{ background: '#2563eb', color: 'white', border: 'none', borderRadius: '8px', padding: '6px 14px', fontSize: '12px', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
-                      💬 Open chat
-                    </button>
-                  )}
-                </div>
-              </div>
-              {app.message && (
-                <div style={{ padding: '10px 14px', background: '#eff6ff', borderRadius: '10px', borderLeft: '3px solid #2563eb' }}>
-                  <p style={{ margin: 0, fontSize: '13px', color: '#1e40af', lineHeight: 1.5 }}>{app.message}</p>
-                </div>
-              )}
-            </div>
+            <ApplicationCard
+              key={app.id}
+              app={app}
+              onAccept={() => handleAccept(app)}
+              onOpenChat={() => onOpenChat(app.id, app.request_id)}
+              accepting={accepting === app.id}
+            />
           ))}
         </div>
       )}
@@ -557,6 +693,39 @@ function CustomerDashboardContent() {
       }))
     } catch (err) {
       showToast('Something went wrong — please try again')
+    }
+  }
+
+  const handleOpenChat = async (applicationId: string, requestId: string) => {
+    // For already-accepted applications, find the existing conversation
+    try {
+      const supabase = createClient()
+      const { data: app } = await (supabase as any)
+        .from('applications')
+        .select('cleaner_id')
+        .eq('id', applicationId)
+        .single()
+
+      if (!app) { showToast('Could not find application'); return }
+
+      // Look up the conversation for this cleaner + request
+      const { data: conv } = await (supabase as any)
+        .from('conversations')
+        .select('id')
+        .eq('cleaner_id', app.cleaner_id)
+        .eq('clean_request_id', requestId)
+        .single()
+
+      if (conv) {
+        window.dispatchEvent(new CustomEvent('vouchee:open-chat', {
+          detail: { conversationId: conv.id },
+        }))
+      } else {
+        // Fallback: re-run accept flow which will find existing conversation
+        await handleAcceptApplication(applicationId, requestId)
+      }
+    } catch (err) {
+      showToast('Could not open chat — please try again')
     }
   }
 
@@ -708,7 +877,7 @@ function CustomerDashboardContent() {
             )}
 
             {activeRequestIds.length > 0 && (
-              <ApplicationsSection requestIds={activeRequestIds} onAccept={handleAcceptApplication} />
+              <ApplicationsSection requestIds={activeRequestIds} onAccept={handleAcceptApplication} onOpenChat={handleOpenChat} />
             )}
 
             {pastRequests.filter(r => r.status !== 'paused').length > 0 && (
