@@ -47,12 +47,16 @@ const ZONE_LABELS: Record<string, string> = {
 
 const WATCHLIST = ['07', '+44', 'whatsapp', 'email', '@', 'bank', 'address', 'go direct', 'go private', 'direct payment', 'cash']
 
+// Primary suggested questions shown to the customer
 const SUGGESTED_QUESTIONS = [
   "When are you next available?",
   "Do you bring your own supplies?",
-  "Have you cleaned a similar-sized property before?",
-  "Are you flexible on timing?",
+  "What slot works best for you?",
+  "How are you with pets?",
 ]
+
+// Follow-up shown after customer clicks "Do you bring your own supplies?"
+const SUPPLIES_FOLLOWUP = "If not, what products should I get?"
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -76,7 +80,7 @@ function formatDate(iso: string): string {
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
 }
 
-// ─── Chat Window (expanded) ───────────────────────────────────────────────────
+// ─── Chat Window ──────────────────────────────────────────────────────────────
 
 function ChatWindow({ conversation, currentUserId, currentRole, onMinimize, onClose }: {
   conversation: EnrichedConversation
@@ -91,13 +95,14 @@ function ChatWindow({ conversation, currentUserId, currentRole, onMinimize, onCl
   const [loading, setLoading] = useState(true)
   const [warningShown, setWarningShown] = useState(false)
   const [showWarning, setShowWarning] = useState(false)
+  const [showSuppliesFollowup, setShowSuppliesFollowup] = useState(false)
+  const [customerHasSent, setCustomerHasSent] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const supabase = createClient()
 
   const checkWatchlist = (text: string) => {
     if (warningShown) return false
-    const lower = text.toLowerCase()
-    return WATCHLIST.some(w => lower.includes(w))
+    return WATCHLIST.some(w => text.toLowerCase().includes(w))
   }
 
   useEffect(() => {
@@ -107,20 +112,30 @@ function ChatWindow({ conversation, currentUserId, currentRole, onMinimize, onCl
         .select('*')
         .eq('conversation_id', conversation.id)
         .order('created_at', { ascending: true })
-      setMessages(data ?? [])
+      const msgs = data ?? []
+      setMessages(msgs)
+      // Check if customer has already sent a message
+      if (currentRole === 'customer') {
+        setCustomerHasSent(msgs.some((m: Message) => m.sender_role === 'customer'))
+      }
       setLoading(false)
     }
     load()
 
     const channel = supabase
-      .channel(`chat-widget-${conversation.id}`)
+      .channel(`chat-${conversation.id}`)
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
         table: 'messages',
         filter: `conversation_id=eq.${conversation.id}`,
       }, payload => {
-        setMessages(prev => [...prev, payload.new as Message])
+        setMessages(prev => {
+          // Avoid duplicates
+          const msg = payload.new as Message
+          if (prev.find(m => m.id === msg.id)) return prev
+          return [...prev, msg]
+        })
       })
       .subscribe()
 
@@ -131,33 +146,48 @@ function ChatWindow({ conversation, currentUserId, currentRole, onMinimize, onCl
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  const handleSend = async () => {
-    if (!input.trim() || sending) return
-    if (checkWatchlist(input)) {
+  const handleSend = async (overrideContent?: string) => {
+    const content = (overrideContent ?? input).trim()
+    if (!content || sending) return
+    if (checkWatchlist(content)) {
       setShowWarning(true)
       setWarningShown(true)
       return
     }
     setSending(true)
-    const content = input.trim()
     setInput('')
-    await (supabase as any).from('messages').insert({
+    setShowSuppliesFollowup(false)
+
+    const { data: inserted } = await (supabase as any).from('messages').insert({
       conversation_id: conversation.id,
       sender_id: currentUserId,
       sender_role: currentRole,
       content,
-    })
+    }).select().single()
+
+    // Optimistically add if realtime doesn't fire fast enough
+    if (inserted) {
+      setMessages(prev => prev.find(m => m.id === inserted.id) ? prev : [...prev, inserted])
+    }
+
+    if (currentRole === 'customer') setCustomerHasSent(true)
     setSending(false)
   }
 
+  const handleSuggestedQuestion = (q: string) => {
+    if (q === "Do you bring your own supplies?") {
+      setShowSuppliesFollowup(true)
+      setInput(q)
+    } else {
+      handleSend(q)
+    }
+  }
+
   const getSenderLabel = (msg: Message) => {
-    if (
+    const isMe =
       (currentRole === 'customer' && msg.sender_role === 'customer') ||
       (currentRole === 'cleaner' && msg.sender_role === 'cleaner')
-    ) {
-      return 'You'
-    }
-    return conversation.displayName
+    return isMe ? 'You' : conversation.displayName
   }
 
   // Group messages by date
@@ -172,9 +202,11 @@ function ChatWindow({ conversation, currentUserId, currentRole, onMinimize, onCl
     }
   })
 
+  const showSuggestions = currentRole === 'customer' && !customerHasSent && !loading
+
   return (
     <div style={{
-      width: '328px', height: '455px', background: 'white',
+      width: '328px', height: '480px', background: 'white',
       borderRadius: '8px 8px 0 0', boxShadow: '0 -2px 16px rgba(0,0,0,0.15)',
       display: 'flex', flexDirection: 'column', overflow: 'hidden',
       fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)",
@@ -237,12 +269,10 @@ function ChatWindow({ conversation, currentUserId, currentRole, onMinimize, onCl
                 const isMe =
                   (currentRole === 'customer' && msg.sender_role === 'customer') ||
                   (currentRole === 'cleaner' && msg.sender_role === 'cleaner')
-                const label = getSenderLabel(msg)
-                const time = formatTime(msg.created_at)
                 return (
                   <div key={msg.id} style={{ marginBottom: '8px' }}>
                     <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '2px', fontWeight: 600 }}>
-                      {label} <span style={{ fontWeight: 400 }}>({time})</span>
+                      {getSenderLabel(msg)} <span style={{ fontWeight: 400 }}>({formatTime(msg.created_at)})</span>
                     </div>
                     <div style={{
                       maxWidth: '85%', padding: '8px 12px',
@@ -264,18 +294,38 @@ function ChatWindow({ conversation, currentUserId, currentRole, onMinimize, onCl
         <div ref={bottomRef} />
       </div>
 
-      {/* Suggested questions */}
-      {messages.length === 0 && !loading && currentRole === 'customer' && (
+      {/* Suggested questions — shown until customer sends their first message */}
+      {showSuggestions && (
         <div style={{ padding: '0 12px 8px', flexShrink: 0 }}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-            {SUGGESTED_QUESTIONS.map((q, i) => (
-              <button key={i} onClick={() => setInput(q)} style={{
-                padding: '4px 10px', borderRadius: '100px', border: '1px solid #e2e8f0',
-                background: 'white', fontSize: '11px', fontWeight: 600, color: '#475569',
+          {showSuppliesFollowup ? (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+              <button onClick={() => handleSend(input)} style={{
+                padding: '4px 10px', borderRadius: '100px', border: '1px solid #bfdbfe',
+                background: '#eff6ff', fontSize: '11px', fontWeight: 600, color: '#1d4ed8',
                 cursor: 'pointer', fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)",
-              }}>{q}</button>
-            ))}
-          </div>
+              }}>Send: "Do you bring your own supplies?"</button>
+              <button onClick={() => handleSend(SUPPLIES_FOLLOWUP)} style={{
+                padding: '4px 10px', borderRadius: '100px', border: '1px solid #bbf7d0',
+                background: '#f0fdf4', fontSize: '11px', fontWeight: 600, color: '#15803d',
+                cursor: 'pointer', fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)",
+              }}>Also ask: "{SUPPLIES_FOLLOWUP}"</button>
+              <button onClick={() => { setShowSuppliesFollowup(false); setInput('') }} style={{
+                padding: '4px 10px', borderRadius: '100px', border: '1px solid #e2e8f0',
+                background: 'white', fontSize: '11px', fontWeight: 600, color: '#94a3b8',
+                cursor: 'pointer', fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)",
+              }}>Cancel</button>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+              {SUGGESTED_QUESTIONS.map((q, i) => (
+                <button key={i} onClick={() => handleSuggestedQuestion(q)} style={{
+                  padding: '4px 10px', borderRadius: '100px', border: '1px solid #e2e8f0',
+                  background: 'white', fontSize: '11px', fontWeight: 600, color: '#475569',
+                  cursor: 'pointer', fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)",
+                }}>{q}</button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -292,7 +342,7 @@ function ChatWindow({ conversation, currentUserId, currentRole, onMinimize, onCl
             outline: 'none', color: '#0f172a',
           }}
         />
-        <button onClick={handleSend} disabled={!input.trim() || sending} style={{
+        <button onClick={() => handleSend()} disabled={!input.trim() || sending} style={{
           padding: '8px 14px', borderRadius: '8px', border: 'none',
           background: input.trim() ? '#2563eb' : '#e2e8f0',
           color: input.trim() ? 'white' : '#94a3b8',
@@ -333,65 +383,56 @@ function ChatTab({ conversation, onClick }: { conversation: EnrichedConversation
   )
 }
 
-// ─── Enrich helper ────────────────────────────────────────────────────────────
+// ─── Enrich a single conversation ─────────────────────────────────────────────
+
+async function enrichOne(
+  supabase: any,
+  conv: Conversation,
+  role: 'customer' | 'cleaner'
+): Promise<EnrichedConversation> {
+  let displayName = 'Chat'
+  let zone = 'Horsham'
+
+  if (role === 'customer') {
+    const { data: cleaner } = await (supabase as any)
+      .from('cleaners')
+      .select('profile_id, profiles(full_name), zones')
+      .eq('id', conv.cleaner_id)
+      .single()
+    if (cleaner?.profiles?.full_name) displayName = formatFirstLastInitial(cleaner.profiles.full_name)
+    zone = cleaner?.zones?.[0] ? (ZONE_LABELS[cleaner.zones[0]] ?? cleaner.zones[0]) : 'Horsham'
+  } else {
+    const { data: req } = await (supabase as any)
+      .from('clean_requests').select('zone').eq('id', conv.clean_request_id).single()
+    const zoneKey = req?.zone ?? 'central_south_east'
+    zone = ZONE_LABELS[zoneKey] ?? zoneKey
+    displayName = zone
+  }
+
+  const { data: lastMsg } = await (supabase as any)
+    .from('messages').select('content, created_at')
+    .eq('conversation_id', conv.id)
+    .order('created_at', { ascending: false })
+    .limit(1).single()
+
+  return { ...conv, displayName, zone, lastMessage: lastMsg?.content ?? '', lastMessageTime: lastMsg?.created_at ?? null, unread: false }
+}
+
+// ─── Enrich all conversations ──────────────────────────────────────────────────
 
 async function enrichConversations(
   supabase: any,
   convos: Conversation[],
   role: 'customer' | 'cleaner',
-  existingConversations?: EnrichedConversation[]
+  existing?: EnrichedConversation[]
 ): Promise<EnrichedConversation[]> {
-  const enriched: EnrichedConversation[] = await Promise.all(
-    convos.map(async (conv) => {
-      if (existingConversations) {
-        const existing = existingConversations.find(c => c.id === conv.id)
-        if (existing) return existing
-      }
-
-      let displayName = 'Chat'
-      let zone = 'Horsham'
-
-      if (role === 'customer') {
-        const { data: cleaner } = await (supabase as any)
-          .from('cleaners')
-          .select('profile_id, profiles(full_name), zones')
-          .eq('id', conv.cleaner_id)
-          .single()
-        if (cleaner?.profiles?.full_name) {
-          displayName = formatFirstLastInitial(cleaner.profiles.full_name)
-        }
-        zone = cleaner?.zones?.[0] ? (ZONE_LABELS[cleaner.zones[0]] ?? cleaner.zones[0]) : 'Horsham'
-      } else {
-        const { data: req } = await (supabase as any)
-          .from('clean_requests')
-          .select('zone')
-          .eq('id', conv.clean_request_id)
-          .single()
-        const zoneKey = req?.zone ?? 'central_south_east'
-        zone = ZONE_LABELS[zoneKey] ?? zoneKey
-        displayName = zone
-      }
-
-      const { data: lastMsg } = await (supabase as any)
-        .from('messages')
-        .select('content, created_at')
-        .eq('conversation_id', conv.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single()
-
-      return {
-        ...conv,
-        displayName,
-        zone,
-        lastMessage: lastMsg?.content ?? '',
-        lastMessageTime: lastMsg?.created_at ?? null,
-        unread: false,
-      }
+  const enriched = await Promise.all(
+    convos.map(conv => {
+      const found = existing?.find(c => c.id === conv.id)
+      return found ? Promise.resolve(found) : enrichOne(supabase, conv, role)
     })
   )
 
-  // For cleaners: if multiple chats in same zone, add index
   if (role === 'cleaner') {
     const zoneCounts: Record<string, number> = {}
     enriched.forEach(c => { zoneCounts[c.zone] = (zoneCounts[c.zone] ?? 0) + 1 })
@@ -408,16 +449,13 @@ async function enrichConversations(
   return enriched
 }
 
-// ─── Fetch conversations ──────────────────────────────────────────────────────
-// conversations.customer_id is a profiles.id (FK to profiles), so for customers
-// we query directly by the user's profile UUID — no customers table lookup needed.
+// ─── Fetch all conversations for a user ───────────────────────────────────────
 
 async function fetchUserConversations(supabase: any, userId: string, role: 'customer' | 'cleaner'): Promise<Conversation[]> {
   if (role === 'customer') {
+    // conversations.customer_id is profiles.id per FK constraint
     const { data } = await (supabase as any)
-      .from('conversations')
-      .select('*')
-      .eq('customer_id', userId)
+      .from('conversations').select('*').eq('customer_id', userId)
     return data ?? []
   } else {
     const { data: cl } = await (supabase as any)
@@ -443,17 +481,13 @@ export function ChatWidget() {
   const conversationsRef = useRef<EnrichedConversation[]>([])
   const supabase = createClient()
 
-  // Keep ref in sync
-  useEffect(() => {
-    conversationsRef.current = conversations
-  }, [conversations])
+  useEffect(() => { conversationsRef.current = conversations }, [conversations])
 
   // Load user & conversations on mount
   useEffect(() => {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { setInitialized(true); return }
-
       setCurrentUserId(user.id)
 
       const { data: profile } = await (supabase as any)
@@ -471,7 +505,7 @@ export function ChatWidget() {
     init()
   }, [])
 
-  // Listen for auth changes — only handle sign out
+  // Sign out cleanup
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_OUT') {
@@ -486,22 +520,25 @@ export function ChatWidget() {
     return () => subscription.unsubscribe()
   }, [])
 
-  // Listen for vouchee:open-chat event
+  // Listen for vouchee:open-chat — fast path: fetch just the one conversation by ID
   useEffect(() => {
     const handler = async (e: Event) => {
       const detail = (e as CustomEvent).detail
       if (!detail?.conversationId) return
       const convId = detail.conversationId
 
-      // If already loaded, just open it
-      const existing = conversationsRef.current.find(c => c.id === convId)
-      if (existing) {
+      const openIt = () => {
         setOpenIds(prev => new Set(prev).add(convId))
         setMinimizedIds(prev => { const next = new Set(prev); next.delete(convId); return next })
+      }
+
+      // Already loaded — just open
+      if (conversationsRef.current.find(c => c.id === convId)) {
+        openIt()
         return
       }
 
-      // Otherwise re-fetch to pick up the new conversation
+      // Fetch just this one conversation by ID
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
@@ -513,20 +550,26 @@ export function ChatWidget() {
       setCurrentUserId(user.id)
       setCurrentRole(role)
 
-      const convos = await fetchUserConversations(supabase, user.id, role)
-      const enriched = await enrichConversations(supabase, convos, role, conversationsRef.current)
-      setConversations(enriched)
-      setInitialized(true)
+      const { data: conv } = await (supabase as any)
+        .from('conversations').select('*').eq('id', convId).single()
 
-      setOpenIds(prev => new Set(prev).add(convId))
-      setMinimizedIds(prev => { const next = new Set(prev); next.delete(convId); return next })
+      if (conv) {
+        const enriched = await enrichOne(supabase, conv, role)
+        setConversations(prev => {
+          if (prev.find(c => c.id === convId)) return prev
+          return [...prev, enriched]
+        })
+        setInitialized(true)
+      }
+
+      openIt()
     }
 
     window.addEventListener('vouchee:open-chat', handler)
     return () => window.removeEventListener('vouchee:open-chat', handler)
   }, [])
 
-  // Listen for URL param (?chat=conversationId)
+  // Handle ?chat= URL param
   useEffect(() => {
     if (!initialized) return
     const params = new URLSearchParams(window.location.search)
@@ -564,7 +607,6 @@ export function ChatWidget() {
       position: 'fixed', bottom: 0, right: '16px', zIndex: 400,
       display: 'flex', alignItems: 'flex-end', gap: '8px', pointerEvents: 'none',
     }}>
-      {/* Collapsed tabs */}
       {collapsed.length > 0 && (
         <div style={{ display: 'flex', gap: '4px', pointerEvents: 'auto' }}>
           {collapsed.map(conv => (
@@ -572,8 +614,6 @@ export function ChatWidget() {
           ))}
         </div>
       )}
-
-      {/* Expanded windows */}
       {openExpanded.map(conv => (
         <div key={conv.id} style={{ pointerEvents: 'auto' }}>
           <ChatWindow
