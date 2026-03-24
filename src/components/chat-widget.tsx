@@ -148,9 +148,12 @@ function ChatWindow({ conversation, currentUserId, currentRole, onMinimize, onCl
     }
     load()
 
-    // Single channel: postgres_changes (no filter — client-side filtered) + presence for typing
+    // Single channel: postgres_changes + presence for typing
     const channel = supabase.channel(`conversation:${conversation.id}`, {
-      config: { presence: { key: currentUserId } },
+      config: {
+        broadcast: { self: false },
+        presence: { key: currentUserId },
+      },
     })
 
     channel
@@ -171,7 +174,19 @@ function ChatWindow({ conversation, currentUserId, currentRole, onMinimize, onCl
           .some(([, presences]) => (presences as any[]).some(p => p.typing === true))
         setOtherIsTyping(anyOtherTyping)
       })
-      .subscribe()
+      .on('presence', { event: 'join' }, ({ key, newPresences }: { key: string; newPresences: any[] }) => {
+        if (key === currentUserId) return
+        if (newPresences.some(p => p.typing === true)) setOtherIsTyping(true)
+      })
+      .on('presence', { event: 'leave' }, ({ key }: { key: string }) => {
+        if (key !== currentUserId) setOtherIsTyping(false)
+      })
+      .subscribe(async (status: string) => {
+        if (status === 'SUBSCRIBED') {
+          // Register presence immediately so the other side can track us
+          await channel.track({ typing: false })
+        }
+      })
 
     channelRef.current = channel
 
@@ -227,7 +242,6 @@ function ChatWindow({ conversation, currentUserId, currentRole, onMinimize, onCl
     if (error) {
       console.error('Message insert failed:', error)
     } else if (inserted) {
-      // Optimistic add — realtime may arrive first, dedup handles it
       setMessages(prev => prev.find(m => m.id === inserted.id) ? prev : [...prev, inserted])
       if (currentRole === 'customer') setCustomerHasSent(true)
     }
@@ -349,6 +363,7 @@ function ChatWindow({ conversation, currentUserId, currentRole, onMinimize, onCl
           ))
         )}
 
+        {/* Typing indicator */}
         {otherIsTyping && (
           <div style={{ marginBottom: '8px' }}>
             <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '2px', fontWeight: 600 }}>
@@ -359,6 +374,7 @@ function ChatWindow({ conversation, currentUserId, currentRole, onMinimize, onCl
             </div>
           </div>
         )}
+
         <div ref={bottomRef} />
       </div>
 
@@ -523,7 +539,6 @@ export function ChatWidget() {
       const role = profile.role as 'customer' | 'cleaner'
       setCurrentRole(role)
 
-      // For cleaners, store their cleaners.id for the realtime listener
       if (role === 'cleaner') {
         const { data: cl } = await (supabase as any).from('cleaners').select('id').eq('profile_id', user.id).single()
         cleanerIdRef.current = cl?.id ?? null
@@ -537,12 +552,11 @@ export function ChatWidget() {
     init()
   }, [])
 
-  // For cleaners: listen for new conversations being created in real time
-  // so they see the chat widget appear without refreshing
+  // Cleaner: listen for new conversations in realtime so widget appears without refresh
   useEffect(() => {
     if (currentRole !== 'cleaner' || !cleanerIdRef.current) return
-
     const cleanerId = cleanerIdRef.current
+
     const channel = supabase
       .channel('new-conversations-cleaner')
       .on('postgres_changes', {
@@ -552,7 +566,6 @@ export function ChatWidget() {
       }, async payload => {
         const conv = payload.new as Conversation
         if (conv.cleaner_id !== cleanerId) return
-        // New conversation for this cleaner — enrich and add
         const enriched = await enrichOne(supabase, conv, 'cleaner')
         setConversations(prev => prev.find(c => c.id === conv.id) ? prev : [...prev, enriched])
       })
@@ -577,7 +590,7 @@ export function ChatWidget() {
     return () => subscription.unsubscribe()
   }, [])
 
-  // vouchee:open-chat event — fast path fetches single conversation
+  // vouchee:open-chat event — fast path: fetch just the one conversation
   useEffect(() => {
     const handler = async (e: Event) => {
       const detail = (e as CustomEvent).detail
