@@ -151,8 +151,10 @@ function ChatWindow({ conversation, currentUserId, currentRole, onMinimize, onCl
   }
 
   const getSenderLabel = (msg: Message) => {
-    if ((currentRole === 'customer' && msg.sender_role === 'customer') ||
-        (currentRole === 'cleaner' && msg.sender_role === 'cleaner')) {
+    if (
+      (currentRole === 'customer' && msg.sender_role === 'customer') ||
+      (currentRole === 'cleaner' && msg.sender_role === 'cleaner')
+    ) {
       return 'You'
     }
     return conversation.displayName
@@ -178,14 +180,10 @@ function ChatWindow({ conversation, currentUserId, currentRole, onMinimize, onCl
       fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)",
     }}>
       {/* Header */}
-      <div
-        onClick={onMinimize}
-        style={{
-          padding: '10px 12px', background: '#1e293b', color: 'white',
-          display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer',
-          flexShrink: 0,
-        }}
-      >
+      <div onClick={onMinimize} style={{
+        padding: '10px 12px', background: '#1e293b', color: 'white',
+        display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', flexShrink: 0,
+      }}>
         <div style={{
           width: '32px', height: '32px', borderRadius: '50%', background: '#3b82f6',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -202,31 +200,20 @@ function ChatWindow({ conversation, currentUserId, currentRole, onMinimize, onCl
           </div>
         </div>
         <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
-          <button onClick={e => { e.stopPropagation(); onMinimize() }} style={{
-            background: 'none', border: 'none', color: 'rgba(255,255,255,0.7)',
-            cursor: 'pointer', fontSize: '18px', padding: '0 4px', lineHeight: 1,
-          }}>−</button>
-          <button onClick={e => { e.stopPropagation(); onClose() }} style={{
-            background: 'none', border: 'none', color: 'rgba(255,255,255,0.7)',
-            cursor: 'pointer', fontSize: '16px', padding: '0 4px', lineHeight: 1,
-          }}>✕</button>
+          <button onClick={e => { e.stopPropagation(); onMinimize() }} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.7)', cursor: 'pointer', fontSize: '18px', padding: '0 4px', lineHeight: 1 }}>−</button>
+          <button onClick={e => { e.stopPropagation(); onClose() }} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.7)', cursor: 'pointer', fontSize: '16px', padding: '0 4px', lineHeight: 1 }}>✕</button>
         </div>
       </div>
 
       {/* Warning banner */}
       {showWarning && (
-        <div style={{
-          padding: '8px 12px', background: '#fffbeb', borderBottom: '1px solid #fde68a',
-          display: 'flex', gap: '8px', alignItems: 'flex-start', flexShrink: 0,
-        }}>
+        <div style={{ padding: '8px 12px', background: '#fffbeb', borderBottom: '1px solid #fde68a', display: 'flex', gap: '8px', alignItems: 'flex-start', flexShrink: 0 }}>
           <span style={{ fontSize: '14px', flexShrink: 0 }}>⚠️</span>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: '11px', fontWeight: 700, color: '#92400e' }}>Keep conversations on Vouchee</div>
             <div style={{ fontSize: '11px', color: '#b45309', lineHeight: 1.4 }}>Please keep all communication within Vouchee to protect both parties.</div>
           </div>
-          <button onClick={() => setShowWarning(false)} style={{
-            background: 'none', border: 'none', cursor: 'pointer', color: '#92400e', fontSize: '14px', flexShrink: 0,
-          }}>✕</button>
+          <button onClick={() => setShowWarning(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#92400e', fontSize: '14px', flexShrink: 0 }}>✕</button>
         </div>
       )}
 
@@ -243,15 +230,13 @@ function ChatWindow({ conversation, currentUserId, currentRole, onMinimize, onCl
         ) : (
           groupedMessages.map((group, gi) => (
             <div key={gi}>
-              <div style={{
-                textAlign: 'center', fontSize: '10px', fontWeight: 600, color: '#94a3b8',
-                margin: '12px 0 8px', textTransform: 'uppercase', letterSpacing: '0.05em',
-              }}>
+              <div style={{ textAlign: 'center', fontSize: '10px', fontWeight: 600, color: '#94a3b8', margin: '12px 0 8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 {group.date}
               </div>
               {group.msgs.map(msg => {
-                const isMe = (currentRole === 'customer' && msg.sender_role === 'customer') ||
-                             (currentRole === 'cleaner' && msg.sender_role === 'cleaner')
+                const isMe =
+                  (currentRole === 'customer' && msg.sender_role === 'customer') ||
+                  (currentRole === 'cleaner' && msg.sender_role === 'cleaner')
                 const label = getSenderLabel(msg)
                 const time = formatTime(msg.created_at)
                 return (
@@ -295,34 +280,26 @@ function ChatWindow({ conversation, currentUserId, currentRole, onMinimize, onCl
       )}
 
       {/* Input */}
-      <div style={{
-        padding: '8px 12px', borderTop: '1px solid #f1f5f9',
-        display: 'flex', gap: '6px', flexShrink: 0,
-      }}>
+      <div style={{ padding: '8px 12px', borderTop: '1px solid #f1f5f9', display: 'flex', gap: '6px', flexShrink: 0 }}>
         <input
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
           placeholder="Write a message…"
           style={{
-            flex: 1, padding: '8px 12px', borderRadius: '8px',
-            border: '1px solid #e2e8f0', fontSize: '13px',
-            fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)",
+            flex: 1, padding: '8px 12px', borderRadius: '8px', border: '1px solid #e2e8f0',
+            fontSize: '13px', fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)",
             outline: 'none', color: '#0f172a',
           }}
         />
-        <button
-          onClick={handleSend}
-          disabled={!input.trim() || sending}
-          style={{
-            padding: '8px 14px', borderRadius: '8px', border: 'none',
-            background: input.trim() ? '#2563eb' : '#e2e8f0',
-            color: input.trim() ? 'white' : '#94a3b8',
-            fontWeight: 700, fontSize: '13px',
-            cursor: input.trim() ? 'pointer' : 'not-allowed',
-            fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)",
-          }}
-        >Send</button>
+        <button onClick={handleSend} disabled={!input.trim() || sending} style={{
+          padding: '8px 14px', borderRadius: '8px', border: 'none',
+          background: input.trim() ? '#2563eb' : '#e2e8f0',
+          color: input.trim() ? 'white' : '#94a3b8',
+          fontWeight: 700, fontSize: '13px',
+          cursor: input.trim() ? 'pointer' : 'not-allowed',
+          fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)",
+        }}>Send</button>
       </div>
     </div>
   )
@@ -330,18 +307,14 @@ function ChatWindow({ conversation, currentUserId, currentRole, onMinimize, onCl
 
 // ─── Collapsed Tab ────────────────────────────────────────────────────────────
 
-function ChatTab({ conversation, onClick }: {
-  conversation: EnrichedConversation
-  onClick: () => void
-}) {
+function ChatTab({ conversation, onClick }: { conversation: EnrichedConversation; onClick: () => void }) {
   return (
     <button onClick={onClick} style={{
       display: 'flex', alignItems: 'center', gap: '8px',
       padding: '8px 14px 8px 8px', background: '#1e293b', color: 'white',
       border: 'none', borderRadius: '8px 8px 0 0', cursor: 'pointer',
       fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)",
-      boxShadow: '0 -2px 8px rgba(0,0,0,0.12)',
-      maxWidth: '200px',
+      boxShadow: '0 -2px 8px rgba(0,0,0,0.12)', maxWidth: '200px',
     }}>
       <div style={{
         width: '28px', height: '28px', borderRadius: '50%', background: '#3b82f6',
@@ -350,23 +323,17 @@ function ChatTab({ conversation, onClick }: {
       }}>
         {conversation.displayName[0]?.toUpperCase()}
       </div>
-      <span style={{
-        fontSize: '13px', fontWeight: 700, overflow: 'hidden',
-        textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-      }}>
+      <span style={{ fontSize: '13px', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
         {conversation.displayName}
       </span>
       {conversation.unread && (
-        <span style={{
-          width: '8px', height: '8px', borderRadius: '50%',
-          background: '#22c55e', flexShrink: 0,
-        }} />
+        <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#22c55e', flexShrink: 0 }} />
       )}
     </button>
   )
 }
 
-// ─── Enrich helper (shared between init and refresh) ──────────────────────────
+// ─── Enrich helper ────────────────────────────────────────────────────────────
 
 async function enrichConversations(
   supabase: any,
@@ -376,7 +343,6 @@ async function enrichConversations(
 ): Promise<EnrichedConversation[]> {
   const enriched: EnrichedConversation[] = await Promise.all(
     convos.map(async (conv) => {
-      // Reuse existing enrichment if available
       if (existingConversations) {
         const existing = existingConversations.find(c => c.id === conv.id)
         if (existing) return existing
@@ -442,15 +408,17 @@ async function enrichConversations(
   return enriched
 }
 
+// ─── Fetch conversations ──────────────────────────────────────────────────────
+// conversations.customer_id is a profiles.id (FK to profiles), so for customers
+// we query directly by the user's profile UUID — no customers table lookup needed.
+
 async function fetchUserConversations(supabase: any, userId: string, role: 'customer' | 'cleaner'): Promise<Conversation[]> {
   if (role === 'customer') {
-    const { data: cust } = await (supabase as any)
-      .from('customers').select('id').eq('profile_id', userId).single()
-    if (cust) {
-      const { data } = await (supabase as any)
-        .from('conversations').select('*').eq('customer_id', cust.id)
-      return data ?? []
-    }
+    const { data } = await (supabase as any)
+      .from('conversations')
+      .select('*')
+      .eq('customer_id', userId)
+    return data ?? []
   } else {
     const { data: cl } = await (supabase as any)
       .from('cleaners').select('id').eq('profile_id', userId).single()
@@ -497,7 +465,6 @@ export function ChatWidget() {
 
       const convos = await fetchUserConversations(supabase, user.id, role)
       const enriched = await enrichConversations(supabase, convos, role)
-
       setConversations(enriched)
       setInitialized(true)
     }
@@ -519,27 +486,22 @@ export function ChatWidget() {
     return () => subscription.unsubscribe()
   }, [])
 
-  // Listen for custom event — ALWAYS registered, regardless of ready state
+  // Listen for vouchee:open-chat event
   useEffect(() => {
     const handler = async (e: Event) => {
       const detail = (e as CustomEvent).detail
       if (!detail?.conversationId) return
-
       const convId = detail.conversationId
 
-      // If we already have this conversation loaded, just open it
+      // If already loaded, just open it
       const existing = conversationsRef.current.find(c => c.id === convId)
       if (existing) {
         setOpenIds(prev => new Set(prev).add(convId))
-        setMinimizedIds(prev => {
-          const next = new Set(prev)
-          next.delete(convId)
-          return next
-        })
+        setMinimizedIds(prev => { const next = new Set(prev); next.delete(convId); return next })
         return
       }
 
-      // Otherwise, re-fetch all conversations to pick up the new one
+      // Otherwise re-fetch to pick up the new conversation
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
@@ -553,17 +515,11 @@ export function ChatWidget() {
 
       const convos = await fetchUserConversations(supabase, user.id, role)
       const enriched = await enrichConversations(supabase, convos, role, conversationsRef.current)
-
       setConversations(enriched)
       setInitialized(true)
 
-      // Open the requested conversation
       setOpenIds(prev => new Set(prev).add(convId))
-      setMinimizedIds(prev => {
-        const next = new Set(prev)
-        next.delete(convId)
-        return next
-      })
+      setMinimizedIds(prev => { const next = new Set(prev); next.delete(convId); return next })
     }
 
     window.addEventListener('vouchee:open-chat', handler)
@@ -576,25 +532,16 @@ export function ChatWidget() {
     const params = new URLSearchParams(window.location.search)
     const chatId = params.get('chat')
     if (chatId) {
-      // Clean URL
       const url = new URL(window.location.href)
       url.searchParams.delete('chat')
       window.history.replaceState({}, '', url.toString())
-
-      // Dispatch as event so the handler above deals with it
-      window.dispatchEvent(new CustomEvent('vouchee:open-chat', {
-        detail: { conversationId: chatId },
-      }))
+      window.dispatchEvent(new CustomEvent('vouchee:open-chat', { detail: { conversationId: chatId } }))
     }
   }, [initialized])
 
   const openConversation = useCallback((id: string) => {
     setOpenIds(prev => new Set(prev).add(id))
-    setMinimizedIds(prev => {
-      const next = new Set(prev)
-      next.delete(id)
-      return next
-    })
+    setMinimizedIds(prev => { const next = new Set(prev); next.delete(id); return next })
   }, [])
 
   const minimizeConversation = useCallback((id: string) => {
@@ -602,21 +549,11 @@ export function ChatWidget() {
   }, [])
 
   const closeConversation = useCallback((id: string) => {
-    setOpenIds(prev => {
-      const next = new Set(prev)
-      next.delete(id)
-      return next
-    })
-    setMinimizedIds(prev => {
-      const next = new Set(prev)
-      next.delete(id)
-      return next
-    })
+    setOpenIds(prev => { const next = new Set(prev); next.delete(id); return next })
+    setMinimizedIds(prev => { const next = new Set(prev); next.delete(id); return next })
   }, [])
 
-  // Don't render if not initialized or not logged in
   if (!initialized || !currentUserId || !currentRole) return null
-  // Don't render if no conversations AND none are open (allows rendering when event opens one)
   if (conversations.length === 0 && openIds.size === 0) return null
 
   const openExpanded = conversations.filter(c => openIds.has(c.id) && !minimizedIds.has(c.id))
@@ -625,8 +562,7 @@ export function ChatWidget() {
   return (
     <div style={{
       position: 'fixed', bottom: 0, right: '16px', zIndex: 400,
-      display: 'flex', alignItems: 'flex-end', gap: '8px',
-      pointerEvents: 'none',
+      display: 'flex', alignItems: 'flex-end', gap: '8px', pointerEvents: 'none',
     }}>
       {/* Collapsed tabs */}
       {collapsed.length > 0 && (

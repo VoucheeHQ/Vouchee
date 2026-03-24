@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Application not found' }, { status: 404 })
     }
 
-    // 2. Get the clean request — customer_id here is customers.id (not profile UUID)
+    // 2. Get the clean request to find the customer_id (customers.id)
     const { data: cleanRequest, error: reqError } = await supabaseAdmin
       .from('clean_requests')
       .select('id, customer_id')
@@ -39,7 +39,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Clean request not found' }, { status: 404 })
     }
 
-    // 3. Check if a conversation already exists for this application
+    // 3. Get the customer's profile_id — conversations.customer_id FK points to profiles.id
+    const { data: customerRecord, error: customerError } = await supabaseAdmin
+      .from('customers')
+      .select('profile_id')
+      .eq('id', cleanRequest.customer_id)
+      .single()
+
+    if (customerError || !customerRecord) {
+      console.error('Customer lookup failed:', customerError)
+      return NextResponse.json({ error: 'Customer not found' }, { status: 404 })
+    }
+
+    // 4. Check if a conversation already exists for this application
     const { data: existingConv } = await supabaseAdmin
       .from('conversations')
       .select('id')
@@ -53,21 +65,19 @@ export async function POST(request: NextRequest) {
       // Already accepted — just return the existing conversation
       conversationId = existingConv.id
     } else {
-      // 4. Update application status to accepted
+      // 5. Update application status to accepted
       await supabaseAdmin
         .from('applications')
         .update({ status: 'accepted' })
         .eq('id', applicationId)
 
-      // 5. Create a new conversation
-      // customer_id stores cleanRequest.customer_id (customers.id),
-      // which is what the chat widget queries against
+      // 6. Create a new conversation — customer_id must be profiles.id per FK constraint
       const { data: newConv, error: convError } = await supabaseAdmin
         .from('conversations')
         .insert({
           clean_request_id: requestId,
           cleaner_id: application.cleaner_id,
-          customer_id: cleanRequest.customer_id,
+          customer_id: customerRecord.profile_id,
           status: 'active',
         })
         .select('id')
@@ -80,7 +90,7 @@ export async function POST(request: NextRequest) {
 
       conversationId = newConv.id
 
-      // 6. Seed the cleaner's application message as the first message
+      // 7. Seed the cleaner's application message as the first message
       if (application.message?.trim()) {
         const { data: cleanerRecord } = await supabaseAdmin
           .from('cleaners')
