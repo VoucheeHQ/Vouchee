@@ -18,8 +18,9 @@ interface EnrichedConversation extends Conversation {
   zone: string
   lastMessage: string
   lastMessageTime: string | null
-  unread: boolean
+  unread: number
   conversationIndex?: number
+  avatarColor: string
 }
 
 interface Message {
@@ -56,6 +57,29 @@ const SUGGESTED_QUESTIONS = [
 
 const SUPPLIES_FOLLOWUP = "If not, what products should I get?"
 
+// 10 warm avatar colours for familiarity
+const AVATAR_COLORS = [
+  '#e67e22', // warm orange
+  '#e74c3c', // warm red
+  '#9b59b6', // warm purple
+  '#16a085', // warm teal
+  '#d35400', // burnt orange
+  '#c0392b', // deep red
+  '#8e44ad', // deep purple
+  '#2980b9', // warm blue
+  '#27ae60', // warm green
+  '#f39c12', // amber
+]
+
+function getAvatarColor(id: string): string {
+  // Deterministic but feels random — based on the conversation/user id
+  let hash = 0
+  for (let i = 0; i < id.length; i++) {
+    hash = id.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length]
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatFirstLastInitial(name: string): string {
@@ -76,6 +100,37 @@ function formatDate(iso: string): string {
   yesterday.setDate(today.getDate() - 1)
   if (d.toDateString() === yesterday.toDateString()) return 'Yesterday'
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+}
+
+function formatLastMessageTime(iso: string | null): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  const today = new Date()
+  if (d.toDateString() === today.toDateString()) {
+    return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+  }
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+}
+
+// ─── Notification sound (gentle chime via Web Audio API) ─────────────────────
+
+function playNotificationSound() {
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
+    const oscillator = ctx.createOscillator()
+    const gainNode = ctx.createGain()
+    oscillator.connect(gainNode)
+    gainNode.connect(ctx.destination)
+    oscillator.type = 'sine'
+    oscillator.frequency.setValueAtTime(880, ctx.currentTime)
+    oscillator.frequency.exponentialRampToValueAtTime(660, ctx.currentTime + 0.1)
+    gainNode.gain.setValueAtTime(0.3, ctx.currentTime)
+    gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4)
+    oscillator.start(ctx.currentTime)
+    oscillator.stop(ctx.currentTime + 0.4)
+  } catch (e) {
+    // Audio not available — fail silently
+  }
 }
 
 // ─── Typing dots ──────────────────────────────────────────────────────────────
@@ -101,13 +156,26 @@ function TypingDots() {
   )
 }
 
+// ─── Avatar ───────────────────────────────────────────────────────────────────
+
+function Avatar({ name, color, size = 36 }: { name: string; color: string; size?: number }) {
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: '50%', background: color, flexShrink: 0,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: size * 0.38, fontWeight: 800, color: 'white',
+    }}>
+      {name[0]?.toUpperCase() ?? '?'}
+    </div>
+  )
+}
+
 // ─── Chat Window ──────────────────────────────────────────────────────────────
 
-function ChatWindow({ conversation, currentUserId, currentRole, onMinimize, onClose }: {
+function ChatWindow({ conversation, currentUserId, currentRole, onClose }: {
   conversation: EnrichedConversation
   currentUserId: string
   currentRole: 'customer' | 'cleaner'
-  onMinimize: () => void
   onClose: () => void
 }) {
   const [messages, setMessages] = useState<Message[]>([])
@@ -148,7 +216,6 @@ function ChatWindow({ conversation, currentUserId, currentRole, onMinimize, onCl
     }
     load()
 
-    // Single channel: postgres_changes + presence for typing
     const channel = supabase.channel(`conversation:${conversation.id}`, {
       config: {
         broadcast: { self: false },
@@ -165,7 +232,10 @@ function ChatWindow({ conversation, currentUserId, currentRole, onMinimize, onCl
         const msg = payload.new as Message
         if (msg.conversation_id !== conversation.id) return
         setMessages(prev => prev.find(m => m.id === msg.id) ? prev : [...prev, msg])
-        if (msg.sender_id !== currentUserId) setOtherIsTyping(false)
+        if (msg.sender_id !== currentUserId) {
+          setOtherIsTyping(false)
+          playNotificationSound()
+        }
       })
       .on('presence', { event: 'sync' }, () => {
         const state = channel.presenceState()
@@ -183,7 +253,6 @@ function ChatWindow({ conversation, currentUserId, currentRole, onMinimize, onCl
       })
       .subscribe(async (status: string) => {
         if (status === 'SUBSCRIBED') {
-          // Register presence immediately so the other side can track us
           await channel.track({ typing: false })
         }
       })
@@ -221,7 +290,6 @@ function ChatWindow({ conversation, currentUserId, currentRole, onMinimize, onCl
       setWarningShown(true)
       return
     }
-
     setSending(true)
     setInput('')
     setShowSuppliesFollowup(false)
@@ -245,7 +313,6 @@ function ChatWindow({ conversation, currentUserId, currentRole, onMinimize, onCl
       setMessages(prev => prev.find(m => m.id === inserted.id) ? prev : [...prev, inserted])
       if (currentRole === 'customer') setCustomerHasSent(true)
     }
-
     setSending(false)
   }
 
@@ -277,23 +344,17 @@ function ChatWindow({ conversation, currentUserId, currentRole, onMinimize, onCl
 
   return (
     <div style={{
-      width: '328px', height: '480px', background: 'white',
-      borderRadius: '8px 8px 0 0', boxShadow: '0 -2px 16px rgba(0,0,0,0.15)',
+      width: '328px', height: '440px', background: 'white',
+      borderRadius: '8px 8px 0 0', boxShadow: '0 -2px 16px rgba(0,0,0,0.18)',
       display: 'flex', flexDirection: 'column', overflow: 'hidden',
       fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)",
     }}>
       {/* Header */}
-      <div onClick={onMinimize} style={{
+      <div style={{
         padding: '10px 12px', background: '#1e293b', color: 'white',
-        display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', flexShrink: 0,
+        display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0,
       }}>
-        <div style={{
-          width: '32px', height: '32px', borderRadius: '50%', background: '#3b82f6',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: '13px', fontWeight: 800, flexShrink: 0,
-        }}>
-          {conversation.displayName[0]?.toUpperCase()}
-        </div>
+        <Avatar name={conversation.displayName} color={conversation.avatarColor} size={32} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: '13px', fontWeight: 700, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {conversation.displayName}
@@ -302,10 +363,8 @@ function ChatWindow({ conversation, currentUserId, currentRole, onMinimize, onCl
             {otherIsTyping ? `${conversation.displayName.split(' ')[0]} is typing…` : conversation.zone}
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
-          <button onClick={e => { e.stopPropagation(); onMinimize() }} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.7)', cursor: 'pointer', fontSize: '18px', padding: '0 4px', lineHeight: 1 }}>−</button>
-          <button onClick={e => { e.stopPropagation(); onClose() }} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.7)', cursor: 'pointer', fontSize: '16px', padding: '0 4px', lineHeight: 1 }}>✕</button>
-        </div>
+        {/* X closes the window entirely */}
+        <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.7)', cursor: 'pointer', fontSize: '16px', padding: '0 4px', lineHeight: 1 }}>✕</button>
       </div>
 
       {/* Warning banner */}
@@ -362,8 +421,6 @@ function ChatWindow({ conversation, currentUserId, currentRole, onMinimize, onCl
             </div>
           ))
         )}
-
-        {/* Typing indicator */}
         {otherIsTyping && (
           <div style={{ marginBottom: '8px' }}>
             <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '2px', fontWeight: 600 }}>
@@ -374,7 +431,6 @@ function ChatWindow({ conversation, currentUserId, currentRole, onMinimize, onCl
             </div>
           </div>
         )}
-
         <div ref={bottomRef} />
       </div>
 
@@ -427,25 +483,127 @@ function ChatWindow({ conversation, currentUserId, currentRole, onMinimize, onCl
   )
 }
 
-// ─── Collapsed Tab ────────────────────────────────────────────────────────────
+// ─── Messaging Tray (LinkedIn-style) ─────────────────────────────────────────
 
-function ChatTab({ conversation, onClick }: { conversation: EnrichedConversation; onClick: () => void }) {
+function MessagingTray({ conversations, openIds, onOpen, onClose, totalUnread }: {
+  conversations: EnrichedConversation[]
+  openIds: Set<string>
+  onOpen: (id: string) => void
+  onClose: (id: string) => void
+  totalUnread: number
+}) {
+  const [expanded, setExpanded] = useState(false)
+
   return (
-    <button onClick={onClick} style={{
-      display: 'flex', alignItems: 'center', gap: '8px',
-      padding: '8px 14px 8px 8px', background: '#1e293b', color: 'white',
-      border: 'none', borderRadius: '8px 8px 0 0', cursor: 'pointer',
+    <div style={{
+      position: 'relative',
       fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)",
-      boxShadow: '0 -2px 8px rgba(0,0,0,0.12)', maxWidth: '200px',
     }}>
-      <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 800, flexShrink: 0 }}>
-        {conversation.displayName[0]?.toUpperCase()}
-      </div>
-      <span style={{ fontSize: '13px', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-        {conversation.displayName}
-      </span>
-      {conversation.unread && <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#22c55e', flexShrink: 0 }} />}
-    </button>
+      {/* Expanded tray — chat list */}
+      {expanded && (
+        <div style={{
+          position: 'absolute', bottom: '100%', right: 0, marginBottom: '4px',
+          width: '300px', background: 'white',
+          borderRadius: '8px', boxShadow: '0 4px 24px rgba(0,0,0,0.18)',
+          overflow: 'hidden', border: '1px solid #e2e8f0',
+        }}>
+          {/* Tray header */}
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a' }}>Messaging</span>
+            <span style={{ fontSize: '11px', color: '#94a3b8' }}>{conversations.length} conversation{conversations.length !== 1 ? 's' : ''}</span>
+          </div>
+
+          {/* Conversation list */}
+          <div style={{ maxHeight: '360px', overflowY: 'auto' }}>
+            {conversations.length === 0 ? (
+              <div style={{ padding: '24px 16px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>
+                No conversations yet
+              </div>
+            ) : (
+              conversations.map(conv => (
+                <div key={conv.id} style={{
+                  display: 'flex', alignItems: 'center', gap: '12px',
+                  padding: '10px 16px', cursor: 'pointer',
+                  background: openIds.has(conv.id) ? '#f8fafc' : 'white',
+                  borderBottom: '1px solid #f8fafc',
+                  transition: 'background 0.1s',
+                }}
+                  onMouseEnter={e => (e.currentTarget.style.background = '#f1f5f9')}
+                  onMouseLeave={e => (e.currentTarget.style.background = openIds.has(conv.id) ? '#f8fafc' : 'white')}
+                  onClick={() => { onOpen(conv.id); setExpanded(false) }}
+                >
+                  <div style={{ position: 'relative', flexShrink: 0 }}>
+                    <Avatar name={conv.displayName} color={conv.avatarColor} size={40} />
+                    {conv.unread > 0 && (
+                      <span style={{
+                        position: 'absolute', top: -2, right: -2,
+                        width: '16px', height: '16px', borderRadius: '50%',
+                        background: '#ef4444', color: 'white',
+                        fontSize: '10px', fontWeight: 700,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        border: '2px solid white',
+                      }}>{conv.unread}</span>
+                    )}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                      <span style={{ fontSize: '13px', fontWeight: conv.unread > 0 ? 700 : 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '140px' }}>
+                        {conv.displayName}
+                      </span>
+                      <span style={{ fontSize: '11px', color: '#94a3b8', flexShrink: 0, marginLeft: '8px' }}>
+                        {formatLastMessageTime(conv.lastMessageTime)}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '12px', color: conv.unread > 0 ? '#0f172a' : '#94a3b8', fontWeight: conv.unread > 0 ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '1px' }}>
+                      {conv.lastMessage || 'No messages yet'}
+                    </div>
+                  </div>
+                  {/* Close this conversation from tray */}
+                  <button
+                    onClick={e => { e.stopPropagation(); onClose(conv.id) }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#cbd5e1', fontSize: '14px', padding: '2px 4px', flexShrink: 0, lineHeight: 1 }}
+                    title="Remove from tray"
+                  >✕</button>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Tray toggle button */}
+      <button
+        onClick={() => setExpanded(e => !e)}
+        style={{
+          display: 'flex', alignItems: 'center', gap: '10px',
+          padding: '8px 16px', background: '#1e293b', color: 'white',
+          border: 'none', borderRadius: '8px 8px 0 0', cursor: 'pointer',
+          fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)",
+          boxShadow: '0 -2px 8px rgba(0,0,0,0.15)', minWidth: '180px',
+          position: 'relative',
+        }}
+      >
+        {/* Stacked avatar previews */}
+        <div style={{ display: 'flex', marginRight: '2px' }}>
+          {conversations.slice(0, 3).map((conv, i) => (
+            <div key={conv.id} style={{ marginLeft: i > 0 ? '-8px' : 0, zIndex: 3 - i }}>
+              <Avatar name={conv.displayName} color={conv.avatarColor} size={26} />
+            </div>
+          ))}
+        </div>
+        <span style={{ fontSize: '13px', fontWeight: 700, flex: 1 }}>Messaging</span>
+        {totalUnread > 0 && (
+          <span style={{
+            background: '#ef4444', color: 'white',
+            borderRadius: '100px', padding: '1px 6px',
+            fontSize: '11px', fontWeight: 700, minWidth: '18px', textAlign: 'center',
+          }}>{totalUnread}</span>
+        )}
+        <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginLeft: '4px' }}>
+          {expanded ? '▼' : '▲'}
+        </span>
+      </button>
+    </div>
   )
 }
 
@@ -472,7 +630,15 @@ async function enrichOne(supabase: any, conv: Conversation, role: 'customer' | '
     .from('messages').select('content, created_at').eq('conversation_id', conv.id)
     .order('created_at', { ascending: false }).limit(1).single()
 
-  return { ...conv, displayName, zone, lastMessage: lastMsg?.content ?? '', lastMessageTime: lastMsg?.created_at ?? null, unread: false }
+  return {
+    ...conv,
+    displayName,
+    zone,
+    lastMessage: lastMsg?.content ?? '',
+    lastMessageTime: lastMsg?.created_at ?? null,
+    unread: 0,
+    avatarColor: getAvatarColor(conv.cleaner_id),
+  }
 }
 
 async function enrichConversations(supabase: any, convos: Conversation[], role: 'customer' | 'cleaner', existing?: EnrichedConversation[]): Promise<EnrichedConversation[]> {
@@ -515,8 +681,8 @@ async function fetchUserConversations(supabase: any, userId: string, role: 'cust
 
 export function ChatWidget() {
   const [conversations, setConversations] = useState<EnrichedConversation[]>([])
+  // openIds = conversations visible as expanded chat windows
   const [openIds, setOpenIds] = useState<Set<string>>(new Set())
-  const [minimizedIds, setMinimizedIds] = useState<Set<string>>(new Set())
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [currentRole, setCurrentRole] = useState<'customer' | 'cleaner' | null>(null)
   const [initialized, setInitialized] = useState(false)
@@ -552,22 +718,19 @@ export function ChatWidget() {
     init()
   }, [])
 
-  // Cleaner: listen for new conversations in realtime so widget appears without refresh
+  // Cleaner: listen for new conversations in realtime
   useEffect(() => {
     if (currentRole !== 'cleaner' || !cleanerIdRef.current) return
     const cleanerId = cleanerIdRef.current
 
     const channel = supabase
       .channel('new-conversations-cleaner')
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'conversations',
-      }, async payload => {
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'conversations' }, async payload => {
         const conv = payload.new as Conversation
         if (conv.cleaner_id !== cleanerId) return
         const enriched = await enrichOne(supabase, conv, 'cleaner')
         setConversations(prev => prev.find(c => c.id === conv.id) ? prev : [...prev, enriched])
+        playNotificationSound()
       })
       .subscribe()
 
@@ -580,7 +743,6 @@ export function ChatWidget() {
       if (event === 'SIGNED_OUT') {
         setConversations([])
         setOpenIds(new Set())
-        setMinimizedIds(new Set())
         setCurrentUserId(null)
         setCurrentRole(null)
         setInitialized(false)
@@ -590,35 +752,31 @@ export function ChatWidget() {
     return () => subscription.unsubscribe()
   }, [])
 
-  // vouchee:open-chat event — fast path: fetch just the one conversation
+  // vouchee:open-chat event
   useEffect(() => {
     const handler = async (e: Event) => {
       const detail = (e as CustomEvent).detail
       if (!detail?.conversationId) return
       const convId = detail.conversationId
 
-      const openIt = () => {
-        setOpenIds(prev => new Set(prev).add(convId))
-        setMinimizedIds(prev => { const next = new Set(prev); next.delete(convId); return next })
+      if (!conversationsRef.current.find(c => c.id === convId)) {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+        const { data: profile } = await (supabase as any).from('profiles').select('role').eq('id', user.id).single()
+        if (!profile) return
+        const role = profile.role as 'customer' | 'cleaner'
+        setCurrentUserId(user.id)
+        setCurrentRole(role)
+
+        const { data: conv } = await (supabase as any).from('conversations').select('*').eq('id', convId).single()
+        if (conv) {
+          const enriched = await enrichOne(supabase, conv, role)
+          setConversations(prev => prev.find(c => c.id === convId) ? prev : [...prev, enriched])
+          setInitialized(true)
+        }
       }
 
-      if (conversationsRef.current.find(c => c.id === convId)) { openIt(); return }
-
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-      const { data: profile } = await (supabase as any).from('profiles').select('role').eq('id', user.id).single()
-      if (!profile) return
-      const role = profile.role as 'customer' | 'cleaner'
-      setCurrentUserId(user.id)
-      setCurrentRole(role)
-
-      const { data: conv } = await (supabase as any).from('conversations').select('*').eq('id', convId).single()
-      if (conv) {
-        const enriched = await enrichOne(supabase, conv, role)
-        setConversations(prev => prev.find(c => c.id === convId) ? prev : [...prev, enriched])
-        setInitialized(true)
-      }
-      openIt()
+      setOpenIds(prev => new Set(prev).add(convId))
     }
 
     window.addEventListener('vouchee:open-chat', handler)
@@ -640,47 +798,50 @@ export function ChatWidget() {
 
   const openConversation = useCallback((id: string) => {
     setOpenIds(prev => new Set(prev).add(id))
-    setMinimizedIds(prev => { const next = new Set(prev); next.delete(id); return next })
   }, [])
 
-  const minimizeConversation = useCallback((id: string) => {
-    setMinimizedIds(prev => new Set(prev).add(id))
-  }, [])
-
-  const closeConversation = useCallback((id: string) => {
+  // Close removes from open windows but keeps in tray
+  const closeWindow = useCallback((id: string) => {
     setOpenIds(prev => { const next = new Set(prev); next.delete(id); return next })
-    setMinimizedIds(prev => { const next = new Set(prev); next.delete(id); return next })
+  }, [])
+
+  // Remove from tray entirely
+  const removeFromTray = useCallback((id: string) => {
+    setOpenIds(prev => { const next = new Set(prev); next.delete(id); return next })
+    setConversations(prev => prev.filter(c => c.id !== id))
   }, [])
 
   if (!initialized || !currentUserId || !currentRole) return null
-  if (conversations.length === 0 && openIds.size === 0) return null
+  if (conversations.length === 0) return null
 
-  const openExpanded = conversations.filter(c => openIds.has(c.id) && !minimizedIds.has(c.id))
-  const collapsed = conversations.filter(c => !openIds.has(c.id) || minimizedIds.has(c.id))
+  const totalUnread = conversations.reduce((sum, c) => sum + (c.unread ?? 0), 0)
+  const openExpanded = conversations.filter(c => openIds.has(c.id))
 
   return (
     <div style={{
       position: 'fixed', bottom: 0, right: '16px', zIndex: 400,
-      display: 'flex', alignItems: 'flex-end', gap: '8px', pointerEvents: 'none',
+      display: 'flex', alignItems: 'flex-end', gap: '12px',
+      fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)",
     }}>
-      {collapsed.length > 0 && (
-        <div style={{ display: 'flex', gap: '4px', pointerEvents: 'auto' }}>
-          {collapsed.map(conv => (
-            <ChatTab key={conv.id} conversation={conv} onClick={() => openConversation(conv.id)} />
-          ))}
-        </div>
-      )}
+      {/* Open chat windows — each fully closeable with X */}
       {openExpanded.map(conv => (
-        <div key={conv.id} style={{ pointerEvents: 'auto' }}>
-          <ChatWindow
-            conversation={conv}
-            currentUserId={currentUserId}
-            currentRole={currentRole}
-            onMinimize={() => minimizeConversation(conv.id)}
-            onClose={() => closeConversation(conv.id)}
-          />
-        </div>
+        <ChatWindow
+          key={conv.id}
+          conversation={conv}
+          currentUserId={currentUserId}
+          currentRole={currentRole}
+          onClose={() => closeWindow(conv.id)}
+        />
       ))}
+
+      {/* Messaging tray — always visible when conversations exist */}
+      <MessagingTray
+        conversations={conversations}
+        openIds={openIds}
+        onOpen={openConversation}
+        onClose={removeFromTray}
+        totalUnread={totalUnread}
+      />
     </div>
   )
 }
