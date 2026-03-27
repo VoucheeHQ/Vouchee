@@ -57,22 +57,12 @@ const SUGGESTED_QUESTIONS = [
 
 const SUPPLIES_FOLLOWUP = "If not, what products should I get?"
 
-// 10 warm avatar colours for familiarity
 const AVATAR_COLORS = [
-  '#e67e22', // warm orange
-  '#e74c3c', // warm red
-  '#9b59b6', // warm purple
-  '#16a085', // warm teal
-  '#d35400', // burnt orange
-  '#c0392b', // deep red
-  '#8e44ad', // deep purple
-  '#2980b9', // warm blue
-  '#27ae60', // warm green
-  '#f39c12', // amber
+  '#e67e22', '#e74c3c', '#9b59b6', '#16a085', '#d35400',
+  '#c0392b', '#8e44ad', '#2980b9', '#27ae60', '#f39c12',
 ]
 
 function getAvatarColor(id: string): string {
-  // Deterministic but feels random — based on the conversation/user id
   let hash = 0
   for (let i = 0; i < id.length; i++) {
     hash = id.charCodeAt(i) + ((hash << 5) - hash)
@@ -112,25 +102,26 @@ function formatLastMessageTime(iso: string | null): string {
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
 }
 
-// ─── Notification sound (gentle chime via Web Audio API) ─────────────────────
+// ─── Notification sound ───────────────────────────────────────────────────────
 
 function playNotificationSound() {
   try {
-    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
-    const oscillator = ctx.createOscillator()
-    const gainNode = ctx.createGain()
-    oscillator.connect(gainNode)
-    gainNode.connect(ctx.destination)
-    oscillator.type = 'sine'
-    oscillator.frequency.setValueAtTime(880, ctx.currentTime)
-    oscillator.frequency.exponentialRampToValueAtTime(660, ctx.currentTime + 0.1)
-    gainNode.gain.setValueAtTime(0.3, ctx.currentTime)
-    gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4)
-    oscillator.start(ctx.currentTime)
-    oscillator.stop(ctx.currentTime + 0.4)
-  } catch (e) {
-    // Audio not available — fail silently
-  }
+    const audio = new Audio('/notification_clean.mp3')
+    audio.volume = 0.7
+    audio.play().catch(() => {})
+  } catch (e) {}
+}
+
+// ─── Email notification when browser closed ───────────────────────────────────
+
+async function triggerMessageEmail(conversationId: string, content: string) {
+  try {
+    await fetch('/api/send-message-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ conversationId, content }),
+    })
+  } catch (e) {}
 }
 
 // ─── Typing dots ──────────────────────────────────────────────────────────────
@@ -172,11 +163,12 @@ function Avatar({ name, color, size = 36 }: { name: string; color: string; size?
 
 // ─── Chat Window ──────────────────────────────────────────────────────────────
 
-function ChatWindow({ conversation, currentUserId, currentRole, onClose }: {
+function ChatWindow({ conversation, currentUserId, currentRole, onClose, onNewMessage }: {
   conversation: EnrichedConversation
   currentUserId: string
   currentRole: 'customer' | 'cleaner'
   onClose: () => void
+  onNewMessage: (conversationId: string, content: string, time: string) => void
 }) {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
@@ -235,6 +227,8 @@ function ChatWindow({ conversation, currentUserId, currentRole, onClose }: {
         if (msg.sender_id !== currentUserId) {
           setOtherIsTyping(false)
           playNotificationSound()
+          // Update the tray preview
+          onNewMessage(conversation.id, msg.content, msg.created_at)
         }
       })
       .on('presence', { event: 'sync' }, () => {
@@ -312,6 +306,10 @@ function ChatWindow({ conversation, currentUserId, currentRole, onClose }: {
     } else if (inserted) {
       setMessages(prev => prev.find(m => m.id === inserted.id) ? prev : [...prev, inserted])
       if (currentRole === 'customer') setCustomerHasSent(true)
+      // Update tray preview for sent messages too
+      onNewMessage(conversation.id, content, inserted.created_at)
+      // Trigger email to recipient in case their browser is closed
+      triggerMessageEmail(conversation.id, content)
     }
     setSending(false)
   }
@@ -363,7 +361,6 @@ function ChatWindow({ conversation, currentUserId, currentRole, onClose }: {
             {otherIsTyping ? `${conversation.displayName.split(' ')[0]} is typing…` : conversation.zone}
           </div>
         </div>
-        {/* X closes the window entirely */}
         <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.7)', cursor: 'pointer', fontSize: '16px', padding: '0 4px', lineHeight: 1 }}>✕</button>
       </div>
 
@@ -483,7 +480,7 @@ function ChatWindow({ conversation, currentUserId, currentRole, onClose }: {
   )
 }
 
-// ─── Messaging Tray (LinkedIn-style) ─────────────────────────────────────────
+// ─── Messaging Tray ───────────────────────────────────────────────────────────
 
 function MessagingTray({ conversations, openIds, onOpen, onClose, totalUnread }: {
   conversations: EnrichedConversation[]
@@ -495,11 +492,8 @@ function MessagingTray({ conversations, openIds, onOpen, onClose, totalUnread }:
   const [expanded, setExpanded] = useState(false)
 
   return (
-    <div style={{
-      position: 'relative',
-      fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)",
-    }}>
-      {/* Expanded tray — chat list */}
+    <div style={{ position: 'relative', fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)" }}>
+      {/* Expanded tray */}
       {expanded && (
         <div style={{
           position: 'absolute', bottom: '100%', right: 0, marginBottom: '4px',
@@ -507,27 +501,17 @@ function MessagingTray({ conversations, openIds, onOpen, onClose, totalUnread }:
           borderRadius: '8px', boxShadow: '0 4px 24px rgba(0,0,0,0.18)',
           overflow: 'hidden', border: '1px solid #e2e8f0',
         }}>
-          {/* Tray header */}
           <div style={{ padding: '12px 16px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a' }}>Messaging</span>
+            <span style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a' }}>Messages</span>
             <span style={{ fontSize: '11px', color: '#94a3b8' }}>{conversations.length} conversation{conversations.length !== 1 ? 's' : ''}</span>
           </div>
-
-          {/* Conversation list */}
           <div style={{ maxHeight: '360px', overflowY: 'auto' }}>
             {conversations.length === 0 ? (
-              <div style={{ padding: '24px 16px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>
-                No conversations yet
-              </div>
+              <div style={{ padding: '24px 16px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>No conversations yet</div>
             ) : (
               conversations.map(conv => (
-                <div key={conv.id} style={{
-                  display: 'flex', alignItems: 'center', gap: '12px',
-                  padding: '10px 16px', cursor: 'pointer',
-                  background: openIds.has(conv.id) ? '#f8fafc' : 'white',
-                  borderBottom: '1px solid #f8fafc',
-                  transition: 'background 0.1s',
-                }}
+                <div key={conv.id}
+                  style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 16px', cursor: 'pointer', background: openIds.has(conv.id) ? '#f8fafc' : 'white', borderBottom: '1px solid #f8fafc' }}
                   onMouseEnter={e => (e.currentTarget.style.background = '#f1f5f9')}
                   onMouseLeave={e => (e.currentTarget.style.background = openIds.has(conv.id) ? '#f8fafc' : 'white')}
                   onClick={() => { onOpen(conv.id); setExpanded(false) }}
@@ -558,7 +542,6 @@ function MessagingTray({ conversations, openIds, onOpen, onClose, totalUnread }:
                       {conv.lastMessage || 'No messages yet'}
                     </div>
                   </div>
-                  {/* Close this conversation from tray */}
                   <button
                     onClick={e => { e.stopPropagation(); onClose(conv.id) }}
                     style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#cbd5e1', fontSize: '14px', padding: '2px 4px', flexShrink: 0, lineHeight: 1 }}
@@ -571,7 +554,7 @@ function MessagingTray({ conversations, openIds, onOpen, onClose, totalUnread }:
         </div>
       )}
 
-      {/* Tray toggle button */}
+      {/* Tray button */}
       <button
         onClick={() => setExpanded(e => !e)}
         style={{
@@ -580,18 +563,16 @@ function MessagingTray({ conversations, openIds, onOpen, onClose, totalUnread }:
           border: 'none', borderRadius: '8px 8px 0 0', cursor: 'pointer',
           fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)",
           boxShadow: '0 -2px 8px rgba(0,0,0,0.15)', minWidth: '180px',
-          position: 'relative',
         }}
       >
-        {/* Stacked avatar previews */}
-        <div style={{ display: 'flex', marginRight: '2px' }}>
+        <div style={{ display: 'flex' }}>
           {conversations.slice(0, 3).map((conv, i) => (
             <div key={conv.id} style={{ marginLeft: i > 0 ? '-8px' : 0, zIndex: 3 - i }}>
               <Avatar name={conv.displayName} color={conv.avatarColor} size={26} />
             </div>
           ))}
         </div>
-        <span style={{ fontSize: '13px', fontWeight: 700, flex: 1 }}>Messaging</span>
+        <span style={{ fontSize: '13px', fontWeight: 700, flex: 1 }}>Messages</span>
         {totalUnread > 0 && (
           <span style={{
             background: '#ef4444', color: 'white',
@@ -681,7 +662,6 @@ async function fetchUserConversations(supabase: any, userId: string, role: 'cust
 
 export function ChatWidget() {
   const [conversations, setConversations] = useState<EnrichedConversation[]>([])
-  // openIds = conversations visible as expanded chat windows
   const [openIds, setOpenIds] = useState<Set<string>>(new Set())
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [currentRole, setCurrentRole] = useState<'customer' | 'cleaner' | null>(null)
@@ -691,6 +671,36 @@ export function ChatWidget() {
   const supabase = createClient()
 
   useEffect(() => { conversationsRef.current = conversations }, [conversations])
+
+  // Update tray preview + unread count when a new message arrives in any conversation
+  const handleNewMessage = useCallback((conversationId: string, content: string, time: string) => {
+    setConversations(prev => prev.map(c => {
+      if (c.id !== conversationId) return c
+      const isOpen = openIds.has(conversationId)
+      return {
+        ...c,
+        lastMessage: content,
+        lastMessageTime: time,
+        // Only increment unread if the window is closed
+        unread: isOpen ? 0 : c.unread + 1,
+      }
+    }))
+  }, [openIds])
+
+  // Clear unread when a conversation is opened
+  const openConversation = useCallback((id: string) => {
+    setOpenIds(prev => new Set(prev).add(id))
+    setConversations(prev => prev.map(c => c.id === id ? { ...c, unread: 0 } : c))
+  }, [])
+
+  const closeWindow = useCallback((id: string) => {
+    setOpenIds(prev => { const next = new Set(prev); next.delete(id); return next })
+  }, [])
+
+  const removeFromTray = useCallback((id: string) => {
+    setOpenIds(prev => { const next = new Set(prev); next.delete(id); return next })
+    setConversations(prev => prev.filter(c => c.id !== id))
+  }, [])
 
   // Initial load
   useEffect(() => {
@@ -718,7 +728,7 @@ export function ChatWidget() {
     init()
   }, [])
 
-  // Cleaner: listen for new conversations in realtime
+  // Cleaner: listen for new conversations
   useEffect(() => {
     if (currentRole !== 'cleaner' || !cleanerIdRef.current) return
     const cleanerId = cleanerIdRef.current
@@ -767,7 +777,6 @@ export function ChatWidget() {
         const role = profile.role as 'customer' | 'cleaner'
         setCurrentUserId(user.id)
         setCurrentRole(role)
-
         const { data: conv } = await (supabase as any).from('conversations').select('*').eq('id', convId).single()
         if (conv) {
           const enriched = await enrichOne(supabase, conv, role)
@@ -777,6 +786,7 @@ export function ChatWidget() {
       }
 
       setOpenIds(prev => new Set(prev).add(convId))
+      setConversations(prev => prev.map(c => c.id === convId ? { ...c, unread: 0 } : c))
     }
 
     window.addEventListener('vouchee:open-chat', handler)
@@ -796,21 +806,6 @@ export function ChatWidget() {
     }
   }, [initialized])
 
-  const openConversation = useCallback((id: string) => {
-    setOpenIds(prev => new Set(prev).add(id))
-  }, [])
-
-  // Close removes from open windows but keeps in tray
-  const closeWindow = useCallback((id: string) => {
-    setOpenIds(prev => { const next = new Set(prev); next.delete(id); return next })
-  }, [])
-
-  // Remove from tray entirely
-  const removeFromTray = useCallback((id: string) => {
-    setOpenIds(prev => { const next = new Set(prev); next.delete(id); return next })
-    setConversations(prev => prev.filter(c => c.id !== id))
-  }, [])
-
   if (!initialized || !currentUserId || !currentRole) return null
   if (conversations.length === 0) return null
 
@@ -823,7 +818,6 @@ export function ChatWidget() {
       display: 'flex', alignItems: 'flex-end', gap: '12px',
       fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)",
     }}>
-      {/* Open chat windows — each fully closeable with X */}
       {openExpanded.map(conv => (
         <ChatWindow
           key={conv.id}
@@ -831,10 +825,9 @@ export function ChatWidget() {
           currentUserId={currentUserId}
           currentRole={currentRole}
           onClose={() => closeWindow(conv.id)}
+          onNewMessage={handleNewMessage}
         />
       ))}
-
-      {/* Messaging tray — always visible when conversations exist */}
       <MessagingTray
         conversations={conversations}
         openIds={openIds}
