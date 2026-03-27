@@ -112,7 +112,7 @@ function playNotificationSound() {
   } catch (e) {}
 }
 
-// ─── Email notification when browser closed ───────────────────────────────────
+// ─── Email notification ───────────────────────────────────────────────────────
 
 async function triggerMessageEmail(conversationId: string, content: string) {
   try {
@@ -227,7 +227,6 @@ function ChatWindow({ conversation, currentUserId, currentRole, onClose, onNewMe
         if (msg.sender_id !== currentUserId) {
           setOtherIsTyping(false)
           playNotificationSound()
-          // Update the tray preview
           onNewMessage(conversation.id, msg.content, msg.created_at)
         }
       })
@@ -306,9 +305,8 @@ function ChatWindow({ conversation, currentUserId, currentRole, onClose, onNewMe
     } else if (inserted) {
       setMessages(prev => prev.find(m => m.id === inserted.id) ? prev : [...prev, inserted])
       if (currentRole === 'customer') setCustomerHasSent(true)
-      // Update tray preview for sent messages too
+      // Update tray preview for sent messages
       onNewMessage(conversation.id, content, inserted.created_at)
-      // Trigger email to recipient in case their browser is closed
       triggerMessageEmail(conversation.id, content)
     }
     setSending(false)
@@ -493,7 +491,6 @@ function MessagingTray({ conversations, openIds, onOpen, onClose, totalUnread }:
 
   return (
     <div style={{ position: 'relative', fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)" }}>
-      {/* Expanded tray */}
       {expanded && (
         <div style={{
           position: 'absolute', bottom: '100%', right: 0, marginBottom: '4px',
@@ -554,7 +551,6 @@ function MessagingTray({ conversations, openIds, onOpen, onClose, totalUnread }:
         </div>
       )}
 
-      {/* Tray button */}
       <button
         onClick={() => setExpanded(e => !e)}
         style={{
@@ -668,28 +664,36 @@ export function ChatWidget() {
   const [initialized, setInitialized] = useState(false)
   const conversationsRef = useRef<EnrichedConversation[]>([])
   const cleanerIdRef = useRef<string | null>(null)
+  // *** KEY FIX: keep openIds in a ref so callbacks always read the latest value ***
+  const openIdsRef = useRef<Set<string>>(new Set())
   const supabase = createClient()
 
-  useEffect(() => { conversationsRef.current = conversations }, [conversations])
+  // Keep both state and ref in sync
+  useEffect(() => {
+    conversationsRef.current = conversations
+  }, [conversations])
 
-  // Update tray preview + unread count when a new message arrives in any conversation
+  useEffect(() => {
+    openIdsRef.current = openIds
+  }, [openIds])
+
+  // Update tray preview + unread — reads openIdsRef so it never goes stale
   const handleNewMessage = useCallback((conversationId: string, content: string, time: string) => {
+    const isOpen = openIdsRef.current.has(conversationId)
     setConversations(prev => prev.map(c => {
       if (c.id !== conversationId) return c
-      const isOpen = openIds.has(conversationId)
       return {
         ...c,
         lastMessage: content,
         lastMessageTime: time,
-        // Only increment unread if the window is closed
         unread: isOpen ? 0 : c.unread + 1,
       }
     }))
-  }, [openIds])
+  }, []) // no deps — always reads from ref
 
-  // Clear unread when a conversation is opened
   const openConversation = useCallback((id: string) => {
     setOpenIds(prev => new Set(prev).add(id))
+    // Clear unread when opening
     setConversations(prev => prev.map(c => c.id === id ? { ...c, unread: 0 } : c))
   }, [])
 
@@ -728,7 +732,7 @@ export function ChatWidget() {
     init()
   }, [])
 
-  // Cleaner: listen for new conversations
+  // Cleaner: listen for new conversations in realtime
   useEffect(() => {
     if (currentRole !== 'cleaner' || !cleanerIdRef.current) return
     const cleanerId = cleanerIdRef.current
