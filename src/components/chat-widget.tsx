@@ -162,13 +162,13 @@ function Avatar({ name, color, size = 36 }: { name: string; color: string; size?
 }
 
 // ─── Chat Window ──────────────────────────────────────────────────────────────
+// Note: ChatWindow no longer updates tray state — the global listener in ChatWidget does that.
 
-function ChatWindow({ conversation, currentUserId, currentRole, onClose, onNewMessage }: {
+function ChatWindow({ conversation, currentUserId, currentRole, onClose }: {
   conversation: EnrichedConversation
   currentUserId: string
   currentRole: 'customer' | 'cleaner'
   onClose: () => void
-  onNewMessage: (conversationId: string, content: string, time: string) => void
 }) {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
@@ -227,7 +227,6 @@ function ChatWindow({ conversation, currentUserId, currentRole, onClose, onNewMe
         if (msg.sender_id !== currentUserId) {
           setOtherIsTyping(false)
           playNotificationSound()
-          onNewMessage(conversation.id, msg.content, msg.created_at)
         }
       })
       .on('presence', { event: 'sync' }, () => {
@@ -305,8 +304,7 @@ function ChatWindow({ conversation, currentUserId, currentRole, onClose, onNewMe
     } else if (inserted) {
       setMessages(prev => prev.find(m => m.id === inserted.id) ? prev : [...prev, inserted])
       if (currentRole === 'customer') setCustomerHasSent(true)
-      // Update tray preview for sent messages
-      onNewMessage(conversation.id, content, inserted.created_at)
+      // Fire email in background — tray update is handled by global listener in ChatWidget
       triggerMessageEmail(conversation.id, content)
     }
     setSending(false)
@@ -345,11 +343,7 @@ function ChatWindow({ conversation, currentUserId, currentRole, onClose, onNewMe
       display: 'flex', flexDirection: 'column', overflow: 'hidden',
       fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)",
     }}>
-      {/* Header */}
-      <div style={{
-        padding: '10px 12px', background: '#1e293b', color: 'white',
-        display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0,
-      }}>
+      <div style={{ padding: '10px 12px', background: '#1e293b', color: 'white', display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
         <Avatar name={conversation.displayName} color={conversation.avatarColor} size={32} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: '13px', fontWeight: 700, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -362,7 +356,6 @@ function ChatWindow({ conversation, currentUserId, currentRole, onClose, onNewMe
         <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.7)', cursor: 'pointer', fontSize: '16px', padding: '0 4px', lineHeight: 1 }}>✕</button>
       </div>
 
-      {/* Warning banner */}
       {showWarning && (
         <div style={{ padding: '8px 12px', background: '#fffbeb', borderBottom: '1px solid #fde68a', display: 'flex', gap: '8px', alignItems: 'flex-start', flexShrink: 0 }}>
           <span style={{ fontSize: '14px', flexShrink: 0 }}>⚠️</span>
@@ -374,7 +367,6 @@ function ChatWindow({ conversation, currentUserId, currentRole, onClose, onNewMe
         </div>
       )}
 
-      {/* Messages */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
         {loading ? (
           <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: '12px', paddingTop: '24px' }}>Loading…</div>
@@ -429,7 +421,6 @@ function ChatWindow({ conversation, currentUserId, currentRole, onClose, onNewMe
         <div ref={bottomRef} />
       </div>
 
-      {/* Suggested questions */}
       {showSuggestions && (
         <div style={{ padding: '0 12px 8px', flexShrink: 0 }}>
           {showSuppliesFollowup ? (
@@ -456,7 +447,6 @@ function ChatWindow({ conversation, currentUserId, currentRole, onClose, onNewMe
         </div>
       )}
 
-      {/* Input */}
       <div style={{ padding: '8px 12px', borderTop: '1px solid #f1f5f9', display: 'flex', gap: '6px', flexShrink: 0 }}>
         <input
           value={input}
@@ -542,7 +532,6 @@ function MessagingTray({ conversations, openIds, onOpen, onClose, totalUnread }:
                   <button
                     onClick={e => { e.stopPropagation(); onClose(conv.id) }}
                     style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#cbd5e1', fontSize: '14px', padding: '2px 4px', flexShrink: 0, lineHeight: 1 }}
-                    title="Remove from tray"
                   >✕</button>
                 </div>
               ))
@@ -663,37 +652,17 @@ export function ChatWidget() {
   const [currentRole, setCurrentRole] = useState<'customer' | 'cleaner' | null>(null)
   const [initialized, setInitialized] = useState(false)
   const conversationsRef = useRef<EnrichedConversation[]>([])
-  const cleanerIdRef = useRef<string | null>(null)
-  // *** KEY FIX: keep openIds in a ref so callbacks always read the latest value ***
   const openIdsRef = useRef<Set<string>>(new Set())
+  const cleanerIdRef = useRef<string | null>(null)
+  const currentUserIdRef = useRef<string | null>(null)
   const supabase = createClient()
 
-  // Keep both state and ref in sync
-  useEffect(() => {
-    conversationsRef.current = conversations
-  }, [conversations])
-
-  useEffect(() => {
-    openIdsRef.current = openIds
-  }, [openIds])
-
-  // Update tray preview + unread — reads openIdsRef so it never goes stale
-  const handleNewMessage = useCallback((conversationId: string, content: string, time: string) => {
-    const isOpen = openIdsRef.current.has(conversationId)
-    setConversations(prev => prev.map(c => {
-      if (c.id !== conversationId) return c
-      return {
-        ...c,
-        lastMessage: content,
-        lastMessageTime: time,
-        unread: isOpen ? 0 : c.unread + 1,
-      }
-    }))
-  }, []) // no deps — always reads from ref
+  useEffect(() => { conversationsRef.current = conversations }, [conversations])
+  useEffect(() => { openIdsRef.current = openIds }, [openIds])
+  useEffect(() => { currentUserIdRef.current = currentUserId }, [currentUserId])
 
   const openConversation = useCallback((id: string) => {
     setOpenIds(prev => new Set(prev).add(id))
-    // Clear unread when opening
     setConversations(prev => prev.map(c => c.id === id ? { ...c, unread: 0 } : c))
   }, [])
 
@@ -712,6 +681,7 @@ export function ChatWidget() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { setInitialized(true); return }
       setCurrentUserId(user.id)
+      currentUserIdRef.current = user.id
 
       const { data: profile } = await (supabase as any).from('profiles').select('role').eq('id', user.id).single()
       if (!profile) { setInitialized(true); return }
@@ -732,7 +702,48 @@ export function ChatWidget() {
     init()
   }, [])
 
-  // Cleaner: listen for new conversations in realtime
+  // *** GLOBAL MESSAGES LISTENER ***
+  // This is the single source of truth for tray preview + unread counts.
+  // It subscribes to ALL message inserts once conversations are loaded,
+  // then filters to relevant ones client-side. No stale closures possible
+  // because we always read from refs.
+  useEffect(() => {
+    if (!initialized || conversationsRef.current.length === 0) return
+
+    const channel = supabase
+      .channel('global-messages-tray')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages',
+      }, payload => {
+        const msg = payload.new as Message
+        const convId = msg.conversation_id
+
+        // Only care about conversations we know about
+        const knownConv = conversationsRef.current.find(c => c.id === convId)
+        if (!knownConv) return
+
+        const isOpen = openIdsRef.current.has(convId)
+        const isFromMe = msg.sender_id === currentUserIdRef.current
+
+        setConversations(prev => prev.map(c => {
+          if (c.id !== convId) return c
+          return {
+            ...c,
+            lastMessage: msg.content,
+            lastMessageTime: msg.created_at,
+            // Only increment unread for messages from the OTHER person when window is closed
+            unread: (!isFromMe && !isOpen) ? c.unread + 1 : c.unread,
+          }
+        }))
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [initialized])
+
+  // Cleaner: listen for new conversations
   useEffect(() => {
     if (currentRole !== 'cleaner' || !cleanerIdRef.current) return
     const cleanerId = cleanerIdRef.current
@@ -761,6 +772,7 @@ export function ChatWidget() {
         setCurrentRole(null)
         setInitialized(false)
         cleanerIdRef.current = null
+        currentUserIdRef.current = null
       }
     })
     return () => subscription.unsubscribe()
@@ -780,6 +792,7 @@ export function ChatWidget() {
         if (!profile) return
         const role = profile.role as 'customer' | 'cleaner'
         setCurrentUserId(user.id)
+        currentUserIdRef.current = user.id
         setCurrentRole(role)
         const { data: conv } = await (supabase as any).from('conversations').select('*').eq('id', convId).single()
         if (conv) {
@@ -829,7 +842,6 @@ export function ChatWidget() {
           currentUserId={currentUserId}
           currentRole={currentRole}
           onClose={() => closeWindow(conv.id)}
-          onNewMessage={handleNewMessage}
         />
       ))}
       <MessagingTray
