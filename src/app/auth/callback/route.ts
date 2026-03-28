@@ -24,9 +24,33 @@ export async function GET(request: NextRequest) {
         },
       }
     )
+
     const { error } = await supabase.auth.exchangeCodeForSession(code)
-    if (!error) return NextResponse.redirect(`${origin}${next}`)
+
+    if (!error) {
+      // For password reset, go to the reset page
+      // For normal login/signup, route by role
+      if (next === '/auth/reset-password') {
+        return NextResponse.redirect(`${origin}/auth/reset-password`)
+      }
+
+      // Look up role and redirect appropriately
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single()
+
+        const role = (profile as any)?.role
+        if (role === 'admin') return NextResponse.redirect(`${origin}/admin/dashboard`)
+        if (role === 'cleaner') return NextResponse.redirect(`${origin}/cleaner/dashboard`)
+      }
+
+      return NextResponse.redirect(`${origin}${next}`)
+    }
   }
 
-  return NextResponse.redirect(`${origin}/auth/login`)
+  return NextResponse.redirect(`${origin}/login`)
 }
