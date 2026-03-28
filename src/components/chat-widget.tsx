@@ -124,6 +124,18 @@ async function triggerMessageEmail(conversationId: string, content: string) {
   } catch (e) {}
 }
 
+// ─── Violation logger ─────────────────────────────────────────────────────────
+
+async function logViolation(conversationId: string, messageContent: string, triggeredKeywords: string[], senderId: string, senderRole: string) {
+  try {
+    await fetch('/api/log-violation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ conversationId, messageContent, triggeredKeywords, senderId, senderRole }),
+    })
+  } catch (e) {}
+}
+
 // ─── Typing dots ──────────────────────────────────────────────────────────────
 
 function TypingDots() {
@@ -162,7 +174,6 @@ function Avatar({ name, color, size = 36 }: { name: string; color: string; size?
 }
 
 // ─── Chat Window ──────────────────────────────────────────────────────────────
-// Note: ChatWindow no longer updates tray state — the global listener in ChatWidget does that.
 
 function ChatWindow({ conversation, currentUserId, currentRole, onClose }: {
   conversation: EnrichedConversation
@@ -184,10 +195,8 @@ function ChatWindow({ conversation, currentUserId, currentRole, onClose }: {
   const channelRef = useRef<any>(null)
   const supabase = createClient()
 
-  const checkWatchlist = (text: string) => {
-    if (warningShown) return false
-    return WATCHLIST.some(w => text.toLowerCase().includes(w))
-  }
+  const getTriggeredKeywords = (text: string): string[] =>
+    WATCHLIST.filter(w => text.toLowerCase().includes(w))
 
   useEffect(() => {
     const load = async () => {
@@ -277,11 +286,16 @@ function ChatWindow({ conversation, currentUserId, currentRole, onClose }: {
   const handleSend = async (overrideContent?: string) => {
     const content = (overrideContent ?? input).trim()
     if (!content || sending) return
-    if (checkWatchlist(content)) {
+
+    const triggered = getTriggeredKeywords(content)
+    if (triggered.length > 0 && !warningShown) {
       setShowWarning(true)
       setWarningShown(true)
+      // Log violation server-side (fire and forget)
+      logViolation(conversation.id, content, triggered, currentUserId, currentRole)
       return
     }
+
     setSending(true)
     setInput('')
     setShowSuppliesFollowup(false)
@@ -304,7 +318,6 @@ function ChatWindow({ conversation, currentUserId, currentRole, onClose }: {
     } else if (inserted) {
       setMessages(prev => prev.find(m => m.id === inserted.id) ? prev : [...prev, inserted])
       if (currentRole === 'customer') setCustomerHasSent(true)
-      // Fire email in background — tray update is handled by global listener in ChatWidget
       triggerMessageEmail(conversation.id, content)
     }
     setSending(false)
@@ -357,11 +370,13 @@ function ChatWindow({ conversation, currentUserId, currentRole, onClose }: {
       </div>
 
       {showWarning && (
-        <div style={{ padding: '8px 12px', background: '#fffbeb', borderBottom: '1px solid #fde68a', display: 'flex', gap: '8px', alignItems: 'flex-start', flexShrink: 0 }}>
+        <div style={{ padding: '10px 12px', background: '#fffbeb', borderBottom: '1px solid #fde68a', display: 'flex', gap: '8px', alignItems: 'flex-start', flexShrink: 0 }}>
           <span style={{ fontSize: '14px', flexShrink: 0 }}>⚠️</span>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: '11px', fontWeight: 700, color: '#92400e' }}>Keep conversations on Vouchee</div>
-            <div style={{ fontSize: '11px', color: '#b45309', lineHeight: 1.4 }}>Please keep all communication within Vouchee to protect both parties.</div>
+            <div style={{ fontSize: '11px', color: '#b45309', lineHeight: 1.5 }}>
+              Taking conversations off-platform removes your protection as a {currentRole}. All payments, scheduling and communication must stay within Vouchee.
+            </div>
           </div>
           <button onClick={() => setShowWarning(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#92400e', fontSize: '14px', flexShrink: 0 }}>✕</button>
         </div>
@@ -675,7 +690,6 @@ export function ChatWidget() {
     setConversations(prev => prev.filter(c => c.id !== id))
   }, [])
 
-  // Initial load
   useEffect(() => {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser()
@@ -684,7 +698,7 @@ export function ChatWidget() {
       currentUserIdRef.current = user.id
 
       const { data: profile } = await (supabase as any).from('profiles').select('role').eq('id', user.id).single()
-      if (!profile) { setInitialized(true); return }
+      if (!profile || profile.role === 'admin') { setInitialized(true); return }
 
       const role = profile.role as 'customer' | 'cleaner'
       setCurrentRole(role)
@@ -702,11 +716,7 @@ export function ChatWidget() {
     init()
   }, [])
 
-  // *** GLOBAL MESSAGES LISTENER ***
-  // This is the single source of truth for tray preview + unread counts.
-  // It subscribes to ALL message inserts once conversations are loaded,
-  // then filters to relevant ones client-side. No stale closures possible
-  // because we always read from refs.
+  // Global messages listener for tray preview + unread
   useEffect(() => {
     if (!initialized || conversationsRef.current.length === 0) return
 
@@ -719,10 +729,7 @@ export function ChatWidget() {
       }, payload => {
         const msg = payload.new as Message
         const convId = msg.conversation_id
-
-        // Only care about conversations we know about
-        const knownConv = conversationsRef.current.find(c => c.id === convId)
-        if (!knownConv) return
+        if (!conversationsRef.current.find(c => c.id === convId)) return
 
         const isOpen = openIdsRef.current.has(convId)
         const isFromMe = msg.sender_id === currentUserIdRef.current
@@ -733,7 +740,6 @@ export function ChatWidget() {
             ...c,
             lastMessage: msg.content,
             lastMessageTime: msg.created_at,
-            // Only increment unread for messages from the OTHER person when window is closed
             unread: (!isFromMe && !isOpen) ? c.unread + 1 : c.unread,
           }
         }))
@@ -762,7 +768,6 @@ export function ChatWidget() {
     return () => { supabase.removeChannel(channel) }
   }, [currentRole])
 
-  // Sign out cleanup
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_OUT') {
@@ -778,7 +783,6 @@ export function ChatWidget() {
     return () => subscription.unsubscribe()
   }, [])
 
-  // vouchee:open-chat event
   useEffect(() => {
     const handler = async (e: Event) => {
       const detail = (e as CustomEvent).detail
@@ -810,7 +814,6 @@ export function ChatWidget() {
     return () => window.removeEventListener('vouchee:open-chat', handler)
   }, [])
 
-  // Handle ?chat= URL param
   useEffect(() => {
     if (!initialized) return
     const params = new URLSearchParams(window.location.search)

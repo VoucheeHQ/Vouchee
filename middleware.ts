@@ -1,54 +1,58 @@
-import { type NextRequest, NextResponse } from 'next/server'
-import { updateSession } from '@/lib/supabase/middleware'
 import { createServerClient } from '@supabase/ssr'
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
-  // First, refresh the session as before
-  const response = await updateSession(request)
+  let response = NextResponse.next({
+    request: { headers: request.headers },
+  })
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() { return request.cookies.getAll() },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          response = NextResponse.next({ request: { headers: request.headers } })
+          cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options))
+        },
+      },
+    }
+  )
+
+  const { data: { user } } = await supabase.auth.getUser()
 
   const { pathname } = request.nextUrl
 
-  // Only enforce role rules on protected paths
-  const isCleanerPath = pathname.startsWith('/cleaner/dashboard')
-  const isCustomerPath = pathname.startsWith('/customer/dashboard')
-
-  if (isCleanerPath || isCustomerPath) {
-    // Read the session from cookies
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() { return request.cookies.getAll() },
-          setAll() {},
-        },
-      }
-    )
-
-    const { data: { session } } = await supabase.auth.getSession()
-
-    // Not logged in — send to login
-    if (!session?.user) {
+  // Protect admin routes — must be logged in with admin role
+  if (pathname.startsWith('/admin')) {
+    if (!user) {
       return NextResponse.redirect(new URL('/login', request.url))
     }
-
-    // Get their role
     const { data: profile } = await supabase
       .from('profiles')
       .select('role')
-      .eq('id', session.user.id)
+      .eq('id', user.id)
       .single()
 
-    const role = (profile as any)?.role
-
-    // Cleaner trying to access customer dashboard
-    if (isCustomerPath && role === 'cleaner') {
-      return NextResponse.redirect(new URL('/cleaner/dashboard', request.url))
+    if (!profile || profile.role !== 'admin') {
+      return NextResponse.redirect(new URL('/login', request.url))
     }
+  }
 
-    // Customer trying to access cleaner dashboard
-    if (isCleanerPath && role === 'customer') {
-      return NextResponse.redirect(new URL('/customer/dashboard', request.url))
+  // Protect cleaner routes
+  if (pathname.startsWith('/cleaner')) {
+    if (!user) {
+      return NextResponse.redirect(new URL(`/login?redirect=${pathname}`, request.url))
+    }
+  }
+
+  // Protect customer routes
+  if (pathname.startsWith('/customer')) {
+    if (!user) {
+      return NextResponse.redirect(new URL(`/login?redirect=${pathname}`, request.url))
     }
   }
 
@@ -56,7 +60,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
-  ],
+  matcher: ['/admin/:path*', '/cleaner/:path*', '/customer/:path*'],
 }
