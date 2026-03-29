@@ -100,6 +100,22 @@ function fmt(iso: string) {
   return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
+// ─── Admin API helper ─────────────────────────────────────────────────────────
+
+async function adminAction(body: Record<string, unknown>) {
+  const res = await fetch('/api/admin/actions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) {
+    const err = await res.json()
+    console.error('Admin action failed:', err)
+    return false
+  }
+  return true
+}
+
 // ─── Stat Card ────────────────────────────────────────────────────────────────
 
 function StatCard({ label, value, color = '#2563eb', sub }: { label: string; value: number | string; color?: string; sub?: string }) {
@@ -270,7 +286,7 @@ export default function AdminDashboard() {
 
   const loadUsers = async () => {
     const { data } = await (supabase as any)
-      .from('profiles').select('id, full_name, email, role, created_at')
+      .from('profiles').select('id, full_name, email, role, created_at, suspended')
       .in('role', ['customer', 'cleaner']).order('created_at', { ascending: false }).limit(200)
     setUsers(data ?? [])
   }
@@ -279,24 +295,15 @@ export default function AdminDashboard() {
     const { data: reqs } = await (supabase as any)
       .from('clean_requests')
       .select('id, status, created_at, zone, bedrooms, bathrooms, hourly_rate, frequency, customer_id, hidden')
-      .order('created_at', { ascending: false })
-      .limit(200)
-
+      .order('created_at', { ascending: false }).limit(200)
     if (!reqs) return
-
     const enriched = await Promise.all(reqs.map(async (r: any) => {
       const { data: cust } = await (supabase as any)
         .from('customers').select('profiles(full_name, email)').eq('id', r.customer_id).single()
       return {
-        id: r.id,
-        status: r.status,
-        created_at: r.created_at,
-        zone: r.zone,
-        bedrooms: r.bedrooms,
-        bathrooms: r.bathrooms,
-        hourly_rate: r.hourly_rate,
-        frequency: r.frequency,
-        hidden: r.hidden ?? false,
+        id: r.id, status: r.status, created_at: r.created_at, zone: r.zone,
+        bedrooms: r.bedrooms, bathrooms: r.bathrooms, hourly_rate: r.hourly_rate,
+        frequency: r.frequency, hidden: r.hidden ?? false,
         customer_name: (cust as any)?.profiles?.full_name ?? 'Unknown',
         customer_email: (cust as any)?.profiles?.email ?? '',
       }
@@ -357,19 +364,21 @@ export default function AdminDashboard() {
     setViolations(enriched)
   }
 
+  // ─── Write actions — all go through service-role API route ────────────────
+
   const suspendUser = async (userId: string, suspended: boolean) => {
-    await (supabase as any).from('profiles').update({ suspended }).eq('id', userId)
-    setUsers(prev => prev.map(u => u.id === userId ? { ...u, suspended } : u))
+    const ok = await adminAction({ action: 'suspend_user', userId, suspended })
+    if (ok) setUsers(prev => prev.map(u => u.id === userId ? { ...u, suspended } : u))
   }
 
   const hideListing = async (id: string, hidden: boolean) => {
-    await (supabase as any).from('clean_requests').update({ hidden }).eq('id', id)
-    setListings(prev => prev.map(l => l.id === id ? { ...l, hidden } : l))
+    const ok = await adminAction({ action: 'hide_listing', listingId: id, hidden })
+    if (ok) setListings(prev => prev.map(l => l.id === id ? { ...l, hidden } : l))
   }
 
   const deleteListing = async (id: string) => {
-    await (supabase as any).from('clean_requests').update({ status: 'deleted' }).eq('id', id)
-    setListings(prev => prev.filter(l => l.id !== id))
+    const ok = await adminAction({ action: 'delete_listing', listingId: id })
+    if (ok) setListings(prev => prev.filter(l => l.id !== id))
   }
 
   if (loading) {
@@ -463,7 +472,6 @@ export default function AdminDashboard() {
                 <StatCard label="Total messages" value={stats.totalMessages} color="#0f172a" />
                 <StatCard label="Violations today" value={stats.violationsToday} color={stats.violationsToday > 0 ? '#dc2626' : '#22c55e'} sub={stats.violationsToday > 0 ? 'Needs attention' : 'All clear'} />
               </div>
-
               {violations.length > 0 && (
                 <div style={{ background: 'white', borderRadius: '16px', border: '1.5px solid #fecaca', padding: '20px 24px' }}>
                   <div style={{ fontSize: '13px', fontWeight: 700, color: '#dc2626', marginBottom: '16px' }}>🚨 Recent keyword violations</div>
@@ -517,7 +525,8 @@ export default function AdminDashboard() {
                         <td style={{ padding: '12px 16px' }}><Badge label={u.suspended ? 'Suspended' : 'Active'} color={u.suspended ? 'red' : 'green'} /></td>
                         <td style={{ padding: '12px 16px' }}>
                           <button onClick={() => suspendUser(u.id, !u.suspended)} style={{
-                            background: u.suspended ? '#f0fdf4' : '#fef2f2', color: u.suspended ? '#15803d' : '#dc2626',
+                            background: u.suspended ? '#f0fdf4' : '#fef2f2',
+                            color: u.suspended ? '#15803d' : '#dc2626',
                             border: `1px solid ${u.suspended ? '#bbf7d0' : '#fecaca'}`,
                             borderRadius: '8px', padding: '4px 12px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
                           }}>
@@ -550,7 +559,6 @@ export default function AdminDashboard() {
                 </div>
                 <span style={{ fontSize: '13px', color: '#94a3b8' }}>{filteredListings.length} listings</span>
               </div>
-
               <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
                   <thead>
@@ -568,9 +576,7 @@ export default function AdminDashboard() {
                           <div style={{ fontSize: '11px', color: '#94a3b8' }}>{l.customer_email}</div>
                         </td>
                         <td style={{ padding: '12px 16px', color: '#64748b' }}>{ZONE_LABELS[l.zone ?? ''] ?? l.zone ?? '—'}</td>
-                        <td style={{ padding: '12px 16px', color: '#64748b' }}>
-                          {l.bedrooms}bd · {l.bathrooms}ba · £{l.hourly_rate}/hr · {l.frequency}
-                        </td>
+                        <td style={{ padding: '12px 16px', color: '#64748b' }}>{l.bedrooms}bd · {l.bathrooms}ba · £{l.hourly_rate}/hr · {l.frequency}</td>
                         <td style={{ padding: '12px 16px' }}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                             <Badge label={l.status} color={l.status === 'active' ? 'green' : l.status === 'pending_review' ? 'yellow' : 'gray'} />
@@ -580,19 +586,14 @@ export default function AdminDashboard() {
                         <td style={{ padding: '12px 16px', color: '#94a3b8', whiteSpace: 'nowrap' }}>{ago(l.created_at)}</td>
                         <td style={{ padding: '12px 16px' }}>
                           <div style={{ display: 'flex', gap: '6px' }}>
-                            <button
-                              onClick={() => hideListing(l.id, !l.hidden)}
-                              style={{ background: l.hidden ? '#fff7ed' : '#f8fafc', color: l.hidden ? '#c2410c' : '#64748b', border: `1px solid ${l.hidden ? '#fed7aa' : '#e2e8f0'}`, borderRadius: '6px', padding: '4px 10px', fontSize: '11px', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
-                            >
+                            <button onClick={() => hideListing(l.id, !l.hidden)}
+                              style={{ background: l.hidden ? '#fff7ed' : '#f8fafc', color: l.hidden ? '#c2410c' : '#64748b', border: `1px solid ${l.hidden ? '#fed7aa' : '#e2e8f0'}`, borderRadius: '6px', padding: '4px 10px', fontSize: '11px', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
                               {l.hidden ? '👁 Unhide' : '🚫 Hide'}
                             </button>
-                            <button
-                              onClick={() => setConfirmAction({
-                                message: `Permanently delete this listing from ${l.customer_name}? This cannot be undone.`,
-                                onConfirm: () => { deleteListing(l.id); setConfirmAction(null) }
-                              })}
-                              style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '6px', padding: '4px 10px', fontSize: '11px', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
-                            >
+                            <button onClick={() => setConfirmAction({
+                              message: `Permanently delete this listing from ${l.customer_name}? This cannot be undone.`,
+                              onConfirm: () => { deleteListing(l.id); setConfirmAction(null) }
+                            })} style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '6px', padding: '4px 10px', fontSize: '11px', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
                               🗑 Delete
                             </button>
                           </div>
@@ -602,7 +603,6 @@ export default function AdminDashboard() {
                   </tbody>
                 </table>
               </div>
-
               <div style={{ marginTop: '16px', padding: '14px 18px', background: '#fefce8', border: '1px solid #fef08a', borderRadius: '10px', fontSize: '13px', color: '#92400e' }}>
                 💡 <strong>Hidden</strong> listings are removed from the cleaner jobs page but remain in the database. <strong>Delete</strong> marks them as deleted — irreversible from here but recoverable via Supabase if needed.
               </div>
@@ -718,10 +718,7 @@ export default function AdminDashboard() {
                 <span>ℹ️</span>
                 <span>You're viewing the customer dashboard as admin. Any requests you post will publish normally. You will not be signed out.</span>
               </div>
-              <iframe
-                src="/customer/dashboard"
-                style={{ width: '100%', height: '85vh', border: 'none', borderRadius: '16px', boxShadow: '0 2px 16px rgba(0,0,0,0.08)' }}
-              />
+              <iframe src="/customer/dashboard" style={{ width: '100%', height: '85vh', border: 'none', borderRadius: '16px', boxShadow: '0 2px 16px rgba(0,0,0,0.08)' }} />
             </div>
           )}
 
@@ -732,10 +729,7 @@ export default function AdminDashboard() {
                 <span>ℹ️</span>
                 <span>You're viewing the cleaner dashboard as admin. You can browse jobs and test the cleaner experience without affecting your admin session.</span>
               </div>
-              <iframe
-                src="/cleaner/dashboard"
-                style={{ width: '100%', height: '85vh', border: 'none', borderRadius: '16px', boxShadow: '0 2px 16px rgba(0,0,0,0.08)' }}
-              />
+              <iframe src="/cleaner/dashboard" style={{ width: '100%', height: '85vh', border: 'none', borderRadius: '16px', boxShadow: '0 2px 16px rgba(0,0,0,0.08)' }} />
             </div>
           )}
 
