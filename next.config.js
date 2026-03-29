@@ -20,8 +20,18 @@ const nextConfig = {
   },
   async headers() {
     return [
+      // Dashboard pages — allow same-origin iframes (for admin embedded views)
       {
-        source: '/(.*)',
+        source: '/(customer|cleaner)/dashboard',
+        headers: [
+          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+        ],
+      },
+      // All other pages — deny iframes entirely
+      {
+        source: '/((?!customer/dashboard|cleaner/dashboard).*)',
         headers: [
           { key: 'X-Frame-Options', value: 'DENY' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
