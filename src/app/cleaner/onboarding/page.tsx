@@ -7,73 +7,37 @@ import { Check, Eye, EyeOff } from 'lucide-react'
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch'
 import VoucheeLogoText from '@/assets/vouchee-logo-text.svg'
 
-// ── Constants ─────────────────────────────────────────────────
-
 const ALL_AREAS = [
-  'Central / South East',
-  'North West',
-  'North East / Roffey',
-  'South West',
-  'Warnham / Surrounding North',
-  'Broadbridge Heath',
-  'Mannings Heath',
-  'Faygate / Kilnwood Vale',
-  'Christs Hospital',
+  'Central / South East', 'North West', 'North East / Roffey', 'South West',
+  'Warnham / Surrounding North', 'Broadbridge Heath', 'Mannings Heath',
+  'Faygate / Kilnwood Vale', 'Christs Hospital',
 ]
 
 const AREA_TO_ID: Record<string, string> = {
-  'Central / South East':       'central_south_east',
-  'North West':                  'north_west',
-  'North East / Roffey':        'north_east_roffey',
-  'South West':                  'south_west',
-  'Warnham / Surrounding North': 'warnham_north',
-  'Broadbridge Heath':           'broadbridge_heath',
-  'Mannings Heath':              'mannings_heath',
-  'Faygate / Kilnwood Vale':    'faygate_kilnwood_vale',
-  'Christs Hospital':            'christs_hospital',
+  'Central / South East': 'central_south_east', 'North West': 'north_west',
+  'North East / Roffey': 'north_east_roffey', 'South West': 'south_west',
+  'Warnham / Surrounding North': 'warnham_north', 'Broadbridge Heath': 'broadbridge_heath',
+  'Mannings Heath': 'mannings_heath', 'Faygate / Kilnwood Vale': 'faygate_kilnwood_vale',
+  'Christs Hospital': 'christs_hospital',
 }
 
 const EXPERIENCE_TYPES = [
-  { id: 'domestic',       label: 'Domestic cleaning' },
+  { id: 'domestic', label: 'Domestic cleaning' },
   { id: 'end_of_tenancy', label: 'End of tenancy cleaning' },
-  { id: 'office',         label: 'Office / commercial cleaning' },
-  { id: 'holiday_let',   label: 'Holiday let / Airbnb turnaround' },
-  { id: 'care_home',     label: 'Care homes / assisted living' },
-  { id: 'hospitality',   label: 'Hospitality / hotel housekeeping' },
+  { id: 'office', label: 'Office / commercial cleaning' },
+  { id: 'holiday_let', label: 'Holiday let / Airbnb turnaround' },
+  { id: 'care_home', label: 'Care homes / assisted living' },
+  { id: 'hospitality', label: 'Hospitality / hotel housekeeping' },
 ]
 
-// ── Validation helpers ────────────────────────────────────────
-
-function isValidEmail(email: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
-}
-
-function isValidPhone(phone: string) {
-  const digits = phone.replace(/[\s\-\(\)]/g, '')
-  return /^(\+44|0)7\d{9}$/.test(digits) || /^(\+44|0)[1-9]\d{8,9}$/.test(digits)
-}
-
-function isValidName(name: string) {
-  return name.trim().length >= 2 && /^[A-Za-zÀ-ÖØ-öø-ÿ'\- ]+$/.test(name.trim())
-}
-
-function isValidPassword(password: string) {
-  return (
-    password.length >= 8 &&
-    /[A-Z]/.test(password) &&
-    /[0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(password)
-  )
-}
-
-// ── Coverage map ──────────────────────────────────────────────
+function isValidEmail(email: string) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) }
+function isValidPhone(phone: string) { const d = phone.replace(/[\s\-\(\)]/g, ''); return /^(\+44|0)7\d{9}$/.test(d) || /^(\+44|0)[1-9]\d{8,9}$/.test(d) }
+function isValidName(name: string) { return name.trim().length >= 2 && /^[A-Za-zÀ-ÖØ-öø-ÿ'\- ]+$/.test(name.trim()) }
+function isValidPassword(p: string) { return p.length >= 8 && /[A-Z]/.test(p) && /[0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(p) }
 
 function CoverageMap() {
   return (
-    <div style={{
-      width: '100%', borderRadius: '16px', overflow: 'hidden',
-      border: '1.5px solid #e2e8f0', boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
-      background: '#e8f4f8', position: 'relative',
-    }}>
+    <div style={{ width: '100%', borderRadius: '16px', overflow: 'hidden', border: '1.5px solid #e2e8f0', boxShadow: '0 2px 12px rgba(0,0,0,0.06)', background: '#e8f4f8', position: 'relative' }}>
       <TransformWrapper initialScale={1} minScale={1} maxScale={4} centerOnInit>
         {({ zoomIn, zoomOut, resetTransform }) => (
           <>
@@ -85,9 +49,7 @@ function CoverageMap() {
               <button onClick={() => zoomOut()} style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'white', border: '1px solid #e2e8f0', fontSize: '18px', fontWeight: 700, color: '#0f172a', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', fontFamily: 'inherit' }}>−</button>
               <button onClick={() => resetTransform()} style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'white', border: '1px solid #e2e8f0', fontSize: '11px', fontWeight: 700, color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', fontFamily: 'inherit' }}>↺</button>
             </div>
-            <div style={{ position: 'absolute', bottom: '12px', left: '12px', background: 'rgba(255,255,255,0.85)', borderRadius: '8px', padding: '5px 10px', fontSize: '11px', color: '#64748b', fontFamily: 'inherit', fontWeight: 600, boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
-              Scroll to zoom · Drag to pan
-            </div>
+            <div style={{ position: 'absolute', bottom: '12px', left: '12px', background: 'rgba(255,255,255,0.85)', borderRadius: '8px', padding: '5px 10px', fontSize: '11px', color: '#64748b', fontFamily: 'inherit', fontWeight: 600, boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>Scroll to zoom · Drag to pan</div>
           </>
         )}
       </TransformWrapper>
@@ -95,40 +57,21 @@ function CoverageMap() {
   )
 }
 
-// ── Zone selector ─────────────────────────────────────────────
-
-function ZoneSelector({ selectedAreas, onToggle, onToggleAll }: {
-  selectedAreas: string[]
-  onToggle: (area: string) => void
-  onToggleAll: () => void
-}) {
+function ZoneSelector({ selectedAreas, onToggle, onToggleAll }: { selectedAreas: string[]; onToggle: (a: string) => void; onToggleAll: () => void }) {
   const allSelected = selectedAreas.includes('__all__')
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       <CoverageMap />
       <div>
-        <p style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px' }}>
-          Which areas are you happy to work in?
-        </p>
+        <p style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px' }}>Which areas are you happy to work in?</p>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-          <button type="button" onClick={onToggleAll} style={{ gridColumn: '1 / -1', borderRadius: '10px', padding: '9px 12px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', border: '1.5px solid', textAlign: 'left', transition: 'all 0.15s', fontFamily: 'inherit', background: allSelected ? 'rgba(59,130,246,0.06)' : 'rgba(255,255,255,0.7)', borderColor: allSelected ? '#3b82f6' : '#e2e8f0', color: allSelected ? '#1e40af' : '#475569' }}>
-            {allSelected ? '✓ ' : ''}All areas
-          </button>
-          {!allSelected && ALL_AREAS.map(area => {
-            const selected = selectedAreas.includes(area)
-            return (
-              <button key={area} type="button" onClick={() => onToggle(area)} style={{ borderRadius: '10px', padding: '9px 12px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', border: '1.5px solid', textAlign: 'left', transition: 'all 0.15s', fontFamily: 'inherit', background: selected ? 'rgba(59,130,246,0.06)' : 'rgba(255,255,255,0.7)', borderColor: selected ? '#3b82f6' : '#e2e8f0', color: selected ? '#1e40af' : '#475569' }}>
-                {selected ? '✓ ' : ''}{area}
-              </button>
-            )
-          })}
+          <button type="button" onClick={onToggleAll} style={{ gridColumn: '1 / -1', borderRadius: '10px', padding: '9px 12px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', border: '1.5px solid', textAlign: 'left', transition: 'all 0.15s', fontFamily: 'inherit', background: allSelected ? 'rgba(59,130,246,0.06)' : 'rgba(255,255,255,0.7)', borderColor: allSelected ? '#3b82f6' : '#e2e8f0', color: allSelected ? '#1e40af' : '#475569' }}>{allSelected ? '✓ ' : ''}All areas</button>
+          {!allSelected && ALL_AREAS.map(area => { const sel = selectedAreas.includes(area); return <button key={area} type="button" onClick={() => onToggle(area)} style={{ borderRadius: '10px', padding: '9px 12px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', border: '1.5px solid', textAlign: 'left', transition: 'all 0.15s', fontFamily: 'inherit', background: sel ? 'rgba(59,130,246,0.06)' : 'rgba(255,255,255,0.7)', borderColor: sel ? '#3b82f6' : '#e2e8f0', color: sel ? '#1e40af' : '#475569' }}>{sel ? '✓ ' : ''}{area}</button> })}
         </div>
       </div>
     </div>
   )
 }
-
-// ── Helper components ─────────────────────────────────────────
 
 function SectionHeader({ step, title, subtitle }: { step: number; title: string; subtitle?: string }) {
   return (
@@ -142,14 +85,10 @@ function SectionHeader({ step, title, subtitle }: { step: number; title: string;
   )
 }
 
-function Divider() {
-  return <div style={{ height: '1px', background: '#e2e8f0', margin: '36px 0' }} />
-}
+function Divider() { return <div style={{ height: '1px', background: '#e2e8f0', margin: '36px 0' }} /> }
 
 function ToggleChip({ label, selected, onClick }: { label: string; selected: boolean; onClick: () => void }) {
-  return (
-    <button onClick={onClick} style={{ padding: '7px 16px', borderRadius: '100px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', border: '1.5px solid', transition: 'all 0.15s', fontFamily: 'inherit', background: selected ? '#eff6ff' : 'white', borderColor: selected ? '#93c5fd' : '#e2e8f0', color: selected ? '#1d4ed8' : '#64748b' }}>{label}</button>
-  )
+  return <button onClick={onClick} style={{ padding: '7px 16px', borderRadius: '100px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', border: '1.5px solid', transition: 'all 0.15s', fontFamily: 'inherit', background: selected ? '#eff6ff' : 'white', borderColor: selected ? '#93c5fd' : '#e2e8f0', color: selected ? '#1d4ed8' : '#64748b' }}>{label}</button>
 }
 
 function CheckToggle({ label, checked, onChange, description }: { label: string; checked: boolean; onChange: (v: boolean) => void; description?: string }) {
@@ -166,44 +105,33 @@ function CheckToggle({ label, checked, onChange, description }: { label: string;
   )
 }
 
-// ── Application card preview ──────────────────────────────────
-
 function ApplicationCardPreview({ form }: { form: any }) {
   const nameParts = (form.full_name ?? '').trim().split(' ')
   const firstName = nameParts[0] || 'First name'
   const lastInitial = nameParts[1]?.[0] ? `${nameParts[1][0]}.` : ''
   const displayName = lastInitial ? `${firstName} ${lastInitial}` : firstName
   const monthYear = new Date().toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
-
   return (
     <div style={{ maxWidth: '420px', margin: '0 auto' }}>
       <div style={{ background: 'white', borderRadius: '20px', border: '2px solid #e2e8f0', boxShadow: '0 8px 32px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
         <div style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'linear-gradient(135deg, #3b82f6, #6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '15px', fontWeight: 800, color: 'white', flexShrink: 0 }}>
-            {firstName[0]?.toUpperCase() || 'V'}
-          </div>
+          <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'linear-gradient(135deg, #3b82f6, #6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '15px', fontWeight: 800, color: 'white', flexShrink: 0 }}>{firstName[0]?.toUpperCase() || 'V'}</div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>{displayName}</div>
             <div style={{ fontSize: '12px', color: '#64748b' }}>Member since {monthYear}</div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end', flexShrink: 0 }}>
             {['DBS checked', 'Right to work', 'Insured'].map(badge => (
-              <span key={badge} style={{ display: 'flex', alignItems: 'center', gap: '3px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: '100px', padding: '3px 8px', fontSize: '10px', fontWeight: 700, color: '#15803d', whiteSpace: 'nowrap' }}>
-                <Check size={9} strokeWidth={3} /> {badge}
-              </span>
+              <span key={badge} style={{ display: 'flex', alignItems: 'center', gap: '3px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: '100px', padding: '3px 8px', fontSize: '10px', fontWeight: 700, color: '#15803d', whiteSpace: 'nowrap' }}><Check size={9} strokeWidth={3} /> {badge}</span>
             ))}
           </div>
         </div>
         <div style={{ padding: '16px 16px 10px' }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-            <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'linear-gradient(135deg, #3b82f6, #6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 800, color: 'white', flexShrink: 0, marginTop: '2px' }}>
-              {firstName[0]?.toUpperCase() || 'V'}
-            </div>
+            <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'linear-gradient(135deg, #3b82f6, #6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 800, color: 'white', flexShrink: 0, marginTop: '2px' }}>{firstName[0]?.toUpperCase() || 'V'}</div>
             <div style={{ flex: 1 }}>
               <div style={{ background: '#eff6ff', borderRadius: '4px 18px 18px 18px', padding: '12px 14px', border: '1px solid #bfdbfe' }}>
-                <p style={{ fontSize: '14px', color: '#1e40af', lineHeight: 1.6, margin: 0, fontStyle: 'italic' }}>
-                  "Your chosen message to this customer would appear here — introduce yourself, mention your experience, or let them know why you'd be a great fit."
-                </p>
+                <p style={{ fontSize: '14px', color: '#1e40af', lineHeight: 1.6, margin: 0, fontStyle: 'italic' }}>"Your chosen message to this customer would appear here — introduce yourself, mention your experience, or let them know why you'd be a great fit."</p>
               </div>
               <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px', paddingLeft: '2px' }}>{displayName} · Just now</div>
             </div>
@@ -221,9 +149,7 @@ function ApplicationCardPreview({ form }: { form: any }) {
             { text: 'Very professional and thorough. Always on time and incredibly easy to communicate with. A real gem!', name: 'James R.', stars: 5 },
           ].map((review, i) => (
             <div key={i} style={{ background: '#f8fafc', borderRadius: '10px', padding: '10px 12px', marginBottom: i === 0 ? '6px' : 0, filter: 'blur(3.5px)', userSelect: 'none', pointerEvents: 'none' }}>
-              <div style={{ display: 'flex', gap: '2px', marginBottom: '6px' }}>
-                {[1,2,3,4,5].map(s => <span key={s} style={{ fontSize: '12px', color: s <= review.stars ? '#f59e0b' : '#e2e8f0' }}>★</span>)}
-              </div>
+              <div style={{ display: 'flex', gap: '2px', marginBottom: '6px' }}>{[1,2,3,4,5].map(s => <span key={s} style={{ fontSize: '12px', color: s <= review.stars ? '#f59e0b' : '#e2e8f0' }}>★</span>)}</div>
               <div style={{ fontSize: '12px', color: '#475569', lineHeight: 1.5, marginBottom: '4px' }}>"{review.text}"</div>
               <div style={{ fontSize: '11px', fontWeight: 600, color: '#94a3b8' }}>— {review.name}</div>
             </div>
@@ -238,8 +164,6 @@ function ApplicationCardPreview({ form }: { form: any }) {
     </div>
   )
 }
-
-// ── Main page ─────────────────────────────────────────────────
 
 export default function CleanerOnboarding() {
   const router = useRouter()
@@ -264,11 +188,8 @@ export default function CleanerOnboarding() {
     setForm(f => {
       const next = { ...f, [key]: value }
       if (key === 'password') {
-        if (value && !isValidPassword(value)) {
-          setErrors(e => ({ ...e, password: 'Must be 8+ characters, one uppercase letter, and one number or symbol.' }))
-        } else {
-          setErrors(e => { const n = { ...e }; delete n.password; return n })
-        }
+        if (value && !isValidPassword(value)) setErrors(e => ({ ...e, password: 'Must be 8+ characters, one uppercase letter, and one number or symbol.' }))
+        else setErrors(e => { const n = { ...e }; delete n.password; return n })
         if (next.confirm_password) {
           if (value !== next.confirm_password) setErrors(e => ({ ...e, confirm_password: 'Passwords do not match.' }))
           else setErrors(e => { const n = { ...e }; delete n.confirm_password; return n })
@@ -281,25 +202,13 @@ export default function CleanerOnboarding() {
       return next
     })
     if (key !== 'password' && key !== 'confirm_password') {
-      if (errors[key]) setErrors(e => { const next = { ...e }; delete next[key]; return next })
+      if (errors[key]) setErrors(e => { const n = { ...e }; delete n[key]; return n })
     }
   }
 
-  const toggleArr = (key: string, value: string) => {
-    const arr = (form as any)[key] as string[]
-    set(key, arr.includes(value) ? arr.filter((v: string) => v !== value) : [...arr, value])
-  }
-
-  const handleToggleArea = (area: string) => {
-    setForm(f => {
-      const areas = f.selectedAreas.filter(a => a !== '__all__')
-      return { ...f, selectedAreas: areas.includes(area) ? areas.filter(a => a !== area) : [...areas, area] }
-    })
-  }
-
-  const handleToggleAll = () => {
-    setForm(f => ({ ...f, selectedAreas: f.selectedAreas.includes('__all__') ? [] : ['__all__'] }))
-  }
+  const toggleArr = (key: string, value: string) => { const arr = (form as any)[key] as string[]; set(key, arr.includes(value) ? arr.filter((v: string) => v !== value) : [...arr, value]) }
+  const handleToggleArea = (area: string) => { setForm(f => { const areas = f.selectedAreas.filter(a => a !== '__all__'); return { ...f, selectedAreas: areas.includes(area) ? areas.filter(a => a !== area) : [...areas, area] } }) }
+  const handleToggleAll = () => { setForm(f => ({ ...f, selectedAreas: f.selectedAreas.includes('__all__') ? [] : ['__all__'] })) }
 
   const validate = () => {
     const e: Record<string, string> = {}
@@ -321,12 +230,7 @@ export default function CleanerOnboarding() {
   const handleSubmit = async () => {
     setSubmitError(null)
     const e = validate()
-    if (Object.keys(e).length > 0) {
-      setErrors(e)
-      const el = document.getElementById(`field-${Object.keys(e)[0]}`)
-      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      return
-    }
+    if (Object.keys(e).length > 0) { setErrors(e); const el = document.getElementById(`field-${Object.keys(e)[0]}`); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); return }
     setSubmitting(true)
     try {
       const supabase = createClient()
@@ -353,66 +257,36 @@ export default function CleanerOnboarding() {
   const labelStyle = { fontSize: '12px', fontWeight: 700 as const, color: '#64748b', textTransform: 'uppercase' as const, letterSpacing: '0.06em', display: 'block', marginBottom: '8px' }
   const fieldErrorStyle = { fontSize: '12px', color: '#dc2626', marginTop: '6px', fontWeight: 500 as const }
 
-  // ── Success screen ──────────────────────────────────────────
-
   if (submitted) {
     return (
       <div style={{ minHeight: '100vh', fontFamily: 'DM Sans, sans-serif', background: 'linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%)' }}>
         <div style={{ padding: '40px 20px 80px', maxWidth: '560px', margin: '0 auto', textAlign: 'center' }}>
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '40px' }}>
-            <VoucheeLogoText width={140} height={36} />
-          </div>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '40px' }}><VoucheeLogoText width={140} height={36} /></div>
           <div style={{ background: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(16px)', borderRadius: '24px', padding: '48px 40px', boxShadow: '0 8px 40px rgba(0,0,0,0.08)', border: '1.5px solid rgba(255,255,255,0.9)' }}>
             <div style={{ fontSize: '56px', marginBottom: '16px' }}>🎉</div>
             <h1 style={{ fontFamily: 'Lora, serif', fontSize: '24px', fontWeight: 800, color: '#0f172a', marginBottom: '12px' }}>Application submitted!</h1>
-            <p style={{ fontSize: '15px', color: '#64748b', lineHeight: 1.6, marginBottom: '8px' }}>
-              Thanks for applying to join Vouchee. We'll review your application and be in touch within 3 working days to arrange a quick call.
-            </p>
-            <p style={{ fontSize: '14px', color: '#94a3b8', lineHeight: 1.6, marginBottom: '32px' }}>
-              Keep an eye on your inbox — we may follow up with a few questions beforehand.
-            </p>
+            <p style={{ fontSize: '15px', color: '#64748b', lineHeight: 1.6, marginBottom: '8px' }}>Thanks for applying to join Vouchee. We'll review your application and be in touch within 3 working days to arrange a quick call.</p>
+            <p style={{ fontSize: '14px', color: '#94a3b8', lineHeight: 1.6, marginBottom: '32px' }}>Keep an eye on your inbox — we may follow up with a few questions beforehand.</p>
             <div style={{ background: '#f0fdf4', border: '1.5px solid #86efac', borderRadius: '14px', padding: '16px', marginBottom: '28px' }}>
-              <div style={{ fontSize: '14px', fontWeight: 600, color: '#15803d', lineHeight: 1.5 }}>
-                ✅ Your account has been created. Once approved, you'll be able to log in and start applying for jobs.
-              </div>
+              <div style={{ fontSize: '14px', fontWeight: 600, color: '#15803d', lineHeight: 1.5 }}>✅ Your account has been created. Once approved, you'll be able to log in and start applying for jobs.</div>
             </div>
-            <a href="mailto:cleaners@vouchee.co.uk" style={{ fontSize: '14px', color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>
-              Questions? cleaners@vouchee.co.uk
-            </a>
+            <a href="mailto:cleaners@vouchee.co.uk" style={{ fontSize: '14px', color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>Questions? cleaners@vouchee.co.uk</a>
           </div>
         </div>
       </div>
     )
   }
 
-  // ── Main form ───────────────────────────────────────────────
-
   return (
     <div style={{ minHeight: '100vh', fontFamily: 'DM Sans, sans-serif', background: 'linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%)' }}>
-
-      {/* Header — matches persona pages */}
       <div style={{ padding: '40px 20px 32px', textAlign: 'center', maxWidth: '680px', margin: '0 auto' }}>
-        <button
-         onClick={() => router.back()}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600, color: '#64748b', cursor: 'pointer', background: 'none', border: 'none', fontFamily: 'inherit', marginBottom: '28px', padding: 0, transition: 'color 0.15s' }}
-        >
-          ← Back
-        </button>
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
-          <VoucheeLogoText width={140} height={36} />
-        </div>
+        <button onClick={() => router.back()} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600, color: '#64748b', cursor: 'pointer', background: 'none', border: 'none', fontFamily: 'inherit', marginBottom: '28px', padding: 0, transition: 'color 0.15s' }}>← Back</button>
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}><VoucheeLogoText width={140} height={36} /></div>
         <p style={{ fontSize: '14px', color: '#64748b', marginBottom: '22px' }}>Apply to join Vouchee</p>
-        <h1 style={{ fontFamily: 'Lora, serif', fontSize: 'clamp(22px, 4vw, 30px)', fontWeight: 700, color: '#0f172a', marginBottom: '12px', lineHeight: 1.2 }}>
-          Tell us about yourself
-        </h1>
-        <p style={{ fontSize: '15px', color: '#64748b', lineHeight: 1.6, maxWidth: '480px', margin: '0 auto' }}>
-          Fill in the form below and we'll be in touch within 3 working days.
-          <br />
-          <em>It takes roughly 4 minutes to complete.</em>
-        </p>
+        <h1 style={{ fontFamily: 'Lora, serif', fontSize: 'clamp(22px, 4vw, 30px)', fontWeight: 700, color: '#0f172a', marginBottom: '12px', lineHeight: 1.2 }}>Tell us about yourself</h1>
+        <p style={{ fontSize: '15px', color: '#64748b', lineHeight: 1.6, maxWidth: '480px', margin: '0 auto' }}>Fill in the form below and we'll be in touch within 3 working days.<br /><em>It takes roughly 4 minutes to complete.</em></p>
       </div>
 
-      {/* Form card */}
       <div style={{ maxWidth: '680px', margin: '0 auto', padding: '0 20px 80px' }}>
         <div style={{ background: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(16px)', borderRadius: '24px', padding: '40px', boxShadow: '0 4px 24px rgba(0,0,0,0.06)', border: '1.5px solid rgba(255,255,255,0.9)' }}>
 
@@ -439,9 +313,7 @@ export default function CleanerOnboarding() {
               <label style={labelStyle}>Password</label>
               <div style={{ position: 'relative' }}>
                 <input type={showPassword ? 'text' : 'password'} style={{ ...(errors.password ? inputErrorStyle : inputStyle), paddingRight: '44px' }} placeholder="At least 8 characters" value={form.password} onChange={e => set('password', e.target.value)} />
-                <button type="button" onClick={() => setShowPassword(v => !v)} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', display: 'flex', alignItems: 'center', padding: '4px' }} aria-label={showPassword ? 'Hide password' : 'Show password'}>
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
+                <button type="button" onClick={() => setShowPassword(v => !v)} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', display: 'flex', alignItems: 'center', padding: '4px' }} aria-label={showPassword ? 'Hide password' : 'Show password'}>{showPassword ? <EyeOff size={16} /> : <Eye size={16} />}</button>
               </div>
               <p style={{ fontSize: '12px', color: '#94a3b8', marginTop: '6px' }}>Must include at least one uppercase letter and one number or symbol (e.g. <span style={{ fontFamily: 'monospace' }}>Cleaning1!</span>).</p>
               {errors.password && <p style={fieldErrorStyle}>⚠ {errors.password}</p>}
@@ -450,14 +322,10 @@ export default function CleanerOnboarding() {
               <label style={labelStyle}>Confirm password</label>
               <div style={{ position: 'relative' }}>
                 <input type={showConfirm ? 'text' : 'password'} style={{ ...(errors.confirm_password ? inputErrorStyle : inputStyle), paddingRight: '44px' }} placeholder="Re-enter your password" value={form.confirm_password} onChange={e => set('confirm_password', e.target.value)} />
-                <button type="button" onClick={() => setShowConfirm(v => !v)} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', display: 'flex', alignItems: 'center', padding: '4px' }} aria-label={showConfirm ? 'Hide password' : 'Show password'}>
-                  {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
+                <button type="button" onClick={() => setShowConfirm(v => !v)} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', display: 'flex', alignItems: 'center', padding: '4px' }} aria-label={showConfirm ? 'Hide password' : 'Show password'}>{showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}</button>
               </div>
               {errors.confirm_password && <p style={fieldErrorStyle}>⚠ {errors.confirm_password}</p>}
-              {!errors.confirm_password && form.confirm_password && form.password === form.confirm_password && (
-                <p style={{ fontSize: '12px', color: '#16a34a', marginTop: '6px', fontWeight: 600 }}>✓ Passwords match</p>
-              )}
+              {!errors.confirm_password && form.confirm_password && form.password === form.confirm_password && <p style={{ fontSize: '12px', color: '#16a34a', marginTop: '6px', fontWeight: 600 }}>✓ Passwords match</p>}
             </div>
           </div>
 
@@ -482,9 +350,7 @@ export default function CleanerOnboarding() {
                 {EXPERIENCE_TYPES.map(t => <ToggleChip key={t.id} label={t.label} selected={form.experience_types.includes(t.id)} onClick={() => toggleArr('experience_types', t.id)} />)}
                 <ToggleChip label="Other" selected={form.experience_types.includes('other')} onClick={() => toggleArr('experience_types', 'other')} />
               </div>
-              {form.experience_types.includes('other') && (
-                <input style={inputStyle} placeholder="Please describe your other cleaning experience" value={form.experience_other} onChange={e => set('experience_other', e.target.value)} />
-              )}
+              {form.experience_types.includes('other') && <input style={inputStyle} placeholder="Please describe your other cleaning experience" value={form.experience_other} onChange={e => set('experience_other', e.target.value)} />}
             </div>
             <CheckToggle label="I bring my own cleaning supplies and equipment" checked={form.own_supplies} onChange={v => set('own_supplies', v)} description="Make sure to agree with customers which products you'll use beforehand — some prefer eco-friendly products or have allergies." />
           </div>
@@ -498,8 +364,15 @@ export default function CleanerOnboarding() {
             <CheckToggle label="I have public liability insurance" checked={form.has_insurance} onChange={v => set('has_insurance', v)} />
             {(!form.dbs_checked || !form.right_to_work || !form.has_insurance) && (
               <div style={{ marginTop: '4px' }}>
-                <button onClick={() => { const opening = !missingCredentials; setMissingCredentials(opening); if (opening) set('needs_credentials_help', true) }} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: missingCredentials ? '#fffbeb' : '#f8fafc', border: `1.5px solid ${missingCredentials ? '#fde68a' : '#e2e8f0'}`, borderRadius: '12px', padding: '12px 16px', cursor: 'pointer', fontSize: '14px', fontWeight: 600, color: missingCredentials ? '#92400e' : '#475569', width: '100%', textAlign: 'left', transition: 'all 0.15s', fontFamily: 'inherit' }}>
-                  <span style={{ fontSize: '16px' }}>📋</span> I don't have everything just yet
+                {/* ── Checkbox style matches the three above — amber when checked to distinguish it ── */}
+                <button
+                  onClick={() => { const opening = !missingCredentials; setMissingCredentials(opening); if (opening) set('needs_credentials_help', true) }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '12px', background: missingCredentials ? '#fffbeb' : '#f8fafc', border: `1.5px solid ${missingCredentials ? '#fde68a' : '#e2e8f0'}`, borderRadius: '12px', padding: '14px 16px', cursor: 'pointer', fontSize: '14px', fontWeight: 600, color: missingCredentials ? '#92400e' : '#475569', width: '100%', textAlign: 'left', transition: 'all 0.15s', fontFamily: 'inherit' }}
+                >
+                  <div style={{ width: '20px', height: '20px', borderRadius: '6px', flexShrink: 0, background: missingCredentials ? '#d97706' : 'white', border: `2px solid ${missingCredentials ? '#d97706' : '#cbd5e1'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}>
+                    {missingCredentials && <Check size={12} color="white" strokeWidth={3} />}
+                  </div>
+                  I don't have everything just yet
                 </button>
                 {missingCredentials && (
                   <div style={{ background: '#fffbeb', border: '1.5px solid #fde68a', borderRadius: '12px', padding: '16px', marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -548,12 +421,8 @@ export default function CleanerOnboarding() {
                   {platformAgreement && <Check size={13} color="white" strokeWidth={3} />}
                 </button>
                 <div>
-                  <p style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', margin: '0 0 8px', lineHeight: 1.55 }}>
-                    I understand that customers introduced through Vouchee must be managed through the platform. Taking these customers private is a breach of Vouchee's Terms and may result in my account being permanently removed.
-                  </p>
-                  <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0, lineHeight: 1.5 }}>
-                    Note: You are paid directly by the customer for your time — <strong style={{ color: '#64748b' }}>Vouchee does not take a cut of your hourly earnings.</strong> This agreement applies to customer relationships, not payments.
-                  </p>
+                  <p style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', margin: '0 0 8px', lineHeight: 1.55 }}>I understand that customers introduced through Vouchee must be managed through the platform. Taking these customers private is a breach of Vouchee's Terms and may result in my account being permanently removed.</p>
+                  <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0, lineHeight: 1.5 }}>Note: You are paid directly by the customer for your time — <strong style={{ color: '#64748b' }}>Vouchee does not take a cut of your hourly earnings.</strong> This agreement applies to customer relationships, not payments.</p>
                 </div>
               </div>
             </div>
@@ -566,18 +435,11 @@ export default function CleanerOnboarding() {
               <a href="/terms" style={{ color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>Terms of Service</a>{' '}and{' '}
               <a href="/privacy" style={{ color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>Privacy Policy</a>.
             </p>
-            {submitError && (
-              <div style={{ background: '#fef2f2', border: '1.5px solid #fecaca', borderRadius: '12px', padding: '14px 16px', marginBottom: '16px' }}>
-                <p style={{ fontSize: '14px', color: '#dc2626', margin: 0, fontWeight: 600 }}>{submitError}</p>
-              </div>
-            )}
+            {submitError && <div style={{ background: '#fef2f2', border: '1.5px solid #fecaca', borderRadius: '12px', padding: '14px 16px', marginBottom: '16px' }}><p style={{ fontSize: '14px', color: '#dc2626', margin: 0, fontWeight: 600 }}>{submitError}</p></div>}
             <button onClick={handleSubmit} disabled={submitting} style={{ width: '100%', padding: '16px', background: submitting ? '#86efac' : 'linear-gradient(90deg, #3b82f6 0%, #22c55e 100%)', color: 'white', border: 'none', borderRadius: '14px', fontSize: '16px', fontWeight: 700, cursor: submitting ? 'not-allowed' : 'pointer', transition: 'all 0.2s', boxShadow: submitting ? 'none' : '0 4px 16px rgba(59,130,246,0.25)', fontFamily: 'inherit' }}>
               {submitting ? 'Submitting your application…' : 'Submit application →'}
             </button>
-            <p style={{ fontSize: '12px', color: '#94a3b8', textAlign: 'center', marginTop: '12px' }}>
-              Questions before applying?{' '}
-              <a href="mailto:cleaners@vouchee.co.uk" style={{ color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>cleaners@vouchee.co.uk</a>
-            </p>
+            <p style={{ fontSize: '12px', color: '#94a3b8', textAlign: 'center', marginTop: '12px' }}>Questions before applying?{' '}<a href="mailto:cleaners@vouchee.co.uk" style={{ color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>cleaners@vouchee.co.uk</a></p>
           </div>
 
         </div>

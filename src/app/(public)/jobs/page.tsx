@@ -428,10 +428,11 @@ export default function JobsPage() {
       }
 
       const { data, error } = await authClient
-        .from('clean_requests')
-        .select(`id, service_type, zone, bedrooms, bathrooms, has_pets, preferred_day, preferred_days, time_of_day, hourly_rate, hours_per_session, tasks, customer_notes, status, created_at, updated_at, customer_id`)
-        .order('created_at', { ascending: false })
-        .limit(100)
+      .from('clean_requests')
+      .select(`id, service_type, zone, bedrooms, bathrooms, has_pets, preferred_day, preferred_days, time_of_day, hourly_rate, hours_per_session, tasks, customer_notes, status, created_at, updated_at, customer_id`)
+      .eq('hidden', false)
+      .order('created_at', { ascending: false })
+      .limit(100)
 
       if (error) console.error('Supabase error:', error)
 
