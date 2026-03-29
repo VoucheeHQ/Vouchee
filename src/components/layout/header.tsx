@@ -31,8 +31,8 @@ export function Header({ userRole }: HeaderProps) {
       <nav className="container flex h-16 items-center justify-between">
 
         <Link href="/" className="flex items-center">
-          <LogoText className="hidden md:block h-7 w-auto" />
-          <LogoMark className="block md:hidden h-7 w-auto" />
+        <LogoText className="hidden md:block h-7 w-auto overflow-visible" />
+        <LogoMark className="block md:hidden h-7 w-auto overflow-visible" />
         </Link>
 
         <div className="hidden items-center gap-6 md:flex">
