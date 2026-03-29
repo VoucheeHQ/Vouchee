@@ -23,36 +23,37 @@ export async function middleware(request: NextRequest) {
   )
 
   const { data: { user } } = await supabase.auth.getUser()
-
   const { pathname } = request.nextUrl
 
-  // Protect admin routes — must be logged in with admin role
+  // Helper: get role once
+  const getRole = async () => {
+    if (!user) return null
+    const { data } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+    return (data as any)?.role ?? null
+  }
+
+  // ── Admin routes — must be admin ──────────────────────────────────────────
   if (pathname.startsWith('/admin')) {
-    if (!user) {
-      return NextResponse.redirect(new URL('/login', request.url))
-    }
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-
-    if (!profile || profile.role !== 'admin') {
-      return NextResponse.redirect(new URL('/login', request.url))
-    }
+    if (!user) return NextResponse.redirect(new URL('/login', request.url))
+    const role = await getRole()
+    if (role !== 'admin') return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // Protect cleaner routes
+  // ── Cleaner routes — cleaner or admin ─────────────────────────────────────
   if (pathname.startsWith('/cleaner')) {
-    if (!user) {
-      return NextResponse.redirect(new URL(`/login?redirect=${pathname}`, request.url))
+    if (!user) return NextResponse.redirect(new URL(`/login?redirect=${pathname}`, request.url))
+    const role = await getRole()
+    if (role !== 'cleaner' && role !== 'admin') {
+      return NextResponse.redirect(new URL('/login', request.url))
     }
   }
 
-  // Protect customer routes
+  // ── Customer routes — customer or admin ───────────────────────────────────
   if (pathname.startsWith('/customer')) {
-    if (!user) {
-      return NextResponse.redirect(new URL(`/login?redirect=${pathname}`, request.url))
+    if (!user) return NextResponse.redirect(new URL(`/login?redirect=${pathname}`, request.url))
+    const role = await getRole()
+    if (role !== 'customer' && role !== 'admin') {
+      return NextResponse.redirect(new URL('/login', request.url))
     }
   }
 

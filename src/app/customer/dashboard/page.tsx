@@ -640,7 +640,7 @@ function CustomerDashboardContent() {
           .from('profiles').select('full_name, email, role').eq('id', user.id).single()
 
         if (profileError || !profileData) throw new Error('Could not load your profile.')
-        if (profileData.role !== 'customer') { router.replace('/cleaner/dashboard'); return }
+          if (profileData.role !== 'customer' && profileData.role !== 'admin') { router.replace('/cleaner/dashboard'); return }
 
         // ✅ KEY FIX: look up customers UUID first — clean_requests.customer_id is NOT the auth UUID
         const { data: customerRecord } = await (supabase as any)

@@ -26,6 +26,20 @@ interface UserRow {
   suspended?: boolean
 }
 
+interface ListingRow {
+  id: string
+  status: string
+  created_at: string
+  zone: string | null
+  bedrooms: number
+  bathrooms: number
+  hourly_rate: number
+  frequency: string
+  customer_name: string
+  customer_email: string
+  hidden?: boolean
+}
+
 interface ApplicationRow {
   id: string
   status: string
@@ -57,7 +71,19 @@ interface ViolationRow {
   sender_name: string
 }
 
-type Tab = 'overview' | 'users' | 'applications' | 'conversations' | 'violations'
+type Tab = 'overview' | 'users' | 'listings' | 'applications' | 'conversations' | 'violations' | 'customer-view' | 'cleaner-view'
+
+const ZONE_LABELS: Record<string, string> = {
+  central_south_east: 'Central / South East',
+  north_west: 'North West',
+  north_east_roffey: 'North East / Roffey',
+  south_west: 'South West',
+  warnham_north: 'Warnham / North',
+  broadbridge_heath: 'Broadbridge Heath',
+  mannings_heath: 'Mannings Heath',
+  faygate_kilnwood_vale: 'Faygate / Kilnwood Vale',
+  christs_hospital: "Christ's Hospital",
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -96,6 +122,7 @@ function Badge({ label, color }: { label: string; color: string }) {
     blue:   { bg: '#eff6ff', text: '#1d4ed8', border: '#bfdbfe' },
     gray:   { bg: '#f8fafc', text: '#64748b', border: '#e2e8f0' },
     purple: { bg: '#f5f3ff', text: '#6d28d9', border: '#ddd6fe' },
+    orange: { bg: '#fff7ed', text: '#c2410c', border: '#fed7aa' },
   }
   const c = cfg[color] ?? cfg.gray
   return (
@@ -105,13 +132,28 @@ function Badge({ label, color }: { label: string; color: string }) {
   )
 }
 
+// ─── Confirm Modal ────────────────────────────────────────────────────────────
+
+function ConfirmModal({ message, onConfirm, onCancel, danger = true }: {
+  message: string; onConfirm: () => void; onCancel: () => void; danger?: boolean
+}) {
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+      <div style={{ background: 'white', borderRadius: '20px', padding: '32px', maxWidth: '400px', width: '100%', textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+        <p style={{ fontSize: '15px', color: '#0f172a', margin: '0 0 24px', lineHeight: 1.6 }}>{message}</p>
+        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+          <button onClick={onCancel} style={{ background: 'none', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 20px', fontSize: '14px', fontWeight: 600, color: '#64748b', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>Cancel</button>
+          <button onClick={onConfirm} style={{ background: danger ? '#ef4444' : '#2563eb', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 20px', fontSize: '14px', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>Confirm</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Conversation Modal ───────────────────────────────────────────────────────
 
 function ConversationModal({ conversationId, cleanerName, customerName, onClose }: {
-  conversationId: string
-  cleanerName: string
-  customerName: string
-  onClose: () => void
+  conversationId: string; cleanerName: string; customerName: string; onClose: () => void
 }) {
   const [messages, setMessages] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -120,9 +162,7 @@ function ConversationModal({ conversationId, cleanerName, customerName, onClose 
   useEffect(() => {
     const load = async () => {
       const { data } = await (supabase as any)
-        .from('messages')
-        .select('*')
-        .eq('conversation_id', conversationId)
+        .from('messages').select('*').eq('conversation_id', conversationId)
         .order('created_at', { ascending: true })
       setMessages(data ?? [])
       setLoading(false)
@@ -183,28 +223,25 @@ export default function AdminDashboard() {
   const [tab, setTab] = useState<Tab>('overview')
   const [stats, setStats] = useState<Stats | null>(null)
   const [users, setUsers] = useState<UserRow[]>([])
+  const [listings, setListings] = useState<ListingRow[]>([])
   const [applications, setApplications] = useState<ApplicationRow[]>([])
   const [conversations, setConversations] = useState<ConversationRow[]>([])
   const [violations, setViolations] = useState<ViolationRow[]>([])
   const [loading, setLoading] = useState(true)
   const [userSearch, setUserSearch] = useState('')
+  const [listingSearch, setListingSearch] = useState('')
   const [viewingConv, setViewingConv] = useState<ConversationRow | null>(null)
+  const [confirmAction, setConfirmAction] = useState<{ message: string; onConfirm: () => void } | null>(null)
+  const [listingFilter, setListingFilter] = useState<'all' | 'active' | 'hidden'>('all')
   const supabase = createClient()
 
   useEffect(() => {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.replace('/login'); return }
-
-      const { data: profile } = await (supabase as any)
-        .from('profiles').select('role').eq('id', user.id).single()
-
-      if (!profile || profile.role !== 'admin') {
-        router.replace('/login')
-        return
-      }
-
-      await Promise.all([loadStats(), loadUsers(), loadApplications(), loadConversations(), loadViolations()])
+      const { data: profile } = await (supabase as any).from('profiles').select('role').eq('id', user.id).single()
+      if (!profile || profile.role !== 'admin') { router.replace('/login'); return }
+      await Promise.all([loadStats(), loadUsers(), loadListings(), loadApplications(), loadConversations(), loadViolations()])
       setLoading(false)
     }
     init()
@@ -212,17 +249,12 @@ export default function AdminDashboard() {
 
   const loadStats = async () => {
     const [
-      { count: customers },
-      { count: cleaners },
-      { count: listings },
-      { count: apps },
-      { count: convs },
-      { count: msgs },
-      { count: viols },
+      { count: customers }, { count: cleaners }, { count: listingsCount },
+      { count: apps }, { count: convs }, { count: msgs }, { count: viols },
     ] = await Promise.all([
       (supabase as any).from('customers').select('*', { count: 'exact', head: true }),
       (supabase as any).from('cleaners').select('*', { count: 'exact', head: true }),
-      (supabase as any).from('clean_requests').select('*', { count: 'exact', head: true }).eq('status', 'active'),
+      (supabase as any).from('clean_requests').select('*', { count: 'exact', head: true }).eq('status', 'active').not('hidden', 'eq', true),
       (supabase as any).from('applications').select('*', { count: 'exact', head: true }),
       (supabase as any).from('conversations').select('*', { count: 'exact', head: true }),
       (supabase as any).from('messages').select('*', { count: 'exact', head: true }),
@@ -230,48 +262,59 @@ export default function AdminDashboard() {
         .gte('created_at', new Date(Date.now() - 86400000).toISOString()),
     ])
     setStats({
-      totalCustomers: customers ?? 0,
-      totalCleaners: cleaners ?? 0,
-      activeListings: listings ?? 0,
-      totalApplications: apps ?? 0,
-      totalConversations: convs ?? 0,
-      totalMessages: msgs ?? 0,
-      violationsToday: viols ?? 0,
+      totalCustomers: customers ?? 0, totalCleaners: cleaners ?? 0,
+      activeListings: listingsCount ?? 0, totalApplications: apps ?? 0,
+      totalConversations: convs ?? 0, totalMessages: msgs ?? 0, violationsToday: viols ?? 0,
     })
   }
 
   const loadUsers = async () => {
     const { data } = await (supabase as any)
-      .from('profiles')
-      .select('id, full_name, email, role, created_at')
-      .in('role', ['customer', 'cleaner'])
+      .from('profiles').select('id, full_name, email, role, created_at')
+      .in('role', ['customer', 'cleaner']).order('created_at', { ascending: false }).limit(200)
+    setUsers(data ?? [])
+  }
+
+  const loadListings = async () => {
+    const { data: reqs } = await (supabase as any)
+      .from('clean_requests')
+      .select('id, status, created_at, zone, bedrooms, bathrooms, hourly_rate, frequency, customer_id, hidden')
       .order('created_at', { ascending: false })
       .limit(200)
-    setUsers(data ?? [])
+
+    if (!reqs) return
+
+    const enriched = await Promise.all(reqs.map(async (r: any) => {
+      const { data: cust } = await (supabase as any)
+        .from('customers').select('profiles(full_name, email)').eq('id', r.customer_id).single()
+      return {
+        id: r.id,
+        status: r.status,
+        created_at: r.created_at,
+        zone: r.zone,
+        bedrooms: r.bedrooms,
+        bathrooms: r.bathrooms,
+        hourly_rate: r.hourly_rate,
+        frequency: r.frequency,
+        hidden: r.hidden ?? false,
+        customer_name: (cust as any)?.profiles?.full_name ?? 'Unknown',
+        customer_email: (cust as any)?.profiles?.email ?? '',
+      }
+    }))
+    setListings(enriched)
   }
 
   const loadApplications = async () => {
     const { data: apps } = await (supabase as any)
-      .from('applications')
-      .select('id, status, created_at, message, cleaner_id, request_id')
-      .order('created_at', { ascending: false })
-      .limit(100)
-
+      .from('applications').select('id, status, created_at, message, cleaner_id, request_id')
+      .order('created_at', { ascending: false }).limit(100)
     if (!apps) return
-
     const enriched = await Promise.all(apps.map(async (app: any) => {
-      const { data: cleaner } = await (supabase as any)
-        .from('cleaners').select('profiles(full_name)').eq('id', app.cleaner_id).single()
-      const { data: req } = await (supabase as any)
-        .from('clean_requests').select('zone, customer_id').eq('id', app.request_id).single()
-      const { data: customer } = req ? await (supabase as any)
-        .from('customers').select('profiles(full_name)').eq('id', req.customer_id).single() : { data: null }
-
+      const { data: cleaner } = await (supabase as any).from('cleaners').select('profiles(full_name)').eq('id', app.cleaner_id).single()
+      const { data: req } = await (supabase as any).from('clean_requests').select('zone, customer_id').eq('id', app.request_id).single()
+      const { data: customer } = req ? await (supabase as any).from('customers').select('profiles(full_name)').eq('id', req.customer_id).single() : { data: null }
       return {
-        id: app.id,
-        status: app.status,
-        created_at: app.created_at,
-        message: app.message,
+        id: app.id, status: app.status, created_at: app.created_at, message: app.message,
         cleaner_name: cleaner?.profiles?.full_name ?? 'Unknown',
         customer_name: (customer as any)?.profiles?.full_name ?? 'Unknown',
         zone: req?.zone ?? '—',
@@ -282,35 +325,21 @@ export default function AdminDashboard() {
 
   const loadConversations = async () => {
     const { data: convs } = await (supabase as any)
-      .from('conversations')
-      .select('id, created_at, cleaner_id, customer_id, clean_request_id')
-      .order('created_at', { ascending: false })
-      .limit(100)
-
+      .from('conversations').select('id, created_at, cleaner_id, customer_id, clean_request_id')
+      .order('created_at', { ascending: false }).limit(100)
     if (!convs) return
-
     const enriched = await Promise.all(convs.map(async (conv: any) => {
-      const { data: cleaner } = await (supabase as any)
-        .from('cleaners').select('profiles(full_name)').eq('id', conv.cleaner_id).single()
-      const { data: customer } = await (supabase as any)
-        .from('profiles').select('full_name').eq('id', conv.customer_id).single()
-      const { data: req } = await (supabase as any)
-        .from('clean_requests').select('zone').eq('id', conv.clean_request_id).single()
-      const { data: msgs, count } = await (supabase as any)
-        .from('messages').select('content, created_at', { count: 'exact' })
-        .eq('conversation_id', conv.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-
+      const { data: cleaner } = await (supabase as any).from('cleaners').select('profiles(full_name)').eq('id', conv.cleaner_id).single()
+      const { data: customer } = await (supabase as any).from('profiles').select('full_name').eq('id', conv.customer_id).single()
+      const { data: req } = await (supabase as any).from('clean_requests').select('zone').eq('id', conv.clean_request_id).single()
+      const { data: msgs, count } = await (supabase as any).from('messages').select('content, created_at', { count: 'exact' })
+        .eq('conversation_id', conv.id).order('created_at', { ascending: false }).limit(1)
       return {
-        id: conv.id,
-        created_at: conv.created_at,
+        id: conv.id, created_at: conv.created_at,
         cleaner_name: cleaner?.profiles?.full_name ?? 'Unknown',
         customer_name: (customer as any)?.full_name ?? 'Unknown',
-        zone: req?.zone ?? '—',
-        message_count: count ?? 0,
-        last_message: msgs?.[0]?.content ?? '',
-        last_message_at: msgs?.[0]?.created_at ?? null,
+        zone: req?.zone ?? '—', message_count: count ?? 0,
+        last_message: msgs?.[0]?.content ?? '', last_message_at: msgs?.[0]?.created_at ?? null,
       }
     }))
     setConversations(enriched)
@@ -318,20 +347,12 @@ export default function AdminDashboard() {
 
   const loadViolations = async () => {
     const { data } = await (supabase as any)
-      .from('keyword_violations')
-      .select('id, created_at, conversation_id, message_content, triggered_keywords, sender_role, sender_id')
-      .order('created_at', { ascending: false })
-      .limit(100)
-
+      .from('keyword_violations').select('id, created_at, conversation_id, message_content, triggered_keywords, sender_role, sender_id')
+      .order('created_at', { ascending: false }).limit(100)
     if (!data) return
-
     const enriched = await Promise.all((data as any[]).map(async (v) => {
-      const { data: profile } = await (supabase as any)
-        .from('profiles').select('full_name').eq('id', v.sender_id).single()
-      return {
-        ...v,
-        sender_name: (profile as any)?.full_name ?? 'Unknown',
-      }
+      const { data: profile } = await (supabase as any).from('profiles').select('full_name').eq('id', v.sender_id).single()
+      return { ...v, sender_name: (profile as any)?.full_name ?? 'Unknown' }
     }))
     setViolations(enriched)
   }
@@ -339,6 +360,16 @@ export default function AdminDashboard() {
   const suspendUser = async (userId: string, suspended: boolean) => {
     await (supabase as any).from('profiles').update({ suspended }).eq('id', userId)
     setUsers(prev => prev.map(u => u.id === userId ? { ...u, suspended } : u))
+  }
+
+  const hideListing = async (id: string, hidden: boolean) => {
+    await (supabase as any).from('clean_requests').update({ hidden }).eq('id', id)
+    setListings(prev => prev.map(l => l.id === id ? { ...l, hidden } : l))
+  }
+
+  const deleteListing = async (id: string) => {
+    await (supabase as any).from('clean_requests').update({ status: 'deleted' }).eq('id', id)
+    setListings(prev => prev.filter(l => l.id !== id))
   }
 
   if (loading) {
@@ -357,12 +388,19 @@ export default function AdminDashboard() {
     u.email?.toLowerCase().includes(userSearch.toLowerCase())
   )
 
+  const filteredListings = listings
+    .filter(l => listingFilter === 'all' ? true : listingFilter === 'hidden' ? l.hidden : !l.hidden && l.status !== 'deleted')
+    .filter(l => l.customer_name?.toLowerCase().includes(listingSearch.toLowerCase()) || l.zone?.toLowerCase().includes(listingSearch.toLowerCase()))
+
   const tabs: { id: Tab; label: string; icon: string }[] = [
     { id: 'overview', label: 'Overview', icon: '📊' },
     { id: 'users', label: 'Users', icon: '👥' },
+    { id: 'listings', label: 'Listings', icon: '🏠' },
     { id: 'applications', label: 'Applications', icon: '📋' },
     { id: 'conversations', label: 'Conversations', icon: '💬' },
     { id: 'violations', label: 'Violations', icon: '🚨' },
+    { id: 'customer-view', label: 'Customer view', icon: '👤' },
+    { id: 'cleaner-view', label: 'Cleaner view', icon: '🧹' },
   ]
 
   return (
@@ -371,33 +409,42 @@ export default function AdminDashboard() {
       <div style={{ minHeight: '100vh', background: '#f8fafc', fontFamily: "'DM Sans', sans-serif" }}>
         <Header userRole="admin" />
 
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 24px 80px' }}>
+        <div style={{ maxWidth: '1300px', margin: '0 auto', padding: '40px 24px 80px' }}>
 
-          {/* Page title */}
-          <div style={{ marginBottom: '32px' }}>
-            <h1 style={{ fontFamily: "'Lora', serif", fontSize: '28px', fontWeight: 700, color: '#0f172a', margin: '0 0 4px' }}>
-              Admin Portal
-            </h1>
-            <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>Full platform visibility and controls</p>
+          <div style={{ marginBottom: '32px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+            <div>
+              <h1 style={{ fontFamily: "'Lora', serif", fontSize: '28px', fontWeight: 700, color: '#0f172a', margin: '0 0 4px' }}>Admin Portal</h1>
+              <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>Full platform visibility and controls</p>
+            </div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <a href="/customer/dashboard" target="_blank" style={{ background: '#f0fdf4', color: '#15803d', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: 600, textDecoration: 'none' }}>
+                🏠 Open customer dashboard ↗
+              </a>
+              <a href="/cleaner/dashboard" target="_blank" style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: 600, textDecoration: 'none' }}>
+                🧹 Open cleaner dashboard ↗
+              </a>
+            </div>
           </div>
 
           {/* Tabs */}
-          <div style={{ display: 'flex', gap: '4px', marginBottom: '32px', background: 'white', padding: '4px', borderRadius: '12px', border: '1px solid #e2e8f0', width: 'fit-content' }}>
+          <div style={{ display: 'flex', gap: '4px', marginBottom: '32px', background: 'white', padding: '4px', borderRadius: '12px', border: '1px solid #e2e8f0', flexWrap: 'wrap' }}>
             {tabs.map(t => (
               <button key={t.id} onClick={() => setTab(t.id)} style={{
-                padding: '8px 18px', borderRadius: '9px', border: 'none', cursor: 'pointer',
+                padding: '8px 14px', borderRadius: '9px', border: 'none', cursor: 'pointer',
                 background: tab === t.id ? '#0f172a' : 'transparent',
                 color: tab === t.id ? 'white' : '#64748b',
-                fontSize: '13px', fontWeight: 600, fontFamily: "'DM Sans', sans-serif",
-                display: 'flex', alignItems: 'center', gap: '6px',
+                fontSize: '12px', fontWeight: 600, fontFamily: "'DM Sans', sans-serif",
+                display: 'flex', alignItems: 'center', gap: '5px',
               }}>
                 {t.icon} {t.label}
-                {t.id === 'violations' && violations.filter(v => {
-                  const today = new Date(); today.setHours(0,0,0,0)
-                  return new Date(v.created_at) >= today
-                }).length > 0 && (
-                  <span style={{ background: '#ef4444', color: 'white', borderRadius: '100px', padding: '0 6px', fontSize: '10px', fontWeight: 700 }}>
+                {t.id === 'violations' && violations.filter(v => { const today = new Date(); today.setHours(0,0,0,0); return new Date(v.created_at) >= today }).length > 0 && (
+                  <span style={{ background: '#ef4444', color: 'white', borderRadius: '100px', padding: '0 5px', fontSize: '10px', fontWeight: 700 }}>
                     {violations.filter(v => { const today = new Date(); today.setHours(0,0,0,0); return new Date(v.created_at) >= today }).length}
+                  </span>
+                )}
+                {t.id === 'listings' && listings.filter(l => l.hidden).length > 0 && (
+                  <span style={{ background: '#f59e0b', color: 'white', borderRadius: '100px', padding: '0 5px', fontSize: '10px', fontWeight: 700 }}>
+                    {listings.filter(l => l.hidden).length}
                   </span>
                 )}
               </button>
@@ -417,21 +464,14 @@ export default function AdminDashboard() {
                 <StatCard label="Violations today" value={stats.violationsToday} color={stats.violationsToday > 0 ? '#dc2626' : '#22c55e'} sub={stats.violationsToday > 0 ? 'Needs attention' : 'All clear'} />
               </div>
 
-              {/* Recent violations summary */}
               {violations.length > 0 && (
                 <div style={{ background: 'white', borderRadius: '16px', border: '1.5px solid #fecaca', padding: '20px 24px' }}>
-                  <div style={{ fontSize: '13px', fontWeight: 700, color: '#dc2626', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    🚨 Recent keyword violations
-                  </div>
+                  <div style={{ fontSize: '13px', fontWeight: 700, color: '#dc2626', marginBottom: '16px' }}>🚨 Recent keyword violations</div>
                   {violations.slice(0, 5).map(v => (
                     <div key={v.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '10px 0', borderBottom: '1px solid #f1f5f9' }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: '13px', color: '#0f172a', marginBottom: '3px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          "{v.message_content}"
-                        </div>
-                        <div style={{ fontSize: '11px', color: '#94a3b8' }}>
-                          {v.sender_name} · {v.sender_role} · {ago(v.created_at)}
-                        </div>
+                        <div style={{ fontSize: '13px', color: '#0f172a', marginBottom: '3px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>"{v.message_content}"</div>
+                        <div style={{ fontSize: '11px', color: '#94a3b8' }}>{v.sender_name} · {v.sender_role} · {ago(v.created_at)}</div>
                       </div>
                       <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', flexShrink: 0 }}>
                         {v.triggered_keywords.map(k => (
@@ -454,12 +494,8 @@ export default function AdminDashboard() {
           {tab === 'users' && (
             <div>
               <div style={{ marginBottom: '16px', display: 'flex', gap: '12px', alignItems: 'center' }}>
-                <input
-                  value={userSearch}
-                  onChange={e => setUserSearch(e.target.value)}
-                  placeholder="Search by name or email…"
-                  style={{ padding: '10px 16px', borderRadius: '10px', border: '1.5px solid #e2e8f0', fontSize: '14px', fontFamily: "'DM Sans', sans-serif", outline: 'none', width: '300px', color: '#0f172a' }}
-                />
+                <input value={userSearch} onChange={e => setUserSearch(e.target.value)} placeholder="Search by name or email…"
+                  style={{ padding: '10px 16px', borderRadius: '10px', border: '1.5px solid #e2e8f0', fontSize: '14px', fontFamily: "'DM Sans', sans-serif", outline: 'none', width: '300px', color: '#0f172a' }} />
                 <span style={{ fontSize: '13px', color: '#94a3b8' }}>{filteredUsers.length} users</span>
               </div>
               <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
@@ -476,24 +512,15 @@ export default function AdminDashboard() {
                       <tr key={u.id} style={{ borderBottom: i < filteredUsers.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
                         <td style={{ padding: '12px 16px', fontWeight: 600, color: '#0f172a' }}>{u.full_name}</td>
                         <td style={{ padding: '12px 16px', color: '#64748b' }}>{u.email}</td>
-                        <td style={{ padding: '12px 16px' }}>
-                          <Badge label={u.role} color={u.role === 'cleaner' ? 'blue' : 'green'} />
-                        </td>
+                        <td style={{ padding: '12px 16px' }}><Badge label={u.role} color={u.role === 'cleaner' ? 'blue' : 'green'} /></td>
                         <td style={{ padding: '12px 16px', color: '#94a3b8' }}>{fmt(u.created_at)}</td>
+                        <td style={{ padding: '12px 16px' }}><Badge label={u.suspended ? 'Suspended' : 'Active'} color={u.suspended ? 'red' : 'green'} /></td>
                         <td style={{ padding: '12px 16px' }}>
-                          <Badge label={u.suspended ? 'Suspended' : 'Active'} color={u.suspended ? 'red' : 'green'} />
-                        </td>
-                        <td style={{ padding: '12px 16px' }}>
-                          <button
-                            onClick={() => suspendUser(u.id, !u.suspended)}
-                            style={{
-                              background: u.suspended ? '#f0fdf4' : '#fef2f2',
-                              color: u.suspended ? '#15803d' : '#dc2626',
-                              border: `1px solid ${u.suspended ? '#bbf7d0' : '#fecaca'}`,
-                              borderRadius: '8px', padding: '4px 12px', fontSize: '12px',
-                              fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
-                            }}
-                          >
+                          <button onClick={() => suspendUser(u.id, !u.suspended)} style={{
+                            background: u.suspended ? '#f0fdf4' : '#fef2f2', color: u.suspended ? '#15803d' : '#dc2626',
+                            border: `1px solid ${u.suspended ? '#bbf7d0' : '#fecaca'}`,
+                            borderRadius: '8px', padding: '4px 12px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
+                          }}>
                             {u.suspended ? 'Reinstate' : 'Suspend'}
                           </button>
                         </td>
@@ -501,6 +528,83 @@ export default function AdminDashboard() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            </div>
+          )}
+
+          {/* ── Listings ── */}
+          {tab === 'listings' && (
+            <div>
+              <div style={{ marginBottom: '16px', display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <input value={listingSearch} onChange={e => setListingSearch(e.target.value)} placeholder="Search by customer or zone…"
+                  style={{ padding: '10px 16px', borderRadius: '10px', border: '1.5px solid #e2e8f0', fontSize: '14px', fontFamily: "'DM Sans', sans-serif", outline: 'none', width: '280px', color: '#0f172a' }} />
+                <div style={{ display: 'flex', gap: '4px', background: 'white', padding: '4px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  {(['all', 'active', 'hidden'] as const).map(f => (
+                    <button key={f} onClick={() => setListingFilter(f)} style={{
+                      padding: '5px 14px', borderRadius: '6px', border: 'none', cursor: 'pointer',
+                      background: listingFilter === f ? '#0f172a' : 'transparent',
+                      color: listingFilter === f ? 'white' : '#64748b',
+                      fontSize: '12px', fontWeight: 600, fontFamily: "'DM Sans', sans-serif",
+                    }}>{f.charAt(0).toUpperCase() + f.slice(1)}</button>
+                  ))}
+                </div>
+                <span style={{ fontSize: '13px', color: '#94a3b8' }}>{filteredListings.length} listings</span>
+              </div>
+
+              <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                  <thead>
+                    <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                      {['Customer', 'Zone', 'Details', 'Status', 'Posted', 'Actions'].map(h => (
+                        <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredListings.map((l, i) => (
+                      <tr key={l.id} style={{ borderBottom: i < filteredListings.length - 1 ? '1px solid #f1f5f9' : 'none', opacity: l.hidden ? 0.6 : 1 }}>
+                        <td style={{ padding: '12px 16px' }}>
+                          <div style={{ fontWeight: 600, color: '#0f172a' }}>{l.customer_name}</div>
+                          <div style={{ fontSize: '11px', color: '#94a3b8' }}>{l.customer_email}</div>
+                        </td>
+                        <td style={{ padding: '12px 16px', color: '#64748b' }}>{ZONE_LABELS[l.zone ?? ''] ?? l.zone ?? '—'}</td>
+                        <td style={{ padding: '12px 16px', color: '#64748b' }}>
+                          {l.bedrooms}bd · {l.bathrooms}ba · £{l.hourly_rate}/hr · {l.frequency}
+                        </td>
+                        <td style={{ padding: '12px 16px' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <Badge label={l.status} color={l.status === 'active' ? 'green' : l.status === 'pending_review' ? 'yellow' : 'gray'} />
+                            {l.hidden && <Badge label="Hidden" color="orange" />}
+                          </div>
+                        </td>
+                        <td style={{ padding: '12px 16px', color: '#94a3b8', whiteSpace: 'nowrap' }}>{ago(l.created_at)}</td>
+                        <td style={{ padding: '12px 16px' }}>
+                          <div style={{ display: 'flex', gap: '6px' }}>
+                            <button
+                              onClick={() => hideListing(l.id, !l.hidden)}
+                              style={{ background: l.hidden ? '#fff7ed' : '#f8fafc', color: l.hidden ? '#c2410c' : '#64748b', border: `1px solid ${l.hidden ? '#fed7aa' : '#e2e8f0'}`, borderRadius: '6px', padding: '4px 10px', fontSize: '11px', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
+                            >
+                              {l.hidden ? '👁 Unhide' : '🚫 Hide'}
+                            </button>
+                            <button
+                              onClick={() => setConfirmAction({
+                                message: `Permanently delete this listing from ${l.customer_name}? This cannot be undone.`,
+                                onConfirm: () => { deleteListing(l.id); setConfirmAction(null) }
+                              })}
+                              style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '6px', padding: '4px 10px', fontSize: '11px', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
+                            >
+                              🗑 Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div style={{ marginTop: '16px', padding: '14px 18px', background: '#fefce8', border: '1px solid #fef08a', borderRadius: '10px', fontSize: '13px', color: '#92400e' }}>
+                💡 <strong>Hidden</strong> listings are removed from the cleaner jobs page but remain in the database. <strong>Delete</strong> marks them as deleted — irreversible from here but recoverable via Supabase if needed.
               </div>
             </div>
           )}
@@ -523,16 +627,11 @@ export default function AdminDashboard() {
                       <tr key={app.id} style={{ borderBottom: i < applications.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
                         <td style={{ padding: '12px 16px', fontWeight: 600, color: '#0f172a' }}>{app.cleaner_name}</td>
                         <td style={{ padding: '12px 16px', color: '#64748b' }}>{app.customer_name}</td>
-                        <td style={{ padding: '12px 16px', color: '#64748b' }}>{app.zone}</td>
+                        <td style={{ padding: '12px 16px', color: '#64748b' }}>{ZONE_LABELS[app.zone] ?? app.zone}</td>
                         <td style={{ padding: '12px 16px' }}>
-                          <Badge
-                            label={app.status}
-                            color={app.status === 'accepted' ? 'green' : app.status === 'pending' ? 'yellow' : 'red'}
-                          />
+                          <Badge label={app.status} color={app.status === 'accepted' ? 'green' : app.status === 'pending' ? 'yellow' : 'red'} />
                         </td>
-                        <td style={{ padding: '12px 16px', color: '#64748b', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {app.message || '—'}
-                        </td>
+                        <td style={{ padding: '12px 16px', color: '#64748b', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{app.message || '—'}</td>
                         <td style={{ padding: '12px 16px', color: '#94a3b8', whiteSpace: 'nowrap' }}>{ago(app.created_at)}</td>
                       </tr>
                     ))}
@@ -560,17 +659,12 @@ export default function AdminDashboard() {
                       <tr key={conv.id} style={{ borderBottom: i < conversations.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
                         <td style={{ padding: '12px 16px', fontWeight: 600, color: '#0f172a' }}>{conv.cleaner_name}</td>
                         <td style={{ padding: '12px 16px', color: '#64748b' }}>{conv.customer_name}</td>
-                        <td style={{ padding: '12px 16px', color: '#64748b' }}>{conv.zone}</td>
-                        <td style={{ padding: '12px 16px', color: '#0f172a', fontWeight: 600 }}>{conv.message_count}</td>
-                        <td style={{ padding: '12px 16px', color: '#64748b', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {conv.last_message || '—'}
-                        </td>
+                        <td style={{ padding: '12px 16px', color: '#64748b' }}>{ZONE_LABELS[conv.zone] ?? conv.zone}</td>
+                        <td style={{ padding: '12px 16px', fontWeight: 600, color: '#0f172a' }}>{conv.message_count}</td>
+                        <td style={{ padding: '12px 16px', color: '#64748b', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{conv.last_message || '—'}</td>
                         <td style={{ padding: '12px 16px', color: '#94a3b8', whiteSpace: 'nowrap' }}>{ago(conv.created_at)}</td>
                         <td style={{ padding: '12px 16px' }}>
-                          <button
-                            onClick={() => setViewingConv(conv)}
-                            style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '4px 12px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
-                          >
+                          <button onClick={() => setViewingConv(conv)} style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '4px 12px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
                             Read →
                           </button>
                         </td>
@@ -597,28 +691,17 @@ export default function AdminDashboard() {
                     <div key={v.id} style={{ background: 'white', borderRadius: '14px', border: '1.5px solid #fecaca', padding: '16px 20px' }}>
                       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', marginBottom: '10px' }}>
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: '14px', color: '#0f172a', marginBottom: '4px', fontStyle: 'italic' }}>
-                            "{v.message_content}"
-                          </div>
-                          <div style={{ fontSize: '12px', color: '#94a3b8' }}>
-                            {v.sender_name} · {v.sender_role} · {ago(v.created_at)}
-                          </div>
+                          <div style={{ fontSize: '14px', color: '#0f172a', marginBottom: '4px', fontStyle: 'italic' }}>"{v.message_content}"</div>
+                          <div style={{ fontSize: '12px', color: '#94a3b8' }}>{v.sender_name} · {v.sender_role} · {ago(v.created_at)}</div>
                         </div>
-                        <button
-                          onClick={() => {
-                            const conv = conversations.find(c => c.id === v.conversation_id)
-                            if (conv) setViewingConv(conv)
-                          }}
-                          style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '8px', padding: '4px 12px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", flexShrink: 0 }}
-                        >
+                        <button onClick={() => { const conv = conversations.find(c => c.id === v.conversation_id); if (conv) setViewingConv(conv) }}
+                          style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '8px', padding: '4px 12px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", flexShrink: 0 }}>
                           View chat →
                         </button>
                       </div>
                       <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                         {v.triggered_keywords.map(k => (
-                          <span key={k} style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '6px', padding: '2px 8px', fontSize: '11px', fontWeight: 700 }}>
-                            ⚠ {k}
-                          </span>
+                          <span key={k} style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '6px', padding: '2px 8px', fontSize: '11px', fontWeight: 700 }}>⚠ {k}</span>
                         ))}
                       </div>
                     </div>
@@ -627,15 +710,51 @@ export default function AdminDashboard() {
               )}
             </div>
           )}
+
+          {/* ── Customer view ── */}
+          {tab === 'customer-view' && (
+            <div>
+              <div style={{ marginBottom: '16px', padding: '12px 16px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', fontSize: '13px', color: '#15803d', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>ℹ️</span>
+                <span>You're viewing the customer dashboard as admin. Any requests you post will publish normally. You will not be signed out.</span>
+              </div>
+              <iframe
+                src="/customer/dashboard"
+                style={{ width: '100%', height: '85vh', border: 'none', borderRadius: '16px', boxShadow: '0 2px 16px rgba(0,0,0,0.08)' }}
+              />
+            </div>
+          )}
+
+          {/* ── Cleaner view ── */}
+          {tab === 'cleaner-view' && (
+            <div>
+              <div style={{ marginBottom: '16px', padding: '12px 16px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '10px', fontSize: '13px', color: '#1d4ed8', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>ℹ️</span>
+                <span>You're viewing the cleaner dashboard as admin. You can browse jobs and test the cleaner experience without affecting your admin session.</span>
+              </div>
+              <iframe
+                src="/cleaner/dashboard"
+                style={{ width: '100%', height: '85vh', border: 'none', borderRadius: '16px', boxShadow: '0 2px 16px rgba(0,0,0,0.08)' }}
+              />
+            </div>
+          )}
+
         </div>
 
-        {/* Conversation reader modal */}
         {viewingConv && (
           <ConversationModal
             conversationId={viewingConv.id}
             cleanerName={viewingConv.cleaner_name}
             customerName={viewingConv.customer_name}
             onClose={() => setViewingConv(null)}
+          />
+        )}
+
+        {confirmAction && (
+          <ConfirmModal
+            message={confirmAction.message}
+            onConfirm={confirmAction.onConfirm}
+            onCancel={() => setConfirmAction(null)}
           />
         )}
       </div>

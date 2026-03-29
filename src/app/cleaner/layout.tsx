@@ -21,7 +21,8 @@ export default async function CleanerDashboardLayout({
     .eq('id', user.id)
     .single<{ role: string }>()
 
-  if (!profile || profile.role !== 'cleaner') {
+  // Allow cleaner OR admin
+  if (!profile || (profile.role !== 'cleaner' && profile.role !== 'admin')) {
     redirect('/login')
   }
 
