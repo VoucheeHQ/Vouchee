@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Check, Eye, EyeOff } from 'lucide-react'
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch'
+import VoucheeLogoText from '@/assets/vouchee-logo-text.svg'
 
 // ── Constants ─────────────────────────────────────────────────
 
@@ -213,7 +214,6 @@ function CheckToggle({ label, checked, onChange, description }: {
 }
 
 // ── Application card preview ──────────────────────────────────
-// Shows cleaners exactly what a customer sees when they apply
 
 function ApplicationCardPreview({ form }: { form: any }) {
   const nameParts = (form.full_name ?? '').trim().split(' ')
@@ -225,14 +225,10 @@ function ApplicationCardPreview({ form }: { form: any }) {
 
   return (
     <div style={{ maxWidth: '420px', margin: '0 auto' }}>
-
-      {/* Card */}
       <div style={{
         background: 'white', borderRadius: '20px', border: '2px solid #e2e8f0',
         boxShadow: '0 8px 32px rgba(0,0,0,0.08)', overflow: 'hidden',
       }}>
-
-        {/* Header bar — name, member since, always-verified badges */}
         <div style={{
           background: '#f8fafc', borderBottom: '1px solid #e2e8f0',
           padding: '14px 16px', display: 'flex', alignItems: 'center', gap: '10px',
@@ -249,7 +245,6 @@ function ApplicationCardPreview({ form }: { form: any }) {
             <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>{displayName}</div>
             <div style={{ fontSize: '12px', color: '#64748b' }}>Member since {monthYear}</div>
           </div>
-          {/* Badges are always shown — account only goes live once verified */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end', flexShrink: 0 }}>
             {['DBS checked', 'Right to work', 'Insured'].map(badge => (
               <span key={badge} style={{
@@ -264,7 +259,6 @@ function ApplicationCardPreview({ form }: { form: any }) {
           </div>
         </div>
 
-        {/* Chat bubble — application message */}
         <div style={{ padding: '16px 16px 10px' }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
             <div style={{
@@ -282,9 +276,7 @@ function ApplicationCardPreview({ form }: { form: any }) {
                 padding: '12px 14px',
                 border: '1px solid #bfdbfe',
               }}>
-                <p style={{
-                  fontSize: '14px', color: '#1e40af', lineHeight: 1.6, margin: 0, fontStyle: 'italic',
-                }}>
+                <p style={{ fontSize: '14px', color: '#1e40af', lineHeight: 1.6, margin: 0, fontStyle: 'italic' }}>
                   "Your chosen message to this customer would appear here — introduce yourself, mention your experience, or let them know why you'd be a great fit."
                 </p>
               </div>
@@ -295,17 +287,12 @@ function ApplicationCardPreview({ form }: { form: any }) {
           </div>
         </div>
 
-        {/* Rating */}
-        <div style={{
-          padding: '8px 16px 12px', display: 'flex', alignItems: 'center', gap: '6px',
-          borderBottom: '1px solid #f1f5f9',
-        }}>
+        <div style={{ padding: '8px 16px 12px', display: 'flex', alignItems: 'center', gap: '6px', borderBottom: '1px solid #f1f5f9' }}>
           {[1,2,3,4,5].map(i => <span key={i} style={{ fontSize: '14px', color: '#f59e0b' }}>★</span>)}
           <span style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>5.0</span>
           <span style={{ fontSize: '13px', color: '#94a3b8' }}>· 0 cleans completed</span>
         </div>
 
-        {/* Blurred reviews */}
         <div style={{ padding: '12px 16px', borderBottom: '1px solid #f1f5f9' }}>
           <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>Reviews</div>
           {[
@@ -331,7 +318,6 @@ function ApplicationCardPreview({ form }: { form: any }) {
           </div>
         </div>
 
-        {/* Accept / Reject */}
         <div style={{ padding: '14px 16px', display: 'flex', gap: '10px' }}>
           <button style={{
             flex: 1, padding: '12px', borderRadius: '12px',
@@ -351,7 +337,6 @@ function ApplicationCardPreview({ form }: { form: any }) {
             ✕ Decline &amp; notify
           </button>
         </div>
-
       </div>
     </div>
   )
@@ -393,14 +378,12 @@ export default function CleanerOnboarding() {
     setForm(f => {
       const next = { ...f, [key]: value }
 
-      // Live password validation
       if (key === 'password') {
         if (value && !isValidPassword(value)) {
           setErrors(e => ({ ...e, password: 'Must be 8+ characters, one uppercase letter, and one number or symbol.' }))
         } else {
           setErrors(e => { const n = { ...e }; delete n.password; return n })
         }
-        // Re-check confirm match
         if (next.confirm_password) {
           if (value !== next.confirm_password) {
             setErrors(e => ({ ...e, confirm_password: 'Passwords do not match.' }))
@@ -410,7 +393,6 @@ export default function CleanerOnboarding() {
         }
       }
 
-      // Live confirm password validation
       if (key === 'confirm_password') {
         if (value && value !== next.password) {
           setErrors(e => ({ ...e, confirm_password: 'Passwords do not match.' }))
@@ -421,7 +403,6 @@ export default function CleanerOnboarding() {
 
       return next
     })
-    // Clear non-password field errors on change
     if (key !== 'password' && key !== 'confirm_password') {
       if (errors[key]) setErrors(e => { const next = { ...e }; delete next[key]; return next })
     }
@@ -583,15 +564,10 @@ export default function CleanerOnboarding() {
   if (submitted) {
     return (
       <div style={{ minHeight: '100vh', background: 'linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%)' }}>
-
-        {/* Header */}
         <div style={{ borderBottom: '1px solid #e2e8f0', background: 'white', padding: '0 24px' }}>
           <div style={{ maxWidth: '680px', margin: '0 auto', height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <a href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'linear-gradient(135deg, #3b82f6, #6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <span style={{ fontSize: '16px', fontWeight: 800, color: 'white', fontFamily: 'Lora, serif' }}>V</span>
-              </div>
-              <span style={{ fontSize: '17px', fontWeight: 700, color: '#0f172a', fontFamily: 'Lora, serif' }}>Vouchee</span>
+            <a href="/" style={{ textDecoration: 'none' }}>
+              <VoucheeLogoText width={120} height={30} />
             </a>
             <a href="/" style={{ fontSize: '13px', fontWeight: 600, color: '#64748b', textDecoration: 'none' }}>
               ← Back to home
@@ -600,28 +576,28 @@ export default function CleanerOnboarding() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '60px 24px' }}>
-        <div style={{
-          background: 'white', borderRadius: '24px', padding: '48px 40px',
-          maxWidth: '480px', width: '100%', textAlign: 'center',
-          boxShadow: '0 8px 40px rgba(0,0,0,0.08)',
-        }}>
-          <div style={{ fontSize: '56px', marginBottom: '16px' }}>🎉</div>
-          <h1 style={{ fontSize: '24px', fontWeight: 800, color: '#0f172a', marginBottom: '12px' }}>Application submitted!</h1>
-          <p style={{ fontSize: '15px', color: '#64748b', lineHeight: 1.6, marginBottom: '8px' }}>
-            Thanks for applying to join Vouchee. We'll review your application and be in touch within 3 working days to arrange a quick call.
-          </p>
-          <p style={{ fontSize: '14px', color: '#94a3b8', lineHeight: 1.6, marginBottom: '32px' }}>
-            Keep an eye on your inbox — we may follow up with a few questions beforehand.
-          </p>
-          <div style={{ background: '#f0fdf4', border: '1.5px solid #86efac', borderRadius: '14px', padding: '16px', marginBottom: '28px' }}>
-            <div style={{ fontSize: '14px', fontWeight: 600, color: '#15803d', lineHeight: 1.5 }}>
-              ✅ Your account has been created. Once approved, you'll be able to log in and start applying for jobs.
+          <div style={{
+            background: 'white', borderRadius: '24px', padding: '48px 40px',
+            maxWidth: '480px', width: '100%', textAlign: 'center',
+            boxShadow: '0 8px 40px rgba(0,0,0,0.08)',
+          }}>
+            <div style={{ fontSize: '56px', marginBottom: '16px' }}>🎉</div>
+            <h1 style={{ fontSize: '24px', fontWeight: 800, color: '#0f172a', marginBottom: '12px' }}>Application submitted!</h1>
+            <p style={{ fontSize: '15px', color: '#64748b', lineHeight: 1.6, marginBottom: '8px' }}>
+              Thanks for applying to join Vouchee. We'll review your application and be in touch within 3 working days to arrange a quick call.
+            </p>
+            <p style={{ fontSize: '14px', color: '#94a3b8', lineHeight: 1.6, marginBottom: '32px' }}>
+              Keep an eye on your inbox — we may follow up with a few questions beforehand.
+            </p>
+            <div style={{ background: '#f0fdf4', border: '1.5px solid #86efac', borderRadius: '14px', padding: '16px', marginBottom: '28px' }}>
+              <div style={{ fontSize: '14px', fontWeight: 600, color: '#15803d', lineHeight: 1.5 }}>
+                ✅ Your account has been created. Once approved, you'll be able to log in and start applying for jobs.
+              </div>
             </div>
+            <a href="mailto:cleaners@vouchee.co.uk" style={{ fontSize: '14px', color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>
+              Questions? cleaners@vouchee.co.uk
+            </a>
           </div>
-          <a href="mailto:cleaners@vouchee.co.uk" style={{ fontSize: '14px', color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>
-            Questions? cleaners@vouchee.co.uk
-          </a>
-        </div>
         </div>
       </div>
     )
@@ -635,16 +611,7 @@ export default function CleanerOnboarding() {
       {/* Minimal header */}
       <div style={{ borderBottom: '1px solid #e2e8f0', background: 'white', padding: '0 24px' }}>
         <div style={{ maxWidth: '680px', margin: '0 auto', height: '60px', display: 'flex', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div style={{
-              width: '32px', height: '32px', borderRadius: '8px',
-              background: 'linear-gradient(135deg, #3b82f6, #6366f1)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <span style={{ fontSize: '16px', fontWeight: 800, color: 'white' }}>V</span>
-            </div>
-            <span style={{ fontSize: '17px', fontWeight: 700, color: '#0f172a' }}>Vouchee</span>
-          </div>
+          <VoucheeLogoText width={120} height={30} />
         </div>
       </div>
 
@@ -725,7 +692,6 @@ export default function CleanerOnboarding() {
                     position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)',
                     background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px',
-                    transition: 'color 0.15s',
                   }}
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
@@ -755,7 +721,6 @@ export default function CleanerOnboarding() {
                     position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)',
                     background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px',
-                    transition: 'color 0.15s',
                   }}
                   aria-label={showConfirm ? 'Hide password' : 'Show password'}
                 >
@@ -860,7 +825,7 @@ export default function CleanerOnboarding() {
                     borderRadius: '12px', padding: '16px', marginTop: '8px',
                     display: 'flex', flexDirection: 'column', gap: '12px',
                   }}>
-                  <p style={{ fontSize: '14px', color: '#92400e', margin: 0, lineHeight: 1.6 }}>
+                    <p style={{ fontSize: '14px', color: '#92400e', margin: 0, lineHeight: 1.6 }}>
                       No problem. You can still apply and we'll email you a step-by-step guide on how to get your DBS certificate and public liability insurance.
                     </p>
                     <CheckToggle
@@ -936,7 +901,7 @@ export default function CleanerOnboarding() {
 
           <Divider />
 
-          {/* ── Platform agreement (mandatory) ── */}
+          {/* ── Platform agreement ── */}
           <div id="field-platformAgreement" style={{ marginBottom: '28px' }}>
             <div style={{
               background: platformAgreement ? '#f0fdf4' : '#fafafa',
