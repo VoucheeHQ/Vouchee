@@ -6,35 +6,43 @@ import type { NextRequest } from 'next/server'
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
+  const tokenHash = searchParams.get('token_hash')
+  const type = searchParams.get('type')
   const next = searchParams.get('next') ?? '/customer/dashboard'
 
-  if (code) {
-    const cookieStore = cookies()
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() { return cookieStore.getAll() },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            )
-          },
+  const cookieStore = cookies()
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() { return cookieStore.getAll() },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) =>
+            cookieStore.set(name, value, options)
+          )
         },
-      }
-    )
+      },
+    }
+  )
 
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
-
+  // ── Password reset via token_hash (from email link) ──────────────────────
+  if (tokenHash && type === 'recovery') {
+    const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'recovery' })
     if (!error) {
-      // For password reset, go to the reset page
-      // For normal login/signup, route by role
+      return NextResponse.redirect(`${origin}/auth/reset-password`)
+    }
+    return NextResponse.redirect(`${origin}/login?error=invalid_token`)
+  }
+
+  // ── OAuth / magic link / email confirmation via code ─────────────────────
+  if (code) {
+    const { error } = await supabase.auth.exchangeCodeForSession(code)
+    if (!error) {
       if (next === '/auth/reset-password') {
         return NextResponse.redirect(`${origin}/auth/reset-password`)
       }
 
-      // Look up role and redirect appropriately
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
         const { data: profile } = await supabase
