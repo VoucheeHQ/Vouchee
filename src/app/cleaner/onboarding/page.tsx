@@ -393,7 +393,7 @@ export default function CleanerOnboarding() {
       {/* Header — matches persona pages */}
       <div style={{ padding: '40px 20px 32px', textAlign: 'center', maxWidth: '680px', margin: '0 auto' }}>
         <button
-          onClick={() => router.push('/cleaner')}
+         onClick={() => router.back()}
           style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600, color: '#64748b', cursor: 'pointer', background: 'none', border: 'none', fontFamily: 'inherit', marginBottom: '28px', padding: 0, transition: 'color 0.15s' }}
         >
           ← Back
