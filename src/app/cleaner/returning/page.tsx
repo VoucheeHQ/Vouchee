@@ -1,6 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import VoucheeLogoText from '@/assets/vouchee-logo-text.svg'
 
 export default function ReturningCleanerPage() {
   const router = useRouter()
@@ -15,8 +16,7 @@ export default function ReturningCleanerPage() {
         .ep-header { padding: 40px 20px 48px; text-align: center; max-width: 600px; margin: 0 auto; }
         .ep-back { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: #64748b; cursor: pointer; background: none; border: none; font-family: 'DM Sans', sans-serif; margin-bottom: 28px; padding: 0; transition: color 0.15s; }
         .ep-back:hover { color: #0f172a; }
-        .ep-logo { font-family: 'Lora', serif; font-size: 44px; font-weight: 700; color: #0f172a; letter-spacing: -0.5px; margin-bottom: 24px; display: block; }
-        .ep-logo span { color: #22c55e; }
+        .ep-logo-wrap { display: flex; justify-content: center; margin-bottom: 24px; }
         .ep-h1 { font-family: 'Lora', serif; font-size: clamp(24px, 5vw, 36px); font-weight: 700; color: #0f172a; line-height: 1.2; letter-spacing: -0.3px; margin-bottom: 16px; }
         .ep-h1 em { font-style: normal; color: #3b82f6; }
         .ep-sub { font-size: 16px; color: #475569; line-height: 1.65; max-width: 480px; margin: 0 auto; }
@@ -40,10 +40,11 @@ export default function ReturningCleanerPage() {
       `}</style>
 
       <div className="ep" suppressHydrationWarning>
-
         <div className="ep-header">
           <button className="ep-back" onClick={() => router.push('/cleaner')}>← Back</button>
-          <div className="ep-logo">Vou<span>chee</span></div>
+          <div className="ep-logo-wrap">
+            <VoucheeLogoText width={140} height={36} />
+          </div>
           <h1 className="ep-h1">
             Your experience still counts.<br />
             <em>Let's get your diary full again.</em>
@@ -53,7 +54,6 @@ export default function ReturningCleanerPage() {
           </p>
         </div>
 
-        {/* ── How it works ── */}
         <div className="ep-section">
           <div className="ep-section-label">How it works</div>
           <div className="ep-card">
@@ -90,7 +90,6 @@ export default function ReturningCleanerPage() {
           </div>
         </div>
 
-        {/* ── What you get ── */}
         <div className="ep-section">
           <div className="ep-section-label">Why Vouchee works for you</div>
           <div className="ep-props">
@@ -133,16 +132,12 @@ export default function ReturningCleanerPage() {
           </div>
         </div>
 
-        {/* ── CTA ── */}
         <div className="ep-section">
           <div className="ep-card" style={{ textAlign: 'center', padding: '32px 24px' }}>
             <p style={{ fontSize: '14px', color: '#64748b', lineHeight: 1.6, marginBottom: '20px' }}>
               Ready to get started? It takes about 4 minutes to complete your application.
             </p>
-            <button
-              className="ep-submit"
-              onClick={() => router.push('/cleaner/onboarding')}
-            >
+            <button className="ep-submit" onClick={() => router.push('/cleaner/onboarding')}>
               Continue →
             </button>
             <p style={{ fontSize: '12px', color: '#94a3b8', textAlign: 'center', lineHeight: 1.5, marginTop: '14px' }}>
@@ -153,7 +148,6 @@ export default function ReturningCleanerPage() {
             </p>
           </div>
         </div>
-
       </div>
     </>
   )

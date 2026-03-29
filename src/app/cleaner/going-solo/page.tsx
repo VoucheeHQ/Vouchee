@@ -1,6 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import VoucheeLogoText from '@/assets/vouchee-logo-text.svg'
 
 export default function GoingSoloCleanerPage() {
   const router = useRouter()
@@ -15,8 +16,7 @@ export default function GoingSoloCleanerPage() {
         .ep-header { padding: 40px 20px 48px; text-align: center; max-width: 600px; margin: 0 auto; }
         .ep-back { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: #64748b; cursor: pointer; background: none; border: none; font-family: 'DM Sans', sans-serif; margin-bottom: 28px; padding: 0; transition: color 0.15s; }
         .ep-back:hover { color: #0f172a; }
-        .ep-logo { font-family: 'Lora', serif; font-size: 44px; font-weight: 700; color: #0f172a; letter-spacing: -0.5px; margin-bottom: 24px; display: block; }
-        .ep-logo span { color: #22c55e; }
+        .ep-logo-wrap { display: flex; justify-content: center; margin-bottom: 24px; }
         .ep-h1 { font-family: 'Lora', serif; font-size: clamp(24px, 5vw, 36px); font-weight: 700; color: #0f172a; line-height: 1.2; letter-spacing: -0.3px; margin-bottom: 16px; }
         .ep-h1 em { font-style: normal; color: #3b82f6; }
         .ep-sub { font-size: 16px; color: #475569; line-height: 1.65; max-width: 480px; margin: 0 auto; }
@@ -34,46 +34,18 @@ export default function GoingSoloCleanerPage() {
         .ep-prop-icon { font-size: 22px; flex-shrink: 0; margin-top: 1px; }
         .ep-prop-title { font-size: 13px; font-weight: 700; color: #0f172a; margin-bottom: 2px; }
         .ep-prop-body { font-size: 12px; color: #64748b; line-height: 1.55; }
-        .ep-credits-hero { background: linear-gradient(135deg, #eff6ff, #f0fdf4); border-radius: 20px; border: 1.5px solid #bfdbfe; padding: 24px; margin-bottom: 10px; text-align: center; }
-        .ep-credits-badge { display: inline-flex; align-items: center; gap: 8px; background: #3b82f6; color: white; font-size: 13px; font-weight: 700; padding: 6px 14px; border-radius: 100px; margin-bottom: 14px; }
-        .ep-credits-headline { font-family: 'Lora', serif; font-size: 20px; font-weight: 700; color: #0f172a; line-height: 1.3; margin-bottom: 10px; }
-        .ep-credits-body { font-size: 13px; color: #475569; line-height: 1.65; }
-        .ep-credits-expand { display: flex; align-items: center; justify-content: space-between; width: 100%; background: transparent; border: 1.5px dashed #cbd5e1; border-radius: 14px; padding: 13px 16px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600; color: #64748b; cursor: pointer; transition: all 0.2s; margin-top: 4px; }
-        .ep-credits-expand:hover { border-color: #3b82f6; color: #3b82f6; }
-        .ep-credits-detail { background: rgba(255,255,255,0.7); border-radius: 14px; border: 1.5px solid #e2e8f0; padding: 18px; margin-top: 8px; }
-        .ep-credits-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #f1f5f9; }
-        .ep-credits-row:last-child { border-bottom: none; padding-bottom: 0; }
-        .ep-credits-milestone { font-size: 13px; font-weight: 600; color: #0f172a; }
-        .ep-credits-reward { font-size: 12px; font-weight: 700; color: #22c55e; }
-        .ep-form { display: flex; flex-direction: column; gap: 16px; }
-        .ep-label { font-size: 13px; font-weight: 600; color: #475569; display: block; margin-bottom: 6px; }
-        .ep-input { width: 100%; background: rgba(255,255,255,0.8); border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 11px 14px; font-family: 'DM Sans', sans-serif; font-size: 14px; color: #1e293b; outline: none; transition: border-color 0.15s; }
-        .ep-input:focus { border-color: #3b82f6; background: white; }
-        .ep-input::placeholder { color: #94a3b8; }
-        .ep-select { width: 100%; background: rgba(255,255,255,0.8); border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 11px 14px; font-family: 'DM Sans', sans-serif; font-size: 14px; color: #1e293b; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; outline: none; }
-        .ep-select:focus { border-color: #3b82f6; }
-        .ep-areas { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-        .ep-area { border-radius: 10px; padding: 9px 12px; font-size: 12px; font-weight: 600; cursor: pointer; border: 1.5px solid #e2e8f0; background: rgba(255,255,255,0.7); color: #475569; transition: all 0.15s; text-align: left; font-family: 'DM Sans', sans-serif; }
-        .ep-area.selected { border-color: #3b82f6; background: rgba(59,130,246,0.06); color: #1e40af; }
-        .ep-checkbox-row { display: flex; align-items: flex-start; gap: 12px; padding: 16px; background: linear-gradient(135deg, #eff6ff, #f0fdf4); border-radius: 14px; border: 1.5px solid #bfdbfe; cursor: pointer; }
-        .ep-checkbox-row input { width: 18px; height: 18px; flex-shrink: 0; margin-top: 1px; accent-color: #3b82f6; cursor: pointer; }
-        .ep-checkbox-label { font-size: 13px; color: #1e40af; font-weight: 600; line-height: 1.5; cursor: pointer; }
-        .ep-checkbox-sub { font-size: 12px; color: #3b82f6; font-weight: 400; margin-top: 2px; }
         .ep-submit { width: 100%; padding: 15px; background: linear-gradient(90deg, #3b82f6 0%, #22c55e 100%); color: white; font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 700; border: none; border-radius: 14px; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 16px rgba(59,130,246,0.25); margin-top: 4px; }
         .ep-submit:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(59,130,246,0.35); }
         .ep-submit:disabled { opacity: 0.5; cursor: not-allowed; }
-        .ep-success { text-align: center; padding: 48px 24px; }
-        .ep-success-icon { font-size: 56px; margin-bottom: 20px; }
-        .ep-success-title { font-family: 'Lora', serif; font-size: 26px; font-weight: 700; color: #0f172a; margin-bottom: 12px; }
-        .ep-success-body { font-size: 15px; color: #64748b; line-height: 1.65; }
-        @media (max-width: 480px) { .ep-areas { grid-template-columns: 1fr; } .ep-h1 { font-size: 24px; } }
+        @media (max-width: 480px) { .ep-h1 { font-size: 24px; } }
       `}</style>
 
       <div className="ep" suppressHydrationWarning>
-
         <div className="ep-header">
           <button className="ep-back" onClick={() => router.push('/cleaner')}>← Back</button>
-          <div className="ep-logo">Vou<span>chee</span></div>
+          <div className="ep-logo-wrap">
+            <VoucheeLogoText width={140} height={36} />
+          </div>
           <h1 className="ep-h1">
             Thinking about going self-employed?<br />
             <em>We'll help you land your first clients.</em>
@@ -86,7 +58,6 @@ export default function GoingSoloCleanerPage() {
           </p>
         </div>
 
-        {/* ── How it works ── */}
         <div className="ep-section">
           <div className="ep-section-label">How it works</div>
           <div className="ep-card">
@@ -123,7 +94,6 @@ export default function GoingSoloCleanerPage() {
           </div>
         </div>
 
-        {/* ── What you get ── */}
         <div className="ep-section">
           <div className="ep-section-label">How Vouchee works for you</div>
           <div className="ep-props">
@@ -158,16 +128,13 @@ export default function GoingSoloCleanerPage() {
             </div>
           </div>
         </div>
-        {/* ── CTA ── */}
+
         <div className="ep-section">
           <div className="ep-card" style={{ textAlign: 'center', padding: '32px 24px' }}>
             <p style={{ fontSize: '14px', color: '#64748b', lineHeight: 1.6, marginBottom: '20px' }}>
               Ready to get started? It takes about 4 minutes to complete your application.
             </p>
-            <button
-              className="ep-submit"
-              onClick={() => router.push('/cleaner/onboarding')}
-            >
+            <button className="ep-submit" onClick={() => router.push('/cleaner/onboarding')}>
               Continue →
             </button>
             <p style={{ fontSize: '12px', color: '#94a3b8', textAlign: 'center', lineHeight: 1.5, marginTop: '14px' }}>
@@ -178,7 +145,6 @@ export default function GoingSoloCleanerPage() {
             </p>
           </div>
         </div>
-
       </div>
     </>
   )

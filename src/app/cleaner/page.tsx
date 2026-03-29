@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch'
+import VoucheeLogoText from '@/assets/vouchee-logo-text.svg'
 
 type Option = {
   emoji: string
@@ -89,8 +90,7 @@ export default function CleanerSelectionPage() {
         .sp { min-height: 100vh; font-family: 'DM Sans', sans-serif; background: linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%); display: flex; flex-direction: column; }
         .sp-header { padding: 48px 20px 32px; text-align: center; position: relative; }
         .sp-header-inner { max-width: 560px; margin: 0 auto; position: relative; z-index: 1; }
-        .sp-logo { font-family: 'Lora', serif; font-size: 44px; font-weight: 700; color: #0f172a; margin-bottom: 4px; letter-spacing: -0.5px; line-height: 1; }
-        .sp-logo span { color: #22c55e; }
+        .sp-logo-wrap { display: flex; justify-content: center; margin-bottom: 8px; }
         .sp-tagline { font-size: 14px; color: #64748b; margin-bottom: 22px; }
         .sp-header h1 { font-family: 'Lora', serif; font-size: clamp(19px, 3.8vw, 27px); font-weight: 700; color: #0f172a; line-height: 1.28; letter-spacing: -0.2px; }
         .sp-proof { background: rgba(255,255,255,0.6); backdrop-filter: blur(12px); border-top: 1px solid rgba(255,255,255,0.8); border-bottom: 1px solid rgba(255,255,255,0.8); padding: 16px 20px; margin-top: 24px; }
@@ -119,13 +119,15 @@ export default function CleanerSelectionPage() {
         .sp-footer { text-align: center; padding: 8px 20px 36px; }
         .sp-footer p { font-size: 13px; color: #94a3b8; }
         .sp-footer a { color: #3b82f6; text-decoration: none; font-weight: 600; }
-        @media (max-width: 480px) { .sp-logo { font-size: 36px; } .sp-proof-num { font-size: 17px; } .sp-option { padding: 14px; } }
+        @media (max-width: 480px) { .sp-proof-num { font-size: 17px; } .sp-option { padding: 14px; } }
       `}</style>
 
       <div className="sp" suppressHydrationWarning>
         <div className="sp-header">
           <div className="sp-header-inner">
-            <div className="sp-logo">Vou<span>chee</span></div>
+            <div className="sp-logo-wrap">
+              <VoucheeLogoText width={150} height={38} />
+            </div>
             <div className="sp-tagline">Find regular cleaning work in Horsham</div>
             <h1>Which best describes where you are right now?</h1>
           </div>

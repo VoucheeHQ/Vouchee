@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import VoucheeLogoText from '@/assets/vouchee-logo-text.svg'
 
 export function Footer() {
   const currentYear = new Date().getFullYear()
@@ -30,11 +31,8 @@ export function Footer() {
         <div className="grid gap-8 md:grid-cols-4">
           {/* Brand */}
           <div>
-            <Link href="/" className="mb-4 flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600">
-                <span className="text-lg font-bold text-white">V</span>
-              </div>
-              <span className="text-lg font-semibold text-ink">Vouchee</span>
+            <Link href="/" className="mb-4 inline-block">
+              <VoucheeLogoText width={120} height={30} />
             </Link>
             <p className="text-sm text-ink-secondary">
               Connecting trusted local cleaners with customers in Horsham and surrounding areas.

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Eye, EyeOff } from 'lucide-react'
+import VoucheeLogoText from '@/assets/vouchee-logo-text.svg'
 
 type Role = 'cleaner' | 'customer' | null
 
@@ -102,16 +103,7 @@ export default function LoginPage() {
       }}>
         {/* Logo */}
         <a href="/" style={{ textDecoration: 'none', marginBottom: '40px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{
-              width: '40px', height: '40px', borderRadius: '10px',
-              background: 'linear-gradient(135deg, #3b82f6, #6366f1)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <span style={{ fontSize: '20px', fontWeight: 800, color: 'white', fontFamily: 'Lora, serif' }}>V</span>
-            </div>
-            <span style={{ fontSize: '22px', fontWeight: 700, color: '#0f172a', fontFamily: 'Lora, serif' }}>Vouchee</span>
-          </div>
+          <VoucheeLogoText width={140} height={36} />
         </a>
 
         {/* Card */}
