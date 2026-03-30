@@ -421,8 +421,8 @@ export default function CleanerOnboarding() {
                   {platformAgreement && <Check size={13} color="white" strokeWidth={3} />}
                 </button>
                 <div>
-                  <p style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', margin: '0 0 8px', lineHeight: 1.55 }}>I understand that customers introduced through Vouchee must be managed through the platform. Taking these customers private is a breach of Vouchee's Terms and may result in my account being permanently removed.</p>
-                  <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0, lineHeight: 1.5 }}>Note: You are paid directly by the customer for your time — <strong style={{ color: '#64748b' }}>Vouchee does not take a cut of your hourly earnings.</strong> This agreement applies to customer relationships, not payments.</p>
+                <p style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', margin: '0 0 8px', lineHeight: 1.55 }}>I have read and agree to the <a href="/legal/terms/cleaner" target="_blank" style={{ color: '#3b82f6', textDecoration: 'underline' }}>Cleaner Terms of Service</a>, including my responsibilities as a self-employed individual, my tax obligations, and the platform integrity clause. I understand that taking customers introduced through Vouchee off-platform may result in a formal warning, suspension, or permanent removal.</p>
+<p style={{ fontSize: '12px', color: '#94a3b8', margin: 0, lineHeight: 1.5 }}>Note: You are paid directly by the customer for your time — <strong style={{ color: '#64748b' }}>Vouchee does not take a cut of your hourly earnings.</strong> The full Terms of Service set out your rights and obligations as a Vouchee Cleaner.</p>
                 </div>
               </div>
             </div>
@@ -432,8 +432,8 @@ export default function CleanerOnboarding() {
           <div>
             <p style={{ fontSize: '13px', color: '#94a3b8', lineHeight: 1.6, marginBottom: '20px', textAlign: 'center' }}>
               By submitting you confirm that the information above is accurate and agree to Vouchee's{' '}
-              <a href="/terms" style={{ color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>Terms of Service</a>{' '}and{' '}
-              <a href="/privacy" style={{ color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>Privacy Policy</a>.
+              <a href="/legal/terms/cleaner" style={{ color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>Cleaner Terms of Service</a>{' '}and{' '}
+              <a href="/legal/privacy" style={{ color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>Privacy Policy</a>.
             </p>
             {submitError && <div style={{ background: '#fef2f2', border: '1.5px solid #fecaca', borderRadius: '12px', padding: '14px 16px', marginBottom: '16px' }}><p style={{ fontSize: '14px', color: '#dc2626', margin: 0, fontWeight: 600 }}>{submitError}</p></div>}
             <button onClick={handleSubmit} disabled={submitting} style={{ width: '100%', padding: '16px', background: submitting ? '#86efac' : 'linear-gradient(90deg, #3b82f6 0%, #22c55e 100%)', color: 'white', border: 'none', borderRadius: '14px', fontSize: '16px', fontWeight: 700, cursor: submitting ? 'not-allowed' : 'pointer', transition: 'all 0.2s', boxShadow: submitting ? 'none' : '0 4px 16px rgba(59,130,246,0.25)', fontFamily: 'inherit' }}>

@@ -8,12 +8,13 @@ export function Footer() {
     Product: [
       { name: 'How it works', href: '/how-it-works' },
       { name: 'Pricing', href: '/pricing' },
-      { name: 'For cleaners', href: '/cleaner/apply' },
+      { name: 'For cleaners', href: '/cleaner' },
       { name: 'FAQ', href: '/faq' },
     ],
     Legal: [
       { name: 'Privacy Policy', href: '/legal/privacy' },
-      { name: 'Terms of Service', href: '/legal/terms' },
+      { name: 'Customer Terms', href: '/legal/terms/customer' },
+      { name: 'Cleaner Terms', href: '/legal/terms/cleaner' },
       { name: 'Cookie Policy', href: '/legal/cookies' },
     ],
   }
@@ -77,9 +78,14 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-12 border-t border-ink/5 pt-8">
+        <div className="mt-12 border-t border-ink/5 pt-8 space-y-3">
           <p className="text-center text-sm text-ink-secondary">
             © {currentYear} Vouchee. All rights reserved.
+          </p>
+          <p className="text-center text-xs text-ink-secondary/70">
+            Vouchee is a participant in the Amazon EU Associates Programme, an affiliate advertising
+            programme designed to provide a means for sites to earn advertising fees by advertising
+            and linking to Amazon.co.uk.
           </p>
         </div>
       </div>
