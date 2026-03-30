@@ -165,7 +165,7 @@ export default function TermsAcceptancePage() {
           display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px",
         }}>
           <div style={{ fontSize: "14px", color: "#475569" }}>Want to read the full terms?</div>
-          <a href="/legal/terms" target="_blank" rel="noopener noreferrer"
+          <a href="/legal/terms/customer" target="_blank" rel="noopener noreferrer"
             style={{ fontSize: "14px", fontWeight: 600, color: "#3b82f6", textDecoration: "none", whiteSpace: "nowrap" }}>
             View full T&Cs →
           </a>
@@ -181,8 +181,8 @@ export default function TermsAcceptancePage() {
         }}>
           <Checkbox checked={agreedGeneral} onChange={() => setAgreedGeneral(v => !v)}>
             I have read and agree to Vouchee's{" "}
-            <a href="/legal/terms" target="_blank" onClick={e => e.stopPropagation()} style={{ color: "#3b82f6", fontWeight: 600, textDecoration: "none" }}>
-              Terms of Service
+            <a href="/legal/terms/customer" target="_blank" onClick={e => e.stopPropagation()} style={{ color: "#3b82f6", fontWeight: 600, textDecoration: "none" }}>
+              Customer Terms of Service
             </a>{" "}
             and{" "}
             <a href="/legal/privacy" target="_blank" onClick={e => e.stopPropagation()} style={{ color: "#3b82f6", fontWeight: 600, textDecoration: "none" }}>
@@ -194,8 +194,8 @@ export default function TermsAcceptancePage() {
 
           <Checkbox checked={agreedPlatform} onChange={() => setAgreedPlatform(v => !v)}>
             I understand that arranging cleaning privately with a cleaner I was introduced to through Vouchee, while they remain registered on the platform, may result in a platform protection fee as set out in the full{" "}
-            <a href="/legal/terms" target="_blank" onClick={e => e.stopPropagation()} style={{ color: "#3b82f6", fontWeight: 600, textDecoration: "none" }}>
-              Terms of Service
+            <a href="/legal/terms/customer" target="_blank" onClick={e => e.stopPropagation()} style={{ color: "#3b82f6", fontWeight: 600, textDecoration: "none" }}>
+              Customer Terms of Service
             </a>
           </Checkbox>
         </div>
