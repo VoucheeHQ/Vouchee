@@ -1,0 +1,6 @@
+User-agent: *
+Disallow: /blog
+Disallow: /cleaning-supplies
+
+User-agent: *
+Allow: /

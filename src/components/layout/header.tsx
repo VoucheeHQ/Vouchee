@@ -39,7 +39,7 @@ export function Header({ userRole }: HeaderProps) {
         </Link>
 
         {/* Desktop Navigation */}
-        <div className="hidden items-center gap-5 xl:flex">
+        <div className="hidden items-center gap-4 lg:flex">
           {navigation.map((item) => (
             <Link
               key={item.name}
@@ -55,7 +55,7 @@ export function Header({ userRole }: HeaderProps) {
         </div>
 
         {/* Desktop Auth */}
-        <div className="hidden items-center gap-3 xl:flex flex-shrink-0">
+        <div className="hidden items-center gap-3 lg:flex flex-shrink-0">
           {userRole ? (
             <Link
               href={dashboardHref}
@@ -84,7 +84,7 @@ export function Header({ userRole }: HeaderProps) {
         {/* Mobile menu button */}
         <button
           type="button"
-          className="xl:hidden p-2 rounded-md text-ink-secondary hover:text-ink transition-colors"
+          className="lg:hidden p-2 rounded-md text-ink-secondary hover:text-ink transition-colors"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
         >
@@ -94,7 +94,7 @@ export function Header({ userRole }: HeaderProps) {
 
       {/* Mobile menu */}
       {mobileMenuOpen && (
-        <div className="border-t border-ink/5 bg-surface xl:hidden">
+        <div className="border-t border-ink/5 bg-surface lg:hidden">
           <div className="container space-y-1 py-4">
             {navigation.map((item) => (
               <Link
