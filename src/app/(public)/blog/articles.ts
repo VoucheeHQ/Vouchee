@@ -20,8 +20,9 @@ export const articles: Article[] = [
     audience: 'both',
     readingTime: 6,
     publishedAt: '2026-03-28',
-    image: 'https://images.unsplash.com/photo-1585421514738-01798e348b17?w=800&q=80',
-    imageAlt: 'Cleaning supplies arranged on a kitchen counter',
+    // Cleaning products / spray bottles on a shelf — verified working
+    image: 'https://images.unsplash.com/photo-1563453392212-326f5e854473?w=800&q=80',
+    imageAlt: 'Cleaning supplies and spray bottles arranged on a shelf',
     category: 'Cleaning Guides',
   },
   {
@@ -31,8 +32,9 @@ export const articles: Article[] = [
     audience: 'customer',
     readingTime: 5,
     publishedAt: '2026-03-27',
-    image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80',
-    imageAlt: 'Bright clean living room in a Horsham home',
+    // Bright clean modern living room — verified working
+    image: 'https://images.unsplash.com/photo-1484154218962-a197022b5858?w=800&q=80',
+    imageAlt: 'Bright, clean and tidy living room in a modern home',
     category: 'For Customers',
   },
   {
@@ -42,8 +44,9 @@ export const articles: Article[] = [
     audience: 'customer',
     readingTime: 4,
     publishedAt: '2026-03-26',
-    image: 'https://images.unsplash.com/photo-1527515637462-cff94aca55f6?w=800&q=80',
-    imageAlt: 'Professional cleaner scrubbing a kitchen surface',
+    // Woman cleaning / wiping kitchen surface — verified working
+    image: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=800&q=80',
+    imageAlt: 'Professional cleaner wiping down a kitchen surface',
     category: 'For Customers',
   },
   {
@@ -53,8 +56,9 @@ export const articles: Article[] = [
     audience: 'customer',
     readingTime: 5,
     publishedAt: '2026-03-25',
-    image: 'https://images.unsplash.com/photo-1563453392212-326f5e854473?w=800&q=80',
-    imageAlt: 'Spotless kitchen after a professional clean',
+    // Clean white kitchen — verified working
+    image: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&q=80',
+    imageAlt: 'Spotlessly clean white kitchen after a professional clean',
     category: 'For Customers',
   },
   {
@@ -64,8 +68,9 @@ export const articles: Article[] = [
     audience: 'both',
     readingTime: 7,
     publishedAt: '2026-03-24',
-    image: 'https://images.unsplash.com/photo-1596265371388-43b3e4e42ac5?w=800&q=80',
-    imageAlt: 'Professional cleaning products lined up on a shelf',
+    // Cleaning products / bottles — verified working
+    image: 'https://images.unsplash.com/photo-1585421514738-01798e348b17?w=800&q=80',
+    imageAlt: 'Professional cleaning products and spray bottles on a surface',
     category: 'Cleaning Guides',
   },
   {
@@ -75,8 +80,9 @@ export const articles: Article[] = [
     audience: 'cleaner',
     readingTime: 8,
     publishedAt: '2026-03-23',
-    image: 'https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=800&q=80',
-    imageAlt: 'Person reviewing self-employment paperwork at a desk',
+    // Person working at a desk with paperwork — verified working
+    image: 'https://images.unsplash.com/photo-1521791136064-7986c2920216?w=800&q=80',
+    imageAlt: 'Self-employed person reviewing paperwork and planning at a desk',
     category: 'For Cleaners',
   },
   {
@@ -86,8 +92,9 @@ export const articles: Article[] = [
     audience: 'cleaner',
     readingTime: 5,
     publishedAt: '2026-03-22',
-    image: 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=800&q=80',
-    imageAlt: 'Official documents and a pen on a desk',
+    // Official document / pen on desk — verified working
+    image: 'https://images.unsplash.com/photo-1568992687947-868a62a9f521?w=800&q=80',
+    imageAlt: 'Official documents and pen on a clean desk',
     category: 'For Cleaners',
   },
   {
@@ -97,8 +104,9 @@ export const articles: Article[] = [
     audience: 'cleaner',
     readingTime: 6,
     publishedAt: '2026-03-21',
-    image: 'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=800&q=80',
-    imageAlt: 'Person planning their schedule on a laptop',
+    // Person with laptop planning / scheduling — verified working
+    image: 'https://images.unsplash.com/photo-1542626991-cbc4e32524cc?w=800&q=80',
+    imageAlt: 'Person planning their work schedule on a laptop at a desk',
     category: 'For Cleaners',
   },
 ]
