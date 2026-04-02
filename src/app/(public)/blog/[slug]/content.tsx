@@ -88,10 +88,10 @@ function EssentialCleaningKit() {
       </ul>
 
       <div className="not-prose flex flex-wrap gap-2 my-6">
-        <ProductLink name="Bar Keepers Friend" href="https://www.amazon.co.uk/s?k=Bar+Keepers+Friend+Powder&tag=YOURTAG-21" />
-        <ProductLink name="The Pink Stuff" href="https://www.amazon.co.uk/s?k=The+Pink+Stuff+Miracle+Paste&tag=YOURTAG-21" />
-        <ProductLink name="Viakal" href="https://www.amazon.co.uk/s?k=Viakal+Limescale+Remover&tag=YOURTAG-21" />
-        <ProductLink name="HG Mould Spray" href="https://www.amazon.co.uk/s?k=HG+Mould+Spray&tag=YOURTAG-21" />
+        <ProductLink name="Bar Keepers Friend" href="https://www.amazon.co.uk/s?k=Bar+Keepers+Friend+Powder&tag=vouchee-21" />
+        <ProductLink name="The Pink Stuff" href="https://www.amazon.co.uk/s?k=The+Pink+Stuff+Miracle+Paste&tag=vouchee-21" />
+        <ProductLink name="Viakal" href="https://www.amazon.co.uk/s?k=Viakal+Limescale+Remover&tag=vouchee-21" />
+        <ProductLink name="HG Mould Spray" href="https://www.amazon.co.uk/s?k=HG+Mould+Spray&tag=vouchee-21" />
       </div>
 
       <h2>Floors</h2>
@@ -303,7 +303,7 @@ function CleaningProductsProfessionals() {
       <p>It's the kind of product that makes stubborn stains look easy. Apply with a damp cloth, work it in, rinse off. More than one Vouchee cleaner has described it as "the product I recommend to every customer I work for."</p>
 
       <div className="not-prose my-4">
-        <ProductLink name="Bar Keepers Friend" href="https://www.amazon.co.uk/s?k=Bar+Keepers+Friend+Powder&tag=YOURTAG-21" />
+        <ProductLink name="Bar Keepers Friend" href="https://www.amazon.co.uk/s?k=Bar+Keepers+Friend+Powder&tag=vouchee-21" />
       </div>
 
       <InlineImage
@@ -317,7 +317,7 @@ function CleaningProductsProfessionals() {
       <p>For grout lines and silicone around baths and showers in Horsham's older housing stock, it's the best product available at any price point. We hear about it consistently from cleaners who work on properties that haven't had regular professional attention.</p>
 
       <div className="not-prose my-4">
-        <ProductLink name="HG Mould Spray" href="https://www.amazon.co.uk/s?k=HG+Mould+Spray+Remover&tag=YOURTAG-21" />
+        <ProductLink name="HG Mould Spray" href="https://www.amazon.co.uk/s?k=HG+Mould+Spray+Remover&tag=vouchee-21" />
       </div>
 
       <h2>Elbow Grease — kitchen degreasing</h2>
@@ -325,14 +325,14 @@ function CleaningProductsProfessionals() {
       <p>Spray, leave for 30 seconds, wipe. The difference on a neglected extractor fan is immediate and honestly quite satisfying.</p>
 
       <div className="not-prose my-4">
-        <ProductLink name="Elbow Grease Degreaser" href="https://www.amazon.co.uk/s?k=Elbow+Grease+Degreaser+Spray&tag=YOURTAG-21" />
+        <ProductLink name="Elbow Grease Degreaser" href="https://www.amazon.co.uk/s?k=Elbow+Grease+Degreaser+Spray&tag=vouchee-21" />
       </div>
 
       <h2>Viakal — limescale in hard water areas</h2>
       <p>Horsham sits in a hard water area, which means limescale builds up faster than most homeowners expect — often visibly within a few weeks on shower screens and taps. Standard cleaners slow it down; Viakal removes it. It's one of the most commonly mentioned products when we ask our cleaners what they'd tell a new customer to buy immediately.</p>
 
       <div className="not-prose my-4">
-        <ProductLink name="Viakal" href="https://www.amazon.co.uk/s?k=Viakal+Limescale+Remover+Spray&tag=YOURTAG-21" />
+        <ProductLink name="Viakal" href="https://www.amazon.co.uk/s?k=Viakal+Limescale+Remover+Spray&tag=vouchee-21" />
       </div>
 
       <InlineImage
@@ -345,7 +345,7 @@ function CleaningProductsProfessionals() {
       <p>The sponge with the face actually does something clever: it's firm in cold water for scrubbing, and soft in warm water for gentle wiping. This means you can use it on surfaces where a standard scourer would leave scratches — glass hob surfaces, stainless steel sinks, ceramic tiles. Several cleaners in our network have switched to these entirely and won't go back to standard sponges.</p>
 
       <div className="not-prose my-4">
-        <ProductLink name="Scrub Daddy" href="https://www.amazon.co.uk/s?k=Scrub+Daddy+Sponge&tag=YOURTAG-21" />
+        <ProductLink name="Scrub Daddy" href="https://www.amazon.co.uk/s?k=Scrub+Daddy+Sponge&tag=vouchee-21" />
       </div>
 
       <Callout emoji="🧹">

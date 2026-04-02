@@ -384,7 +384,7 @@ export default function CleaningSuppliesPage() {
                       </p>
                     </div>
                     <a
-                      href={`https://www.amazon.co.uk/s?k=${product.amazonSearch}&tag=YOURTAG-21`}
+                      href={`https://www.amazon.co.uk/s?k=${product.amazonSearch}&tag=vouchee-21`}
                       target="_blank"
                       rel="noopener noreferrer sponsored"
                       className="inline-flex items-center gap-2 bg-amber-400 hover:bg-amber-500 text-amber-900 font-semibold text-sm px-4 py-2 rounded-lg transition-colors no-underline"
