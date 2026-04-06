@@ -191,6 +191,8 @@ function ApproveModal({ cleanerName, onConfirm, onCancel, loading }: {
   onCancel: () => void
   loading: boolean
 }) {
+  const firstName = cleanerName.split(' ')[0]
+
   return (
     <div style={{
       position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)',
@@ -199,38 +201,25 @@ function ApproveModal({ cleanerName, onConfirm, onCancel, loading }: {
     }}>
       <div style={{
         background: 'white', borderRadius: '24px', padding: '40px 36px',
-        maxWidth: '420px', width: '100%',
+        maxWidth: '400px', width: '100%',
         boxShadow: '0 32px 80px rgba(0,0,0,0.22)',
       }}>
-        {/* Icon */}
-        <div style={{
-          width: '56px', height: '56px', borderRadius: '16px',
-          background: '#f0fdf4', border: '1.5px solid #bbf7d0',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: '24px', margin: '0 auto 24px',
-        }}>
-          ✓
-        </div>
-
-        {/* Heading */}
         <h3 style={{
           fontFamily: "'DM Sans', sans-serif",
           fontSize: '22px', fontWeight: 800,
           color: '#0f172a', textAlign: 'center',
           margin: '0 0 16px', letterSpacing: '-0.3px',
         }}>
-          Approve {cleanerName} as your cleaner?
+          Confirm {firstName} as your cleaner?
         </h3>
 
-        {/* Main copy */}
         <p style={{
           fontSize: '14px', color: '#475569', lineHeight: 1.75,
           textAlign: 'center', margin: '0 0 12px',
         }}>
-          On the next screen you'll pick a start date. This date is sent directly to <strong>{cleanerName}</strong> as their confirmed start, and is when your Vouchee Direct Debit begins.
+          On the next screen you'll pick a start date. This date is sent directly to <strong>{firstName}</strong> as their confirmed start, and is when your Vouchee Direct Debit begins.
         </p>
 
-        {/* Secondary note */}
         <p style={{
           fontSize: '13px', color: '#94a3b8', lineHeight: 1.6,
           textAlign: 'center', fontStyle: 'italic',
@@ -239,10 +228,6 @@ function ApproveModal({ cleanerName, onConfirm, onCancel, loading }: {
           All other conversations will close once this is confirmed.
         </p>
 
-        {/* Divider */}
-        <div style={{ borderTop: '1px solid #f1f5f9', marginBottom: '24px' }} />
-
-        {/* Buttons */}
         <div style={{ display: 'flex', gap: '12px' }}>
           <button
             onClick={onCancel}
