@@ -193,34 +193,63 @@ function ApproveModal({ cleanerName, onConfirm, onCancel, loading }: {
 }) {
   return (
     <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       zIndex: 500, padding: '24px',
     }}>
       <div style={{
-        background: 'white', borderRadius: '20px', padding: '32px',
-        maxWidth: '400px', width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
+        background: 'white', borderRadius: '24px', padding: '40px 36px',
+        maxWidth: '420px', width: '100%',
+        boxShadow: '0 32px 80px rgba(0,0,0,0.22)',
       }}>
-        <div style={{ fontSize: '28px', textAlign: 'center', marginBottom: '16px' }}>✅</div>
+        {/* Icon */}
+        <div style={{
+          width: '56px', height: '56px', borderRadius: '16px',
+          background: '#f0fdf4', border: '1.5px solid #bbf7d0',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: '24px', margin: '0 auto 24px',
+        }}>
+          ✓
+        </div>
+
+        {/* Heading */}
         <h3 style={{
-          fontFamily: "'Lora', serif", fontSize: '20px', fontWeight: 700,
-          color: '#0f172a', textAlign: 'center', margin: '0 0 16px',
+          fontFamily: "'DM Sans', sans-serif",
+          fontSize: '22px', fontWeight: 800,
+          color: '#0f172a', textAlign: 'center',
+          margin: '0 0 16px', letterSpacing: '-0.3px',
         }}>
-          Select {cleanerName}?
+          Approve {cleanerName} as your cleaner?
         </h3>
+
+        {/* Main copy */}
         <p style={{
-          fontSize: '14px', color: '#475569', lineHeight: 1.7,
-          textAlign: 'center', margin: '0 0 28px',
+          fontSize: '14px', color: '#475569', lineHeight: 1.75,
+          textAlign: 'center', margin: '0 0 12px',
         }}>
-          You're about to select <strong>{cleanerName}</strong> for this job. On the next screen you'll pick a start date — this is the date sent to your cleaner and when your Vouchee Direct Debit begins. All other conversations will close once this is complete.
+          On the next screen you'll pick a start date. This date is sent directly to <strong>{cleanerName}</strong> as their confirmed start, and is when your Vouchee Direct Debit begins.
         </p>
+
+        {/* Secondary note */}
+        <p style={{
+          fontSize: '13px', color: '#94a3b8', lineHeight: 1.6,
+          textAlign: 'center', fontStyle: 'italic',
+          margin: '0 0 32px',
+        }}>
+          All other conversations will close once this is confirmed.
+        </p>
+
+        {/* Divider */}
+        <div style={{ borderTop: '1px solid #f1f5f9', marginBottom: '24px' }} />
+
+        {/* Buttons */}
         <div style={{ display: 'flex', gap: '12px' }}>
           <button
             onClick={onCancel}
             disabled={loading}
             style={{
               flex: 1, background: 'white', border: '1.5px solid #e2e8f0',
-              borderRadius: '10px', padding: '12px', fontSize: '14px',
+              borderRadius: '12px', padding: '13px', fontSize: '14px',
               fontWeight: 600, color: '#64748b', cursor: 'pointer',
               fontFamily: "'DM Sans', sans-serif",
             }}
@@ -231,15 +260,16 @@ function ApproveModal({ cleanerName, onConfirm, onCancel, loading }: {
             onClick={onConfirm}
             disabled={loading}
             style={{
-              flex: 1, background: '#16a34a', border: 'none',
-              borderRadius: '10px', padding: '12px', fontSize: '14px',
+              flex: 2, background: '#16a34a', border: 'none',
+              borderRadius: '12px', padding: '13px', fontSize: '14px',
               fontWeight: 700, color: 'white',
               cursor: loading ? 'not-allowed' : 'pointer',
               opacity: loading ? 0.7 : 1,
               fontFamily: "'DM Sans', sans-serif",
+              letterSpacing: '-0.1px',
             }}
           >
-            {loading ? 'Setting up…' : 'Continue →'}
+            {loading ? 'Setting up…' : 'Confirm & set start date →'}
           </button>
         </div>
       </div>
@@ -291,7 +321,6 @@ function ChatWindow({ conversation, currentUserId, currentRole, onClose }: {
         }
       }
 
-      // Fetch application ID for this conversation (needed for approve flow)
       if (currentRole === 'customer') {
         const { data: appData } = await (supabase as any)
           .from('applications')
@@ -356,20 +385,17 @@ function ChatWindow({ conversation, currentUserId, currentRole, onClose }: {
     }
   }, [conversation.id, currentUserId])
 
-  // Handle abandoned GoCardless flow on page load
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const abandoned = params.get('gc_abandoned')
     const abandonedConvId = params.get('conversationId')
 
     if (abandoned === '1' && abandonedConvId === conversation.id && currentRole === 'customer') {
-      // Remove params from URL
       const url = new URL(window.location.href)
       url.searchParams.delete('gc_abandoned')
       url.searchParams.delete('conversationId')
       window.history.replaceState({}, '', url.toString())
 
-      // Post abandoned system message
       const postAbandoned = async () => {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
@@ -460,7 +486,6 @@ function ChatWindow({ conversation, currentUserId, currentRole, onClose }: {
         setShowApproveModal(false)
         return
       }
-      // Redirect to GoCardless hosted page
       window.location.href = data.authorisationUrl
     } catch (err) {
       console.error('Approve error:', err)
@@ -495,8 +520,6 @@ function ChatWindow({ conversation, currentUserId, currentRole, onClose }: {
 
   const showSuggestions = currentRole === 'customer' && !customerHasSent && !loading
   const isFulfilled = conversation.requestStatus === 'fulfilled'
-
-  // Show approve button only to customer, only when not already fulfilled
   const showApproveButton = currentRole === 'customer' && !isFulfilled && applicationId
 
   return (
@@ -531,12 +554,9 @@ function ChatWindow({ conversation, currentUserId, currentRole, onClose }: {
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.7)', cursor: 'pointer', fontSize: '16px', padding: '0 4px', lineHeight: 1 }}>✕</button>
         </div>
 
-        {/* Approve button bar — customer only, not yet fulfilled */}
+        {/* Approve button bar */}
         {showApproveButton && (
-          <div style={{
-            padding: '8px 12px', background: '#f0fdf4', borderBottom: '1px solid #bbf7d0',
-            flexShrink: 0,
-          }}>
+          <div style={{ padding: '8px 12px', background: '#f0fdf4', borderBottom: '1px solid #bbf7d0', flexShrink: 0 }}>
             <button
               onClick={() => setShowApproveModal(true)}
               style={{
@@ -580,7 +600,6 @@ function ChatWindow({ conversation, currentUserId, currentRole, onClose }: {
                   {group.date}
                 </div>
                 {group.msgs.map(msg => {
-                  // System message rendering
                   if (isSystemMessage(msg.content)) {
                     return (
                       <div key={msg.id} style={{ textAlign: 'center', margin: '10px 0' }}>
@@ -665,45 +684,23 @@ function ChatWindow({ conversation, currentUserId, currentRole, onClose }: {
           </div>
         )}
 
-        {!isFulfilled && (
-          <div style={{ padding: '8px 12px', borderTop: '1px solid #f1f5f9', display: 'flex', gap: '6px', flexShrink: 0 }}>
-            <input
-              value={input}
-              onChange={e => handleInputChange(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
-              placeholder="Write a message…"
-              style={{ flex: 1, padding: '8px 12px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px', fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)", outline: 'none', color: '#0f172a' }}
-            />
-            <button onClick={() => handleSend()} disabled={!input.trim() || sending} style={{
-              padding: '8px 14px', borderRadius: '8px', border: 'none',
-              background: input.trim() ? '#2563eb' : '#e2e8f0',
-              color: input.trim() ? 'white' : '#94a3b8',
-              fontWeight: 700, fontSize: '13px',
-              cursor: input.trim() ? 'pointer' : 'not-allowed',
-              fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)",
-            }}>Send</button>
-          </div>
-        )}
-
-        {isFulfilled && (
-          <div style={{ padding: '8px 12px', borderTop: '1px solid #f1f5f9', display: 'flex', gap: '6px', flexShrink: 0 }}>
-            <input
-              value={input}
-              onChange={e => handleInputChange(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
-              placeholder="Write a message…"
-              style={{ flex: 1, padding: '8px 12px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px', fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)", outline: 'none', color: '#0f172a' }}
-            />
-            <button onClick={() => handleSend()} disabled={!input.trim() || sending} style={{
-              padding: '8px 14px', borderRadius: '8px', border: 'none',
-              background: input.trim() ? '#2563eb' : '#e2e8f0',
-              color: input.trim() ? 'white' : '#94a3b8',
-              fontWeight: 700, fontSize: '13px',
-              cursor: input.trim() ? 'pointer' : 'not-allowed',
-              fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)",
-            }}>Send</button>
-          </div>
-        )}
+        <div style={{ padding: '8px 12px', borderTop: '1px solid #f1f5f9', display: 'flex', gap: '6px', flexShrink: 0 }}>
+          <input
+            value={input}
+            onChange={e => handleInputChange(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
+            placeholder="Write a message…"
+            style={{ flex: 1, padding: '8px 12px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px', fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)", outline: 'none', color: '#0f172a' }}
+          />
+          <button onClick={() => handleSend()} disabled={!input.trim() || sending} style={{
+            padding: '8px 14px', borderRadius: '8px', border: 'none',
+            background: input.trim() ? '#2563eb' : '#e2e8f0',
+            color: input.trim() ? 'white' : '#94a3b8',
+            fontWeight: 700, fontSize: '13px',
+            cursor: input.trim() ? 'pointer' : 'not-allowed',
+            fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)",
+          }}>Send</button>
+        </div>
       </div>
     </>
   )
@@ -833,7 +830,6 @@ async function enrichOne(supabase: any, conv: Conversation, role: 'customer' | '
     displayName = zone
   }
 
-  // Fetch request status for approve button logic
   const { data: reqStatus } = await (supabase as any)
     .from('clean_requests').select('status').eq('id', conv.clean_request_id).single()
 
@@ -947,7 +943,6 @@ export function ChatWidget() {
     init()
   }, [])
 
-  // Global messages listener for tray preview + unread
   useEffect(() => {
     if (!initialized || conversationsRef.current.length === 0) return
 
@@ -981,7 +976,6 @@ export function ChatWidget() {
     return () => { supabase.removeChannel(channel) }
   }, [initialized])
 
-  // Cleaner: listen for new conversations
   useEffect(() => {
     if (currentRole !== 'cleaner' || !cleanerIdRef.current) return
     const cleanerId = cleanerIdRef.current

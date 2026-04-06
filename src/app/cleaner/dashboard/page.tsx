@@ -1,5 +1,5 @@
 'use client'
-
+import { Header } from '@/components/layout/header'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -385,26 +385,9 @@ export default function CleanerDashboardPage() {
   const status = cleaner.application_status
 
   return (
-    <>
-      <link rel="preconnect" href="https://fonts.googleapis.com" />
-      <link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;600;700&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<>
       <div style={{ minHeight: '100vh', background: 'linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%)', fontFamily: 'DM Sans, sans-serif' }}>
-
-        {/* Top bar */}
-        <div style={{ background: 'white', borderBottom: '1px solid #f1f5f9', padding: '0 24px', height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 50 }}>
-          <a href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'linear-gradient(135deg, #3b82f6, #6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <span style={{ fontSize: '16px', fontWeight: 800, color: 'white', fontFamily: 'Lora, serif' }}>V</span>
-            </div>
-            <span style={{ fontSize: '17px', fontWeight: 700, color: '#0f172a', fontFamily: 'Lora, serif' }}>Vouchee</span>
-          </a>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <StatusBadge status={status} />
-            <button onClick={handleSignOut} style={{ background: 'none', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '6px 14px', fontSize: '13px', fontWeight: 600, color: '#64748b', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
-              Sign out
-            </button>
-          </div>
-        </div>
+        <Header userRole="cleaner" />
 
         {/* Page heading */}
         <div style={{ maxWidth: '640px', margin: '0 auto', padding: '40px 24px 20px' }}>
