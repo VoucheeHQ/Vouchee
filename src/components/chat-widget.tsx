@@ -214,18 +214,11 @@ function ApproveModal({ cleanerName, onConfirm, onCancel, loading }: {
         </h3>
 
         <p style={{
-          fontSize: '14px', color: '#475569', lineHeight: 1.75,
-          textAlign: 'center', margin: '0 0 12px',
-        }}>
-          On the next screen you'll pick a start date. This date is sent directly to <strong>{firstName}</strong> as their confirmed start, and is when your Vouchee Direct Debit begins.
-        </p>
-
-        <p style={{
           fontSize: '13px', color: '#94a3b8', lineHeight: 1.6,
           textAlign: 'center', fontStyle: 'italic',
           margin: '0 0 32px',
         }}>
-          All other conversations will close once this is confirmed.
+          You'll choose your start date next.
         </p>
 
         <div style={{ display: 'flex', gap: '12px' }}>
@@ -254,7 +247,7 @@ function ApproveModal({ cleanerName, onConfirm, onCancel, loading }: {
               letterSpacing: '-0.1px',
             }}
           >
-            {loading ? 'Setting up…' : 'Confirm & set start date →'}
+            {loading ? 'Setting up…' : 'Continue →'}
           </button>
         </div>
       </div>
