@@ -420,18 +420,29 @@ export default function AdminDashboard() {
 
         <div style={{ maxWidth: '1300px', margin: '0 auto', padding: '40px 24px 80px' }}>
 
-          <div style={{ marginBottom: '32px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+        <div style={{ marginBottom: '32px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
             <div>
               <h1 style={{ fontFamily: "'Lora', serif", fontSize: '28px', fontWeight: 700, color: '#0f172a', margin: '0 0 4px' }}>Admin Portal</h1>
               <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>Full platform visibility and controls</p>
             </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
               <a href="/customer/dashboard" target="_blank" style={{ background: '#f0fdf4', color: '#15803d', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: 600, textDecoration: 'none' }}>
                 🏠 Open customer dashboard ↗
               </a>
               <a href="/cleaner/dashboard" target="_blank" style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: 600, textDecoration: 'none' }}>
                 🧹 Open cleaner dashboard ↗
               </a>
+              <button
+                onClick={async () => {
+                  const supabase = createClient()
+                  await supabase.auth.signOut()
+                  router.refresh()
+                  router.replace('/')
+                }}
+                style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
+              >
+                Sign out
+              </button>
             </div>
           </div>
 
