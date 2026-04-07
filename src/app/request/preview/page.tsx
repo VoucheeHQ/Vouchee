@@ -34,14 +34,25 @@ const SECTOR_TO_ZONE: Record<string, string> = {
   "RH110": "faygate_kilnwood_vale", "RH130": "christs_hospital",
 }
 
-// ── Limits (shared with property page) ────────────────────────────────────────
-const HOURS_MAX = 4.5   // 4.5 displays as "4+ hrs"
+const ZONE_LABELS: Record<string, string> = {
+  central_south_east: "Central Horsham",
+  north_west: "North West Horsham",
+  north_east_roffey: "North East / Roffey",
+  south_west: "South West Horsham",
+  warnham_north: "Warnham & North",
+  broadbridge_heath: "Broadbridge Heath",
+  mannings_heath: "Mannings Heath",
+  faygate_kilnwood_vale: "Faygate / Kilnwood Vale",
+  christs_hospital: "Christ's Hospital",
+}
+
+const HOURS_MAX = 4.5
 const HOURS_MIN = 1
-const RATE_MAX  = 30.5  // 30.5 displays as "£30+"
+const RATE_MAX  = 30.5
 const RATE_MIN  = 12
 const RATE_STEP = 0.5
-const BED_MAX   = 6     // 6 displays as "6+"
-const BATH_MAX  = 6     // 6 displays as "6+"
+const BED_MAX   = 6
+const BATH_MAX  = 6
 
 function formatHours(h: number) {
   if (h >= HOURS_MAX) return "4+ hrs"
@@ -68,6 +79,12 @@ function getSectorFromPostcode(postcode: string): string | null {
     if (clean.startsWith(sector.replace(" ", ""))) return SECTOR_TO_ZONE[sector]
   }
   return null
+}
+
+function getAreaLabel(data: { zone?: string; postcode?: string }): string {
+  const zone = data.zone || (data.postcode ? getSectorFromPostcode(data.postcode) : null)
+  if (zone && ZONE_LABELS[zone]) return ZONE_LABELS[zone]
+  return data.postcode ?? "Your area"
 }
 
 function formatPostcode(raw: string): string {
@@ -184,16 +201,9 @@ async function publishRequest(data: RequestData, userId: string): Promise<string
   return inserted.id
 }
 
-// ── Stepper helper ─────────────────────────────────────────────────────────────
-
 function Stepper({ label, value, onDown, onUp, atMin, atMax, display }: {
-  label: string
-  value: number
-  onDown: () => void
-  onUp: () => void
-  atMin: boolean
-  atMax: boolean
-  display: string
+  label: string; value: number; onDown: () => void; onUp: () => void
+  atMin: boolean; atMax: boolean; display: string
 }) {
   return (
     <div style={{ background: '#f8fafc', borderRadius: '12px', padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -207,14 +217,11 @@ function Stepper({ label, value, onDown, onUp, atMin, atMax, display }: {
   )
 }
 
-// ── Edit Modal ─────────────────────────────────────────────────────────────────
-
 const ALL_DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
 const DAY_SHORT: Record<string, string> = {
   monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed',
   thursday: 'Thu', friday: 'Fri', saturday: 'Sat', sunday: 'Sun',
 }
-// Updated time slots — daytime option added
 const TIME_SLOTS = [
   'Morning (8am - 12pm)',
   'During the day (8am - 5pm)',
@@ -236,9 +243,7 @@ const EXTRA_TASK_LIST = [
 ]
 
 function EditModal({ data, onSave, onClose }: {
-  data: RequestData
-  onSave: (updated: Partial<RequestData>) => void
-  onClose: () => void
+  data: RequestData; onSave: (updated: Partial<RequestData>) => void; onClose: () => void
 }) {
   const [bedrooms, setBedrooms]   = useState(data.bedrooms ?? 2)
   const [bathrooms, setBathrooms] = useState(data.bathrooms ?? 1)
@@ -252,7 +257,6 @@ function EditModal({ data, onSave, onClose }: {
   const toggleDay  = (d: string) => setDays(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d])
   const toggleTask = (t: string) => setTasks(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t])
 
-  // Est per clean — cap display values
   const displayRate  = rate  >= RATE_MAX  ? 30 : rate
   const displayHours = hours >= HOURS_MAX ? 4  : hours
   const estPerClean  = (displayHours * displayRate).toFixed(2)
@@ -260,18 +264,13 @@ function EditModal({ data, onSave, onClose }: {
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: '20px', fontFamily: "'DM Sans', sans-serif" }}>
       <div style={{ background: 'white', borderRadius: '24px', width: '100%', maxWidth: '580px', maxHeight: '88vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
-
-        {/* Header */}
         <div style={{ position: 'sticky', top: 0, background: 'white', borderBottom: '1px solid #f1f5f9', padding: '18px 24px', zIndex: 10, borderRadius: '24px 24px 0 0' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ fontSize: '18px', fontWeight: 700, color: '#0f172a' }}>Edit your request</div>
             <button onClick={onClose} style={{ background: '#f1f5f9', border: 'none', borderRadius: '50%', width: '32px', height: '32px', fontSize: '16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>✕</button>
           </div>
         </div>
-
         <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '22px' }}>
-
-          {/* Rate summary */}
           <div style={{ background: '#fefce8', border: '1px solid #fef08a', borderRadius: '12px', padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <div style={{ fontSize: '10px', fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '2px' }}>Offered rate</div>
@@ -279,110 +278,47 @@ function EditModal({ data, onSave, onClose }: {
             </div>
             <div style={{ textAlign: 'right' }}>
               <div style={{ fontSize: '10px', fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '2px' }}>Est. per clean</div>
-              <div style={{ fontSize: '18px', fontWeight: 700, color: '#92400e' }}>
-                {rate >= RATE_MAX || hours >= HOURS_MAX ? '~' : ''}~£{estPerClean}
-              </div>
+              <div style={{ fontSize: '18px', fontWeight: 700, color: '#92400e' }}>~£{estPerClean}</div>
             </div>
           </div>
-
-          {/* Property & clean info */}
           <div>
             <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '10px' }}>Property & clean info</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <Stepper
-                label="Bedrooms"
-                value={bedrooms}
-                onDown={() => setBedrooms(v => Math.max(1, v - 1))}
-                onUp={() => setBedrooms(v => Math.min(BED_MAX, v + 1))}
-                atMin={bedrooms <= 1}
-                atMax={bedrooms >= BED_MAX}
-                display={formatBedrooms(bedrooms)}
-              />
-              <Stepper
-                label="Bathrooms"
-                value={bathrooms}
-                onDown={() => setBathrooms(v => Math.max(1, v - 1))}
-                onUp={() => setBathrooms(v => Math.min(BATH_MAX, v + 1))}
-                atMin={bathrooms <= 1}
-                atMax={bathrooms >= BATH_MAX}
-                display={formatBathrooms(bathrooms)}
-              />
-              <Stepper
-                label="Hours per clean"
-                value={hours}
-                onDown={() => setHours(v => Math.max(HOURS_MIN, parseFloat((v - 0.5).toFixed(1))))}
-                onUp={() => setHours(v => Math.min(HOURS_MAX, parseFloat((v + 0.5).toFixed(1))))}
-                atMin={hours <= HOURS_MIN}
-                atMax={hours >= HOURS_MAX}
-                display={formatHours(hours)}
-              />
-              <Stepper
-                label="Hourly rate"
-                value={rate}
-                onDown={() => setRate(v => Math.max(RATE_MIN, parseFloat((v - RATE_STEP).toFixed(2))))}
-                onUp={() => setRate(v => Math.min(RATE_MAX, parseFloat((v + RATE_STEP).toFixed(2))))}
-                atMin={rate <= RATE_MIN}
-                atMax={rate >= RATE_MAX}
-                display={formatRate(rate)}
-              />
+              <Stepper label="Bedrooms" value={bedrooms} onDown={() => setBedrooms(v => Math.max(1, v - 1))} onUp={() => setBedrooms(v => Math.min(BED_MAX, v + 1))} atMin={bedrooms <= 1} atMax={bedrooms >= BED_MAX} display={formatBedrooms(bedrooms)} />
+              <Stepper label="Bathrooms" value={bathrooms} onDown={() => setBathrooms(v => Math.max(1, v - 1))} onUp={() => setBathrooms(v => Math.min(BATH_MAX, v + 1))} atMin={bathrooms <= 1} atMax={bathrooms >= BATH_MAX} display={formatBathrooms(bathrooms)} />
+              <Stepper label="Hours per clean" value={hours} onDown={() => setHours(v => Math.max(HOURS_MIN, parseFloat((v - 0.5).toFixed(1))))} onUp={() => setHours(v => Math.min(HOURS_MAX, parseFloat((v + 0.5).toFixed(1))))} atMin={hours <= HOURS_MIN} atMax={hours >= HOURS_MAX} display={formatHours(hours)} />
+              <Stepper label="Hourly rate" value={rate} onDown={() => setRate(v => Math.max(RATE_MIN, parseFloat((v - RATE_STEP).toFixed(2))))} onUp={() => setRate(v => Math.min(RATE_MAX, parseFloat((v + RATE_STEP).toFixed(2))))} atMin={rate <= RATE_MIN} atMax={rate >= RATE_MAX} display={formatRate(rate)} />
             </div>
           </div>
-
-          {/* Standard tasks */}
           <div>
             <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '10px' }}>Standard tasks</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-              {STANDARD_TASK_LIST.map(task => {
-                const sel = tasks.includes(task.id)
-                return <button key={task.id} onClick={() => toggleTask(task.id)} style={{ padding: '7px 14px', borderRadius: '100px', fontSize: '13px', fontWeight: 600, border: sel ? '2px solid #3b82f6' : '1.5px solid #e2e8f0', background: sel ? '#eff6ff' : 'white', color: sel ? '#1d4ed8' : '#64748b', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", transition: 'all 0.15s' }}>{task.label}</button>
-              })}
+              {STANDARD_TASK_LIST.map(task => { const sel = tasks.includes(task.id); return <button key={task.id} onClick={() => toggleTask(task.id)} style={{ padding: '7px 14px', borderRadius: '100px', fontSize: '13px', fontWeight: 600, border: sel ? '2px solid #3b82f6' : '1.5px solid #e2e8f0', background: sel ? '#eff6ff' : 'white', color: sel ? '#1d4ed8' : '#64748b', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>{task.label}</button> })}
             </div>
           </div>
-
-          {/* Special requests */}
           <div>
             <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '4px' }}>Special requests</div>
             <div style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '10px' }}>Deep cleans, ironing, laundry etc.</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-              {EXTRA_TASK_LIST.map(task => {
-                const sel = tasks.includes(task.id)
-                return <button key={task.id} onClick={() => toggleTask(task.id)} style={{ padding: '7px 14px', borderRadius: '100px', fontSize: '13px', fontWeight: 600, border: sel ? '2px solid #f59e0b' : '1.5px solid #e2e8f0', background: sel ? '#fffbeb' : 'white', color: sel ? '#92400e' : '#64748b', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", transition: 'all 0.15s' }}>{task.label}</button>
-              })}
+              {EXTRA_TASK_LIST.map(task => { const sel = tasks.includes(task.id); return <button key={task.id} onClick={() => toggleTask(task.id)} style={{ padding: '7px 14px', borderRadius: '100px', fontSize: '13px', fontWeight: 600, border: sel ? '2px solid #f59e0b' : '1.5px solid #e2e8f0', background: sel ? '#fffbeb' : 'white', color: sel ? '#92400e' : '#64748b', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>{task.label}</button> })}
             </div>
           </div>
-
-          {/* Schedule */}
           <div>
             <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '10px' }}>Preferred days</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
-              {ALL_DAYS.map(day => {
-                const sel = days.includes(day)
-                return <button key={day} onClick={() => toggleDay(day)} style={{ padding: '7px 14px', borderRadius: '100px', fontSize: '13px', fontWeight: 600, border: sel ? '2px solid #3b82f6' : '1.5px solid #e2e8f0', background: sel ? '#eff6ff' : 'white', color: sel ? '#1d4ed8' : '#64748b', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>{DAY_SHORT[day]}</button>
-              })}
+              {ALL_DAYS.map(day => { const sel = days.includes(day); return <button key={day} onClick={() => toggleDay(day)} style={{ padding: '7px 14px', borderRadius: '100px', fontSize: '13px', fontWeight: 600, border: sel ? '2px solid #3b82f6' : '1.5px solid #e2e8f0', background: sel ? '#eff6ff' : 'white', color: sel ? '#1d4ed8' : '#64748b', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>{DAY_SHORT[day]}</button> })}
             </div>
             <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '10px' }}>Time of day</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-              {TIME_SLOTS.map(slot => {
-                const sel = time === slot
-                return <button key={slot} onClick={() => setTime(sel ? '' : slot)} style={{ padding: '7px 14px', borderRadius: '100px', fontSize: '13px', fontWeight: 600, border: sel ? '2px solid #3b82f6' : '1.5px solid #e2e8f0', background: sel ? '#eff6ff' : 'white', color: sel ? '#1d4ed8' : '#64748b', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>{slot}</button>
-              })}
+              {TIME_SLOTS.map(slot => { const sel = time === slot; return <button key={slot} onClick={() => setTime(sel ? '' : slot)} style={{ padding: '7px 14px', borderRadius: '100px', fontSize: '13px', fontWeight: 600, border: sel ? '2px solid #3b82f6' : '1.5px solid #e2e8f0', background: sel ? '#eff6ff' : 'white', color: sel ? '#1d4ed8' : '#64748b', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>{slot}</button> })}
             </div>
           </div>
-
-          {/* Notes */}
           <div>
             <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '4px' }}>Notes for your cleaner</div>
-            <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '10px', lineHeight: 1.4 }}>
-              💡 Customers who add notes get better results — tell your cleaner what matters most to you.
-            </div>
+            <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '10px', lineHeight: 1.4 }}>💡 Customers who add notes get better results — tell your cleaner what matters most to you.</div>
             <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="e.g. Please focus extra time on the kitchen each visit. Avoid the top floor on alternate weeks. The cat is friendly!" style={{ width: '100%', padding: '11px 14px', border: '1.5px solid #e2e8f0', borderRadius: '12px', fontSize: '13px', fontFamily: "'DM Sans', sans-serif", resize: 'vertical', minHeight: '88px', outline: 'none', color: '#0f172a', boxSizing: 'border-box', lineHeight: 1.55 }} />
           </div>
-
-          {/* Save — green */}
-          <button
-            onClick={() => onSave({ bedrooms, bathrooms, hoursPerSession: hours, hourlyRate: rate, preferredDays: days, preferredTime: time, tasks, sessionNotes: notes })}
-            style={{ width: '100%', padding: '14px', background: 'linear-gradient(135deg, #16a34a, #22c55e)', color: 'white', border: 'none', borderRadius: '12px', fontSize: '15px', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", boxShadow: '0 4px 16px rgba(22,163,74,0.25)', transition: 'all 0.15s' }}
-          >
+          <button onClick={() => onSave({ bedrooms, bathrooms, hoursPerSession: hours, hourlyRate: rate, preferredDays: days, preferredTime: time, tasks, sessionNotes: notes })} style={{ width: '100%', padding: '14px', background: 'linear-gradient(135deg, #16a34a, #22c55e)', color: 'white', border: 'none', borderRadius: '12px', fontSize: '15px', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", boxShadow: '0 4px 16px rgba(22,163,74,0.25)' }}>
             Save changes
           </button>
         </div>
@@ -390,8 +326,6 @@ function EditModal({ data, onSave, onClose }: {
     </div>
   )
 }
-
-// ── Main page ──────────────────────────────────────────────────────────────────
 
 export default function ReviewPublishPage() {
   const router = useRouter()
@@ -410,7 +344,7 @@ export default function ReviewPublishPage() {
     setData(loaded)
     if (getPublishedId()) {
       setPublished(true)
-      setPublishedZone(loaded.sector ?? loaded.postcode ?? "your area")
+      setPublishedZone(getAreaLabel(loaded))
       return
     }
     const supabase = createClient()
@@ -450,7 +384,7 @@ export default function ReviewPublishPage() {
       const requestId = await publishRequest(data, userId)
       setPublishedId(requestId)
       clearRequestData()
-      setPublishedZone(data.sector ?? data.postcode ?? "your area")
+      setPublishedZone(getAreaLabel(data))
       setPublished(true)
       toast.success("Your request is live!")
     } catch (err: any) {
@@ -496,6 +430,7 @@ export default function ReviewPublishPage() {
   const daysLabel = data.preferredDays?.length ? data.preferredDays.map(d => d.slice(0, 3)).join(' · ') : null
   const addressFormatted = formatAddress(data.addressLine1 ?? '', data.addressLine2 ?? '', data.postcode ?? '')
   const notes = data.sessionNotes || data.scheduleNotes
+  const areaLabel = getAreaLabel(data)
 
   return (
     <>
@@ -505,7 +440,6 @@ export default function ReviewPublishPage() {
       <div style={{ minHeight: "100vh", background: "linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%)", fontFamily: "'DM Sans', sans-serif", padding: "24px 16px 48px" }}>
         <div style={{ maxWidth: "540px", margin: "0 auto" }}>
 
-          {/* Progress */}
           <div style={{ marginBottom: "28px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
               <div style={{ fontSize: "13px", fontWeight: 600, color: "#3b82f6", letterSpacing: "0.05em", textTransform: "uppercase" }}>Almost there</div>
@@ -516,13 +450,11 @@ export default function ReviewPublishPage() {
             </div>
           </div>
 
-          {/* Header */}
           <div style={{ marginBottom: "20px" }}>
             <h1 style={{ fontSize: "26px", fontWeight: 800, color: "#0f172a", margin: "0 0 6px" }}>Here's your listing</h1>
             <p style={{ fontSize: "14px", color: "#64748b", margin: 0 }}>This is what cleaners will see. Happy with it? Go live.</p>
           </div>
 
-          {/* Not signed in */}
           {!userId && (
             <div style={{ background: "#fffbeb", border: "1.5px solid #fcd34d", borderRadius: "16px", padding: "14px 18px", marginBottom: "16px", display: "flex", gap: "10px", alignItems: "flex-start" }}>
               <span style={{ fontSize: "16px", flexShrink: 0 }}>⚠️</span>
@@ -535,13 +467,13 @@ export default function ReviewPublishPage() {
             </div>
           )}
 
-          {/* Preview card */}
           <div style={{ background: "white", borderRadius: "20px", border: "1.5px solid #e2e8f0", boxShadow: "0 4px 24px rgba(0,0,0,0.07)", overflow: "hidden", marginBottom: "14px" }}>
 
             <div style={{ background: "linear-gradient(135deg, #1e40af, #3b82f6)", padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                 <div style={{ fontSize: "10px", fontWeight: 700, color: "rgba(255,255,255,0.65)", textTransform: "uppercase", letterSpacing: "0.08em", background: "rgba(255,255,255,0.12)", borderRadius: "100px", padding: "3px 10px", whiteSpace: "nowrap" }}>Live preview</div>
-                <div style={{ fontSize: "16px", fontWeight: 800, color: "white" }}>📍 {data.sector || data.postcode || "Your area"}</div>
+                {/* ✅ FIX: use areaLabel which resolves zone → human readable name */}
+                <div style={{ fontSize: "16px", fontWeight: 800, color: "white" }}>📍 {areaLabel}</div>
               </div>
               <button onClick={() => setShowEdit(true)} title="Edit listing" style={{ background: "rgba(255,255,255,0.15)", border: "1.5px solid rgba(255,255,255,0.25)", borderRadius: "10px", width: "36px", height: "36px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -552,8 +484,6 @@ export default function ReviewPublishPage() {
             </div>
 
             <div style={{ padding: "18px 20px" }}>
-
-              {/* Chips */}
               <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "14px" }}>
                 {data.bedrooms && <span style={{ background: "#f1f5f9", borderRadius: "100px", padding: "4px 12px", fontSize: "12px", fontWeight: 600, color: "#475569" }}>{formatBedrooms(data.bedrooms)} bed</span>}
                 {data.bathrooms && <span style={{ background: "#f1f5f9", borderRadius: "100px", padding: "4px 12px", fontSize: "12px", fontWeight: 600, color: "#475569" }}>{formatBathrooms(data.bathrooms)} bath</span>}
@@ -563,7 +493,6 @@ export default function ReviewPublishPage() {
                 {data.preferredTime && <span style={{ background: "#f1f5f9", borderRadius: "100px", padding: "4px 12px", fontSize: "12px", fontWeight: 600, color: "#475569" }}>{data.preferredTime}</span>}
               </div>
 
-              {/* Tasks */}
               {(data.tasks ?? []).length > 0 && (
                 <div style={{ marginBottom: "14px" }}>
                   <div style={{ fontSize: "11px", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "8px" }}>Tasks</div>
@@ -580,7 +509,6 @@ export default function ReviewPublishPage() {
                 </div>
               )}
 
-              {/* Notes */}
               <div style={{ marginBottom: "14px" }}>
                 {notes ? (
                   <div style={{ padding: "10px 14px", background: "#f8fafc", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
@@ -595,7 +523,6 @@ export default function ReviewPublishPage() {
                 )}
               </div>
 
-              {/* Rate */}
               <div style={{ background: "linear-gradient(135deg, #fefce8, rgba(254,240,138,0.2))", border: "1.5px solid #fef08a", borderRadius: "12px", padding: "14px 16px", display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "14px" }}>
                 <div>
                   <div style={{ fontSize: "11px", color: "#92400e", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>Offered rate</div>
@@ -610,18 +537,16 @@ export default function ReviewPublishPage() {
                 )}
               </div>
 
-              {/* Address */}
               <div style={{ padding: "10px 14px", background: "rgba(59,130,246,0.05)", borderRadius: "10px", border: "1px solid #dbeafe", display: "flex", gap: "8px", alignItems: "flex-start" }}>
                 <span style={{ fontSize: "14px", flexShrink: 0 }}>🔒</span>
                 <div>
-                  <div style={{ fontSize: "12px", fontWeight: 600, color: "#1e40af", marginBottom: "2px" }}>{addressFormatted || "Your address (private)"}</div>
+                  <div style={{ fontSize: "12px", fontWeight: 600, color: "#1e40af", marginBottom: "2px" }}>{areaLabel}, West Sussex</div>
                   <div style={{ fontSize: "11px", color: "#3b82f6", lineHeight: 1.4 }}>Only your area is shown publicly. Your full address is only shared with your chosen cleaner.</div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Vouchee fee */}
           <div style={{ background: "white", borderRadius: "14px", border: "1px solid #e2e8f0", padding: "14px 18px", marginBottom: "24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div>
               <div style={{ fontSize: "13px", fontWeight: 700, color: "#0f172a", marginBottom: "2px" }}>Vouchee fee · {pricing.label}</div>
@@ -633,7 +558,6 @@ export default function ReviewPublishPage() {
             </div>
           </div>
 
-          {/* Go live */}
           <button className="go-live-btn" onClick={() => userId ? handlePublish() : router.push("/auth/login?redirectTo=/request/preview")} disabled={isPublishing} style={{ width: "100%", padding: "20px", borderRadius: "16px", border: "none", background: isPublishing ? "#e2e8f0" : "linear-gradient(135deg, #16a34a, #22c55e)", color: isPublishing ? "#94a3b8" : "white", fontSize: "18px", fontWeight: 800, fontFamily: "'Plus Jakarta Sans', sans-serif", cursor: isPublishing ? "not-allowed" : "pointer", boxShadow: isPublishing ? "none" : "0 4px 20px rgba(22,163,74,0.3)", transition: "transform 0.2s, box-shadow 0.2s" }}>
             {isPublishing ? "Publishing…" : userId ? "🚀 Go live" : "Sign in to publish →"}
           </button>
