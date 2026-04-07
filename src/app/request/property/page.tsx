@@ -136,19 +136,29 @@ function RequestStep1Content() {
     if (!userPickedHours) setHoursPerSession(getSuggestedHours(bedrooms, val, selectedTasks).preselect)
   }
 
-  const handlePostcodeChange = (value: string) => {
-    setPostcode(value)
-    setPostcodeError('')
-    setDetectedSector(null)
-    if (value.length >= 5) {
-      if (!isValidHorshamPostcode(value)) {
-        setPostcodeError('We currently only serve Horsham and surrounding areas (RH12, RH13)')
-        return
-      }
-      const sector = getPostcodeSector(value)
-      if (sector) setDetectedSector(sector.sector)
+  const UK_POSTCODE_REGEX = /^[A-Z]{1,2}[0-9][0-9A-Z]?\s?[0-9][A-Z]{2}$/i
+
+const handlePostcodeChange = (value: string) => {
+  setPostcode(value)
+  setPostcodeError('')
+  setDetectedSector(null)
+  if (value.replace(/\s/g, '').length >= 5) {
+    if (!UK_POSTCODE_REGEX.test(value.trim())) {
+      setPostcodeError('Please enter a valid UK postcode (e.g. RH12 1AB)')
+      return
+    }
+    if (!isValidHorshamPostcode(value)) {
+      setPostcodeError('We currently only serve Horsham and surrounding areas (RH12, RH13)')
+      return
+    }
+    const sector = getPostcodeSector(value)
+    if (sector) {
+      setDetectedSector(sector.sector)
+    } else {
+      setPostcodeError('Sorry, this postcode is outside our current service area. We cover most of Horsham and surrounding areas.')
     }
   }
+}
 
   const toggleTask = (id: string) => {
     setSelectedTasks(prev => {
