@@ -23,6 +23,7 @@ interface EnrichedConversation extends Conversation {
   avatarColor: string
   applicationId?: string
   requestStatus?: string
+  requestFrequency?: string
 }
 
 interface Message {
@@ -183,78 +184,6 @@ function Avatar({ name, color, size = 36 }: { name: string; color: string; size?
   )
 }
 
-// ─── Approve Modal ────────────────────────────────────────────────────────────
-
-function ApproveModal({ cleanerName, onConfirm, onCancel, loading }: {
-  cleanerName: string
-  onConfirm: () => void
-  onCancel: () => void
-  loading: boolean
-}) {
-  const firstName = cleanerName.split(' ')[0]
-
-  return (
-    <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      zIndex: 500, padding: '24px',
-    }}>
-      <div style={{
-        background: 'white', borderRadius: '24px', padding: '40px 36px',
-        maxWidth: '400px', width: '100%',
-        boxShadow: '0 32px 80px rgba(0,0,0,0.22)',
-      }}>
-        <h3 style={{
-          fontFamily: "'DM Sans', sans-serif",
-          fontSize: '22px', fontWeight: 800,
-          color: '#0f172a', textAlign: 'center',
-          margin: '0 0 16px', letterSpacing: '-0.3px',
-        }}>
-          Confirm {firstName} as your cleaner?
-        </h3>
-
-        <p style={{
-          fontSize: '13px', color: '#94a3b8', lineHeight: 1.6,
-          textAlign: 'center', fontStyle: 'italic',
-          margin: '0 0 32px',
-        }}>
-          You'll choose your start date next.
-        </p>
-
-        <div style={{ display: 'flex', gap: '12px' }}>
-          <button
-            onClick={onCancel}
-            disabled={loading}
-            style={{
-              flex: 1, background: 'white', border: '1.5px solid #e2e8f0',
-              borderRadius: '12px', padding: '13px', fontSize: '14px',
-              fontWeight: 600, color: '#64748b', cursor: 'pointer',
-              fontFamily: "'DM Sans', sans-serif",
-            }}
-          >
-            Cancel
-          </button>
-          <button
-            onClick={onConfirm}
-            disabled={loading}
-            style={{
-              flex: 2, background: '#16a34a', border: 'none',
-              borderRadius: '12px', padding: '13px', fontSize: '14px',
-              fontWeight: 700, color: 'white',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              opacity: loading ? 0.7 : 1,
-              fontFamily: "'DM Sans', sans-serif",
-              letterSpacing: '-0.1px',
-            }}
-          >
-            {loading ? 'Setting up…' : 'Continue →'}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 // ─── Chat Window ──────────────────────────────────────────────────────────────
 
 function ChatWindow({ conversation, currentUserId, currentRole, onClose }: {
@@ -272,8 +201,6 @@ function ChatWindow({ conversation, currentUserId, currentRole, onClose }: {
   const [showSuppliesFollowup, setShowSuppliesFollowup] = useState(false)
   const [customerHasSent, setCustomerHasSent] = useState(false)
   const [otherIsTyping, setOtherIsTyping] = useState(false)
-  const [showApproveModal, setShowApproveModal] = useState(false)
-  const [approveLoading, setApproveLoading] = useState(false)
   const [applicationId, setApplicationId] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -315,18 +242,11 @@ function ChatWindow({ conversation, currentUserId, currentRole, onClose }: {
     load()
 
     const channel = supabase.channel(`conversation:${conversation.id}`, {
-      config: {
-        broadcast: { self: false },
-        presence: { key: currentUserId },
-      },
+      config: { broadcast: { self: false }, presence: { key: currentUserId } },
     })
 
     channel
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'messages',
-      }, payload => {
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
         const msg = payload.new as Message
         if (msg.conversation_id !== conversation.id) return
         setMessages(prev => prev.find(m => m.id === msg.id) ? prev : [...prev, msg])
@@ -350,9 +270,7 @@ function ChatWindow({ conversation, currentUserId, currentRole, onClose }: {
         if (key !== currentUserId) setOtherIsTyping(false)
       })
       .subscribe(async (status: string) => {
-        if (status === 'SUBSCRIBED') {
-          await channel.track({ typing: false })
-        }
+        if (status === 'SUBSCRIBED') await channel.track({ typing: false })
       })
 
     channelRef.current = channel
@@ -363,6 +281,7 @@ function ChatWindow({ conversation, currentUserId, currentRole, onClose }: {
     }
   }, [conversation.id, currentUserId])
 
+  // Handle abandoned GoCardless flow
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const abandoned = params.get('gc_abandoned')
@@ -425,14 +344,8 @@ function ChatWindow({ conversation, currentUserId, currentRole, onClose }: {
 
     const { data: inserted, error } = await (supabase as any)
       .from('messages')
-      .insert({
-        conversation_id: conversation.id,
-        sender_id: currentUserId,
-        sender_role: currentRole,
-        content,
-      })
-      .select()
-      .single()
+      .insert({ conversation_id: conversation.id, sender_id: currentUserId, sender_role: currentRole, content })
+      .select().single()
 
     if (error) {
       console.error('Message insert failed:', error)
@@ -444,32 +357,18 @@ function ChatWindow({ conversation, currentUserId, currentRole, onClose }: {
     setSending(false)
   }
 
-  const handleApprove = async () => {
+  // Approve button fires a custom event — the dashboard handles the modal
+  const handleApprove = () => {
     if (!applicationId) return
-    setApproveLoading(true)
-    try {
-      const res = await fetch('/api/gocardless/create-flow', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          applicationId,
-          requestId: conversation.clean_request_id,
-          conversationId: conversation.id,
-        }),
-      })
-      const data = await res.json()
-      if (!res.ok || !data.authorisationUrl) {
-        console.error('GoCardless flow error:', data)
-        setApproveLoading(false)
-        setShowApproveModal(false)
-        return
-      }
-      window.location.href = data.authorisationUrl
-    } catch (err) {
-      console.error('Approve error:', err)
-      setApproveLoading(false)
-      setShowApproveModal(false)
-    }
+    window.dispatchEvent(new CustomEvent('vouchee:approve-cleaner', {
+      detail: {
+        applicationId,
+        requestId: conversation.clean_request_id,
+        conversationId: conversation.id,
+        cleanerName: conversation.displayName,
+        frequency: conversation.requestFrequency ?? 'monthly',
+      },
+    }))
   }
 
   const handleSuggestedQuestion = (q: string) => {
@@ -501,186 +400,170 @@ function ChatWindow({ conversation, currentUserId, currentRole, onClose }: {
   const showApproveButton = currentRole === 'customer' && !isFulfilled && applicationId
 
   return (
-    <>
-      {showApproveModal && (
-        <ApproveModal
-          cleanerName={conversation.displayName}
-          onConfirm={handleApprove}
-          onCancel={() => setShowApproveModal(false)}
-          loading={approveLoading}
-        />
-      )}
-      <div style={{
-        width: '328px', height: showApproveButton ? '480px' : '440px',
-        background: 'white',
-        borderRadius: '8px 8px 0 0', boxShadow: '0 -2px 16px rgba(0,0,0,0.18)',
-        display: 'flex', flexDirection: 'column', overflow: 'hidden',
-        fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)",
-        transition: 'height 0.2s ease',
-      }}>
-        {/* Header */}
-        <div style={{ padding: '10px 12px', background: '#1e293b', color: 'white', display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
-          <Avatar name={conversation.displayName} color={conversation.avatarColor} size={32} />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: '13px', fontWeight: 700, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {conversation.displayName}
-            </div>
-            <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', lineHeight: 1.2 }}>
-              {otherIsTyping ? `${conversation.displayName.split(' ')[0]} is typing…` : conversation.zone}
-            </div>
+    <div style={{
+      width: '328px', height: showApproveButton ? '480px' : '440px',
+      background: 'white', borderRadius: '8px 8px 0 0',
+      boxShadow: '0 -2px 16px rgba(0,0,0,0.18)',
+      display: 'flex', flexDirection: 'column', overflow: 'hidden',
+      fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)",
+      transition: 'height 0.2s ease',
+    }}>
+      {/* Header */}
+      <div style={{ padding: '10px 12px', background: '#1e293b', color: 'white', display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+        <Avatar name={conversation.displayName} color={conversation.avatarColor} size={32} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: '13px', fontWeight: 700, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {conversation.displayName}
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.7)', cursor: 'pointer', fontSize: '16px', padding: '0 4px', lineHeight: 1 }}>✕</button>
+          <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', lineHeight: 1.2 }}>
+            {otherIsTyping ? `${conversation.displayName.split(' ')[0]} is typing…` : conversation.zone}
+          </div>
         </div>
+        <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.7)', cursor: 'pointer', fontSize: '16px', padding: '0 4px', lineHeight: 1 }}>✕</button>
+      </div>
 
-        {/* Approve button bar */}
-        {showApproveButton && (
-          <div style={{ padding: '8px 12px', background: '#f0fdf4', borderBottom: '1px solid #bbf7d0', flexShrink: 0 }}>
-            <button
-              onClick={() => setShowApproveModal(true)}
-              style={{
-                width: '100%', background: '#16a34a', color: 'white', border: 'none',
-                borderRadius: '8px', padding: '9px 0', fontSize: '13px', fontWeight: 700,
-                cursor: 'pointer', fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)",
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-              }}
-            >
-              ✓ Select {conversation.displayName} for this job
-            </button>
+      {/* Approve button bar */}
+      {showApproveButton && (
+        <div style={{ padding: '8px 12px', background: '#f0fdf4', borderBottom: '1px solid #bbf7d0', flexShrink: 0 }}>
+          <button
+            onClick={handleApprove}
+            style={{
+              width: '100%', background: '#16a34a', color: 'white', border: 'none',
+              borderRadius: '8px', padding: '9px 0', fontSize: '13px', fontWeight: 700,
+              cursor: 'pointer', fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)",
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+            }}
+          >
+            ✓ Select {conversation.displayName} for this job
+          </button>
+        </div>
+      )}
+
+      {showWarning && (
+        <div style={{ padding: '10px 12px', background: '#fffbeb', borderBottom: '1px solid #fde68a', display: 'flex', gap: '8px', alignItems: 'flex-start', flexShrink: 0 }}>
+          <span style={{ fontSize: '14px', flexShrink: 0 }}>⚠️</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: '#92400e' }}>Keep conversations on Vouchee</div>
+            <div style={{ fontSize: '11px', color: '#b45309', lineHeight: 1.5 }}>
+              Taking conversations off-platform removes your protection as a {currentRole}. All payments, scheduling and communication must stay within Vouchee.
+            </div>
           </div>
-        )}
+          <button onClick={() => setShowWarning(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#92400e', fontSize: '14px', flexShrink: 0 }}>✕</button>
+        </div>
+      )}
 
-        {showWarning && (
-          <div style={{ padding: '10px 12px', background: '#fffbeb', borderBottom: '1px solid #fde68a', display: 'flex', gap: '8px', alignItems: 'flex-start', flexShrink: 0 }}>
-            <span style={{ fontSize: '14px', flexShrink: 0 }}>⚠️</span>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: '11px', fontWeight: 700, color: '#92400e' }}>Keep conversations on Vouchee</div>
-              <div style={{ fontSize: '11px', color: '#b45309', lineHeight: 1.5 }}>
-                Taking conversations off-platform removes your protection as a {currentRole}. All payments, scheduling and communication must stay within Vouchee.
+      <div style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
+        {loading ? (
+          <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: '12px', paddingTop: '24px' }}>Loading…</div>
+        ) : messages.length === 0 ? (
+          <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: '12px', paddingTop: '24px' }}>
+            <div style={{ fontSize: '24px', marginBottom: '8px' }}>💬</div>
+            <div style={{ fontWeight: 600, color: '#475569', marginBottom: '2px', fontSize: '13px' }}>Start the conversation</div>
+            <div>Send a message to get started</div>
+          </div>
+        ) : (
+          groupedMessages.map((group, gi) => (
+            <div key={gi}>
+              <div style={{ textAlign: 'center', fontSize: '10px', fontWeight: 600, color: '#94a3b8', margin: '12px 0 8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                {group.date}
               </div>
-            </div>
-            <button onClick={() => setShowWarning(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#92400e', fontSize: '14px', flexShrink: 0 }}>✕</button>
-          </div>
-        )}
-
-        <div style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
-          {loading ? (
-            <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: '12px', paddingTop: '24px' }}>Loading…</div>
-          ) : messages.length === 0 ? (
-            <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: '12px', paddingTop: '24px' }}>
-              <div style={{ fontSize: '24px', marginBottom: '8px' }}>💬</div>
-              <div style={{ fontWeight: 600, color: '#475569', marginBottom: '2px', fontSize: '13px' }}>Start the conversation</div>
-              <div>Send a message to get started</div>
-            </div>
-          ) : (
-            groupedMessages.map((group, gi) => (
-              <div key={gi}>
-                <div style={{ textAlign: 'center', fontSize: '10px', fontWeight: 600, color: '#94a3b8', margin: '12px 0 8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  {group.date}
-                </div>
-                {group.msgs.map(msg => {
-                  if (isSystemMessage(msg.content)) {
-                    return (
-                      <div key={msg.id} style={{ textAlign: 'center', margin: '10px 0' }}>
-                        <span style={{
-                          display: 'inline-block', background: '#f1f5f9', border: '1px solid #e2e8f0',
-                          borderRadius: '100px', padding: '4px 12px',
-                          fontSize: '11px', fontWeight: 600, color: '#64748b', lineHeight: 1.5,
-                        }}>
-                          {getSystemMessageText(msg.content)}
-                        </span>
-                      </div>
-                    )
-                  }
-
-                  const isMe =
-                    (currentRole === 'customer' && msg.sender_role === 'customer') ||
-                    (currentRole === 'cleaner' && msg.sender_role === 'cleaner')
+              {group.msgs.map(msg => {
+                if (isSystemMessage(msg.content)) {
                   return (
-                    <div key={msg.id} style={{ marginBottom: '8px' }}>
-                      <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '2px', fontWeight: 600 }}>
-                        {getSenderLabel(msg)} <span style={{ fontWeight: 400 }}>({formatTime(msg.created_at)})</span>
-                      </div>
-                      <div style={{
-                        maxWidth: '85%', padding: '8px 12px',
-                        borderRadius: isMe ? '12px 12px 4px 12px' : '12px 12px 12px 4px',
-                        background: isMe ? '#2563eb' : '#f1f5f9',
-                        color: isMe ? 'white' : '#0f172a',
-                        fontSize: '13px', lineHeight: 1.5,
-                        marginLeft: isMe ? 'auto' : '0',
-                        width: 'fit-content',
-                      }}>
-                        {msg.content}
-                      </div>
+                    <div key={msg.id} style={{ textAlign: 'center', margin: '10px 0' }}>
+                      <span style={{ display: 'inline-block', background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: '100px', padding: '4px 12px', fontSize: '11px', fontWeight: 600, color: '#64748b', lineHeight: 1.5 }}>
+                        {getSystemMessageText(msg.content)}
+                      </span>
                     </div>
                   )
-                })}
-              </div>
-            ))
-          )}
-          {otherIsTyping && (
-            <div style={{ marginBottom: '8px' }}>
-              <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '2px', fontWeight: 600 }}>
-                {conversation.displayName.split(' ')[0]}
-              </div>
-              <div style={{ display: 'inline-block', padding: '8px 12px', borderRadius: '12px 12px 12px 4px', background: '#f1f5f9' }}>
-                <TypingDots />
-              </div>
+                }
+                const isMe =
+                  (currentRole === 'customer' && msg.sender_role === 'customer') ||
+                  (currentRole === 'cleaner' && msg.sender_role === 'cleaner')
+                return (
+                  <div key={msg.id} style={{ marginBottom: '8px' }}>
+                    <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '2px', fontWeight: 600 }}>
+                      {getSenderLabel(msg)} <span style={{ fontWeight: 400 }}>({formatTime(msg.created_at)})</span>
+                    </div>
+                    <div style={{
+                      maxWidth: '85%', padding: '8px 12px',
+                      borderRadius: isMe ? '12px 12px 4px 12px' : '12px 12px 12px 4px',
+                      background: isMe ? '#2563eb' : '#f1f5f9',
+                      color: isMe ? 'white' : '#0f172a',
+                      fontSize: '13px', lineHeight: 1.5,
+                      marginLeft: isMe ? 'auto' : '0', width: 'fit-content',
+                    }}>
+                      {msg.content}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          ))
+        )}
+        {otherIsTyping && (
+          <div style={{ marginBottom: '8px' }}>
+            <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '2px', fontWeight: 600 }}>
+              {conversation.displayName.split(' ')[0]}
+            </div>
+            <div style={{ display: 'inline-block', padding: '8px 12px', borderRadius: '12px 12px 12px 4px', background: '#f1f5f9' }}>
+              <TypingDots />
+            </div>
+          </div>
+        )}
+        <div ref={bottomRef} />
+      </div>
+
+      {showSuggestions && (
+        <div style={{ padding: '0 12px 8px', flexShrink: 0 }}>
+          {showSuppliesFollowup ? (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+              <button onClick={() => handleSend(input)} style={{ padding: '4px 10px', borderRadius: '100px', border: '1px solid #bfdbfe', background: '#eff6ff', fontSize: '11px', fontWeight: 600, color: '#1d4ed8', cursor: 'pointer', fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)" }}>
+                Send: "Do you bring your own supplies?"
+              </button>
+              <button onClick={() => handleSend(SUPPLIES_FOLLOWUP)} style={{ padding: '4px 10px', borderRadius: '100px', border: '1px solid #bbf7d0', background: '#f0fdf4', fontSize: '11px', fontWeight: 600, color: '#15803d', cursor: 'pointer', fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)" }}>
+                Also ask: "{SUPPLIES_FOLLOWUP}"
+              </button>
+              <button onClick={() => { setShowSuppliesFollowup(false); setInput('') }} style={{ padding: '4px 10px', borderRadius: '100px', border: '1px solid #e2e8f0', background: 'white', fontSize: '11px', fontWeight: 600, color: '#94a3b8', cursor: 'pointer', fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)" }}>
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+              {SUGGESTED_QUESTIONS.map((q, i) => (
+                <button key={i} onClick={() => handleSuggestedQuestion(q)} style={{ padding: '4px 10px', borderRadius: '100px', border: '1px solid #e2e8f0', background: 'white', fontSize: '11px', fontWeight: 600, color: '#475569', cursor: 'pointer', fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)" }}>
+                  {q}
+                </button>
+              ))}
             </div>
           )}
-          <div ref={bottomRef} />
         </div>
+      )}
 
-        {showSuggestions && (
-          <div style={{ padding: '0 12px 8px', flexShrink: 0 }}>
-            {showSuppliesFollowup ? (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                <button onClick={() => handleSend(input)} style={{ padding: '4px 10px', borderRadius: '100px', border: '1px solid #bfdbfe', background: '#eff6ff', fontSize: '11px', fontWeight: 600, color: '#1d4ed8', cursor: 'pointer', fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)" }}>
-                  Send: "Do you bring your own supplies?"
-                </button>
-                <button onClick={() => handleSend(SUPPLIES_FOLLOWUP)} style={{ padding: '4px 10px', borderRadius: '100px', border: '1px solid #bbf7d0', background: '#f0fdf4', fontSize: '11px', fontWeight: 600, color: '#15803d', cursor: 'pointer', fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)" }}>
-                  Also ask: "{SUPPLIES_FOLLOWUP}"
-                </button>
-                <button onClick={() => { setShowSuppliesFollowup(false); setInput('') }} style={{ padding: '4px 10px', borderRadius: '100px', border: '1px solid #e2e8f0', background: 'white', fontSize: '11px', fontWeight: 600, color: '#94a3b8', cursor: 'pointer', fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)" }}>
-                  Cancel
-                </button>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                {SUGGESTED_QUESTIONS.map((q, i) => (
-                  <button key={i} onClick={() => handleSuggestedQuestion(q)} style={{ padding: '4px 10px', borderRadius: '100px', border: '1px solid #e2e8f0', background: 'white', fontSize: '11px', fontWeight: 600, color: '#475569', cursor: 'pointer', fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)" }}>
-                    {q}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {isFulfilled && (
-          <div style={{ padding: '8px 12px', background: '#f0fdf4', borderTop: '1px solid #bbf7d0', flexShrink: 0, textAlign: 'center' }}>
-            <span style={{ fontSize: '12px', fontWeight: 600, color: '#15803d' }}>✓ Job confirmed — chat stays open</span>
-          </div>
-        )}
-
-        <div style={{ padding: '8px 12px', borderTop: '1px solid #f1f5f9', display: 'flex', gap: '6px', flexShrink: 0 }}>
-          <input
-            value={input}
-            onChange={e => handleInputChange(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
-            placeholder="Write a message…"
-            style={{ flex: 1, padding: '8px 12px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px', fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)", outline: 'none', color: '#0f172a' }}
-          />
-          <button onClick={() => handleSend()} disabled={!input.trim() || sending} style={{
-            padding: '8px 14px', borderRadius: '8px', border: 'none',
-            background: input.trim() ? '#2563eb' : '#e2e8f0',
-            color: input.trim() ? 'white' : '#94a3b8',
-            fontWeight: 700, fontSize: '13px',
-            cursor: input.trim() ? 'pointer' : 'not-allowed',
-            fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)",
-          }}>Send</button>
+      {isFulfilled && (
+        <div style={{ padding: '8px 12px', background: '#f0fdf4', borderTop: '1px solid #bbf7d0', flexShrink: 0, textAlign: 'center' }}>
+          <span style={{ fontSize: '12px', fontWeight: 600, color: '#15803d' }}>✓ Job confirmed — chat stays open</span>
         </div>
+      )}
+
+      <div style={{ padding: '8px 12px', borderTop: '1px solid #f1f5f9', display: 'flex', gap: '6px', flexShrink: 0 }}>
+        <input
+          value={input}
+          onChange={e => handleInputChange(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
+          placeholder="Write a message…"
+          style={{ flex: 1, padding: '8px 12px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px', fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)", outline: 'none', color: '#0f172a' }}
+        />
+        <button onClick={() => handleSend()} disabled={!input.trim() || sending} style={{
+          padding: '8px 14px', borderRadius: '8px', border: 'none',
+          background: input.trim() ? '#2563eb' : '#e2e8f0',
+          color: input.trim() ? 'white' : '#94a3b8',
+          fontWeight: 700, fontSize: '13px',
+          cursor: input.trim() ? 'pointer' : 'not-allowed',
+          fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)",
+        }}>Send</button>
       </div>
-    </>
+    </div>
   )
 }
 
@@ -698,12 +581,7 @@ function MessagingTray({ conversations, openIds, onOpen, onClose, totalUnread }:
   return (
     <div style={{ position: 'relative', fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)" }}>
       {expanded && (
-        <div style={{
-          position: 'absolute', bottom: '100%', right: 0, marginBottom: '4px',
-          width: '300px', background: 'white',
-          borderRadius: '8px', boxShadow: '0 4px 24px rgba(0,0,0,0.18)',
-          overflow: 'hidden', border: '1px solid #e2e8f0',
-        }}>
+        <div style={{ position: 'absolute', bottom: '100%', right: 0, marginBottom: '4px', width: '300px', background: 'white', borderRadius: '8px', boxShadow: '0 4px 24px rgba(0,0,0,0.18)', overflow: 'hidden', border: '1px solid #e2e8f0' }}>
           <div style={{ padding: '12px 16px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a' }}>Messages</span>
             <span style={{ fontSize: '11px', color: '#94a3b8' }}>{conversations.length} conversation{conversations.length !== 1 ? 's' : ''}</span>
@@ -722,14 +600,7 @@ function MessagingTray({ conversations, openIds, onOpen, onClose, totalUnread }:
                   <div style={{ position: 'relative', flexShrink: 0 }}>
                     <Avatar name={conv.displayName} color={conv.avatarColor} size={40} />
                     {conv.unread > 0 && (
-                      <span style={{
-                        position: 'absolute', top: -2, right: -2,
-                        width: '16px', height: '16px', borderRadius: '50%',
-                        background: '#ef4444', color: 'white',
-                        fontSize: '10px', fontWeight: 700,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        border: '2px solid white',
-                      }}>{conv.unread}</span>
+                      <span style={{ position: 'absolute', top: -2, right: -2, width: '16px', height: '16px', borderRadius: '50%', background: '#ef4444', color: 'white', fontSize: '10px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid white' }}>{conv.unread}</span>
                     )}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -745,10 +616,7 @@ function MessagingTray({ conversations, openIds, onOpen, onClose, totalUnread }:
                       {conv.lastMessage || 'No messages yet'}
                     </div>
                   </div>
-                  <button
-                    onClick={e => { e.stopPropagation(); onClose(conv.id) }}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#cbd5e1', fontSize: '14px', padding: '2px 4px', flexShrink: 0, lineHeight: 1 }}
-                  >✕</button>
+                  <button onClick={e => { e.stopPropagation(); onClose(conv.id) }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#cbd5e1', fontSize: '14px', padding: '2px 4px', flexShrink: 0, lineHeight: 1 }}>✕</button>
                 </div>
               ))
             )}
@@ -758,13 +626,7 @@ function MessagingTray({ conversations, openIds, onOpen, onClose, totalUnread }:
 
       <button
         onClick={() => setExpanded(e => !e)}
-        style={{
-          display: 'flex', alignItems: 'center', gap: '10px',
-          padding: '8px 16px', background: '#1e293b', color: 'white',
-          border: 'none', borderRadius: '8px 8px 0 0', cursor: 'pointer',
-          fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)",
-          boxShadow: '0 -2px 8px rgba(0,0,0,0.15)', minWidth: '180px',
-        }}
+        style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 16px', background: '#1e293b', color: 'white', border: 'none', borderRadius: '8px 8px 0 0', cursor: 'pointer', fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)", boxShadow: '0 -2px 8px rgba(0,0,0,0.15)', minWidth: '180px' }}
       >
         <div style={{ display: 'flex' }}>
           {conversations.slice(0, 3).map((conv, i) => (
@@ -775,15 +637,9 @@ function MessagingTray({ conversations, openIds, onOpen, onClose, totalUnread }:
         </div>
         <span style={{ fontSize: '13px', fontWeight: 700, flex: 1 }}>Messages</span>
         {totalUnread > 0 && (
-          <span style={{
-            background: '#ef4444', color: 'white',
-            borderRadius: '100px', padding: '1px 6px',
-            fontSize: '11px', fontWeight: 700, minWidth: '18px', textAlign: 'center',
-          }}>{totalUnread}</span>
+          <span style={{ background: '#ef4444', color: 'white', borderRadius: '100px', padding: '1px 6px', fontSize: '11px', fontWeight: 700, minWidth: '18px', textAlign: 'center' }}>{totalUnread}</span>
         )}
-        <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginLeft: '4px' }}>
-          {expanded ? '▼' : '▲'}
-        </span>
+        <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginLeft: '4px' }}>{expanded ? '▼' : '▲'}</span>
       </button>
     </div>
   )
@@ -808,8 +664,8 @@ async function enrichOne(supabase: any, conv: Conversation, role: 'customer' | '
     displayName = zone
   }
 
-  const { data: reqStatus } = await (supabase as any)
-    .from('clean_requests').select('status').eq('id', conv.clean_request_id).single()
+  const { data: reqData } = await (supabase as any)
+    .from('clean_requests').select('status, frequency').eq('id', conv.clean_request_id).single()
 
   const { data: lastMsg } = await (supabase as any)
     .from('messages').select('content, created_at').eq('conversation_id', conv.id)
@@ -823,7 +679,8 @@ async function enrichOne(supabase: any, conv: Conversation, role: 'customer' | '
     lastMessageTime: lastMsg?.created_at ?? null,
     unread: 0,
     avatarColor: getAvatarColor(conv.cleaner_id),
-    requestStatus: reqStatus?.status ?? undefined,
+    requestStatus: reqData?.status ?? undefined,
+    requestFrequency: reqData?.frequency ?? 'monthly',
   }
 }
 
@@ -926,11 +783,7 @@ export function ChatWidget() {
 
     const channel = supabase
       .channel('global-messages-tray')
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'messages',
-      }, payload => {
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
         const msg = payload.new as Message
         const convId = msg.conversation_id
         if (!conversationsRef.current.find(c => c.id === convId)) return
@@ -1037,11 +890,7 @@ export function ChatWidget() {
   const openExpanded = conversations.filter(c => openIds.has(c.id))
 
   return (
-    <div style={{
-      position: 'fixed', bottom: 0, right: '16px', zIndex: 400,
-      display: 'flex', alignItems: 'flex-end', gap: '12px',
-      fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)",
-    }}>
+    <div style={{ position: 'fixed', bottom: 0, right: '16px', zIndex: 400, display: 'flex', alignItems: 'flex-end', gap: '12px', fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)" }}>
       {openExpanded.map(conv => (
         <ChatWindow
           key={conv.id}

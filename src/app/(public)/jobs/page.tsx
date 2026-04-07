@@ -27,6 +27,7 @@ interface Job {
   time_of_day: string | null
   hourly_rate: number | null
   hours_per_session: number | null
+  frequency: string | null
   tasks: string[] | null
   customer_notes: string | null
   status: JobStatus
@@ -81,6 +82,12 @@ const TASK_LABELS: Record<string, { label: string; special: boolean }> = {
 }
 
 const REGULAR_TASKS = ['general_cleaning', 'general', 'hoovering', 'mopping', 'bathroom_deep_clean', 'bathroom', 'kitchen_deep_clean', 'kitchen']
+
+const FREQUENCY_LABELS: Record<string, string> = {
+  weekly: 'Weekly',
+  fortnightly: 'Fortnightly',
+  monthly: 'Monthly',
+}
 
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime()
@@ -188,6 +195,11 @@ function JobCard({ job, isOwn = false, userRole, cleanerApproved, onEdit, onAppl
           {job.hours_per_session && <span className="text-xs bg-gray-100 text-gray-700 rounded-full px-2.5 py-1 font-medium">{job.hours_per_session} hrs</span>}
           {daysLabel && <span className="text-xs bg-gray-100 text-gray-700 rounded-full px-2.5 py-1 font-medium">{daysLabel}</span>}
           {job.time_of_day && <span className="text-xs bg-gray-100 text-gray-700 rounded-full px-2.5 py-1 font-medium">{job.time_of_day}</span>}
+          {job.frequency && (
+            <span className="text-xs bg-blue-50 text-blue-700 border border-blue-200 rounded-full px-2.5 py-1 font-medium">
+              {FREQUENCY_LABELS[job.frequency] ?? job.frequency}
+            </span>
+          )}
           {job.has_pets && <span className="text-xs bg-amber-50 text-amber-700 border border-amber-200 rounded-full px-2.5 py-1 font-medium">🐾 Pets</span>}
         </div>
         {allTasks.length > 0 && (
@@ -298,6 +310,7 @@ function ApplyModal({ job, cleanerProfile, onClose, onSubmit, submitting }: {
               {job.hours_per_session && <span style={chip()}>{job.hours_per_session} hrs</span>}
               {daysLabel && <span style={chip()}>{daysLabel}</span>}
               {job.time_of_day && <span style={chip()}>{job.time_of_day}</span>}
+              {job.frequency && <span style={{ ...chip(), background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe' }}>{FREQUENCY_LABELS[job.frequency] ?? job.frequency}</span>}
             </div>
             {allTasks.length > 0 && (
               <div style={{ marginBottom: '12px' }}>
@@ -428,11 +441,11 @@ export default function JobsPage() {
       }
 
       const { data, error } = await authClient
-      .from('clean_requests')
-      .select(`id, service_type, zone, bedrooms, bathrooms, has_pets, preferred_day, preferred_days, time_of_day, hourly_rate, hours_per_session, tasks, customer_notes, status, created_at, updated_at, customer_id`)
-      .eq('hidden', false)
-      .order('created_at', { ascending: false })
-      .limit(100)
+        .from('clean_requests')
+        .select(`id, service_type, zone, bedrooms, bathrooms, has_pets, preferred_day, preferred_days, time_of_day, hourly_rate, hours_per_session, frequency, tasks, customer_notes, status, created_at, updated_at, customer_id`)
+        .eq('hidden', false)
+        .order('created_at', { ascending: false })
+        .limit(100)
 
       if (error) console.error('Supabase error:', error)
 
@@ -457,7 +470,6 @@ export default function JobsPage() {
     try {
       const authClient = createClient()
 
-      // Insert application and get back the new application id
       const { data: newApp, error: appError } = await authClient
         .from('applications')
         .insert({
@@ -473,7 +485,6 @@ export default function JobsPage() {
 
       setAppliedJobIds(prev => new Set([...prev, applyingToJob.id]))
 
-      // Look up the customer's profile_id (email route needs profiles UUID not customers UUID)
       const { data: customerRecord } = await authClient
         .from('customers')
         .select('profile_id')
@@ -482,7 +493,6 @@ export default function JobsPage() {
 
       const customerProfileId = customerRecord?.profile_id ?? applyingToJob.customer_id
 
-      // Build cleaner display name
       const fullName = profileData?.full_name ?? ''
       const nameParts = fullName.trim().split(' ')
       const cleanerName = nameParts.length >= 2
@@ -492,14 +502,13 @@ export default function JobsPage() {
         ? new Date(cleanerData.created_at).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
         : 'Recently'
 
-      // Fire notification email
       await fetch('/api/send-application-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          customerId: customerProfileId,  // ✅ profiles UUID for email lookup
-          applicationId: (newApp as any).id,       // ✅ application row ID
-          requestId: applyingToJob.id,             // ✅ clean_request ID
+          customerId: customerProfileId,
+          applicationId: (newApp as any).id,
+          requestId: applyingToJob.id,
           cleanerName,
           cleanerInitial: cleanerName[0].toUpperCase(),
           cleanerMemberSince: memberSince,

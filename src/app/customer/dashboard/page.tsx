@@ -1,7 +1,6 @@
 'use client'
 
 import { Suspense } from 'react'
-
 import { useState, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -95,6 +94,13 @@ const FREQUENCY_LABEL: Record<Frequency, string> = {
   weekly: 'Weekly', fortnightly: 'Fortnightly', monthly: 'Monthly',
 }
 
+// Vouchee monthly fees in pence
+const MONTHLY_FEES: Record<Frequency, number> = {
+  weekly: 4333,     // £43.33
+  fortnightly: 3248, // £32.48
+  monthly: 2499,    // £24.99
+}
+
 const TIME_SLOTS = ['Morning (8am - 12pm)', 'During the day (8am - 5pm)', 'Afternoon (12pm - 5pm)', 'Evening (5pm - 8pm)', 'Flexible']
 const ALL_DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
 const DAY_SHORT: Record<string, string> = {
@@ -124,6 +130,50 @@ function formatDays(days: string[] | null) {
 
 function daysSince(iso: string) {
   return Math.floor((Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60 * 24))
+}
+
+// Calculate pro-rata first charge and recurring amount
+function calculateBilling(frequency: Frequency, startDate: string): {
+  firstChargePence: number
+  monthlyPence: number
+  firstChargeLabel: string
+  monthlyLabel: string
+  isFullMonth: boolean
+} {
+  const monthly = MONTHLY_FEES[frequency]
+  const start = new Date(startDate)
+  const day = start.getDate()
+  const daysInMonth = new Date(start.getFullYear(), start.getMonth() + 1, 0).getDate()
+
+  if (frequency === 'monthly') {
+    // Monthly is always full amount — one clean = one month
+    return {
+      firstChargePence: monthly,
+      monthlyPence: monthly,
+      firstChargeLabel: `£${(monthly / 100).toFixed(2)}`,
+      monthlyLabel: `£${(monthly / 100).toFixed(2)}/month`,
+      isFullMonth: true,
+    }
+  }
+
+  // For weekly/fortnightly: pro-rata remaining days in current month
+  const daysRemaining = daysInMonth - day + 1
+  const proRata = Math.round(monthly * (daysRemaining / daysInMonth))
+
+  return {
+    firstChargePence: proRata,
+    monthlyPence: monthly,
+    firstChargeLabel: `£${(proRata / 100).toFixed(2)}`,
+    monthlyLabel: `£${(monthly / 100).toFixed(2)}/month`,
+    isFullMonth: daysRemaining === daysInMonth,
+  }
+}
+
+// Minimum date = tomorrow
+function getMinDate(): string {
+  const d = new Date()
+  d.setDate(d.getDate() + 1)
+  return d.toISOString().split('T')[0]
 }
 
 // ─── Small components ─────────────────────────────────────────────────────────
@@ -164,6 +214,168 @@ function Stepper({ label, value, onDown, onUp, min, max, prefix = '', suffix = '
         <button onClick={onDown} disabled={value <= min} style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1.5px solid #e2e8f0', background: value <= min ? '#f8fafc' : 'white', fontSize: '18px', fontWeight: 700, color: value <= min ? '#cbd5e1' : '#0f172a', cursor: value <= min ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>−</button>
         <span style={{ fontSize: '16px', fontWeight: 800, color: '#0f172a', minWidth: '48px', textAlign: 'center' }}>{prefix}{typeof value === 'number' && !Number.isInteger(value) ? value.toFixed(1) : value}{suffix}</span>
         <button onClick={onUp} disabled={value >= max} style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1.5px solid #e2e8f0', background: value >= max ? '#f8fafc' : 'white', fontSize: '18px', fontWeight: 700, color: value >= max ? '#cbd5e1' : '#0f172a', cursor: value >= max ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
+      </div>
+    </div>
+  )
+}
+
+// ─── Start Date Modal ─────────────────────────────────────────────────────────
+
+function StartDateModal({ cleanerName, frequency, applicationId, requestId, conversationId, onCancel, onConfirm, loading }: {
+  cleanerName: string
+  frequency: Frequency
+  applicationId: string
+  requestId: string
+  conversationId: string
+  onCancel: () => void
+  onConfirm: (startDate: string) => void
+  loading: boolean
+}) {
+  const minDate = getMinDate()
+  const [startDate, setStartDate] = useState(minDate)
+
+  const firstName = cleanerName.split(' ')[0]
+  const billing = calculateBilling(frequency, startDate)
+  const day = new Date(startDate).getDate()
+  const showLateMonthWarning = day > 24
+
+  const nextMonth = new Date(startDate)
+  nextMonth.setMonth(nextMonth.getMonth() + 1)
+  nextMonth.setDate(1)
+  const nextMonthName = nextMonth.toLocaleDateString('en-GB', { month: 'long' })
+
+  const freqLabel = FREQUENCY_LABEL[frequency] ?? frequency
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      zIndex: 500, padding: '24px',
+    }}>
+      <div style={{
+        background: 'white', borderRadius: '24px', padding: '36px',
+        maxWidth: '440px', width: '100%',
+        boxShadow: '0 32px 80px rgba(0,0,0,0.22)',
+        maxHeight: '90vh', overflowY: 'auto',
+      }}>
+        {/* Title */}
+        <h3 style={{
+          fontFamily: "'DM Sans', sans-serif",
+          fontSize: '22px', fontWeight: 800,
+          color: '#0f172a', textAlign: 'center',
+          margin: '0 0 6px', letterSpacing: '-0.3px',
+        }}>
+          Confirm {firstName} as your cleaner
+        </h3>
+        <p style={{
+          fontSize: '13px', color: '#94a3b8', textAlign: 'center',
+          fontStyle: 'italic', margin: '0 0 28px',
+        }}>
+          Choose when you'd like your first clean to start
+        </p>
+
+        {/* Date picker */}
+        <div style={{ marginBottom: '24px' }}>
+          <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '8px' }}>
+            Start date
+          </label>
+          <input
+            type="date"
+            value={startDate}
+            min={minDate}
+            onChange={e => setStartDate(e.target.value)}
+            style={{
+              width: '100%', padding: '12px 14px',
+              border: '1.5px solid #e2e8f0', borderRadius: '12px',
+              fontSize: '15px', fontWeight: 600, color: '#0f172a',
+              fontFamily: "'DM Sans', sans-serif", outline: 'none',
+              boxSizing: 'border-box', cursor: 'pointer',
+            }}
+          />
+        </div>
+
+        {/* Pricing breakdown */}
+        <div style={{
+          background: '#f8fafc', borderRadius: '14px',
+          padding: '18px', marginBottom: '16px',
+          border: '1px solid #e2e8f0',
+        }}>
+          <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '14px' }}>
+            Vouchee platform fee · {freqLabel}
+          </div>
+
+          {/* First payment */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid #e2e8f0' }}>
+            <div>
+              <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a', marginBottom: '2px' }}>First payment</div>
+              <div style={{ fontSize: '11px', color: '#94a3b8' }}>
+                {billing.isFullMonth || frequency === 'monthly'
+                  ? 'Taken within 3 working days'
+                  : `Pro-rata for rest of ${new Date(startDate).toLocaleDateString('en-GB', { month: 'long' })} · within 3 working days`
+                }
+              </div>
+            </div>
+            <div style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>{billing.firstChargeLabel}</div>
+          </div>
+
+          {/* Recurring */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a', marginBottom: '2px' }}>Then monthly from 1st {nextMonthName}</div>
+              <div style={{ fontSize: '11px', color: '#94a3b8' }}>Billed on the 1st of each month</div>
+            </div>
+            <div style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>{billing.monthlyLabel}</div>
+          </div>
+        </div>
+
+        {/* Late month warning */}
+        {showLateMonthWarning && (
+          <div style={{
+            background: '#fffbeb', border: '1px solid #fde68a',
+            borderRadius: '10px', padding: '12px 14px',
+            marginBottom: '16px', fontSize: '13px', color: '#92400e', lineHeight: 1.6,
+          }}>
+            ⚠️ Because your start date is close to the end of the month, you'll see two payments close together — your first charge within 3 working days, and your regular payment on 1st {nextMonthName}. This is normal and won't happen again.
+          </div>
+        )}
+
+        {/* Note */}
+        <p style={{
+          fontSize: '12px', color: '#94a3b8', textAlign: 'center',
+          margin: '0 0 24px', lineHeight: 1.6, fontStyle: 'italic',
+        }}>
+          All other conversations will close once confirmed.
+        </p>
+
+        {/* Buttons */}
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <button
+            onClick={onCancel}
+            disabled={loading}
+            style={{
+              flex: 1, background: 'white', border: '1.5px solid #e2e8f0',
+              borderRadius: '12px', padding: '13px', fontSize: '14px',
+              fontWeight: 600, color: '#64748b', cursor: 'pointer',
+              fontFamily: "'DM Sans', sans-serif",
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => onConfirm(startDate)}
+            disabled={loading || !startDate}
+            style={{
+              flex: 2, background: '#16a34a', border: 'none',
+              borderRadius: '12px', padding: '13px', fontSize: '14px',
+              fontWeight: 700, color: 'white',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              opacity: loading ? 0.7 : 1,
+              fontFamily: "'DM Sans', sans-serif",
+            }}
+          >
+            {loading ? 'Setting up…' : 'Set up Direct Debit →'}
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -401,13 +613,15 @@ function PastListingRow({ request }: { request: CleaningRequest }) {
   )
 }
 
-// ─── Application Card (email-style) ──────────────────────────────────────────
+// ─── Application Card ─────────────────────────────────────────────────────────
 
-function ApplicationCard({ app, onAccept, onOpenChat, accepting }: {
+function ApplicationCard({ app, onAccept, onDecline, onOpenChat, accepting, declining }: {
   app: Application
   onAccept: () => void
+  onDecline: () => void
   onOpenChat: () => void
   accepting: boolean
+  declining: boolean
 }) {
   const displayName = app.cleaner_name || 'Cleaner'
   const initial = displayName[0]?.toUpperCase() || 'C'
@@ -416,15 +630,10 @@ function ApplicationCard({ app, onAccept, onOpenChat, accepting }: {
 
   return (
     <div style={{ background: 'white', borderRadius: '16px', border: '1.5px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
-      {/* Header — avatar, name, badges */}
       <div style={{ padding: '20px 20px 16px' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-            <div style={{
-              width: '52px', height: '52px', borderRadius: '50%', background: '#2563eb',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '22px', fontWeight: 800, color: 'white', flexShrink: 0,
-            }}>
+            <div style={{ width: '52px', height: '52px', borderRadius: '50%', background: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', fontWeight: 800, color: 'white', flexShrink: 0 }}>
               {initial}
             </div>
             <div>
@@ -434,12 +643,7 @@ function ApplicationCard({ app, onAccept, onOpenChat, accepting }: {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end', flexShrink: 0 }}>
             {['DBS checked', 'Right to work', 'Insured'].map(badge => (
-              <span key={badge} style={{
-                display: 'flex', alignItems: 'center', gap: '3px',
-                background: '#f0fdf4', border: '1px solid #bbf7d0',
-                borderRadius: '100px', padding: '3px 8px',
-                fontSize: '10px', fontWeight: 700, color: '#15803d', whiteSpace: 'nowrap',
-              }}>
+              <span key={badge} style={{ display: 'flex', alignItems: 'center', gap: '3px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '100px', padding: '3px 8px', fontSize: '10px', fontWeight: 700, color: '#15803d', whiteSpace: 'nowrap' }}>
                 ✓ {badge}
               </span>
             ))}
@@ -447,7 +651,6 @@ function ApplicationCard({ app, onAccept, onOpenChat, accepting }: {
         </div>
       </div>
 
-      {/* Status bar */}
       <div style={{ padding: '0 20px 16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
         <span style={{
           fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '100px',
@@ -459,7 +662,6 @@ function ApplicationCard({ app, onAccept, onOpenChat, accepting }: {
         <span style={{ fontSize: '12px', color: '#94a3b8' }}>{appliedLabel}</span>
       </div>
 
-      {/* Reviews placeholder (blurred like email) */}
       <div style={{ padding: '0 20px 16px' }}>
         <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>Reviews</div>
         <div style={{ filter: 'blur(4px)', pointerEvents: 'none' }}>
@@ -477,7 +679,6 @@ function ApplicationCard({ app, onAccept, onOpenChat, accepting }: {
         <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '10px', textAlign: 'center', fontStyle: 'italic' }}>🔒 Accept this application to unlock their full reviews</div>
       </div>
 
-      {/* Message bubble */}
       {app.message && (
         <div style={{ padding: '0 20px 16px', borderTop: '1px solid #f1f5f9' }}>
           <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px', marginTop: '16px' }}>{displayName}'s message</div>
@@ -487,7 +688,6 @@ function ApplicationCard({ app, onAccept, onOpenChat, accepting }: {
         </div>
       )}
 
-      {/* Action buttons */}
       <div style={{ padding: '16px 20px 20px', borderTop: '1px solid #f1f5f9', display: 'flex', gap: '12px' }}>
         {app.status === 'pending' && (
           <>
@@ -498,12 +698,12 @@ function ApplicationCard({ app, onAccept, onOpenChat, accepting }: {
             }}>
               {accepting ? 'Opening…' : '✓ Accept & chat'}
             </button>
-            <button style={{
+            <button onClick={onDecline} disabled={declining} style={{
               flex: 1, background: 'white', color: '#ef4444', border: '1.5px solid #fecaca', borderRadius: '10px',
-              padding: '14px 0', fontSize: '14px', fontWeight: 700, cursor: 'pointer',
-              fontFamily: "'DM Sans', sans-serif",
+              padding: '14px 0', fontSize: '14px', fontWeight: 700, cursor: declining ? 'not-allowed' : 'pointer',
+              fontFamily: "'DM Sans', sans-serif", opacity: declining ? 0.7 : 1,
             }}>
-              ✕ Decline
+              {declining ? 'Declining…' : '✕ Decline'}
             </button>
           </>
         )}
@@ -516,6 +716,11 @@ function ApplicationCard({ app, onAccept, onOpenChat, accepting }: {
             💬 Open chat
           </button>
         )}
+        {app.status === 'rejected' && (
+          <div style={{ flex: 1, textAlign: 'center', fontSize: '13px', color: '#94a3b8', padding: '14px 0', fontStyle: 'italic' }}>
+            Application declined
+          </div>
+        )}
       </div>
     </div>
   )
@@ -523,21 +728,21 @@ function ApplicationCard({ app, onAccept, onOpenChat, accepting }: {
 
 // ─── Applications Section ─────────────────────────────────────────────────────
 
-function ApplicationsSection({ requestIds, onAccept, onOpenChat }: {
+function ApplicationsSection({ requestIds, requests, onAccept, onOpenChat }: {
   requestIds: string[]
-  onAccept: (applicationId: string, requestId: string) => void
+  requests: CleaningRequest[]
+  onAccept: (applicationId: string, requestId: string, cleanerName: string, frequency: Frequency) => void
   onOpenChat: (applicationId: string, requestId: string) => void
 }) {
   const [applications, setApplications] = useState<Application[]>([])
   const [loading, setLoading] = useState(true)
   const [accepting, setAccepting] = useState<string | null>(null)
+  const [declining, setDeclining] = useState<string | null>(null)
 
   useEffect(() => {
     if (!requestIds.length) { setLoading(false); return }
     const fetchApplications = async () => {
       const supabase = createClient()
-
-      // Fetch applications
       const { data: appData, error } = await (supabase as any)
         .from('applications')
         .select('*')
@@ -546,7 +751,6 @@ function ApplicationsSection({ requestIds, onAccept, onOpenChat }: {
 
       if (error || !appData) { setLoading(false); return }
 
-      // Enrich with cleaner names by joining cleaners → profiles
       const enriched: Application[] = await Promise.all(
         appData.map(async (app: any) => {
           const { data: cleaner } = await (supabase as any)
@@ -576,9 +780,27 @@ function ApplicationsSection({ requestIds, onAccept, onOpenChat }: {
 
   const handleAccept = async (app: Application) => {
     setAccepting(app.id)
-    await onAccept(app.id, app.request_id)
+    // Find the frequency for this request
+    const req = requests.find(r => r.id === app.request_id)
+    const frequency = req?.frequency ?? 'monthly'
+    await onAccept(app.id, app.request_id, app.cleaner_name ?? 'Cleaner', frequency)
     setAccepting(null)
-    setApplications(prev => prev.map(a => a.id === app.id ? { ...a, status: 'accepted' } : a))
+  }
+
+  const handleDecline = async (app: Application) => {
+    setDeclining(app.id)
+    try {
+      await fetch('/api/decline-application', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ applicationId: app.id }),
+      })
+      setApplications(prev => prev.map(a => a.id === app.id ? { ...a, status: 'rejected' } : a))
+    } catch (err) {
+      console.error('Decline error:', err)
+    } finally {
+      setDeclining(null)
+    }
   }
 
   return (
@@ -605,8 +827,10 @@ function ApplicationsSection({ requestIds, onAccept, onOpenChat }: {
               key={app.id}
               app={app}
               onAccept={() => handleAccept(app)}
+              onDecline={() => handleDecline(app)}
               onOpenChat={() => onOpenChat(app.id, app.request_id)}
               accepting={accepting === app.id}
+              declining={declining === app.id}
             />
           ))}
         </div>
@@ -629,6 +853,17 @@ function CustomerDashboardContent() {
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
 
+  // Start date modal state
+  const [startDateModal, setStartDateModal] = useState<{
+    applicationId: string
+    requestId: string
+    conversationId: string
+    cleanerName: string
+    frequency: Frequency
+  } | null>(null)
+  const [startDateLoading, setStartDateLoading] = useState(false)
+  const systemMessageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   useEffect(() => {
     const init = async () => {
       try {
@@ -640,9 +875,8 @@ function CustomerDashboardContent() {
           .from('profiles').select('full_name, email, role').eq('id', user.id).single()
 
         if (profileError || !profileData) throw new Error('Could not load your profile.')
-          if (profileData.role !== 'customer' && profileData.role !== 'admin') { router.replace('/cleaner/dashboard'); return }
+        if (profileData.role !== 'customer' && profileData.role !== 'admin') { router.replace('/cleaner/dashboard'); return }
 
-        // ✅ KEY FIX: look up customers UUID first — clean_requests.customer_id is NOT the auth UUID
         const { data: customerRecord } = await (supabase as any)
           .from('customers').select('id').eq('profile_id', user.id).single()
 
@@ -658,7 +892,6 @@ function CustomerDashboardContent() {
         setProfile(profileData)
         setRequests(requestData ?? [])
 
-        // Handle URL params from email accept link
         const acceptAppId = searchParams.get('accept')
         const acceptReqId = searchParams.get('request')
         if (acceptAppId && acceptReqId) {
@@ -674,6 +907,7 @@ function CustomerDashboardContent() {
     init()
   }, [router])
 
+  // Accept = open chat (step 1), then the chat widget's Approve button triggers the date modal
   const handleAcceptApplication = async (applicationId: string, requestId: string) => {
     try {
       const res = await fetch('/api/accept-application', {
@@ -686,8 +920,6 @@ function CustomerDashboardContent() {
         showToast('Could not open chat — please try again')
         return
       }
-
-      // Dispatch event so the global ChatWidget picks it up
       window.dispatchEvent(new CustomEvent('vouchee:open-chat', {
         detail: { conversationId: data.conversationId },
       }))
@@ -696,32 +928,88 @@ function CustomerDashboardContent() {
     }
   }
 
+  // Called from chat widget's Approve button via custom event
+  const handleOpenStartDateModal = (detail: { applicationId: string; requestId: string; conversationId: string; cleanerName: string; frequency: Frequency }) => {
+    setStartDateModal(detail)
+
+    // Start 60s timer — only post system message if customer stays on modal
+    if (systemMessageTimerRef.current) clearTimeout(systemMessageTimerRef.current)
+    systemMessageTimerRef.current = setTimeout(async () => {
+      try {
+        const supabase = createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+        await (supabase as any).from('messages').insert({
+          conversation_id: detail.conversationId,
+          sender_id: user.id,
+          sender_role: 'customer',
+          content: '🗓️ __system__ Customer is selecting a start date…',
+        })
+      } catch (e) {}
+    }, 60000)
+  }
+
+  const handleCancelStartDate = () => {
+    if (systemMessageTimerRef.current) clearTimeout(systemMessageTimerRef.current)
+    setStartDateModal(null)
+  }
+
+  const handleConfirmStartDate = async (startDate: string) => {
+    if (!startDateModal) return
+    if (systemMessageTimerRef.current) clearTimeout(systemMessageTimerRef.current)
+    setStartDateLoading(true)
+
+    try {
+      const res = await fetch('/api/gocardless/create-flow', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          applicationId: startDateModal.applicationId,
+          requestId: startDateModal.requestId,
+          conversationId: startDateModal.conversationId,
+          startDate,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.authorisationUrl) {
+        showToast('Could not set up Direct Debit — please try again')
+        setStartDateLoading(false)
+        return
+      }
+      window.location.href = data.authorisationUrl
+    } catch (err) {
+      showToast('Something went wrong — please try again')
+      setStartDateLoading(false)
+    }
+  }
+
+  // Listen for the approve event from the chat widget
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail
+      if (detail?.applicationId && detail?.requestId && detail?.conversationId) {
+        handleOpenStartDateModal(detail)
+      }
+    }
+    window.addEventListener('vouchee:approve-cleaner', handler)
+    return () => window.removeEventListener('vouchee:approve-cleaner', handler)
+  }, [])
+
   const handleOpenChat = async (applicationId: string, requestId: string) => {
-    // For already-accepted applications, find the existing conversation
     try {
       const supabase = createClient()
       const { data: app } = await (supabase as any)
-        .from('applications')
-        .select('cleaner_id')
-        .eq('id', applicationId)
-        .single()
+        .from('applications').select('cleaner_id').eq('id', applicationId).single()
 
       if (!app) { showToast('Could not find application'); return }
 
-      // Look up the conversation for this cleaner + request
       const { data: conv } = await (supabase as any)
-        .from('conversations')
-        .select('id')
-        .eq('cleaner_id', app.cleaner_id)
-        .eq('clean_request_id', requestId)
-        .single()
+        .from('conversations').select('id')
+        .eq('cleaner_id', app.cleaner_id).eq('clean_request_id', requestId).single()
 
       if (conv) {
-        window.dispatchEvent(new CustomEvent('vouchee:open-chat', {
-          detail: { conversationId: conv.id },
-        }))
+        window.dispatchEvent(new CustomEvent('vouchee:open-chat', { detail: { conversationId: conv.id } }))
       } else {
-        // Fallback: re-run accept flow which will find existing conversation
         await handleAcceptApplication(applicationId, requestId)
       }
     } catch (err) {
@@ -877,7 +1165,12 @@ function CustomerDashboardContent() {
             )}
 
             {activeRequestIds.length > 0 && (
-              <ApplicationsSection requestIds={activeRequestIds} onAccept={handleAcceptApplication} onOpenChat={handleOpenChat} />
+              <ApplicationsSection
+                requestIds={activeRequestIds}
+                requests={activeRequests}
+                onAccept={handleAcceptApplication}
+                onOpenChat={handleOpenChat}
+              />
             )}
 
             {pastRequests.filter(r => r.status !== 'paused').length > 0 && (
@@ -908,6 +1201,19 @@ function CustomerDashboardContent() {
         {modal?.type === 'delete' && <ConfirmModal message="Permanently remove this request? This cannot be undone." onConfirm={() => handleDelete(modal.id)} onCancel={() => setModal(null)} />}
         {editingRequest && <EditModal request={editingRequest} onSave={handleSaveEdit} onClose={() => setEditingRequest(null)} saving={saving} />}
         {toast && <ComingSoonBanner message={toast} onClose={() => setToast(null)} />}
+
+        {startDateModal && (
+          <StartDateModal
+            cleanerName={startDateModal.cleanerName}
+            frequency={startDateModal.frequency}
+            applicationId={startDateModal.applicationId}
+            requestId={startDateModal.requestId}
+            conversationId={startDateModal.conversationId}
+            onCancel={handleCancelStartDate}
+            onConfirm={handleConfirmStartDate}
+            loading={startDateLoading}
+          />
+        )}
       </div>
     </>
   )
