@@ -23,6 +23,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (reqError || !cleanRequest) {
+      console.error('Clean request lookup failed:', reqError)
       return NextResponse.json({ error: 'Clean request not found' }, { status: 404 })
     }
 
@@ -34,6 +35,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (customerError || !customerRecord) {
+      console.error('Customer lookup failed:', customerError)
       return NextResponse.json({ error: 'Customer not found' }, { status: 404 })
     }
 
@@ -44,14 +46,9 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (profileError || !profile) {
+      console.error('Profile lookup failed:', profileError)
       return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
     }
-
-    // 3. Store start date on the clean request now so confirm route can use it
-    await supabaseAdmin
-      .from('clean_requests')
-      .update({ start_date: startDate })
-      .eq('id', requestId)
 
     const gcEnvironment = process.env.GOCARDLESS_ENVIRONMENT ?? 'sandbox'
     const gcBaseUrl = gcEnvironment === 'live'
@@ -60,7 +57,27 @@ export async function POST(request: NextRequest) {
     const gcToken = process.env.GOCARDLESS_ACCESS_TOKEN!
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.vouchee.co.uk'
 
-    // 4. Create GoCardless billing request (mandate only)
+    // Ensure all metadata values are explicitly strings — GoCardless rejects non-strings
+    const meta = {
+      vouchee_request_id: String(requestId),
+      vouchee_application_id: String(applicationId),
+      vouchee_conversation_id: String(conversationId),
+      vouchee_start_date: String(startDate),
+    }
+
+    // 3. Create GoCardless billing request (mandate only)
+    const billingRequestBody = {
+      billing_requests: {
+        mandate_request: {
+          scheme: 'bacs',
+          metadata: meta,
+        },
+        metadata: meta,
+      },
+    }
+
+    console.log('Creating GC billing request:', JSON.stringify(billingRequestBody))
+
     const billingRequestRes = await fetch(`${gcBaseUrl}/billing_requests`, {
       method: 'POST',
       headers: {
@@ -69,37 +86,35 @@ export async function POST(request: NextRequest) {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
       },
-      body: JSON.stringify({
-        billing_requests: {
-          mandate_request: {
-            scheme: 'bacs',
-            metadata: {
-              vouchee_request_id: requestId,
-              vouchee_application_id: applicationId,
-              vouchee_conversation_id: conversationId,
-              vouchee_start_date: startDate,
-            },
-          },
-          metadata: {
-            vouchee_request_id: requestId,
-            vouchee_application_id: applicationId,
-            vouchee_conversation_id: conversationId,
-            vouchee_start_date: startDate,
-          },
-        },
-      }),
+      body: JSON.stringify(billingRequestBody),
     })
 
     if (!billingRequestRes.ok) {
       const err = await billingRequestRes.json()
-      console.error('GoCardless billing request failed:', err)
+      console.error('GoCardless billing request failed:', JSON.stringify(err))
       return NextResponse.json({ error: 'Failed to create billing request' }, { status: 500 })
     }
 
     const billingRequestData = await billingRequestRes.json()
     const billingRequestId = billingRequestData.billing_requests.id
+    console.log('GC billing request created:', billingRequestId)
 
-    // 5. Create billing request flow (hosted page)
+    // 4. Create billing request flow (hosted page)
+    const flowBody = {
+      billing_request_flows: {
+        redirect_uri: `${appUrl}/api/gocardless/confirm?requestId=${requestId}&applicationId=${applicationId}&conversationId=${conversationId}&startDate=${encodeURIComponent(startDate)}`,
+        exit_uri: `${appUrl}/customer/dashboard?gc_abandoned=1&conversationId=${conversationId}`,
+        links: { billing_request: billingRequestId },
+        prefilled_customer: {
+          given_name: profile.full_name?.split(' ')[0] ?? '',
+          family_name: profile.full_name?.split(' ').slice(1).join(' ') ?? '',
+          email: profile.email ?? '',
+        },
+      },
+    }
+
+    console.log('Creating GC flow:', JSON.stringify(flowBody))
+
     const flowRes = await fetch(`${gcBaseUrl}/billing_request_flows`, {
       method: 'POST',
       headers: {
@@ -108,38 +123,32 @@ export async function POST(request: NextRequest) {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
       },
-      body: JSON.stringify({
-        billing_request_flows: {
-          redirect_uri: `${appUrl}/api/gocardless/confirm?requestId=${requestId}&applicationId=${applicationId}&conversationId=${conversationId}&startDate=${encodeURIComponent(startDate)}`,
-          exit_uri: `${appUrl}/customer/dashboard?gc_abandoned=1&conversationId=${conversationId}`,
-          links: { billing_request: billingRequestId },
-          prefilled_customer: {
-            given_name: profile.full_name?.split(' ')[0] ?? '',
-            family_name: profile.full_name?.split(' ').slice(1).join(' ') ?? '',
-            email: profile.email ?? '',
-          },
-        },
-      }),
+      body: JSON.stringify(flowBody),
     })
 
     if (!flowRes.ok) {
       const err = await flowRes.json()
-      console.error('GoCardless flow creation failed:', err)
+      console.error('GoCardless flow creation failed:', JSON.stringify(err))
       return NextResponse.json({ error: 'Failed to create payment flow' }, { status: 500 })
     }
 
     const flowData = await flowRes.json()
     const authorisationUrl = flowData.billing_request_flows.authorisation_url
     const flowId = flowData.billing_request_flows.id
+    console.log('GC flow created:', flowId)
 
-    // 6. Store flow_id on customer
-    await supabaseAdmin
-      .from('customers')
-      .update({ gocardless_flow_id: flowId })
-      .eq('id', cleanRequest.customer_id)
-
-    // NOTE: system message "Customer is selecting a start date…" is posted
-    // by the frontend after a 60-second delay — NOT here.
+    // 5. Store flow_id on customer and start_date on clean_request
+    // start_date column must exist: ALTER TABLE clean_requests ADD COLUMN IF NOT EXISTS start_date date;
+    await Promise.all([
+      supabaseAdmin
+        .from('customers')
+        .update({ gocardless_flow_id: flowId })
+        .eq('id', cleanRequest.customer_id),
+      supabaseAdmin
+        .from('clean_requests')
+        .update({ start_date: startDate })
+        .eq('id', requestId),
+    ])
 
     return NextResponse.json({ authorisationUrl })
   } catch (err: any) {
