@@ -9,7 +9,7 @@ import { Footer } from '@/components/layout/footer'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type RequestStatus = 'active' | 'paused' | 'deleted' | 'pending_review' | 'pending' | 'completed' | 'cancelled'
+type RequestStatus = 'active' | 'paused' | 'deleted' | 'pending_review' | 'pending' | 'completed' | 'cancelled' | 'fulfilled'
 type Frequency = 'weekly' | 'fortnightly' | 'monthly'
 
 interface CustomerProfile {
@@ -108,7 +108,7 @@ const DAY_SHORT: Record<string, string> = {
 }
 
 const ACTIVE_STATUSES: RequestStatus[] = ['active', 'pending_review', 'pending']
-const PAST_STATUSES: RequestStatus[] = ['deleted', 'paused', 'completed', 'cancelled']
+const PAST_STATUSES: RequestStatus[] = ['deleted', 'paused', 'completed', 'cancelled', 'fulfilled']
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -145,8 +145,7 @@ function calculateBilling(frequency: Frequency, startDate: string): {
 
   if (frequency === 'monthly') {
     return {
-      firstChargePence: monthly,
-      monthlyPence: monthly,
+      firstChargePence: monthly, monthlyPence: monthly,
       firstChargeLabel: `£${(monthly / 100).toFixed(2)}`,
       monthlyLabel: `£${(monthly / 100).toFixed(2)}/month`,
       isFullMonth: true,
@@ -155,10 +154,8 @@ function calculateBilling(frequency: Frequency, startDate: string): {
 
   const daysRemaining = daysInMonth - day + 1
   const proRata = Math.round(monthly * (daysRemaining / daysInMonth))
-
   return {
-    firstChargePence: proRata,
-    monthlyPence: monthly,
+    firstChargePence: proRata, monthlyPence: monthly,
     firstChargeLabel: `£${(proRata / 100).toFixed(2)}`,
     monthlyLabel: `£${(monthly / 100).toFixed(2)}/month`,
     isFullMonth: daysRemaining === daysInMonth,
@@ -216,7 +213,7 @@ function Stepper({ label, value, onDown, onUp, min, max, prefix = '', suffix = '
 
 // ─── Start Date Modal ─────────────────────────────────────────────────────────
 
-function StartDateModal({ cleanerName, frequency, onCancel, onConfirm, loading }: {
+function StartDateModal({ cleanerName, frequency, applicationId, requestId, conversationId, onCancel, onConfirm, loading }: {
   cleanerName: string
   frequency: Frequency
   applicationId: string
@@ -239,115 +236,61 @@ function StartDateModal({ cleanerName, frequency, onCancel, onConfirm, loading }
   nextMonth.setDate(1)
   const nextMonthName = nextMonth.toLocaleDateString('en-GB', { month: 'long' })
   const currentMonthName = new Date(startDate).toLocaleDateString('en-GB', { month: 'long' })
-
   const freqLabel = FREQUENCY_LABEL[frequency] ?? frequency
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      zIndex: 500, padding: '24px',
-    }}>
-      <div style={{
-        background: 'white', borderRadius: '24px', padding: '44px 48px',
-        maxWidth: '540px', width: '100%',
-        boxShadow: '0 32px 80px rgba(0,0,0,0.22)',
-        maxHeight: '92vh', overflowY: 'auto',
-      }}>
-        {/* Title */}
-        <h3 style={{
-          fontFamily: "'DM Sans', sans-serif",
-          fontSize: '26px', fontWeight: 800,
-          color: '#0f172a', textAlign: 'center',
-          margin: '0 0 32px', letterSpacing: '-0.3px',
-        }}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500, padding: '24px' }}>
+      <div style={{ background: 'white', borderRadius: '24px', padding: '44px 48px', maxWidth: '540px', width: '100%', boxShadow: '0 32px 80px rgba(0,0,0,0.22)', maxHeight: '92vh', overflowY: 'auto' }}>
+        <h3 style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '26px', fontWeight: 800, color: '#0f172a', textAlign: 'center', margin: '0 0 32px', letterSpacing: '-0.3px' }}>
           When would you like {firstName} to start?
         </h3>
 
-        {/* Date picker — full bar is clickable */}
+        {/* Date picker — full bar clickable */}
         <div style={{ marginBottom: '28px' }}>
           <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '10px' }}>
             Start date
           </label>
-          <div
-            onClick={() => {
-              const input = document.getElementById('start-date-input') as HTMLInputElement | null
-              input?.showPicker?.()
-            }}
-            style={{ position: 'relative', cursor: 'pointer' }}
-          >
+          <div onClick={() => { const input = document.getElementById('start-date-input') as HTMLInputElement | null; input?.showPicker?.() }} style={{ position: 'relative', cursor: 'pointer' }}>
             <input
               id="start-date-input"
               type="date"
               value={startDate}
               min={minDate}
               onChange={e => setStartDate(e.target.value)}
-              style={{
-                width: '100%', padding: '14px 16px',
-                border: '1.5px solid #e2e8f0', borderRadius: '12px',
-                fontSize: '17px', fontWeight: 600, color: '#0f172a',
-                fontFamily: "'DM Sans', sans-serif", outline: 'none',
-                boxSizing: 'border-box', cursor: 'pointer',
-                pointerEvents: 'none',
-              }}
+              style={{ width: '100%', padding: '14px 16px', border: '1.5px solid #e2e8f0', borderRadius: '12px', fontSize: '17px', fontWeight: 600, color: '#0f172a', fontFamily: "'DM Sans', sans-serif", outline: 'none', boxSizing: 'border-box', cursor: 'pointer', pointerEvents: 'none' }}
             />
           </div>
         </div>
 
         {/* Pricing breakdown */}
-        <div style={{
-          background: '#f8fafc', borderRadius: '14px',
-          padding: '20px', marginBottom: '14px',
-          border: '1px solid #e2e8f0',
-        }}>
+        <div style={{ background: '#f8fafc', borderRadius: '14px', padding: '20px', marginBottom: '12px', border: '1px solid #e2e8f0' }}>
           <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '16px' }}>
             Vouchee service fee · {freqLabel}
           </div>
-
-          {/* First payment */}
           <div style={{ marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid #e2e8f0' }}>
-            <div style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a', marginBottom: '4px' }}>
-              {billing.firstChargeLabel} today
-            </div>
+            <div style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a', marginBottom: '4px' }}>{billing.firstChargeLabel} today</div>
             <div style={{ fontSize: '13px', color: '#94a3b8' }}>
-              {billing.isFullMonth || frequency === 'monthly'
-                ? 'Taken within 3 working days'
-                : `Pro-rata for ${currentMonthName} · within 3 working days`
-              }
+              {billing.isFullMonth || frequency === 'monthly' ? 'Taken within 3 working days' : `Pro-rata for ${currentMonthName} · within 3 working days`}
             </div>
           </div>
-
-          {/* Recurring */}
           <div>
-            <div style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a', marginBottom: '4px' }}>
-              Then {billing.monthlyLabel} from 1st {nextMonthName}
-            </div>
+            <div style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a', marginBottom: '4px' }}>Then {billing.monthlyLabel} from 1st {nextMonthName}</div>
             <div style={{ fontSize: '13px', color: '#94a3b8' }}>Billed on the 1st of each month</div>
           </div>
         </div>
 
-        {/* Cancel anytime notice */}
-        <div style={{ fontSize: '13px', color: '#64748b', textAlign: 'center', margin: '0 0 14px' }}>
+        <div style={{ fontSize: '13px', color: '#64748b', textAlign: 'center', margin: '0 0 12px' }}>
           Cancel anytime with 30 days' notice.
         </div>
 
-        {/* Late month warning */}
         {showLateMonthWarning && (
-          <div style={{
-            background: '#fffbeb', border: '1px solid #fde68a',
-            borderRadius: '10px', padding: '14px 16px',
-            marginBottom: '14px', fontSize: '14px', color: '#92400e', lineHeight: 1.6,
-          }}>
+          <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '10px', padding: '14px 16px', marginBottom: '14px', fontSize: '14px', color: '#92400e', lineHeight: 1.6 }}>
             ⚠️ Your first payment is taken now, then monthly on the 1st. You may see two payments close together — this is normal and only happens when setting up your Direct Debit.
           </div>
         )}
 
         {/* Trust badge */}
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-          background: '#f8fafc', border: '1px solid #e2e8f0',
-          borderRadius: '10px', padding: '12px 16px', marginBottom: '28px',
-        }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '12px 16px', marginBottom: '28px' }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M12 1L3 5V11C3 16.55 6.84 21.74 12 23C17.16 21.74 21 16.55 21 11V5L12 1Z" fill="#16a34a" opacity="0.15" stroke="#16a34a" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             <path d="M9 12L11 14L15 10" stroke="#16a34a" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -357,32 +300,11 @@ function StartDateModal({ cleanerName, frequency, onCancel, onConfirm, loading }
           </span>
         </div>
 
-        {/* Buttons */}
         <div style={{ display: 'flex', gap: '12px' }}>
-          <button
-            onClick={onCancel}
-            disabled={loading}
-            style={{
-              flex: 1, background: 'white', border: '1.5px solid #e2e8f0',
-              borderRadius: '12px', padding: '15px', fontSize: '15px',
-              fontWeight: 600, color: '#64748b', cursor: 'pointer',
-              fontFamily: "'DM Sans', sans-serif",
-            }}
-          >
+          <button onClick={onCancel} disabled={loading} style={{ flex: 1, background: 'white', border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '15px', fontSize: '15px', fontWeight: 600, color: '#64748b', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
             Cancel
           </button>
-          <button
-            onClick={() => onConfirm(startDate)}
-            disabled={loading || !startDate}
-            style={{
-              flex: 2, background: '#16a34a', border: 'none',
-              borderRadius: '12px', padding: '15px', fontSize: '15px',
-              fontWeight: 700, color: 'white',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              opacity: loading ? 0.7 : 1,
-              fontFamily: "'DM Sans', sans-serif",
-            }}
-          >
+          <button onClick={() => onConfirm(startDate)} disabled={loading || !startDate} style={{ flex: 2, background: '#16a34a', border: 'none', borderRadius: '12px', padding: '15px', fontSize: '15px', fontWeight: 700, color: 'white', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, fontFamily: "'DM Sans', sans-serif" }}>
             {loading ? 'Setting up…' : 'Secure your cleaner →'}
           </button>
         </div>
@@ -391,77 +313,41 @@ function StartDateModal({ cleanerName, frequency, onCancel, onConfirm, loading }
   )
 }
 
-// ─── Edit Modal ───────────────────────────────────────────────────────────────
+// ─── Success Banner ───────────────────────────────────────────────────────────
 
-function EditModal({ request, onSave, onClose, saving }: {
-  request: CleaningRequest; onSave: (id: string, draft: EditDraft) => Promise<void>; onClose: () => void; saving: boolean
-}) {
-  const [draft, setDraft] = useState<EditDraft>({
-    bedrooms: request.bedrooms ?? 1, bathrooms: request.bathrooms ?? 1,
-    hours_per_session: request.hours_per_session ?? 2, hourly_rate: request.hourly_rate ?? 15,
-    preferred_days: (request.preferred_days ?? []).map(d => d.toLowerCase()),
-    time_of_day: request.time_of_day ?? 'Flexible', tasks: request.tasks ?? [],
-  })
-
-  const estPerSession = (draft.hours_per_session * draft.hourly_rate).toFixed(2)
-  const toggleDay = (day: string) => setDraft(d => ({ ...d, preferred_days: d.preferred_days.includes(day) ? d.preferred_days.filter(x => x !== day) : [...d.preferred_days, day] }))
-  const toggleTask = (task: string) => setDraft(d => ({ ...d, tasks: d.tasks.includes(task) ? d.tasks.filter(x => x !== task) : [...d.tasks, task] }))
-
+function SuccessBanner({ onClose }: { onClose: () => void }) {
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 200, padding: '0' }}>
-      <div style={{ background: 'white', borderRadius: '24px 24px 0 0', width: '100%', maxWidth: '720px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 -8px 40px rgba(0,0,0,0.15)' }}>
-        <div style={{ position: 'sticky', top: 0, background: 'white', borderBottom: '1px solid #f1f5f9', padding: '16px 24px 14px', zIndex: 10 }}>
-          <div style={{ width: '40px', height: '4px', background: '#e2e8f0', borderRadius: '2px', margin: '0 auto 16px' }} />
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <h2 style={{ fontFamily: "'Lora', serif", fontSize: '20px', fontWeight: 700, color: '#0f172a', margin: 0 }}>Edit listing</h2>
-            <button onClick={onClose} style={{ background: '#f1f5f9', border: 'none', borderRadius: '50%', width: '32px', height: '32px', fontSize: '16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>✕</button>
+    <>
+      <style>{`
+        @keyframes successSlideUp {
+          from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+          to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+        @keyframes popIn {
+          0%   { transform: scale(0.5); }
+          70%  { transform: scale(1.2); }
+          100% { transform: scale(1); }
+        }
+        @keyframes confetti1 { 0% { transform: translateY(0) rotate(0deg); opacity: 1; } 100% { transform: translateY(-60px) rotate(180deg); opacity: 0; } }
+        @keyframes confetti2 { 0% { transform: translateY(0) rotate(0deg); opacity: 1; } 100% { transform: translateY(-80px) translateX(20px) rotate(-120deg); opacity: 0; } }
+        @keyframes confetti3 { 0% { transform: translateY(0) rotate(0deg); opacity: 1; } 100% { transform: translateY(-70px) translateX(-15px) rotate(240deg); opacity: 0; } }
+      `}</style>
+      <div style={{ position: 'fixed', bottom: '24px', left: '50%', transform: 'translateX(-50%)', zIndex: 400, animation: 'successSlideUp 0.4s ease forwards', maxWidth: '500px', width: 'calc(100vw - 48px)' }}>
+        <div style={{ background: 'linear-gradient(135deg, #16a34a, #15803d)', color: 'white', borderRadius: '16px', padding: '20px 24px', boxShadow: '0 16px 48px rgba(22,163,74,0.45)', display: 'flex', alignItems: 'flex-start', gap: '14px', position: 'relative', overflow: 'hidden' }}>
+          {/* Confetti dots */}
+          <span style={{ position: 'absolute', top: '12px', right: '60px', width: '8px', height: '8px', borderRadius: '50%', background: '#fef08a', animation: 'confetti1 1s ease forwards 0.2s', opacity: 0 }} />
+          <span style={{ position: 'absolute', top: '20px', right: '80px', width: '6px', height: '6px', borderRadius: '50%', background: '#bfdbfe', animation: 'confetti2 1.1s ease forwards 0.3s', opacity: 0 }} />
+          <span style={{ position: 'absolute', top: '8px', right: '70px', width: '7px', height: '7px', borderRadius: '50%', background: '#fca5a5', animation: 'confetti3 0.9s ease forwards 0.1s', opacity: 0 }} />
+
+          <div style={{ fontSize: '32px', flexShrink: 0, animation: 'popIn 0.5s ease forwards' }}>🎉</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: '16px', fontWeight: 800, marginBottom: '4px', letterSpacing: '-0.2px' }}>Direct Debit confirmed!</div>
+            <div style={{ fontSize: '13px', opacity: 0.9, lineHeight: 1.5 }}>Your cleaner has been notified with your address and start date. They'll be in touch soon.</div>
           </div>
-        </div>
-        <div style={{ padding: '24px' }}>
-          <div style={{ background: '#fefce8', border: '1px solid #fef08a', borderRadius: '12px', padding: '14px 16px', marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <div style={{ fontSize: '10px', fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '2px' }}>Offered rate</div>
-              <div style={{ fontSize: '22px', fontWeight: 800, color: '#78350f' }}>£{draft.hourly_rate.toFixed(2)}<span style={{ fontSize: '13px', fontWeight: 500 }}>/hr</span></div>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: '10px', fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '2px' }}>Est. per session</div>
-              <div style={{ fontSize: '18px', fontWeight: 700, color: '#92400e' }}>~£{estPerSession}</div>
-            </div>
-          </div>
-          <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '10px' }}>Property & time</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '24px' }}>
-            <Stepper label="Bedrooms" value={draft.bedrooms} min={1} max={8} onDown={() => setDraft(d => ({ ...d, bedrooms: d.bedrooms - 1 }))} onUp={() => setDraft(d => ({ ...d, bedrooms: d.bedrooms + 1 }))} />
-            <Stepper label="Bathrooms" value={draft.bathrooms} min={1} max={6} onDown={() => setDraft(d => ({ ...d, bathrooms: d.bathrooms - 1 }))} onUp={() => setDraft(d => ({ ...d, bathrooms: d.bathrooms + 1 }))} />
-            <Stepper label="Hours per session" value={draft.hours_per_session} min={1} max={10} onDown={() => setDraft(d => ({ ...d, hours_per_session: Math.max(1, d.hours_per_session - 0.5) }))} onUp={() => setDraft(d => ({ ...d, hours_per_session: Math.min(10, d.hours_per_session + 0.5) }))} suffix=" hrs" />
-            <Stepper label="Hourly rate" value={draft.hourly_rate} min={12} max={40} onDown={() => setDraft(d => ({ ...d, hourly_rate: Math.max(12, +(d.hourly_rate - 0.5).toFixed(2)) }))} onUp={() => setDraft(d => ({ ...d, hourly_rate: Math.min(40, +(d.hourly_rate + 0.5).toFixed(2)) }))} prefix="£" suffix="/hr" />
-          </div>
-          <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '10px' }}>Preferred days</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '24px' }}>
-            {ALL_DAYS.map(day => {
-              const selected = draft.preferred_days.includes(day)
-              return <button key={day} onClick={() => toggleDay(day)} style={{ padding: '7px 14px', borderRadius: '100px', fontSize: '13px', fontWeight: 600, border: selected ? '2px solid #3b82f6' : '1.5px solid #e2e8f0', background: selected ? '#eff6ff' : 'white', color: selected ? '#1d4ed8' : '#64748b', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>{DAY_SHORT[day]}</button>
-            })}
-          </div>
-          <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '10px' }}>Time of day</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '24px' }}>
-            {TIME_SLOTS.map(slot => {
-              const selected = draft.time_of_day === slot
-              return <button key={slot} onClick={() => setDraft(d => ({ ...d, time_of_day: slot }))} style={{ padding: '7px 14px', borderRadius: '100px', fontSize: '13px', fontWeight: 600, border: selected ? '2px solid #3b82f6' : '1.5px solid #e2e8f0', background: selected ? '#eff6ff' : 'white', color: selected ? '#1d4ed8' : '#64748b', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>{slot}</button>
-            })}
-          </div>
-          <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '10px' }}>Tasks requested</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '32px' }}>
-            {ALL_TASKS.map(task => {
-              const selected = draft.tasks.includes(task)
-              return <button key={task} onClick={() => toggleTask(task)} style={{ padding: '7px 14px', borderRadius: '100px', fontSize: '13px', fontWeight: 600, border: selected ? '2px solid #22c55e' : '1.5px solid #e2e8f0', background: selected ? '#f0fdf4' : 'white', color: selected ? '#15803d' : '#64748b', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>{TASK_LABELS[task] ?? task}</button>
-            })}
-          </div>
-          <button onClick={() => onSave(request.id, draft)} disabled={saving} style={{ width: '100%', padding: '14px', background: saving ? '#94a3b8' : '#0f172a', color: 'white', border: 'none', borderRadius: '12px', fontSize: '15px', fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
-            {saving ? 'Saving…' : 'Save & update listing →'}
-          </button>
+          <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '8px', color: 'white', fontSize: '13px', padding: '4px 10px', cursor: 'pointer', flexShrink: 0, fontFamily: "'DM Sans', sans-serif" }}>Dismiss</button>
         </div>
       </div>
-    </div>
+    </>
   )
 }
 
@@ -506,7 +392,7 @@ function ActiveRequestCard({ request, onPause, onRepublish, onDelete, onEdit }: 
   const visibleTasks = (request.tasks ?? []).slice(0, 6)
   const extraTasks = (request.tasks ?? []).length - 6
 
-  const statusConfig = {
+  const statusConfig: Record<string, { label: string; dot: string; border: string; headerBg: string; textColor: string }> = {
     active:         { label: 'Live — accepting applications', dot: '#22c55e', border: '#bbf7d0', headerBg: '#f0fdf4', textColor: '#15803d' },
     pending_review: { label: 'Under review',                  dot: '#f59e0b', border: '#fde68a', headerBg: '#fffbeb', textColor: '#92400e' },
     pending:        { label: 'Live — accepting applications', dot: '#22c55e', border: '#bbf7d0', headerBg: '#f0fdf4', textColor: '#15803d' },
@@ -514,6 +400,7 @@ function ActiveRequestCard({ request, onPause, onRepublish, onDelete, onEdit }: 
     deleted:        { label: 'Deleted',                       dot: '#ef4444', border: '#fecaca', headerBg: '#fef2f2', textColor: '#991b1b' },
     completed:      { label: 'Completed',                     dot: '#8b5cf6', border: '#ddd6fe', headerBg: '#f5f3ff', textColor: '#6d28d9' },
     cancelled:      { label: 'Cancelled',                     dot: '#94a3b8', border: '#e2e8f0', headerBg: '#f8fafc', textColor: '#64748b' },
+    fulfilled:      { label: 'Cleaner confirmed',             dot: '#16a34a', border: '#bbf7d0', headerBg: '#f0fdf4', textColor: '#15803d' },
   }
   const sc = statusConfig[request.status] ?? statusConfig.active
 
@@ -586,10 +473,11 @@ function PastListingRow({ request }: { request: CleaningRequest }) {
   const rate = request.hourly_rate ?? 0
   const hours = request.hours_per_session ?? 0
   const locationLabel = request.zone ? (ZONE_LABELS[request.zone] ?? request.zone) : 'Horsham'
-  const statusLabels: Record<RequestStatus, { label: string; color: string }> = {
+  const statusLabels: Record<string, { label: string; color: string }> = {
     deleted: { label: 'Removed', color: '#94a3b8' }, paused: { label: 'Paused', color: '#eab308' },
     completed: { label: 'Completed', color: '#8b5cf6' }, cancelled: { label: 'Cancelled', color: '#94a3b8' },
-    active: { label: 'Active', color: '#22c55e' }, pending_review: { label: 'Review', color: '#f59e0b' }, pending: { label: 'Live', color: '#22c55e' },
+    active: { label: 'Active', color: '#22c55e' }, pending_review: { label: 'Review', color: '#f59e0b' },
+    pending: { label: 'Live', color: '#22c55e' }, fulfilled: { label: 'Fulfilled', color: '#16a34a' },
   }
   const st = statusLabels[request.status] ?? statusLabels.deleted
   return (
@@ -626,12 +514,8 @@ function PastListingRow({ request }: { request: CleaningRequest }) {
 // ─── Application Card ─────────────────────────────────────────────────────────
 
 function ApplicationCard({ app, onAccept, onDecline, onOpenChat, accepting, declining }: {
-  app: Application
-  onAccept: () => void
-  onDecline: () => void
-  onOpenChat: () => void
-  accepting: boolean
-  declining: boolean
+  app: Application; onAccept: () => void; onDecline: () => void
+  onOpenChat: () => void; accepting: boolean; declining: boolean
 }) {
   const displayName = app.cleaner_name || 'Cleaner'
   const initial = displayName[0]?.toUpperCase() || 'C'
@@ -643,9 +527,7 @@ function ApplicationCard({ app, onAccept, onDecline, onOpenChat, accepting, decl
       <div style={{ padding: '20px 20px 16px' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-            <div style={{ width: '52px', height: '52px', borderRadius: '50%', background: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', fontWeight: 800, color: 'white', flexShrink: 0 }}>
-              {initial}
-            </div>
+            <div style={{ width: '52px', height: '52px', borderRadius: '50%', background: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', fontWeight: 800, color: 'white', flexShrink: 0 }}>{initial}</div>
             <div>
               <div style={{ fontSize: '17px', fontWeight: 800, color: '#0f172a', lineHeight: 1.2 }}>{displayName}</div>
               <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '3px' }}>Member since {memberSince}</div>
@@ -653,42 +535,33 @@ function ApplicationCard({ app, onAccept, onDecline, onOpenChat, accepting, decl
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end', flexShrink: 0 }}>
             {['DBS checked', 'Right to work', 'Insured'].map(badge => (
-              <span key={badge} style={{ display: 'flex', alignItems: 'center', gap: '3px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '100px', padding: '3px 8px', fontSize: '10px', fontWeight: 700, color: '#15803d', whiteSpace: 'nowrap' }}>
-                ✓ {badge}
-              </span>
+              <span key={badge} style={{ display: 'flex', alignItems: 'center', gap: '3px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '100px', padding: '3px 8px', fontSize: '10px', fontWeight: 700, color: '#15803d', whiteSpace: 'nowrap' }}>✓ {badge}</span>
             ))}
           </div>
         </div>
       </div>
-
       <div style={{ padding: '0 20px 16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <span style={{
-          fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '100px',
-          background: app.status === 'pending' ? '#f1f5f9' : app.status === 'accepted' ? '#f0fdf4' : '#fef2f2',
-          color: app.status === 'pending' ? '#64748b' : app.status === 'accepted' ? '#15803d' : '#dc2626',
-        }}>
+        <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '100px', background: app.status === 'pending' ? '#f1f5f9' : app.status === 'accepted' ? '#f0fdf4' : '#fef2f2', color: app.status === 'pending' ? '#64748b' : app.status === 'accepted' ? '#15803d' : '#dc2626' }}>
           {app.status === 'pending' ? 'New' : app.status === 'accepted' ? 'Chatting' : 'Declined'}
         </span>
         <span style={{ fontSize: '12px', color: '#94a3b8' }}>{appliedLabel}</span>
       </div>
-
       <div style={{ padding: '0 20px 16px' }}>
         <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>Reviews</div>
         <div style={{ filter: 'blur(4px)', pointerEvents: 'none' }}>
           <div style={{ padding: '10px 12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '6px' }}>
             <span style={{ color: '#f59e0b', fontSize: '12px' }}>★★★★★</span>
-            <div style={{ fontSize: '13px', color: '#475569', marginTop: '3px', lineHeight: 1.4 }}>Absolutely brilliant — left the house spotless. Would highly recommend to anyone.</div>
+            <div style={{ fontSize: '13px', color: '#475569', marginTop: '3px', lineHeight: 1.4 }}>Absolutely brilliant — left the house spotless. Would highly recommend.</div>
             <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '3px' }}>— Sarah T.</div>
           </div>
           <div style={{ padding: '10px 12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
             <span style={{ color: '#f59e0b', fontSize: '12px' }}>★★★★★</span>
-            <div style={{ fontSize: '13px', color: '#475569', marginTop: '3px', lineHeight: 1.4 }}>Very professional and thorough. Always on time and incredibly easy to communicate with.</div>
+            <div style={{ fontSize: '13px', color: '#475569', marginTop: '3px', lineHeight: 1.4 }}>Very professional and thorough. Always on time and easy to communicate with.</div>
             <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '3px' }}>— James H.</div>
           </div>
         </div>
         <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '10px', textAlign: 'center', fontStyle: 'italic' }}>🔒 Accept this application to unlock their full reviews</div>
       </div>
-
       {app.message && (
         <div style={{ padding: '0 20px 16px', borderTop: '1px solid #f1f5f9' }}>
           <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px', marginTop: '16px' }}>{displayName}'s message</div>
@@ -697,39 +570,24 @@ function ApplicationCard({ app, onAccept, onDecline, onOpenChat, accepting, decl
           </div>
         </div>
       )}
-
       <div style={{ padding: '16px 20px 20px', borderTop: '1px solid #f1f5f9', display: 'flex', gap: '12px' }}>
         {app.status === 'pending' && (
           <>
-            <button onClick={onAccept} disabled={accepting} style={{
-              flex: 1, background: '#16a34a', color: 'white', border: 'none', borderRadius: '10px',
-              padding: '14px 0', fontSize: '14px', fontWeight: 700, cursor: accepting ? 'not-allowed' : 'pointer',
-              fontFamily: "'DM Sans', sans-serif", opacity: accepting ? 0.7 : 1,
-            }}>
+            <button onClick={onAccept} disabled={accepting} style={{ flex: 1, background: '#16a34a', color: 'white', border: 'none', borderRadius: '10px', padding: '14px 0', fontSize: '14px', fontWeight: 700, cursor: accepting ? 'not-allowed' : 'pointer', fontFamily: "'DM Sans', sans-serif", opacity: accepting ? 0.7 : 1 }}>
               {accepting ? 'Opening…' : '✓ Accept & chat'}
             </button>
-            <button onClick={onDecline} disabled={declining} style={{
-              flex: 1, background: 'white', color: '#ef4444', border: '1.5px solid #fecaca', borderRadius: '10px',
-              padding: '14px 0', fontSize: '14px', fontWeight: 700, cursor: declining ? 'not-allowed' : 'pointer',
-              fontFamily: "'DM Sans', sans-serif", opacity: declining ? 0.7 : 1,
-            }}>
+            <button onClick={onDecline} disabled={declining} style={{ flex: 1, background: 'white', color: '#ef4444', border: '1.5px solid #fecaca', borderRadius: '10px', padding: '14px 0', fontSize: '14px', fontWeight: 700, cursor: declining ? 'not-allowed' : 'pointer', fontFamily: "'DM Sans', sans-serif", opacity: declining ? 0.7 : 1 }}>
               {declining ? 'Declining…' : '✕ Decline'}
             </button>
           </>
         )}
         {app.status === 'accepted' && (
-          <button onClick={onOpenChat} style={{
-            flex: 1, background: '#2563eb', color: 'white', border: 'none', borderRadius: '10px',
-            padding: '14px 0', fontSize: '14px', fontWeight: 700, cursor: 'pointer',
-            fontFamily: "'DM Sans', sans-serif",
-          }}>
+          <button onClick={onOpenChat} style={{ flex: 1, background: '#2563eb', color: 'white', border: 'none', borderRadius: '10px', padding: '14px 0', fontSize: '14px', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
             💬 Open chat
           </button>
         )}
         {app.status === 'rejected' && (
-          <div style={{ flex: 1, textAlign: 'center', fontSize: '13px', color: '#94a3b8', padding: '14px 0', fontStyle: 'italic' }}>
-            Application declined
-          </div>
+          <div style={{ flex: 1, textAlign: 'center', fontSize: '13px', color: '#94a3b8', padding: '14px 0', fontStyle: 'italic' }}>Application declined</div>
         )}
       </div>
     </div>
@@ -754,34 +612,17 @@ function ApplicationsSection({ requestIds, requests, onAccept, onOpenChat }: {
     const fetchApplications = async () => {
       const supabase = createClient()
       const { data: appData, error } = await (supabase as any)
-        .from('applications')
-        .select('*')
-        .in('request_id', requestIds)
-        .order('created_at', { ascending: false })
-
+        .from('applications').select('*').in('request_id', requestIds).order('created_at', { ascending: false })
       if (error || !appData) { setLoading(false); return }
-
       const enriched: Application[] = await Promise.all(
         appData.map(async (app: any) => {
           const { data: cleaner } = await (supabase as any)
-            .from('cleaners')
-            .select('profile_id, created_at, profiles(full_name)')
-            .eq('id', app.cleaner_id)
-            .single()
-
+            .from('cleaners').select('profile_id, created_at, profiles(full_name)').eq('id', app.cleaner_id).single()
           const fullName = cleaner?.profiles?.full_name ?? ''
-          const cleanerCreatedAt = cleaner?.created_at ? new Date(cleaner.created_at) : new Date()
-          const memberSince = cleanerCreatedAt.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
-
-          return {
-            ...app,
-            cleaner_name: fullName ? formatFirstLastInitial(fullName) : 'Cleaner',
-            cleaner_initial: fullName ? fullName[0]?.toUpperCase() : 'C',
-            cleaner_member_since: memberSince,
-          }
+          const memberSince = cleaner?.created_at ? new Date(cleaner.created_at).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }) : 'Recently'
+          return { ...app, cleaner_name: fullName ? formatFirstLastInitial(fullName) : 'Cleaner', cleaner_initial: fullName ? fullName[0]?.toUpperCase() : 'C', cleaner_member_since: memberSince }
         })
       )
-
       setApplications(enriched)
       setLoading(false)
     }
@@ -799,25 +640,15 @@ function ApplicationsSection({ requestIds, requests, onAccept, onOpenChat }: {
   const handleDecline = async (app: Application) => {
     setDeclining(app.id)
     try {
-      await fetch('/api/decline-application', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ applicationId: app.id }),
-      })
+      await fetch('/api/decline-application', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ applicationId: app.id }) })
       setApplications(prev => prev.map(a => a.id === app.id ? { ...a, status: 'rejected' } : a))
-    } catch (err) {
-      console.error('Decline error:', err)
-    } finally {
-      setDeclining(null)
-    }
+    } catch (err) { console.error('Decline error:', err) } finally { setDeclining(null) }
   }
 
   return (
     <div style={{ marginBottom: '36px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-        <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-          Applications {applications.length > 0 ? `(${applications.length})` : ''}
-        </div>
+      <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '14px' }}>
+        Applications {applications.length > 0 ? `(${applications.length})` : ''}
       </div>
       {loading ? (
         <div style={{ background: 'white', borderRadius: '14px', border: '1px solid #e2e8f0', padding: '24px', textAlign: 'center' }}>
@@ -827,19 +658,15 @@ function ApplicationsSection({ requestIds, requests, onAccept, onOpenChat }: {
         <div style={{ background: 'white', borderRadius: '14px', border: '1.5px dashed #e2e8f0', padding: '32px 24px', textAlign: 'center' }}>
           <div style={{ fontSize: '28px', marginBottom: '10px' }}>👀</div>
           <p style={{ fontSize: '14px', fontWeight: 600, color: '#475569', margin: '0 0 4px' }}>No applications yet</p>
-          <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0 }}>Once cleaners apply to your listing, you'll be able to review their profiles here.</p>
+          <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0 }}>Once cleaners apply to your listing, you'll see them here.</p>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {applications.map(app => (
-            <ApplicationCard
-              key={app.id}
-              app={app}
-              onAccept={() => handleAccept(app)}
-              onDecline={() => handleDecline(app)}
+            <ApplicationCard key={app.id} app={app}
+              onAccept={() => handleAccept(app)} onDecline={() => handleDecline(app)}
               onOpenChat={() => onOpenChat(app.id, app.request_id)}
-              accepting={accepting === app.id}
-              declining={declining === app.id}
+              accepting={accepting === app.id} declining={declining === app.id}
             />
           ))}
         </div>
@@ -861,16 +688,12 @@ function CustomerDashboardContent() {
   const [editingRequest, setEditingRequest] = useState<CleaningRequest | null>(null)
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
+  const [showSuccessBanner, setShowSuccessBanner] = useState(false)
 
   const [startDateModal, setStartDateModal] = useState<{
-    applicationId: string
-    requestId: string
-    conversationId: string
-    cleanerName: string
-    frequency: Frequency
+    applicationId: string; requestId: string; conversationId: string; cleanerName: string; frequency: Frequency
   } | null>(null)
   const [startDateLoading, setStartDateLoading] = useState(false)
-  // null = not started, active setTimeout = timer running, null after fire = timer already fired
   const systemMessageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const timerFiredRef = useRef(false)
 
@@ -883,30 +706,39 @@ function CustomerDashboardContent() {
 
         const { data: profileData, error: profileError } = await (supabase as any)
           .from('profiles').select('full_name, email, role').eq('id', user.id).single()
-
         if (profileError || !profileData) throw new Error('Could not load your profile.')
         if (profileData.role !== 'customer' && profileData.role !== 'admin') { router.replace('/cleaner/dashboard'); return }
 
         const { data: customerRecord } = await (supabase as any)
           .from('customers').select('id').eq('profile_id', user.id).single()
-
         const customerId = customerRecord?.id ?? null
 
         const { data: requestData, error: requestError } = customerId
-          ? await (supabase as any)
-              .from('clean_requests').select('*').eq('customer_id', customerId).order('created_at', { ascending: false })
+          ? await (supabase as any).from('clean_requests').select('*').eq('customer_id', customerId).order('created_at', { ascending: false })
           : { data: [], error: null }
-
         if (requestError) throw new Error(requestError.message)
 
         setProfile(profileData)
         setRequests(requestData ?? [])
+
+        // Check for GoCardless success redirect
+        if (searchParams.get('gc_success') === '1') {
+          setShowSuccessBanner(true)
+        }
 
         const acceptAppId = searchParams.get('accept')
         const acceptReqId = searchParams.get('request')
         if (acceptAppId && acceptReqId) {
           handleAcceptApplication(acceptAppId, acceptReqId)
           router.replace('/customer/dashboard')
+        }
+
+        // Open chat if redirected from GC confirm
+        const chatId = searchParams.get('chat')
+        if (chatId) {
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent('vouchee:open-chat', { detail: { conversationId: chatId } }))
+          }, 800)
         }
       } catch (err: any) {
         setError(err?.message ?? 'Something went wrong.')
@@ -919,28 +751,16 @@ function CustomerDashboardContent() {
 
   const handleAcceptApplication = async (applicationId: string, requestId: string) => {
     try {
-      const res = await fetch('/api/accept-application', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ applicationId, requestId }),
-      })
+      const res = await fetch('/api/accept-application', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ applicationId, requestId }) })
       const data = await res.json()
-      if (!res.ok || !data.conversationId) {
-        showToast('Could not open chat — please try again')
-        return
-      }
-      window.dispatchEvent(new CustomEvent('vouchee:open-chat', {
-        detail: { conversationId: data.conversationId },
-      }))
-    } catch (err) {
-      showToast('Something went wrong — please try again')
-    }
+      if (!res.ok || !data.conversationId) { showToast('Could not open chat — please try again'); return }
+      window.dispatchEvent(new CustomEvent('vouchee:open-chat', { detail: { conversationId: data.conversationId } }))
+    } catch (err) { showToast('Something went wrong — please try again') }
   }
 
   const handleOpenStartDateModal = (detail: { applicationId: string; requestId: string; conversationId: string; cleanerName: string; frequency: Frequency }) => {
     setStartDateModal(detail)
     timerFiredRef.current = false
-
     if (systemMessageTimerRef.current) clearTimeout(systemMessageTimerRef.current)
     systemMessageTimerRef.current = setTimeout(async () => {
       timerFiredRef.current = true
@@ -949,39 +769,21 @@ function CustomerDashboardContent() {
         const supabase = createClient()
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
-        await (supabase as any).from('messages').insert({
-          conversation_id: detail.conversationId,
-          sender_id: user.id,
-          sender_role: 'customer',
-          content: '🗓️ __system__ Customer is selecting a start date…',
-        })
+        await (supabase as any).from('messages').insert({ conversation_id: detail.conversationId, sender_id: user.id, sender_role: 'customer', content: '🗓️ __system__ Customer is selecting a start date…' })
       } catch (e) {}
     }, 60000)
   }
 
   const handleCancelStartDate = async () => {
-    // Clear timer if still running
-    if (systemMessageTimerRef.current) {
-      clearTimeout(systemMessageTimerRef.current)
-      systemMessageTimerRef.current = null
-    }
-
+    if (systemMessageTimerRef.current) { clearTimeout(systemMessageTimerRef.current); systemMessageTimerRef.current = null }
     const modal = startDateModal
     setStartDateModal(null)
-
-    // Only post abandoned message if the 60s timer already fired
-    // (meaning cleaner already saw "Customer is selecting a start date…")
     if (timerFiredRef.current && modal) {
       try {
         const supabase = createClient()
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
-        await (supabase as any).from('messages').insert({
-          conversation_id: modal.conversationId,
-          sender_id: user.id,
-          sender_role: 'customer',
-          content: '__system__ Vouchee: Customer did not complete set-up.',
-        })
+        await (supabase as any).from('messages').insert({ conversation_id: modal.conversationId, sender_id: user.id, sender_role: 'customer', content: '__system__ Customer did not complete set-up.' })
       } catch (e) {}
     }
     timerFiredRef.current = false
@@ -989,43 +791,21 @@ function CustomerDashboardContent() {
 
   const handleConfirmStartDate = async (startDate: string) => {
     if (!startDateModal) return
-    if (systemMessageTimerRef.current) {
-      clearTimeout(systemMessageTimerRef.current)
-      systemMessageTimerRef.current = null
-    }
+    if (systemMessageTimerRef.current) { clearTimeout(systemMessageTimerRef.current); systemMessageTimerRef.current = null }
     timerFiredRef.current = false
     setStartDateLoading(true)
     try {
-      const res = await fetch('/api/gocardless/create-flow', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          applicationId: startDateModal.applicationId,
-          requestId: startDateModal.requestId,
-          conversationId: startDateModal.conversationId,
-          startDate,
-        }),
-      })
+      const res = await fetch('/api/gocardless/create-flow', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ applicationId: startDateModal.applicationId, requestId: startDateModal.requestId, conversationId: startDateModal.conversationId, startDate }) })
       const data = await res.json()
-      if (!res.ok || !data.authorisationUrl) {
-        showToast('Could not set up Direct Debit — please try again')
-        setStartDateLoading(false)
-        return
-      }
+      if (!res.ok || !data.authorisationUrl) { showToast('Could not set up Direct Debit — please try again'); setStartDateLoading(false); return }
       window.location.href = data.authorisationUrl
-    } catch (err) {
-      showToast('Something went wrong — please try again')
-      setStartDateLoading(false)
-    }
+    } catch (err) { showToast('Something went wrong — please try again'); setStartDateLoading(false) }
   }
 
-  // Listen for approve event from chat widget — stable ref, registered once
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail
-      if (detail?.applicationId && detail?.requestId && detail?.conversationId) {
-        handleOpenStartDateModal(detail)
-      }
+      if (detail?.applicationId && detail?.requestId && detail?.conversationId) handleOpenStartDateModal(detail)
     }
     window.addEventListener('vouchee:approve-cleaner', handler)
     return () => window.removeEventListener('vouchee:approve-cleaner', handler)
@@ -1034,20 +814,12 @@ function CustomerDashboardContent() {
   const handleOpenChat = async (applicationId: string, requestId: string) => {
     try {
       const supabase = createClient()
-      const { data: app } = await (supabase as any)
-        .from('applications').select('cleaner_id').eq('id', applicationId).single()
+      const { data: app } = await (supabase as any).from('applications').select('cleaner_id').eq('id', applicationId).single()
       if (!app) { showToast('Could not find application'); return }
-      const { data: conv } = await (supabase as any)
-        .from('conversations').select('id')
-        .eq('cleaner_id', app.cleaner_id).eq('clean_request_id', requestId).single()
-      if (conv) {
-        window.dispatchEvent(new CustomEvent('vouchee:open-chat', { detail: { conversationId: conv.id } }))
-      } else {
-        await handleAcceptApplication(applicationId, requestId)
-      }
-    } catch (err) {
-      showToast('Could not open chat — please try again')
-    }
+      const { data: conv } = await (supabase as any).from('conversations').select('id').eq('cleaner_id', app.cleaner_id).eq('clean_request_id', requestId).single()
+      if (conv) window.dispatchEvent(new CustomEvent('vouchee:open-chat', { detail: { conversationId: conv.id } }))
+      else await handleAcceptApplication(applicationId, requestId)
+    } catch (err) { showToast('Could not open chat — please try again') }
   }
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3500) }
@@ -1091,11 +863,7 @@ function CustomerDashboardContent() {
       setRequests(r => r.map(req => req.id === id ? { ...req, ...draft } : req))
       setEditingRequest(null)
       showToast('Listing updated successfully')
-    } catch (err: any) {
-      showToast('Failed to save — please try again')
-    } finally {
-      setSaving(false)
-    }
+    } catch (err: any) { showToast('Failed to save — please try again') } finally { setSaving(false) }
   }
 
   if (loading) {
@@ -1122,6 +890,7 @@ function CustomerDashboardContent() {
   const activeRequests = requests.filter(r => ACTIVE_STATUSES.includes(r.status))
   const pastRequests = requests.filter(r => PAST_STATUSES.includes(r.status))
   const pausedRequests = requests.filter(r => r.status === 'paused')
+  const fulfilledRequests = requests.filter(r => r.status === 'fulfilled')
   const hasActive = activeRequests.length > 0
   const hasPaused = pausedRequests.length > 0
   const activeRequestIds = activeRequests.map(r => r.id)
@@ -1198,18 +967,22 @@ function CustomerDashboardContent() {
             )}
 
             {activeRequestIds.length > 0 && (
-              <ApplicationsSection
-                requestIds={activeRequestIds}
-                requests={activeRequests}
-                onAccept={handleAcceptApplication}
-                onOpenChat={handleOpenChat}
-              />
+              <ApplicationsSection requestIds={activeRequestIds} requests={activeRequests} onAccept={handleAcceptApplication} onOpenChat={handleOpenChat} />
             )}
 
-            {pastRequests.filter(r => r.status !== 'paused').length > 0 && (
+            {fulfilledRequests.length > 0 && (
+              <div style={{ marginBottom: '36px' }}>
+                <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '14px' }}>Confirmed cleaners</div>
+                {fulfilledRequests.map(req => (
+                  <ActiveRequestCard key={req.id} request={req} onPause={() => {}} onRepublish={() => {}} onDelete={() => setModal({ type: 'delete', id: req.id })} onEdit={() => setEditingRequest(req)} />
+                ))}
+              </div>
+            )}
+
+            {pastRequests.filter(r => r.status !== 'paused' && r.status !== 'fulfilled').length > 0 && (
               <div>
                 <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '14px' }}>Past listings</div>
-                {pastRequests.filter(r => r.status !== 'paused').map(req => <PastListingRow key={req.id} request={req} />)}
+                {pastRequests.filter(r => r.status !== 'paused' && r.status !== 'fulfilled').map(req => <PastListingRow key={req.id} request={req} />)}
               </div>
             )}
 
@@ -1234,21 +1007,83 @@ function CustomerDashboardContent() {
         {modal?.type === 'delete' && <ConfirmModal message="Permanently remove this request? This cannot be undone." onConfirm={() => handleDelete(modal.id)} onCancel={() => setModal(null)} />}
         {editingRequest && <EditModal request={editingRequest} onSave={handleSaveEdit} onClose={() => setEditingRequest(null)} saving={saving} />}
         {toast && <ComingSoonBanner message={toast} onClose={() => setToast(null)} />}
+        {showSuccessBanner && <SuccessBanner onClose={() => setShowSuccessBanner(false)} />}
 
         {startDateModal && (
           <StartDateModal
-            cleanerName={startDateModal.cleanerName}
-            frequency={startDateModal.frequency}
-            applicationId={startDateModal.applicationId}
-            requestId={startDateModal.requestId}
+            cleanerName={startDateModal.cleanerName} frequency={startDateModal.frequency}
+            applicationId={startDateModal.applicationId} requestId={startDateModal.requestId}
             conversationId={startDateModal.conversationId}
-            onCancel={handleCancelStartDate}
-            onConfirm={handleConfirmStartDate}
-            loading={startDateLoading}
+            onCancel={handleCancelStartDate} onConfirm={handleConfirmStartDate} loading={startDateLoading}
           />
         )}
       </div>
     </>
+  )
+}
+
+// ─── Edit Modal ───────────────────────────────────────────────────────────────
+
+function EditModal({ request, onSave, onClose, saving }: {
+  request: CleaningRequest; onSave: (id: string, draft: EditDraft) => Promise<void>; onClose: () => void; saving: boolean
+}) {
+  const [draft, setDraft] = useState<EditDraft>({
+    bedrooms: request.bedrooms ?? 1, bathrooms: request.bathrooms ?? 1,
+    hours_per_session: request.hours_per_session ?? 2, hourly_rate: request.hourly_rate ?? 15,
+    preferred_days: (request.preferred_days ?? []).map(d => d.toLowerCase()),
+    time_of_day: request.time_of_day ?? 'Flexible', tasks: request.tasks ?? [],
+  })
+
+  const estPerSession = (draft.hours_per_session * draft.hourly_rate).toFixed(2)
+  const toggleDay = (day: string) => setDraft(d => ({ ...d, preferred_days: d.preferred_days.includes(day) ? d.preferred_days.filter(x => x !== day) : [...d.preferred_days, day] }))
+  const toggleTask = (task: string) => setDraft(d => ({ ...d, tasks: d.tasks.includes(task) ? d.tasks.filter(x => x !== task) : [...d.tasks, task] }))
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 200, padding: '0' }}>
+      <div style={{ background: 'white', borderRadius: '24px 24px 0 0', width: '100%', maxWidth: '720px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 -8px 40px rgba(0,0,0,0.15)' }}>
+        <div style={{ position: 'sticky', top: 0, background: 'white', borderBottom: '1px solid #f1f5f9', padding: '16px 24px 14px', zIndex: 10 }}>
+          <div style={{ width: '40px', height: '4px', background: '#e2e8f0', borderRadius: '2px', margin: '0 auto 16px' }} />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <h2 style={{ fontFamily: "'Lora', serif", fontSize: '20px', fontWeight: 700, color: '#0f172a', margin: 0 }}>Edit listing</h2>
+            <button onClick={onClose} style={{ background: '#f1f5f9', border: 'none', borderRadius: '50%', width: '32px', height: '32px', fontSize: '16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>✕</button>
+          </div>
+        </div>
+        <div style={{ padding: '24px' }}>
+          <div style={{ background: '#fefce8', border: '1px solid #fef08a', borderRadius: '12px', padding: '14px 16px', marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <div style={{ fontSize: '10px', fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '2px' }}>Offered rate</div>
+              <div style={{ fontSize: '22px', fontWeight: 800, color: '#78350f' }}>£{draft.hourly_rate.toFixed(2)}<span style={{ fontSize: '13px', fontWeight: 500 }}>/hr</span></div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: '10px', fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '2px' }}>Est. per session</div>
+              <div style={{ fontSize: '18px', fontWeight: 700, color: '#92400e' }}>~£{estPerSession}</div>
+            </div>
+          </div>
+          <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '10px' }}>Property & time</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '24px' }}>
+            <Stepper label="Bedrooms" value={draft.bedrooms} min={1} max={8} onDown={() => setDraft(d => ({ ...d, bedrooms: d.bedrooms - 1 }))} onUp={() => setDraft(d => ({ ...d, bedrooms: d.bedrooms + 1 }))} />
+            <Stepper label="Bathrooms" value={draft.bathrooms} min={1} max={6} onDown={() => setDraft(d => ({ ...d, bathrooms: d.bathrooms - 1 }))} onUp={() => setDraft(d => ({ ...d, bathrooms: d.bathrooms + 1 }))} />
+            <Stepper label="Hours per session" value={draft.hours_per_session} min={1} max={10} onDown={() => setDraft(d => ({ ...d, hours_per_session: Math.max(1, d.hours_per_session - 0.5) }))} onUp={() => setDraft(d => ({ ...d, hours_per_session: Math.min(10, d.hours_per_session + 0.5) }))} suffix=" hrs" />
+            <Stepper label="Hourly rate" value={draft.hourly_rate} min={12} max={40} onDown={() => setDraft(d => ({ ...d, hourly_rate: Math.max(12, +(d.hourly_rate - 0.5).toFixed(2)) }))} onUp={() => setDraft(d => ({ ...d, hourly_rate: Math.min(40, +(d.hourly_rate + 0.5).toFixed(2)) }))} prefix="£" suffix="/hr" />
+          </div>
+          <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '10px' }}>Preferred days</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '24px' }}>
+            {ALL_DAYS.map(day => { const selected = draft.preferred_days.includes(day); return <button key={day} onClick={() => toggleDay(day)} style={{ padding: '7px 14px', borderRadius: '100px', fontSize: '13px', fontWeight: 600, border: selected ? '2px solid #3b82f6' : '1.5px solid #e2e8f0', background: selected ? '#eff6ff' : 'white', color: selected ? '#1d4ed8' : '#64748b', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>{DAY_SHORT[day]}</button> })}
+          </div>
+          <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '10px' }}>Time of day</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '24px' }}>
+            {TIME_SLOTS.map(slot => { const selected = draft.time_of_day === slot; return <button key={slot} onClick={() => setDraft(d => ({ ...d, time_of_day: slot }))} style={{ padding: '7px 14px', borderRadius: '100px', fontSize: '13px', fontWeight: 600, border: selected ? '2px solid #3b82f6' : '1.5px solid #e2e8f0', background: selected ? '#eff6ff' : 'white', color: selected ? '#1d4ed8' : '#64748b', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>{slot}</button> })}
+          </div>
+          <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '10px' }}>Tasks requested</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '32px' }}>
+            {ALL_TASKS.map(task => { const selected = draft.tasks.includes(task); return <button key={task} onClick={() => toggleTask(task)} style={{ padding: '7px 14px', borderRadius: '100px', fontSize: '13px', fontWeight: 600, border: selected ? '2px solid #22c55e' : '1.5px solid #e2e8f0', background: selected ? '#f0fdf4' : 'white', color: selected ? '#15803d' : '#64748b', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>{TASK_LABELS[task] ?? task}</button> })}
+          </div>
+          <button onClick={() => onSave(request.id, draft)} disabled={saving} style={{ width: '100%', padding: '14px', background: saving ? '#94a3b8' : '#0f172a', color: 'white', border: 'none', borderRadius: '12px', fontSize: '15px', fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
+            {saving ? 'Saving…' : 'Save & update listing →'}
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }
 

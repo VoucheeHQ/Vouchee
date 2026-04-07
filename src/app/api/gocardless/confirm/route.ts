@@ -55,81 +55,46 @@ function buildCleanerEmail({
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;padding:32px 16px;">
     <tr><td align="center">
       <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
-
-        <!-- Header -->
-        <tr><td style="background:#0f172a;borderRadius:16px 16px 0 0;padding:28px 32px;text-align:center;border-radius:16px 16px 0 0;">
+        <tr><td style="background:#0f172a;padding:28px 32px;text-align:center;border-radius:16px 16px 0 0;">
           <div style="font-size:22px;font-weight:800;color:white;letter-spacing:-0.5px;">Vouchee</div>
           <div style="font-size:13px;color:rgba(255,255,255,0.6);margin-top:4px;">vouchee.co.uk</div>
         </td></tr>
-
-        <!-- Body -->
         <tr><td style="background:white;padding:32px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 16px 16px;">
-
           <div style="font-size:24px;font-weight:800;color:#0f172a;margin-bottom:6px;">🎉 You've been chosen!</div>
           <p style="font-size:15px;color:#475569;margin:0 0 24px;line-height:1.6;">
             Great news, ${cleanerName} — <strong>${customerFirstName}</strong> has selected you for their regular clean. Here are all the details you need to get started.
           </p>
-
-          <!-- Start date highlight -->
           <div style="background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:12px;padding:20px 24px;margin-bottom:20px;text-align:center;">
             <div style="font-size:11px;font-weight:700;color:#15803d;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Start date</div>
             <div style="font-size:22px;font-weight:800;color:#0f172a;">${formatDate(startDate)}</div>
           </div>
-
-          <!-- Address -->
           <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:16px 20px;margin-bottom:20px;">
             <div style="font-size:11px;font-weight:700;color:#1d4ed8;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">📍 Customer address</div>
             <div style="font-size:15px;font-weight:700;color:#0f172a;">${address}</div>
             <div style="font-size:12px;color:#64748b;margin-top:4px;">${ZONE_LABELS[zone] ?? zone}</div>
           </div>
-
-          <!-- Job summary -->
           <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px 20px;margin-bottom:20px;">
             <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px;">Job summary</div>
             <table width="100%" cellpadding="0" cellspacing="0">
-              <tr>
-                <td style="padding:4px 0;font-size:13px;color:#64748b;width:50%;">Bedrooms</td>
-                <td style="padding:4px 0;font-size:13px;font-weight:700;color:#0f172a;">${bedrooms}</td>
-              </tr>
-              <tr>
-                <td style="padding:4px 0;font-size:13px;color:#64748b;">Bathrooms</td>
-                <td style="padding:4px 0;font-size:13px;font-weight:700;color:#0f172a;">${bathrooms}</td>
-              </tr>
-              <tr>
-                <td style="padding:4px 0;font-size:13px;color:#64748b;">Frequency</td>
-                <td style="padding:4px 0;font-size:13px;font-weight:700;color:#0f172a;">${freqLabel}</td>
-              </tr>
-              <tr>
-                <td style="padding:4px 0;font-size:13px;color:#64748b;">Hours per clean</td>
-                <td style="padding:4px 0;font-size:13px;font-weight:700;color:#0f172a;">${hours_per_session} hrs</td>
-              </tr>
-              <tr>
-                <td style="padding:4px 0;font-size:13px;color:#64748b;">Rate</td>
-                <td style="padding:4px 0;font-size:13px;font-weight:700;color:#0f172a;">£${hourly_rate?.toFixed(2)}/hr (~${estPerSession} per clean)</td>
-              </tr>
+              <tr><td style="padding:4px 0;font-size:13px;color:#64748b;width:50%;">Bedrooms</td><td style="padding:4px 0;font-size:13px;font-weight:700;color:#0f172a;">${bedrooms}</td></tr>
+              <tr><td style="padding:4px 0;font-size:13px;color:#64748b;">Bathrooms</td><td style="padding:4px 0;font-size:13px;font-weight:700;color:#0f172a;">${bathrooms}</td></tr>
+              <tr><td style="padding:4px 0;font-size:13px;color:#64748b;">Frequency</td><td style="padding:4px 0;font-size:13px;font-weight:700;color:#0f172a;">${freqLabel}</td></tr>
+              <tr><td style="padding:4px 0;font-size:13px;color:#64748b;">Hours per clean</td><td style="padding:4px 0;font-size:13px;font-weight:700;color:#0f172a;">${hours_per_session} hrs</td></tr>
+              <tr><td style="padding:4px 0;font-size:13px;color:#64748b;">Rate</td><td style="padding:4px 0;font-size:13px;font-weight:700;color:#0f172a;">£${hourly_rate?.toFixed(2)}/hr (~${estPerSession} per clean)</td></tr>
             </table>
           </div>
-
-          <!-- Tasks -->
           ${tasks?.length > 0 ? `
           <div style="margin-bottom:20px;">
             <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Tasks requested</div>
             <div>${taskChips}</div>
           </div>` : ''}
-
           <p style="font-size:13px;color:#94a3b8;margin:24px 0 0;text-align:center;">
-            You can continue to communicate with ${customerFirstName} via your
-            <a href="${process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.vouchee.co.uk'}/cleaner/dashboard" style="color:#2563eb;">Vouchee dashboard</a>.
+            Communicate with ${customerFirstName} via your <a href="${process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.vouchee.co.uk'}/cleaner/dashboard" style="color:#2563eb;">Vouchee dashboard</a>.
           </p>
         </td></tr>
-
-        <!-- Footer -->
         <tr><td style="padding:20px 0;text-align:center;">
-          <p style="margin:0;font-size:12px;color:#94a3b8;">
-            © 2026 Vouchee · <a href="https://www.vouchee.co.uk" style="color:#94a3b8;">vouchee.co.uk</a>
-          </p>
+          <p style="margin:0;font-size:12px;color:#94a3b8;">© 2026 Vouchee · <a href="https://www.vouchee.co.uk" style="color:#94a3b8;">vouchee.co.uk</a></p>
         </td></tr>
-
       </table>
     </td></tr>
   </table>
@@ -154,7 +119,7 @@ function buildRejectionEmail(customerFirstName: string, zone: string): string {
             Unfortunately, <strong>${customerFirstName}</strong> has chosen another cleaner for this role.
           </p>
           <p style="font-size:14px;color:#64748b;line-height:1.6;margin:0 0 24px;">
-            Don't be discouraged — new listings appear regularly. Keep an eye on your jobs page for new opportunities in your area.
+            Don't be discouraged — new listings appear regularly. Keep an eye on your jobs page for new opportunities.
           </p>
           <a href="${process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.vouchee.co.uk'}/cleaner/jobs" style="display:block;background:#2563eb;color:white;text-align:center;padding:14px;border-radius:10px;font-size:14px;font-weight:700;text-decoration:none;">View available jobs →</a>
         </td></tr>
@@ -178,6 +143,8 @@ export async function GET(request: NextRequest) {
   const requestId = searchParams.get('requestId')
   const applicationId = searchParams.get('applicationId')
   const conversationId = searchParams.get('conversationId')
+  // ✅ KEY FIX: read startDate directly from URL params — don't try to fetch from GoCardless
+  const startDate = searchParams.get('startDate') ?? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.vouchee.co.uk'
 
@@ -186,7 +153,9 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // 1. Get the application (accepted one)
+    console.log('GC confirm: requestId', requestId, 'applicationId', applicationId, 'startDate', startDate)
+
+    // 1. Get the application
     const { data: application, error: appError } = await supabaseAdmin
       .from('applications')
       .select('id, cleaner_id, request_id, status')
@@ -194,6 +163,7 @@ export async function GET(request: NextRequest) {
       .single()
 
     if (appError || !application) {
+      console.error('Application lookup failed:', appError)
       return NextResponse.redirect(`${appUrl}/customer/dashboard?gc_error=1`)
     }
 
@@ -205,74 +175,36 @@ export async function GET(request: NextRequest) {
       .single()
 
     if (reqError || !cleanRequest) {
+      console.error('Clean request lookup failed:', reqError)
       return NextResponse.redirect(`${appUrl}/customer/dashboard?gc_error=1`)
     }
 
     // Guard: already fulfilled (double redirect protection)
     if (cleanRequest.status === 'fulfilled') {
-      return NextResponse.redirect(`${appUrl}/customer/dashboard?gc_already=1`)
+      console.log('Already fulfilled, redirecting')
+      return NextResponse.redirect(`${appUrl}/customer/dashboard?gc_success=1&chat=${conversationId}`)
     }
 
     // 3. Get customer record + address
     const { data: customerRecord } = await supabaseAdmin
       .from('customers')
-      .select('id, profile_id, address_line1, address_line2, city, postcode, gocardless_flow_id')
+      .select('id, profile_id, address_line1, address_line2, city, postcode')
       .eq('id', cleanRequest.customer_id)
       .single()
 
     if (!customerRecord) {
+      console.error('Customer record not found')
       return NextResponse.redirect(`${appUrl}/customer/dashboard?gc_error=1`)
     }
 
-    // 4. Get start date from GoCardless via the billing request
-    const gcEnvironment = process.env.GOCARDLESS_ENVIRONMENT ?? 'sandbox'
-    const gcBaseUrl = gcEnvironment === 'live'
-      ? 'https://api.gocardless.com'
-      : 'https://api-sandbox.gocardless.com'
-    const gcToken = process.env.GOCARDLESS_ACCESS_TOKEN!
-
-    // Fetch the billing request flows to get mandate + start date
-    let mandateId: string | null = null
-    let startDate: string = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] // fallback: 7 days from now
-
-    if (customerRecord.gocardless_flow_id) {
-      const flowRes = await fetch(`${gcBaseUrl}/billing_request_flows/${customerRecord.gocardless_flow_id}`, {
-        headers: {
-          'Authorization': `Bearer ${gcToken}`,
-          'GoCardless-Version': '2015-07-06',
-          'Accept': 'application/json',
-        },
-      })
-      if (flowRes.ok) {
-        const flowData = await flowRes.json()
-        const billingRequestId = flowData.billing_request_flows?.links?.billing_request
-        if (billingRequestId) {
-          const brRes = await fetch(`${gcBaseUrl}/billing_requests/${billingRequestId}`, {
-            headers: {
-              'Authorization': `Bearer ${gcToken}`,
-              'GoCardless-Version': '2015-07-06',
-              'Accept': 'application/json',
-            },
-          })
-          if (brRes.ok) {
-            const brData = await brRes.json()
-            mandateId = brData.billing_requests?.links?.mandate ?? null
-            // Use mandate created_at date as start date proxy, or collect_on if set
-            const collectOn = brData.billing_requests?.payment_request?.collect_on
-            if (collectOn) startDate = collectOn
-          }
-        }
-      }
-    }
-
-    // 5. Get cleaner profile details for the email
+    // 4. Get cleaner profile
     const { data: cleanerRecord } = await supabaseAdmin
       .from('cleaners')
       .select('profile_id, profiles(full_name, email)')
       .eq('id', application.cleaner_id)
       .single() as { data: { profile_id: string; profiles: { full_name: string; email: string } } | null }
 
-    // 6. Get customer profile for first name
+    // 5. Get customer profile for first name
     const { data: customerProfile } = await supabaseAdmin
       .from('profiles')
       .select('full_name')
@@ -291,8 +223,10 @@ export async function GET(request: NextRequest) {
       customerRecord.postcode
     )
 
-    // ── Fire everything simultaneously ──────────────────────────────────────
+    const formattedStartDate = formatDate(startDate)
+    console.log('Firing all post-confirmation actions. startDate:', startDate, 'cleanerEmail:', cleanerEmail)
 
+    // ── Fire everything simultaneously ──────────────────────────────────────
     await Promise.all([
 
       // A. Update clean_request: fulfilled + start_date + assigned_cleaner_id
@@ -305,13 +239,13 @@ export async function GET(request: NextRequest) {
         })
         .eq('id', requestId),
 
-      // B. Update accepted application
+      // B. Update accepted application to confirmed
       supabaseAdmin
         .from('applications')
         .update({ status: 'accepted' })
         .eq('id', applicationId),
 
-      // C. Reject all other pending/chatting applications for this request
+      // C. Reject all other pending applications for this request
       supabaseAdmin
         .from('applications')
         .update({ status: 'rejected' })
@@ -319,25 +253,20 @@ export async function GET(request: NextRequest) {
         .neq('id', applicationId)
         .in('status', ['pending', 'accepted']),
 
-      // D. Store mandate ID on customer
-      mandateId
-        ? supabaseAdmin.from('customers').update({ gocardless_mandate_id: mandateId }).eq('id', customerRecord.id)
-        : Promise.resolve(),
-
-      // E. Post confirmed system message to the accepted chat
+      // D. Post confirmed system message to accepted chat
       supabaseAdmin.from('messages').insert({
         conversation_id: conversationId,
         sender_id: customerRecord.profile_id,
         sender_role: 'customer',
-        content: `🗓️ __system__ Start date confirmed — ${new Date(startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}. Your cleaner will be in touch to arrange the first visit.`,
+        content: `🎉 __system__ Direct Debit confirmed — start date ${formattedStartDate}. Your address has been shared with your cleaner.`,
       }),
 
-      // F. Send acceptance email to cleaner
+      // E. Send acceptance email to cleaner
       cleanerEmail
         ? resend.emails.send({
             from: 'Vouchee <hello@vouchee.co.uk>',
             to: cleanerEmail,
-            subject: `You've been chosen — start date ${new Date(startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })}`,
+            subject: `🎉 You've been chosen — starting ${formattedStartDate}`,
             html: buildCleanerEmail({
               cleanerName: cleanerDisplayName,
               customerFirstName,
@@ -352,10 +281,12 @@ export async function GET(request: NextRequest) {
               zone: cleanRequest.zone ?? '',
             }),
           })
-        : Promise.resolve(),
+        : Promise.resolve(null),
     ])
 
-    // G. Reject other applicants — get their conversations + send rejection emails + system messages
+    console.log('Core actions complete. Processing rejections...')
+
+    // F. Get all rejected apps and send their emails + system messages
     const { data: rejectedApps } = await supabaseAdmin
       .from('applications')
       .select('id, cleaner_id')
@@ -366,39 +297,38 @@ export async function GET(request: NextRequest) {
     if (rejectedApps && rejectedApps.length > 0) {
       await Promise.all(
         rejectedApps.map(async (rejApp: any) => {
-          // Get their conversation (if any)
-          const { data: conv } = await supabaseAdmin
-            .from('conversations')
-            .select('id')
-            .eq('clean_request_id', requestId)
-            .eq('cleaner_id', rejApp.cleaner_id)
-            .single() as { data: { id: string } | null }
-
-          // Get their email
-          const { data: rejCleaner } = await supabaseAdmin
-            .from('cleaners')
-            .select('profiles(email)')
-            .eq('id', rejApp.cleaner_id)
-            .single() as { data: { profiles: { email: string } } | null }
+          const [convResult, cleanerResult] = await Promise.all([
+            (supabaseAdmin
+              .from('conversations')
+              .select('id')
+              .eq('clean_request_id', requestId)
+              .eq('cleaner_id', rejApp.cleaner_id)
+              .single()) as any,
+            (supabaseAdmin
+              .from('cleaners')
+              .select('profiles(email)')
+              .eq('id', rejApp.cleaner_id)
+              .single()) as any,
+          ])
 
           const tasks = []
 
-          if (conv?.id) {
+          if (convResult.data?.id) {
             tasks.push(
               supabaseAdmin.from('messages').insert({
-                conversation_id: conv.id,
+                conversation_id: convResult.data.id,
                 sender_id: customerRecord.profile_id,
                 sender_role: 'customer',
-                content: '__system__ Vouchee: This listing has been filled. Thank you for applying.',
+                content: '__system__ This listing has been filled. Thank you for applying.',
               })
             )
           }
 
-          if (rejCleaner?.profiles?.email) {
+          if (cleanerResult.data?.profiles?.email) {
             tasks.push(
               resend.emails.send({
                 from: 'Vouchee <hello@vouchee.co.uk>',
-                to: rejCleaner.profiles.email,
+                to: cleanerResult.data.profiles.email,
                 subject: 'Application update from Vouchee',
                 html: buildRejectionEmail(customerFirstName, cleanRequest.zone ?? ''),
               })
@@ -410,7 +340,9 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Redirect back to dashboard with success flag + open the chat
+    console.log('All done. Redirecting to dashboard.')
+
+    // Redirect to dashboard with success flag — dashboard shows celebration banner
     return NextResponse.redirect(`${appUrl}/customer/dashboard?gc_success=1&chat=${conversationId}`)
 
   } catch (err: any) {
