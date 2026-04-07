@@ -31,21 +31,21 @@ export function Header({ userRole }: HeaderProps) {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-ink/5 bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/60">
-      <nav className="max-w-screen-2xl mx-auto px-8 flex h-16 items-center justify-between w-full">
+      <nav className="max-w-screen-2xl mx-auto px-6 flex h-20 items-center justify-between w-full">
 
         {/* Logo */}
         <Link href="/" className="flex items-center flex-shrink-0" aria-label="Vouchee home">
-          <VoucheeLogoText width={120} height={30} />
+          <VoucheeLogoText width={156} height={39} />
         </Link>
 
         {/* Desktop Navigation */}
-        <div className="hidden items-center gap-4 lg:flex">
+        <div className="hidden items-center gap-2 lg:flex">
           {navigation.map((item) => (
             <Link
               key={item.name}
               href={item.href}
               className={cn(
-                'text-sm font-medium transition-colors hover:text-brand-600 whitespace-nowrap',
+                'text-base font-medium transition-colors hover:text-brand-600 whitespace-nowrap px-2 py-1',
                 pathname === item.href ? 'text-brand-600' : 'text-ink-secondary'
               )}
             >
@@ -59,7 +59,7 @@ export function Header({ userRole }: HeaderProps) {
           {userRole ? (
             <Link
               href={dashboardHref}
-              className="text-sm font-semibold bg-brand-600 text-white px-4 py-2 rounded-lg hover:bg-brand-700 transition-colors whitespace-nowrap"
+              className="text-base font-semibold bg-brand-600 text-white px-5 py-2.5 rounded-lg hover:bg-brand-700 transition-colors whitespace-nowrap"
             >
               My dashboard
             </Link>
@@ -67,13 +67,13 @@ export function Header({ userRole }: HeaderProps) {
             <>
               <Link
                 href="/login"
-                className="text-sm font-medium text-ink-secondary hover:text-brand-600 transition-colors whitespace-nowrap"
+                className="text-base font-medium text-ink-secondary hover:text-brand-600 transition-colors whitespace-nowrap"
               >
                 Log in
               </Link>
               <Link
                 href="/request/property"
-                className="text-sm font-semibold bg-brand-600 text-white px-4 py-2 rounded-lg hover:bg-brand-700 transition-colors whitespace-nowrap"
+                className="text-base font-semibold bg-brand-600 text-white px-5 py-2.5 rounded-lg hover:bg-brand-700 transition-colors whitespace-nowrap"
               >
                 Get started
               </Link>
@@ -88,20 +88,20 @@ export function Header({ userRole }: HeaderProps) {
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
         >
-          {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
         </button>
       </nav>
 
       {/* Mobile menu */}
       {mobileMenuOpen && (
         <div className="border-t border-ink/5 bg-surface lg:hidden">
-          <div className="max-w-screen-2xl mx-auto px-8 space-y-1 py-4 w-full">
+          <div className="max-w-screen-2xl mx-auto px-6 space-y-1 py-4 w-full">
             {navigation.map((item) => (
               <Link
                 key={item.name}
                 href={item.href}
                 className={cn(
-                  'block rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+                  'block rounded-lg px-3 py-2.5 text-base font-medium transition-colors',
                   pathname === item.href
                     ? 'bg-brand-50 text-brand-600'
                     : 'text-ink-secondary hover:bg-surface-secondary hover:text-ink'
@@ -117,7 +117,7 @@ export function Header({ userRole }: HeaderProps) {
               {userRole ? (
                 <Link
                   href={dashboardHref}
-                  className="block rounded-lg px-3 py-2.5 text-sm font-semibold bg-brand-600 text-white text-center"
+                  className="block rounded-lg px-3 py-2.5 text-base font-semibold bg-brand-600 text-white text-center"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   My dashboard
@@ -126,14 +126,14 @@ export function Header({ userRole }: HeaderProps) {
                 <>
                   <Link
                     href="/login"
-                    className="block rounded-lg px-3 py-2.5 text-sm font-medium text-ink-secondary hover:bg-surface-secondary"
+                    className="block rounded-lg px-3 py-2.5 text-base font-medium text-ink-secondary hover:bg-surface-secondary"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     Log in
                   </Link>
                   <Link
                     href="/request/property"
-                    className="block rounded-lg px-3 py-2.5 text-sm font-semibold bg-brand-600 text-white text-center"
+                    className="block rounded-lg px-3 py-2.5 text-base font-semibold bg-brand-600 text-white text-center"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     Get started

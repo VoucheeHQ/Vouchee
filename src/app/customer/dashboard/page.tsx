@@ -219,6 +219,9 @@ function Stepper({ label, value, onDown, onUp, min, max, prefix = '', suffix = '
 function StartDateModal({ cleanerName, frequency, onCancel, onConfirm, loading }: {
   cleanerName: string
   frequency: Frequency
+  applicationId: string
+  requestId: string
+  conversationId: string
   onCancel: () => void
   onConfirm: (startDate: string) => void
   loading: boolean
