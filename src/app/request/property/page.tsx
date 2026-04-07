@@ -142,7 +142,7 @@ const handlePostcodeChange = (value: string) => {
   setPostcode(value)
   setPostcodeError('')
   setDetectedSector(null)
-  if (value.replace(/\s/g, '').length >= 5) {
+  if (value.replace(/\s/g, '').length >= 7) {
     if (!UK_POSTCODE_REGEX.test(value.trim())) {
       setPostcodeError('Please enter a valid UK postcode (e.g. RH12 1AB)')
       return
