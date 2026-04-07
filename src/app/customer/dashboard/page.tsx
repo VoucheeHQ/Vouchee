@@ -94,11 +94,10 @@ const FREQUENCY_LABEL: Record<Frequency, string> = {
   weekly: 'Weekly', fortnightly: 'Fortnightly', monthly: 'Monthly',
 }
 
-// Vouchee monthly fees in pence
 const MONTHLY_FEES: Record<Frequency, number> = {
-  weekly: 4333,     // £43.33
-  fortnightly: 3248, // £32.48
-  monthly: 2499,    // £24.99
+  weekly: 4333,
+  fortnightly: 3248,
+  monthly: 2499,
 }
 
 const TIME_SLOTS = ['Morning (8am - 12pm)', 'During the day (8am - 5pm)', 'Afternoon (12pm - 5pm)', 'Evening (5pm - 8pm)', 'Flexible']
@@ -132,7 +131,6 @@ function daysSince(iso: string) {
   return Math.floor((Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60 * 24))
 }
 
-// Calculate pro-rata first charge and recurring amount
 function calculateBilling(frequency: Frequency, startDate: string): {
   firstChargePence: number
   monthlyPence: number
@@ -146,7 +144,6 @@ function calculateBilling(frequency: Frequency, startDate: string): {
   const daysInMonth = new Date(start.getFullYear(), start.getMonth() + 1, 0).getDate()
 
   if (frequency === 'monthly') {
-    // Monthly is always full amount — one clean = one month
     return {
       firstChargePence: monthly,
       monthlyPence: monthly,
@@ -156,7 +153,6 @@ function calculateBilling(frequency: Frequency, startDate: string): {
     }
   }
 
-  // For weekly/fortnightly: pro-rata remaining days in current month
   const daysRemaining = daysInMonth - day + 1
   const proRata = Math.round(monthly * (daysRemaining / daysInMonth))
 
@@ -169,7 +165,6 @@ function calculateBilling(frequency: Frequency, startDate: string): {
   }
 }
 
-// Minimum date = tomorrow
 function getMinDate(): string {
   const d = new Date()
   d.setDate(d.getDate() + 1)
@@ -243,6 +238,7 @@ function StartDateModal({ cleanerName, frequency, applicationId, requestId, conv
   nextMonth.setMonth(nextMonth.getMonth() + 1)
   nextMonth.setDate(1)
   const nextMonthName = nextMonth.toLocaleDateString('en-GB', { month: 'long' })
+  const currentMonthName = new Date(startDate).toLocaleDateString('en-GB', { month: 'long' })
 
   const freqLabel = FREQUENCY_LABEL[frequency] ?? frequency
 
@@ -297,35 +293,42 @@ function StartDateModal({ cleanerName, frequency, applicationId, requestId, conv
         {/* Pricing breakdown */}
         <div style={{
           background: '#f8fafc', borderRadius: '14px',
-          padding: '18px', marginBottom: '16px',
+          padding: '18px', marginBottom: '12px',
           border: '1px solid #e2e8f0',
         }}>
           <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '14px' }}>
-            Vouchee platform fee · {freqLabel}
+            Vouchee service fee · {freqLabel}
           </div>
 
           {/* First payment */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid #e2e8f0' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', paddingBottom: '10px', borderBottom: '1px solid #e2e8f0' }}>
             <div>
-              <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a', marginBottom: '2px' }}>First payment</div>
-              <div style={{ fontSize: '11px', color: '#94a3b8' }}>
+              <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>
+                {billing.firstChargeLabel} today
+              </div>
+              <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>
                 {billing.isFullMonth || frequency === 'monthly'
                   ? 'Taken within 3 working days'
-                  : `Pro-rata for rest of ${new Date(startDate).toLocaleDateString('en-GB', { month: 'long' })} · within 3 working days`
+                  : `Pro-rata for ${currentMonthName} · within 3 working days`
                 }
               </div>
             </div>
-            <div style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>{billing.firstChargeLabel}</div>
           </div>
 
           {/* Recurring */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a', marginBottom: '2px' }}>Then monthly from 1st {nextMonthName}</div>
-              <div style={{ fontSize: '11px', color: '#94a3b8' }}>Billed on the 1st of each month</div>
+              <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>
+                Then {billing.monthlyLabel} from 1st {nextMonthName}
+              </div>
+              <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>Billed on the 1st of each month</div>
             </div>
-            <div style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>{billing.monthlyLabel}</div>
           </div>
+        </div>
+
+        {/* Cancel anytime notice */}
+        <div style={{ fontSize: '12px', color: '#64748b', textAlign: 'center', margin: '0 0 12px' }}>
+          Cancel anytime with 30 days' notice.
         </div>
 
         {/* Late month warning */}
@@ -333,19 +336,26 @@ function StartDateModal({ cleanerName, frequency, applicationId, requestId, conv
           <div style={{
             background: '#fffbeb', border: '1px solid #fde68a',
             borderRadius: '10px', padding: '12px 14px',
-            marginBottom: '16px', fontSize: '13px', color: '#92400e', lineHeight: 1.6,
+            marginBottom: '12px', fontSize: '13px', color: '#92400e', lineHeight: 1.6,
           }}>
             ⚠️ Because your start date is close to the end of the month, you'll see two payments close together — your first charge within 3 working days, and your regular payment on 1st {nextMonthName}. This is normal and won't happen again.
           </div>
         )}
 
-        {/* Note */}
-        <p style={{
-          fontSize: '12px', color: '#94a3b8', textAlign: 'center',
-          margin: '0 0 24px', lineHeight: 1.6, fontStyle: 'italic',
+        {/* Trust badge */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+          background: '#f8fafc', border: '1px solid #e2e8f0',
+          borderRadius: '10px', padding: '10px 14px', marginBottom: '24px',
         }}>
-          All other conversations will close once confirmed.
-        </p>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 1L3 5V11C3 16.55 6.84 21.74 12 23C17.16 21.74 21 16.55 21 11V5L12 1Z" fill="#16a34a" opacity="0.15" stroke="#16a34a" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M9 12L11 14L15 10" stroke="#16a34a" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          <span style={{ fontSize: '12px', fontWeight: 600, color: '#475569' }}>
+            Secure Direct Debit via GoCardless · Protected by the Direct Debit Guarantee
+          </span>
+        </div>
 
         {/* Buttons */}
         <div style={{ display: 'flex', gap: '12px' }}>
@@ -373,7 +383,7 @@ function StartDateModal({ cleanerName, frequency, applicationId, requestId, conv
               fontFamily: "'DM Sans', sans-serif",
             }}
           >
-            {loading ? 'Setting up…' : 'Set up Direct Debit →'}
+            {loading ? 'Setting up…' : 'Secure your cleaner →'}
           </button>
         </div>
       </div>
@@ -780,7 +790,6 @@ function ApplicationsSection({ requestIds, requests, onAccept, onOpenChat }: {
 
   const handleAccept = async (app: Application) => {
     setAccepting(app.id)
-    // Find the frequency for this request
     const req = requests.find(r => r.id === app.request_id)
     const frequency = req?.frequency ?? 'monthly'
     await onAccept(app.id, app.request_id, app.cleaner_name ?? 'Cleaner', frequency)
@@ -853,7 +862,6 @@ function CustomerDashboardContent() {
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
 
-  // Start date modal state
   const [startDateModal, setStartDateModal] = useState<{
     applicationId: string
     requestId: string
@@ -907,7 +915,6 @@ function CustomerDashboardContent() {
     init()
   }, [router])
 
-  // Accept = open chat (step 1), then the chat widget's Approve button triggers the date modal
   const handleAcceptApplication = async (applicationId: string, requestId: string) => {
     try {
       const res = await fetch('/api/accept-application', {
@@ -928,11 +935,8 @@ function CustomerDashboardContent() {
     }
   }
 
-  // Called from chat widget's Approve button via custom event
   const handleOpenStartDateModal = (detail: { applicationId: string; requestId: string; conversationId: string; cleanerName: string; frequency: Frequency }) => {
     setStartDateModal(detail)
-
-    // Start 60s timer — only post system message if customer stays on modal
     if (systemMessageTimerRef.current) clearTimeout(systemMessageTimerRef.current)
     systemMessageTimerRef.current = setTimeout(async () => {
       try {
@@ -958,7 +962,6 @@ function CustomerDashboardContent() {
     if (!startDateModal) return
     if (systemMessageTimerRef.current) clearTimeout(systemMessageTimerRef.current)
     setStartDateLoading(true)
-
     try {
       const res = await fetch('/api/gocardless/create-flow', {
         method: 'POST',
@@ -983,7 +986,6 @@ function CustomerDashboardContent() {
     }
   }
 
-  // Listen for the approve event from the chat widget
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail
@@ -1000,13 +1002,10 @@ function CustomerDashboardContent() {
       const supabase = createClient()
       const { data: app } = await (supabase as any)
         .from('applications').select('cleaner_id').eq('id', applicationId).single()
-
       if (!app) { showToast('Could not find application'); return }
-
       const { data: conv } = await (supabase as any)
         .from('conversations').select('id')
         .eq('cleaner_id', app.cleaner_id).eq('clean_request_id', requestId).single()
-
       if (conv) {
         window.dispatchEvent(new CustomEvent('vouchee:open-chat', { detail: { conversationId: conv.id } }))
       } else {
