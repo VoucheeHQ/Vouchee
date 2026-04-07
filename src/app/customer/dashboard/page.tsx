@@ -264,24 +264,34 @@ function StartDateModal({ cleanerName, frequency, onCancel, onConfirm, loading }
           When would you like {firstName} to start?
         </h3>
 
-        {/* Date picker */}
+        {/* Date picker — full bar is clickable */}
         <div style={{ marginBottom: '28px' }}>
           <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '10px' }}>
             Start date
           </label>
-          <input
-            type="date"
-            value={startDate}
-            min={minDate}
-            onChange={e => setStartDate(e.target.value)}
-            style={{
-              width: '100%', padding: '14px 16px',
-              border: '1.5px solid #e2e8f0', borderRadius: '12px',
-              fontSize: '17px', fontWeight: 600, color: '#0f172a',
-              fontFamily: "'DM Sans', sans-serif", outline: 'none',
-              boxSizing: 'border-box', cursor: 'pointer',
+          <div
+            onClick={() => {
+              const input = document.getElementById('start-date-input') as HTMLInputElement | null
+              input?.showPicker?.()
             }}
-          />
+            style={{ position: 'relative', cursor: 'pointer' }}
+          >
+            <input
+              id="start-date-input"
+              type="date"
+              value={startDate}
+              min={minDate}
+              onChange={e => setStartDate(e.target.value)}
+              style={{
+                width: '100%', padding: '14px 16px',
+                border: '1.5px solid #e2e8f0', borderRadius: '12px',
+                fontSize: '17px', fontWeight: 600, color: '#0f172a',
+                fontFamily: "'DM Sans', sans-serif", outline: 'none',
+                boxSizing: 'border-box', cursor: 'pointer',
+                pointerEvents: 'none',
+              }}
+            />
+          </div>
         </div>
 
         {/* Pricing breakdown */}
@@ -970,7 +980,7 @@ function CustomerDashboardContent() {
           conversation_id: modal.conversationId,
           sender_id: user.id,
           sender_role: 'customer',
-          content: '__system__ Customer did not complete set-up.',
+          content: '__system__ Vouchee: Customer did not complete set-up.',
         })
       } catch (e) {}
     }

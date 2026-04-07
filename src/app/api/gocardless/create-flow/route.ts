@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Clean request not found' }, { status: 404 })
     }
 
-    // 2. Get the customer's profile and address
+    // 2. Get the customer profile and address
     const { data: customerRecord, error: customerError } = await supabaseAdmin
       .from('customers')
       .select('profile_id, address_line1, address_line2, city, postcode')
@@ -57,12 +57,12 @@ export async function POST(request: NextRequest) {
     const gcToken = process.env.GOCARDLESS_ACCESS_TOKEN!
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.vouchee.co.uk'
 
-    // Ensure all metadata values are explicitly strings — GoCardless rejects non-strings
+    // IMPORTANT: GoCardless mandate_request.metadata and billing_request.metadata
+    // both have a hard limit of 3 keys. startDate is passed via redirect URL instead.
     const meta = {
       vouchee_request_id: String(requestId),
       vouchee_application_id: String(applicationId),
       vouchee_conversation_id: String(conversationId),
-      vouchee_start_date: String(startDate),
     }
 
     // 3. Create GoCardless billing request (mandate only)
@@ -100,6 +100,7 @@ export async function POST(request: NextRequest) {
     console.log('GC billing request created:', billingRequestId)
 
     // 4. Create billing request flow (hosted page)
+    // startDate lives in the redirect URL — confirm route reads it from query params
     const flowBody = {
       billing_request_flows: {
         redirect_uri: `${appUrl}/api/gocardless/confirm?requestId=${requestId}&applicationId=${applicationId}&conversationId=${conversationId}&startDate=${encodeURIComponent(startDate)}`,
@@ -113,7 +114,7 @@ export async function POST(request: NextRequest) {
       },
     }
 
-    console.log('Creating GC flow:', JSON.stringify(flowBody))
+    console.log('Creating GC flow')
 
     const flowRes = await fetch(`${gcBaseUrl}/billing_request_flows`, {
       method: 'POST',
@@ -137,8 +138,8 @@ export async function POST(request: NextRequest) {
     const flowId = flowData.billing_request_flows.id
     console.log('GC flow created:', flowId)
 
-    // 5. Store flow_id on customer and start_date on clean_request
-    // start_date column must exist: ALTER TABLE clean_requests ADD COLUMN IF NOT EXISTS start_date date;
+    // 5. Persist flow_id and start_date in parallel
+    // Requires: ALTER TABLE clean_requests ADD COLUMN IF NOT EXISTS start_date date;
     await Promise.all([
       supabaseAdmin
         .from('customers')
