@@ -259,16 +259,10 @@ function StartDateModal({ cleanerName, frequency, onCancel, onConfirm, loading }
           fontFamily: "'DM Sans', sans-serif",
           fontSize: '26px', fontWeight: 800,
           color: '#0f172a', textAlign: 'center',
-          margin: '0 0 8px', letterSpacing: '-0.3px',
+          margin: '0 0 32px', letterSpacing: '-0.3px',
         }}>
-          Confirm {firstName} as your cleaner
+          When would you like {firstName} to start?
         </h3>
-        <p style={{
-          fontSize: '15px', color: '#94a3b8', textAlign: 'center',
-          fontStyle: 'italic', margin: '0 0 32px',
-        }}>
-          Choose when you'd like your first clean to start
-        </p>
 
         {/* Date picker */}
         <div style={{ marginBottom: '28px' }}>
@@ -334,7 +328,7 @@ function StartDateModal({ cleanerName, frequency, onCancel, onConfirm, loading }
             borderRadius: '10px', padding: '14px 16px',
             marginBottom: '14px', fontSize: '14px', color: '#92400e', lineHeight: 1.6,
           }}>
-            ⚠️ Because your start date is close to the end of the month, you'll see two payments close together — your first charge within 3 working days, and your regular payment on 1st {nextMonthName}. This is normal and won't happen again.
+            ⚠️ Your first payment is taken now, then monthly on the 1st. You may see two payments close together — this is normal and only happens when setting up your Direct Debit.
           </div>
         )}
 
@@ -976,7 +970,7 @@ function CustomerDashboardContent() {
           conversation_id: modal.conversationId,
           sender_id: user.id,
           sender_role: 'customer',
-          content: '__system__ Vouchee: Customer did not complete set-up.',
+          content: '__system__ Customer did not complete set-up.',
         })
       } catch (e) {}
     }
