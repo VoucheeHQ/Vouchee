@@ -43,6 +43,9 @@ const POSTCODE_SECTORS: Record<string, PostcodeSector> = {
   'RH12 4W': { sector: 'Faygate / Kilnwood Vale', description: 'Kilnwood Vale' },
   'RH12 4Y': { sector: 'Faygate / Kilnwood Vale', description: 'Kilnwood Vale' },
   'RH12 4Z': { sector: 'Faygate / Kilnwood Vale', description: 'Kilnwood Vale' },
+  'RH12 0A': { sector: 'Faygate / Kilnwood Vale', description: 'Kilnwood Vale' },
+'RH12 0B': { sector: 'Faygate / Kilnwood Vale', description: 'Kilnwood Vale' },
+'RH12 0': { sector: 'Faygate / Kilnwood Vale', description: 'Kilnwood Vale' },
 
   // ── WARNHAM / SURROUNDING NORTH ──────────────────────────────────────────
   // RH12 3S: Sullington Mead = Warnham confirmed. Also covers Warnham village area
