@@ -216,12 +216,9 @@ function Stepper({ label, value, onDown, onUp, min, max, prefix = '', suffix = '
 
 // ─── Start Date Modal ─────────────────────────────────────────────────────────
 
-function StartDateModal({ cleanerName, frequency, applicationId, requestId, conversationId, onCancel, onConfirm, loading }: {
+function StartDateModal({ cleanerName, frequency, onCancel, onConfirm, loading }: {
   cleanerName: string
   frequency: Frequency
-  applicationId: string
-  requestId: string
-  conversationId: string
   onCancel: () => void
   onConfirm: (startDate: string) => void
   loading: boolean
@@ -249,30 +246,30 @@ function StartDateModal({ cleanerName, frequency, applicationId, requestId, conv
       zIndex: 500, padding: '24px',
     }}>
       <div style={{
-        background: 'white', borderRadius: '24px', padding: '36px',
-        maxWidth: '440px', width: '100%',
+        background: 'white', borderRadius: '24px', padding: '44px 48px',
+        maxWidth: '540px', width: '100%',
         boxShadow: '0 32px 80px rgba(0,0,0,0.22)',
-        maxHeight: '90vh', overflowY: 'auto',
+        maxHeight: '92vh', overflowY: 'auto',
       }}>
         {/* Title */}
         <h3 style={{
           fontFamily: "'DM Sans', sans-serif",
-          fontSize: '22px', fontWeight: 800,
+          fontSize: '26px', fontWeight: 800,
           color: '#0f172a', textAlign: 'center',
-          margin: '0 0 6px', letterSpacing: '-0.3px',
+          margin: '0 0 8px', letterSpacing: '-0.3px',
         }}>
           Confirm {firstName} as your cleaner
         </h3>
         <p style={{
-          fontSize: '13px', color: '#94a3b8', textAlign: 'center',
-          fontStyle: 'italic', margin: '0 0 28px',
+          fontSize: '15px', color: '#94a3b8', textAlign: 'center',
+          fontStyle: 'italic', margin: '0 0 32px',
         }}>
           Choose when you'd like your first clean to start
         </p>
 
         {/* Date picker */}
-        <div style={{ marginBottom: '24px' }}>
-          <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '8px' }}>
+        <div style={{ marginBottom: '28px' }}>
+          <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '10px' }}>
             Start date
           </label>
           <input
@@ -281,9 +278,9 @@ function StartDateModal({ cleanerName, frequency, applicationId, requestId, conv
             min={minDate}
             onChange={e => setStartDate(e.target.value)}
             style={{
-              width: '100%', padding: '12px 14px',
+              width: '100%', padding: '14px 16px',
               border: '1.5px solid #e2e8f0', borderRadius: '12px',
-              fontSize: '15px', fontWeight: 600, color: '#0f172a',
+              fontSize: '17px', fontWeight: 600, color: '#0f172a',
               fontFamily: "'DM Sans', sans-serif", outline: 'none',
               boxSizing: 'border-box', cursor: 'pointer',
             }}
@@ -293,41 +290,37 @@ function StartDateModal({ cleanerName, frequency, applicationId, requestId, conv
         {/* Pricing breakdown */}
         <div style={{
           background: '#f8fafc', borderRadius: '14px',
-          padding: '18px', marginBottom: '12px',
+          padding: '20px', marginBottom: '14px',
           border: '1px solid #e2e8f0',
         }}>
-          <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '14px' }}>
+          <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '16px' }}>
             Vouchee service fee · {freqLabel}
           </div>
 
           {/* First payment */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', paddingBottom: '10px', borderBottom: '1px solid #e2e8f0' }}>
-            <div>
-              <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>
-                {billing.firstChargeLabel} today
-              </div>
-              <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>
-                {billing.isFullMonth || frequency === 'monthly'
-                  ? 'Taken within 3 working days'
-                  : `Pro-rata for ${currentMonthName} · within 3 working days`
-                }
-              </div>
+          <div style={{ marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid #e2e8f0' }}>
+            <div style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a', marginBottom: '4px' }}>
+              {billing.firstChargeLabel} today
+            </div>
+            <div style={{ fontSize: '13px', color: '#94a3b8' }}>
+              {billing.isFullMonth || frequency === 'monthly'
+                ? 'Taken within 3 working days'
+                : `Pro-rata for ${currentMonthName} · within 3 working days`
+              }
             </div>
           </div>
 
           {/* Recurring */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>
-                Then {billing.monthlyLabel} from 1st {nextMonthName}
-              </div>
-              <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>Billed on the 1st of each month</div>
+          <div>
+            <div style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a', marginBottom: '4px' }}>
+              Then {billing.monthlyLabel} from 1st {nextMonthName}
             </div>
+            <div style={{ fontSize: '13px', color: '#94a3b8' }}>Billed on the 1st of each month</div>
           </div>
         </div>
 
         {/* Cancel anytime notice */}
-        <div style={{ fontSize: '12px', color: '#64748b', textAlign: 'center', margin: '0 0 12px' }}>
+        <div style={{ fontSize: '13px', color: '#64748b', textAlign: 'center', margin: '0 0 14px' }}>
           Cancel anytime with 30 days' notice.
         </div>
 
@@ -335,8 +328,8 @@ function StartDateModal({ cleanerName, frequency, applicationId, requestId, conv
         {showLateMonthWarning && (
           <div style={{
             background: '#fffbeb', border: '1px solid #fde68a',
-            borderRadius: '10px', padding: '12px 14px',
-            marginBottom: '12px', fontSize: '13px', color: '#92400e', lineHeight: 1.6,
+            borderRadius: '10px', padding: '14px 16px',
+            marginBottom: '14px', fontSize: '14px', color: '#92400e', lineHeight: 1.6,
           }}>
             ⚠️ Because your start date is close to the end of the month, you'll see two payments close together — your first charge within 3 working days, and your regular payment on 1st {nextMonthName}. This is normal and won't happen again.
           </div>
@@ -346,13 +339,13 @@ function StartDateModal({ cleanerName, frequency, applicationId, requestId, conv
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
           background: '#f8fafc', border: '1px solid #e2e8f0',
-          borderRadius: '10px', padding: '10px 14px', marginBottom: '24px',
+          borderRadius: '10px', padding: '12px 16px', marginBottom: '28px',
         }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M12 1L3 5V11C3 16.55 6.84 21.74 12 23C17.16 21.74 21 16.55 21 11V5L12 1Z" fill="#16a34a" opacity="0.15" stroke="#16a34a" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             <path d="M9 12L11 14L15 10" stroke="#16a34a" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
-          <span style={{ fontSize: '12px', fontWeight: 600, color: '#475569' }}>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: '#475569' }}>
             Secure Direct Debit via GoCardless · Protected by the Direct Debit Guarantee
           </span>
         </div>
@@ -364,7 +357,7 @@ function StartDateModal({ cleanerName, frequency, applicationId, requestId, conv
             disabled={loading}
             style={{
               flex: 1, background: 'white', border: '1.5px solid #e2e8f0',
-              borderRadius: '12px', padding: '13px', fontSize: '14px',
+              borderRadius: '12px', padding: '15px', fontSize: '15px',
               fontWeight: 600, color: '#64748b', cursor: 'pointer',
               fontFamily: "'DM Sans', sans-serif",
             }}
@@ -376,7 +369,7 @@ function StartDateModal({ cleanerName, frequency, applicationId, requestId, conv
             disabled={loading || !startDate}
             style={{
               flex: 2, background: '#16a34a', border: 'none',
-              borderRadius: '12px', padding: '13px', fontSize: '14px',
+              borderRadius: '12px', padding: '15px', fontSize: '15px',
               fontWeight: 700, color: 'white',
               cursor: loading ? 'not-allowed' : 'pointer',
               opacity: loading ? 0.7 : 1,
@@ -870,7 +863,9 @@ function CustomerDashboardContent() {
     frequency: Frequency
   } | null>(null)
   const [startDateLoading, setStartDateLoading] = useState(false)
+  // null = not started, active setTimeout = timer running, null after fire = timer already fired
   const systemMessageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const timerFiredRef = useRef(false)
 
   useEffect(() => {
     const init = async () => {
@@ -937,8 +932,12 @@ function CustomerDashboardContent() {
 
   const handleOpenStartDateModal = (detail: { applicationId: string; requestId: string; conversationId: string; cleanerName: string; frequency: Frequency }) => {
     setStartDateModal(detail)
+    timerFiredRef.current = false
+
     if (systemMessageTimerRef.current) clearTimeout(systemMessageTimerRef.current)
     systemMessageTimerRef.current = setTimeout(async () => {
+      timerFiredRef.current = true
+      systemMessageTimerRef.current = null
       try {
         const supabase = createClient()
         const { data: { user } } = await supabase.auth.getUser()
@@ -953,14 +952,41 @@ function CustomerDashboardContent() {
     }, 60000)
   }
 
-  const handleCancelStartDate = () => {
-    if (systemMessageTimerRef.current) clearTimeout(systemMessageTimerRef.current)
+  const handleCancelStartDate = async () => {
+    // Clear timer if still running
+    if (systemMessageTimerRef.current) {
+      clearTimeout(systemMessageTimerRef.current)
+      systemMessageTimerRef.current = null
+    }
+
+    const modal = startDateModal
     setStartDateModal(null)
+
+    // Only post abandoned message if the 60s timer already fired
+    // (meaning cleaner already saw "Customer is selecting a start date…")
+    if (timerFiredRef.current && modal) {
+      try {
+        const supabase = createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+        await (supabase as any).from('messages').insert({
+          conversation_id: modal.conversationId,
+          sender_id: user.id,
+          sender_role: 'customer',
+          content: '__system__ Vouchee: Customer did not complete set-up.',
+        })
+      } catch (e) {}
+    }
+    timerFiredRef.current = false
   }
 
   const handleConfirmStartDate = async (startDate: string) => {
     if (!startDateModal) return
-    if (systemMessageTimerRef.current) clearTimeout(systemMessageTimerRef.current)
+    if (systemMessageTimerRef.current) {
+      clearTimeout(systemMessageTimerRef.current)
+      systemMessageTimerRef.current = null
+    }
+    timerFiredRef.current = false
     setStartDateLoading(true)
     try {
       const res = await fetch('/api/gocardless/create-flow', {
@@ -986,6 +1012,7 @@ function CustomerDashboardContent() {
     }
   }
 
+  // Listen for approve event from chat widget — stable ref, registered once
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail
@@ -995,7 +1022,7 @@ function CustomerDashboardContent() {
     }
     window.addEventListener('vouchee:approve-cleaner', handler)
     return () => window.removeEventListener('vouchee:approve-cleaner', handler)
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleOpenChat = async (applicationId: string, requestId: string) => {
     try {
