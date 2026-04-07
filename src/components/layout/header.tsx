@@ -36,7 +36,7 @@ export function Header({ userRole }: HeaderProps) {
         {/* Logo — no fixed pixel dimensions, sized purely via CSS for sharper rendering */}
         <Link href="/" className="flex items-center flex-shrink-0" aria-label="Vouchee home">
           <VoucheeLogoText
-            style={{ height: '36px', width: 'auto', display: 'block' }}
+            style={{ height: '36px', width: 'auto', display: 'block', strokeWidth: 6 }}
           />
         </Link>
 
