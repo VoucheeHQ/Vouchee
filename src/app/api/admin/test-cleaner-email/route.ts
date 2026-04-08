@@ -89,9 +89,10 @@ function buildCleanerEmail(args: {
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f4f8;padding:40px 16px;">
 <tr><td align="center"><table width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;">
 <tr><td style="background:#fff;padding:36px 40px 32px;text-align:center;border-radius:16px 16px 0 0;">
+  <!-- Preheader: controls Gmail preview text -->
+  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">You&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;</div>
   <img src="https://www.vouchee.co.uk/full-logo-black.png" width="200" height="46" alt="Vouchee" style="display:block;margin:0 auto 20px;" />
   <div style="font-size:32px;font-weight:800;color:#0f172a;">You've been chosen! 🎉</div>
-  <div style="font-size:12px;color:#94a3b8;margin-top:8px;">[TEST EMAIL]</div>
 </td></tr>
 <tr><td style="background:white;padding:36px 40px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 16px 16px;">
   <div style="background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:12px;padding:22px 28px;margin-bottom:24px;text-align:center;">
