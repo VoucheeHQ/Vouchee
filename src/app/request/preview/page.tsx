@@ -44,6 +44,7 @@ const ZONE_LABELS: Record<string, string> = {
   mannings_heath: "Mannings Heath",
   faygate_kilnwood_vale: "Faygate / Kilnwood Vale",
   christs_hospital: "Christ's Hospital",
+  southwater: "Southwater",
 }
 
 const HOURS_MAX = 4.5

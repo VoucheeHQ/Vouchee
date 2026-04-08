@@ -29,7 +29,6 @@ const ADDITIONAL_TASKS = [
 const DEEP_CLEAN_TASKS = ['bathroom_deep', 'kitchen_deep', 'fridge', 'conservatory']
 
 const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-// Updated: added "During the day" option
 const TIME_SLOTS = [
   'Morning (8am - 12pm)',
   'During the day (8am - 5pm)',
@@ -51,12 +50,12 @@ const SECTOR_TO_ZONE: Record<string, string> = {
   "RH123": "south_west",         "RH124": "north_east_roffey",
   "RH125": "north_west",         "RH126": "warnham_north",
   "RH127": "warnham_north",      "RH128": "north_west",
-  "RH129": "north_west",
+  "RH129": "north_west",         "RH120": "faygate_kilnwood_vale",
   "RH130": "christs_hospital",   "RH131": "christs_hospital",
   "RH132": "south_west",         "RH133": "mannings_heath",
   "RH134": "mannings_heath",     "RH135": "central_south_east",
   "RH136": "mannings_heath",     "RH137": "broadbridge_heath",
-  "RH138": "broadbridge_heath",  "RH139": "broadbridge_heath",
+  "RH138": "broadbridge_heath",  "RH139": "southwater",
   "RH110": "faygate_kilnwood_vale", "RH111": "faygate_kilnwood_vale",
   "RH112": "faygate_kilnwood_vale", "RH113": "faygate_kilnwood_vale",
 }
@@ -138,27 +137,27 @@ function RequestStep1Content() {
 
   const UK_POSTCODE_REGEX = /^[A-Z]{1,2}[0-9][0-9A-Z]?\s?[0-9][A-Z]{2}$/i
 
-const handlePostcodeChange = (value: string) => {
-  setPostcode(value)
-  setPostcodeError('')
-  setDetectedSector(null)
-  if (value.replace(/\s/g, '').length >= 7) {
-    if (!UK_POSTCODE_REGEX.test(value.trim())) {
-      setPostcodeError('Please enter a valid UK postcode (e.g. RH12 1AB)')
-      return
-    }
-    if (!isValidHorshamPostcode(value)) {
-      setPostcodeError('We currently only serve Horsham and surrounding areas (RH12, RH13)')
-      return
-    }
-    const sector = getPostcodeSector(value)
-    if (sector) {
-      setDetectedSector(sector.sector)
-    } else {
-      setPostcodeError('Sorry, this postcode is outside our current service area. We cover most of Horsham and surrounding areas.')
+  const handlePostcodeChange = (value: string) => {
+    setPostcode(value)
+    setPostcodeError('')
+    setDetectedSector(null)
+    if (value.replace(/\s/g, '').length >= 7) {
+      if (!UK_POSTCODE_REGEX.test(value.trim())) {
+        setPostcodeError('Please enter a valid UK postcode (e.g. RH12 1AB)')
+        return
+      }
+      if (!isValidHorshamPostcode(value)) {
+        setPostcodeError('We currently only serve Horsham and surrounding areas (RH12, RH13)')
+        return
+      }
+      const sector = getPostcodeSector(value)
+      if (sector) {
+        setDetectedSector(sector.sector)
+      } else {
+        setPostcodeError('Sorry, this postcode is outside our current service area. We cover most of Horsham and surrounding areas.')
+      }
     }
   }
-}
 
   const toggleTask = (id: string) => {
     setSelectedTasks(prev => {
@@ -229,7 +228,6 @@ const handlePostcodeChange = (value: string) => {
       <div style={{ minHeight: '100vh', background: 'linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%)', fontFamily: "'DM Sans', sans-serif", padding: '24px 16px 48px' }}>
         <div style={{ maxWidth: '600px', margin: '0 auto' }}>
 
-          {/* Step tracker */}
           <div style={{ marginBottom: '32px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
               <div style={{ fontSize: '13px', fontWeight: 600, color: '#3b82f6', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Step 1 of 4</div>
@@ -240,13 +238,11 @@ const handlePostcodeChange = (value: string) => {
             </div>
           </div>
 
-          {/* Header */}
           <div style={{ marginBottom: '28px' }}>
             <h1 style={{ fontSize: '28px', fontWeight: 800, color: '#0f172a', margin: '0 0 8px', lineHeight: 1.2 }}>Tell us about your property</h1>
             <p style={{ fontSize: '15px', color: '#64748b', lineHeight: 1.6, margin: 0 }}>This helps cleaners understand what's involved before they apply</p>
           </div>
 
-          {/* Property size */}
           <div style={{ background: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(16px)', borderRadius: '20px', border: '1.5px solid rgba(255,255,255,0.9)', boxShadow: '0 2px 16px rgba(0,0,0,0.05)', padding: '24px', marginBottom: '12px' }}>
             <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '16px' }}>Property size</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
@@ -265,7 +261,6 @@ const handlePostcodeChange = (value: string) => {
             </div>
           </div>
 
-          {/* Address */}
           <div style={{ background: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(16px)', borderRadius: '20px', border: `1.5px solid ${showErrors && (!postcode || postcodeError) ? '#fecaca' : 'rgba(255,255,255,0.9)'}`, boxShadow: '0 2px 16px rgba(0,0,0,0.05)', padding: '24px', marginBottom: '12px' }}>
             <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '16px' }}>Your address</div>
 
@@ -319,7 +314,6 @@ const handlePostcodeChange = (value: string) => {
             )}
           </div>
 
-          {/* Tasks */}
           <div style={{ background: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(16px)', borderRadius: '20px', border: '1.5px solid rgba(255,255,255,0.9)', boxShadow: '0 2px 16px rgba(0,0,0,0.05)', padding: '24px', marginBottom: '12px' }}>
             <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '16px' }}>What needs cleaning?</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '10px' }}>
@@ -382,7 +376,6 @@ const handlePostcodeChange = (value: string) => {
             )}
           </div>
 
-          {/* Hours per clean */}
           <div style={{ background: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(16px)', borderRadius: '20px', border: `1.5px solid ${showErrors && !hoursPerSession ? '#fecaca' : 'rgba(255,255,255,0.9)'}`, boxShadow: '0 2px 16px rgba(0,0,0,0.05)', padding: '24px', marginBottom: '12px' }}>
             <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '4px' }}>⏱ How many hours per clean?</div>
             <p style={{ fontSize: '13px', color: '#64748b', margin: '0 0 14px', lineHeight: 1.55 }}>
@@ -421,7 +414,6 @@ const handlePostcodeChange = (value: string) => {
               </div>
             )}
 
-            {/* Notes — always visible */}
             <div style={{ marginTop: '16px' }}>
               <label style={{ fontSize: '13px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '6px' }}>
                 Any notes for your cleaner?{' '}
@@ -436,7 +428,6 @@ const handlePostcodeChange = (value: string) => {
             </div>
           </div>
 
-          {/* Preferred schedule */}
           <div style={{ background: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(16px)', borderRadius: '20px', border: `1.5px solid ${showErrors && (preferredDays.length === 0 || !preferredTime) ? '#fecaca' : 'rgba(255,255,255,0.9)'}`, boxShadow: '0 2px 16px rgba(0,0,0,0.05)', padding: '24px', marginBottom: '24px' }}>
             <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '16px' }}>📅 Preferred schedule</div>
 
@@ -475,7 +466,6 @@ const handlePostcodeChange = (value: string) => {
             </div>
           </div>
 
-          {/* CTA */}
           <button
             className="continue-btn"
             onClick={handleNext}

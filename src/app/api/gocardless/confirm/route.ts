@@ -17,6 +17,7 @@ const ZONE_LABELS: Record<string, string> = {
   warnham_north: 'Warnham / North', broadbridge_heath: 'Broadbridge Heath',
   mannings_heath: 'Mannings Heath', faygate_kilnwood_vale: 'Faygate / Kilnwood Vale',
   christs_hospital: "Christ's Hospital",
+  southwater: 'Southwater',
 }
 
 function formatAddress(a1: string, a2: string | null, city: string, postcode: string): string {
