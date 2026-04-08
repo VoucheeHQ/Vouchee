@@ -305,8 +305,7 @@ export default function CleanerDashboardPage() {
   const handleSignOut = async () => {
     const supabase = createClient()
     await supabase.auth.signOut()
-    router.refresh()
-    router.replace('/')
+    router.push('/')
   }
 
   if (loading) {
