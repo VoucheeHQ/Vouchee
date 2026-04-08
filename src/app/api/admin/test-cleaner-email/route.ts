@@ -89,6 +89,7 @@ function buildCleanerEmail(args: {
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f4f8;padding:40px 16px;">
 <tr><td align="center"><table width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;">
 <tr><td style="background:#fff;padding:36px 40px 32px;text-align:center;border-radius:16px 16px 0 0;">
+  <img src="https://www.vouchee.co.uk/full-logo-black.png" width="200" height="46" alt="Vouchee" style="display:block;margin:0 auto 20px;" />
   <div style="font-size:32px;font-weight:800;color:#0f172a;">You've been chosen! 🎉</div>
   <div style="font-size:12px;color:#94a3b8;margin-top:8px;">[TEST EMAIL]</div>
 </td></tr>
