@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 import { FrequencyType } from '@/types'
 import { formatPrice } from '@/lib/utils'
 
@@ -115,27 +116,44 @@ export default function RequestFrequencyPage() {
   const [requestData, setRequestData] = useState<RequestData | null>(null)
   const [selectedFrequency, setSelectedFrequency] = useState<FrequencyType>('weekly')
   const [hourlyRate, setHourlyRate] = useState<number | null>(null)
+  const [roleChecked, setRoleChecked] = useState(false)
 
   useEffect(() => { window.scrollTo(0, 0) }, [])
 
   useEffect(() => {
-    const stored = sessionStorage.getItem('cleanRequest')
-    if (!stored) { router.push('/request/property'); return }
-    const data = JSON.parse(stored) as RequestData
-    setRequestData(data)
-    const params = new URLSearchParams(window.location.search)
-    const preset = params.get('preset')
-    const freq = (preset === 'weekly' || preset === 'fortnightly' || preset === 'monthly')
-      ? preset as FrequencyType
-      : null
-    if (freq) {
-      setSelectedFrequency(freq)
-      const s = getRateSuggestion(freq, data.bedrooms ?? 2, data.bathrooms ?? 1, data.tasks ?? [])
-      setHourlyRate(parseFloat(s.defaultRate))
-    } else {
-      const s = getRateSuggestion('weekly', data.bedrooms ?? 2, data.bathrooms ?? 1, data.tasks ?? [])
-      setHourlyRate(parseFloat(s.defaultRate))
+    const init = async () => {
+      // ✅ Block cleaners from posting listings
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { data: profile } = await (supabase as any)
+          .from('profiles').select('role').eq('id', user.id).single()
+        if (profile?.role === 'cleaner') {
+          router.replace('/cleaner/dashboard')
+          return
+        }
+      }
+      setRoleChecked(true)
+
+      const stored = sessionStorage.getItem('cleanRequest')
+      if (!stored) { router.push('/request/property'); return }
+      const data = JSON.parse(stored) as RequestData
+      setRequestData(data)
+      const params = new URLSearchParams(window.location.search)
+      const preset = params.get('preset')
+      const freq = (preset === 'weekly' || preset === 'fortnightly' || preset === 'monthly')
+        ? preset as FrequencyType
+        : null
+      if (freq) {
+        setSelectedFrequency(freq)
+        const s = getRateSuggestion(freq, data.bedrooms ?? 2, data.bathrooms ?? 1, data.tasks ?? [])
+        setHourlyRate(parseFloat(s.defaultRate))
+      } else {
+        const s = getRateSuggestion('weekly', data.bedrooms ?? 2, data.bathrooms ?? 1, data.tasks ?? [])
+        setHourlyRate(parseFloat(s.defaultRate))
+      }
     }
+    init()
   }, [router])
 
   const handleContinue = () => {
@@ -156,7 +174,7 @@ export default function RequestFrequencyPage() {
   const rateLow = hourlyRate !== null && hourlyRate < suggestion.low
   const rateHigh = hourlyRate !== null && hourlyRate > suggestion.high
 
-  if (!requestData) return (
+  if (!requestData || !roleChecked) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans', sans-serif" }}>
       <div style={{ fontSize: '14px', color: '#94a3b8' }}>Loading…</div>
     </div>
@@ -181,7 +199,6 @@ export default function RequestFrequencyPage() {
       <div style={{ minHeight: '100vh', background: 'linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%)', fontFamily: "'DM Sans', sans-serif", padding: '24px 16px 48px' }}>
         <div style={{ maxWidth: '600px', margin: '0 auto' }}>
 
-          {/* Step tracker */}
           <div style={{ marginBottom: '32px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
               <div style={{ fontSize: '13px', fontWeight: 600, color: '#3b82f6', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Step 2 of 4</div>
@@ -192,13 +209,11 @@ export default function RequestFrequencyPage() {
             </div>
           </div>
 
-          {/* Header */}
           <div style={{ marginBottom: '28px' }}>
-            <h1 style={{ fontSize: '28px', fontWeight: 800, color: '#0f172a', margin: '0 0 8px', lineHeight: 1.2 }}>Set your rate & frequency</h1>
+            <h1 style={{ fontSize: '28px', fontWeight: 800, color: '#0f172a', margin: '0 0 8px', lineHeight: 1.2 }}>Set your rate &amp; frequency</h1>
             <p style={{ fontSize: '15px', color: '#64748b', lineHeight: 1.6, margin: 0 }}>You set the price — cleaners apply to your listing and you choose who you want.</p>
           </div>
 
-          {/* Frequency */}
           <div style={{ background: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(16px)', borderRadius: '20px', border: '1.5px solid rgba(255,255,255,0.9)', boxShadow: '0 2px 16px rgba(0,0,0,0.05)', padding: '24px', marginBottom: '12px' }}>
             <div style={{ padding: '10px 14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '12px', marginBottom: '16px', display: 'flex', gap: '8px' }}>
               <span style={{ fontSize: '14px', flexShrink: 0 }}>✅</span>
@@ -236,7 +251,6 @@ export default function RequestFrequencyPage() {
             </div>
           </div>
 
-          {/* Hourly rate */}
           <div style={{ background: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(16px)', borderRadius: '20px', border: '1.5px solid rgba(255,255,255,0.9)', boxShadow: '0 2px 16px rgba(0,0,0,0.05)', padding: '24px', marginBottom: '12px' }}>
             <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '6px' }}>💷 Offered hourly rate</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0', marginBottom: '12px', border: '1.5px solid #e2e8f0', borderRadius: '14px', overflow: 'hidden', background: 'rgba(255,255,255,0.9)' }}>
@@ -274,7 +288,6 @@ export default function RequestFrequencyPage() {
             <p style={{ fontSize: '11px', color: '#94a3b8', margin: '10px 0 0', lineHeight: 1.5 }}>This is an offer — your cleaner may discuss the rate with you before agreeing to start.</p>
           </div>
 
-          {/* Why Vouchee */}
           <div style={{ background: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(16px)', borderRadius: '20px', border: '1.5px solid rgba(255,255,255,0.9)', boxShadow: '0 2px 16px rgba(0,0,0,0.05)', padding: '24px', marginBottom: '24px' }}>
             <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '14px' }}>What you can expect from Vouchee</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -294,7 +307,6 @@ export default function RequestFrequencyPage() {
             </div>
           </div>
 
-          {/* CTA */}
           <button className="continue-btn" onClick={handleContinue} disabled={!selectedFrequency} style={{ width: '100%', padding: '18px', borderRadius: '16px', border: 'none', background: 'linear-gradient(135deg, #2563eb, #3b82f6)', color: 'white', fontSize: '17px', fontWeight: 700, fontFamily: "'Plus Jakarta Sans', sans-serif", cursor: selectedFrequency ? 'pointer' : 'not-allowed', boxShadow: '0 4px 20px rgba(37,99,235,0.3)', transition: 'transform 0.2s, box-shadow 0.2s' }}>
             Continue →
           </button>

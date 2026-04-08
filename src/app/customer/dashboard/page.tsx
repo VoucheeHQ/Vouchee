@@ -997,7 +997,7 @@ function CustomerDashboardContent() {
         </main>
 
         <div style={{ borderTop: '1px solid #e2e8f0', padding: '32px 24px', display: 'flex', justifyContent: 'center' }}>
-          <button onClick={() => setModal({ type: 'signout', id: '' })} style={{ background: 'none', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 20px', fontSize: '13px', fontWeight: 600, color: '#94a3b8', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>Sign out</button>
+          <button onClick={() => setModal({ type: 'signout', id: '' })} style={{ background: 'none', border: '1px solid #fecaca', borderRadius: '8px', padding: '8px 20px', fontSize: '13px', fontWeight: 600, color: '#ef4444', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>Sign out</button>
         </div>
 
         <Footer />

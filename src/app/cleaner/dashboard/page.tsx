@@ -1,10 +1,9 @@
 'use client'
 import { Header } from '@/components/layout/header'
+import { Footer } from '@/components/layout/footer'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-
-// ─── Types ────────────────────────────────────────────────────────────────────
 
 type ApplicationStatus = 'submitted' | 'approved' | 'rejected' | 'suspended' | 'pending'
 
@@ -28,8 +27,6 @@ interface CleanerData {
   created_at: string
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
 const ZONE_LABELS: Record<string, string> = {
   central_south_east: 'Central / South East',
   north_west: 'North West',
@@ -40,6 +37,7 @@ const ZONE_LABELS: Record<string, string> = {
   mannings_heath: 'Mannings Heath',
   faygate_kilnwood_vale: 'Faygate / Kilnwood Vale',
   christs_hospital: 'Christs Hospital',
+  southwater: 'Southwater',
 }
 
 function formatDate(iso: string) {
@@ -52,8 +50,6 @@ function getInitial(name: string) {
   return name.trim().charAt(0).toUpperCase()
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
-
 function StatusBadge({ status }: { status: ApplicationStatus }) {
   const map: Record<ApplicationStatus, { label: string; bg: string; color: string; dot: string }> = {
     submitted: { label: 'Under review', bg: '#fef9c3', color: '#854d0e', dot: '#eab308' },
@@ -64,12 +60,7 @@ function StatusBadge({ status }: { status: ApplicationStatus }) {
   }
   const s = map[status] ?? map.pending
   return (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: '6px',
-      background: s.bg, color: s.color,
-      borderRadius: '100px', padding: '5px 12px',
-      fontSize: '12px', fontWeight: 700,
-    }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: s.bg, color: s.color, borderRadius: '100px', padding: '5px 12px', fontSize: '12px', fontWeight: 700 }}>
       <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: s.dot }} />
       {s.label}
     </span>
@@ -78,15 +69,7 @@ function StatusBadge({ status }: { status: ApplicationStatus }) {
 
 function CredentialChip({ ok, label }: { ok: boolean; label: string }) {
   return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: '8px',
-      padding: '8px 14px',
-      background: ok ? '#f0fdf4' : '#fef2f2',
-      border: `1px solid ${ok ? '#86efac' : '#fecaca'}`,
-      borderRadius: '10px',
-      fontSize: '13px', fontWeight: 600,
-      color: ok ? '#15803d' : '#dc2626',
-    }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 14px', background: ok ? '#f0fdf4' : '#fef2f2', border: `1px solid ${ok ? '#86efac' : '#fecaca'}`, borderRadius: '10px', fontSize: '13px', fontWeight: 600, color: ok ? '#15803d' : '#dc2626' }}>
       <span>{ok ? '✅' : '❌'}</span>
       {label}
     </div>
@@ -95,12 +78,7 @@ function CredentialChip({ ok, label }: { ok: boolean; label: string }) {
 
 function ZoneChip({ label }: { label: string }) {
   return (
-    <span style={{
-      background: '#eff6ff', color: '#1d4ed8',
-      border: '1px solid #bfdbfe',
-      borderRadius: '8px', padding: '5px 12px',
-      fontSize: '12px', fontWeight: 600,
-    }}>
+    <span style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '5px 12px', fontSize: '12px', fontWeight: 600 }}>
       {label}
     </span>
   )
@@ -108,17 +86,12 @@ function ZoneChip({ label }: { label: string }) {
 
 function SummaryRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div style={{
-      display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
-      padding: '12px 0', borderBottom: '1px solid #f1f5f9', gap: '12px',
-    }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 0', borderBottom: '1px solid #f1f5f9', gap: '12px' }}>
       <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 500, flexShrink: 0 }}>{label}</span>
       <span style={{ fontSize: '13px', color: '#0f172a', fontWeight: 600, textAlign: 'right' }}>{value}</span>
     </div>
   )
 }
-
-// ─── Pending Screen ───────────────────────────────────────────────────────────
 
 function PendingScreen({ profile, cleaner, emailConfirmed }: { profile: CleanerProfile; cleaner: CleanerData; emailConfirmed: boolean }) {
   const firstName = profile.full_name.trim().split(' ')[0]
@@ -222,20 +195,12 @@ function PendingScreen({ profile, cleaner, emailConfirmed }: { profile: CleanerP
   )
 }
 
-// ─── Approved Shell ───────────────────────────────────────────────────────────
-
 function ApprovedShell({ profile }: { profile: CleanerProfile }) {
   const firstName = profile.full_name.trim().split(' ')[0]
 
   return (
     <div style={{ maxWidth: '640px', margin: '0 auto', padding: '0 0 60px' }}>
-
-      {/* Welcome card */}
-      <div style={{
-        background: 'linear-gradient(135deg, #3b82f6, #6366f1)',
-        borderRadius: '20px', padding: '32px', marginBottom: '20px',
-        color: 'white', boxShadow: '0 8px 32px rgba(59,130,246,0.25)',
-      }}>
+      <div style={{ background: 'linear-gradient(135deg, #3b82f6, #6366f1)', borderRadius: '20px', padding: '32px', marginBottom: '20px', color: 'white', boxShadow: '0 8px 32px rgba(59,130,246,0.25)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
           <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', fontWeight: 800, color: 'white', fontFamily: 'Lora, serif', border: '2px solid rgba(255,255,255,0.3)', flexShrink: 0 }}>
             {getInitial(profile.full_name)}
@@ -248,21 +213,11 @@ function ApprovedShell({ profile }: { profile: CleanerProfile }) {
         <p style={{ fontSize: '14px', opacity: 0.9, lineHeight: 1.6, margin: '0 0 20px' }}>
           You're live on Vouchee. Customers in your areas can now see your application when they post a cleaning request.
         </p>
-        <a
-          href="/jobs"
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: '8px',
-            background: 'white', color: '#2563eb',
-            borderRadius: '12px', padding: '10px 20px',
-            fontSize: '14px', fontWeight: 700, textDecoration: 'none',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
-          }}
-        >
+        <a href="/jobs" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'white', color: '#2563eb', borderRadius: '12px', padding: '10px 20px', fontSize: '14px', fontWeight: 700, textDecoration: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>
           Browse available jobs →
         </a>
       </div>
 
-      {/* Info panels */}
       {[
         { icon: '🔔', title: 'Job alerts', desc: "You'll be notified when a customer posts a request in your area. Check your email to manage notification preferences.", colour: '#eff6ff', border: '#bfdbfe', iconBg: '#dbeafe' },
         { icon: '⭐', title: 'Reviews & profile link', desc: 'Share your personal Vouchee profile link with existing customers to collect reviews. Coming soon.', colour: '#fefce8', border: '#fde68a', iconBg: '#fef9c3' },
@@ -289,8 +244,6 @@ function ApprovedShell({ profile }: { profile: CleanerProfile }) {
   )
 }
 
-// ─── Rejected / Suspended Screen ─────────────────────────────────────────────
-
 function BlockedScreen({ status }: { status: 'rejected' | 'suspended' }) {
   return (
     <div style={{ maxWidth: '480px', margin: '0 auto', padding: '0 0 60px' }}>
@@ -311,8 +264,6 @@ function BlockedScreen({ status }: { status: 'rejected' | 'suspended' }) {
     </div>
   )
 }
-
-// ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function CleanerDashboardPage() {
   const router = useRouter()
@@ -354,7 +305,8 @@ export default function CleanerDashboardPage() {
   const handleSignOut = async () => {
     const supabase = createClient()
     await supabase.auth.signOut()
-    router.push('/')
+    router.refresh()
+    router.replace('/')
   }
 
   if (loading) {
@@ -385,11 +337,10 @@ export default function CleanerDashboardPage() {
   const status = cleaner.application_status
 
   return (
-<>
-      <div style={{ minHeight: '100vh', background: 'linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%)', fontFamily: 'DM Sans, sans-serif' }}>
-        <Header userRole="cleaner" />
+    <div style={{ minHeight: '100vh', background: 'linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%)', fontFamily: 'DM Sans, sans-serif', display: 'flex', flexDirection: 'column' }}>
+      <Header userRole="cleaner" />
 
-        {/* Page heading */}
+      <main style={{ flex: 1 }}>
         <div style={{ maxWidth: '640px', margin: '0 auto', padding: '40px 24px 20px' }}>
           <h1 style={{ fontFamily: 'Lora, serif', fontSize: '28px', fontWeight: 700, color: '#0f172a', margin: '0 0 4px' }}>
             {status === 'approved' ? 'Your dashboard' : 'Application status'}
@@ -397,7 +348,6 @@ export default function CleanerDashboardPage() {
           <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>{profile.email}</p>
         </div>
 
-        {/* Main content */}
         <div style={{ padding: '0 24px' }}>
           {(status === 'submitted' || status === 'pending') && (
             <PendingScreen profile={profile} cleaner={cleaner} emailConfirmed={emailConfirmed} />
@@ -407,7 +357,19 @@ export default function CleanerDashboardPage() {
             <BlockedScreen status={status} />
           )}
         </div>
+      </main>
+
+      {/* ✅ Footer with red sign out */}
+      <div style={{ borderTop: '1px solid #e2e8f0', padding: '32px 24px', display: 'flex', justifyContent: 'center' }}>
+        <button
+          onClick={handleSignOut}
+          style={{ background: 'none', border: '1px solid #fecaca', borderRadius: '8px', padding: '8px 20px', fontSize: '13px', fontWeight: 600, color: '#ef4444', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}
+        >
+          Sign out
+        </button>
       </div>
-    </>
+
+      <Footer />
+    </div>
   )
 }

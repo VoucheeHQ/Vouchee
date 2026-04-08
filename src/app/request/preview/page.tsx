@@ -178,6 +178,14 @@ async function publishRequest(data: RequestData, userId: string): Promise<string
     customerId = newCustomer.id
   }
 
+  // Role guard — double-check server side before inserting
+  const { data: { user: currentUser } } = await supabase.auth.getUser()
+  if (currentUser) {
+    const { data: roleCheck } = await (supabase as any)
+      .from('profiles').select('role').eq('id', currentUser.id).single()
+    if (roleCheck?.role === 'cleaner') throw new Error('Cleaners cannot post listings.')
+  }
+
   const zone = data.zone || (data.postcode ? getSectorFromPostcode(data.postcode) : null) || null
   const { data: inserted, error: insertError } = await (supabase as any)
     .from("clean_requests").insert({
@@ -349,8 +357,17 @@ export default function ReviewPublishPage() {
       return
     }
     const supabase = createClient()
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) setUserId(session.user.id)
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.user) {
+        // Role guard: cleaners cannot post listings
+        const { data: profile } = await (supabase as any)
+          .from('profiles').select('role').eq('id', session.user.id).single()
+        if (profile?.role === 'cleaner') {
+          router.replace('/cleaner/dashboard')
+          return
+        }
+        setUserId(session.user.id)
+      }
       setAuthChecked(true)
     })
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -382,6 +399,18 @@ export default function ReviewPublishPage() {
     }
     setIsPublishing(true)
     try {
+      // ✅ Final safety check — block cleaners from publishing
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { data: profile } = await (supabase as any)
+          .from('profiles').select('role').eq('id', user.id).single()
+        if ((profile as any)?.role === 'cleaner') {
+          router.replace('/cleaner/dashboard')
+          publishLock.current = false
+          return
+        }
+      }
       const requestId = await publishRequest(data, userId)
       setPublishedId(requestId)
       clearRequestData()
