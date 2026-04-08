@@ -174,6 +174,7 @@ function RequestStep1Content() {
     const errors = []
     if (!postcode || postcodeError) errors.push('postcode')
     if (detectedSector && !addressLine1.trim()) errors.push('address')
+    if (detectedSector && !addressLine2.trim()) errors.push('street')   // ← NEW: street name required
     if (selectedTasks.length === 0) errors.push('tasks')
     if (!hoursPerSession) errors.push('hours')
     if (preferredDays.length === 0) errors.push('days')
@@ -294,15 +295,18 @@ function RequestStep1Content() {
                 {showErrors && !addressLine1.trim() && <p style={{ fontSize: '13px', color: '#ef4444', margin: '0 0 8px' }}>Please enter your house number or name</p>}
 
                 <label style={{ fontSize: '13px', fontWeight: 600, color: '#475569', display: 'block', margin: '10px 0 6px' }}>
-                  Street name <span style={{ fontSize: '11px', fontWeight: 400, color: '#94a3b8' }}>optional</span>
+                  Street name <span style={{ color: '#ef4444' }}>*</span>
                 </label>
                 <input
-                  className="vou-input"
+                  className={`vou-input${showErrors && !addressLine2.trim() ? ' error' : ''}`}
                   placeholder="e.g. Nightingale Road"
                   value={addressLine2}
                   onChange={e => setAddressLine2(e.target.value)}
-                  style={{ marginBottom: '12px' }}
+                  style={{ marginBottom: addressLine2.trim() || !showErrors ? '12px' : '4px' }}
                 />
+                {showErrors && !addressLine2.trim() && (
+                  <p style={{ fontSize: '13px', color: '#ef4444', margin: '0 0 12px' }}>Please enter your street name</p>
+                )}
 
                 <div style={{ padding: '10px 14px', background: '#f0fdf4', borderRadius: '10px', border: '1px solid #bbf7d0', display: 'flex', gap: '8px' }}>
                   <span style={{ fontSize: '14px', flexShrink: 0 }}>🔒</span>
