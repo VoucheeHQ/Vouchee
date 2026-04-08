@@ -5,87 +5,25 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Header } from '@/components/layout/header'
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 interface Stats {
-  totalCustomers: number
-  totalCleaners: number
-  activeListings: number
-  totalApplications: number
-  totalConversations: number
-  totalMessages: number
-  violationsToday: number
+  totalCustomers: number; totalCleaners: number; activeListings: number
+  totalApplications: number; totalConversations: number; totalMessages: number; violationsToday: number
 }
+interface UserRow { id: string; full_name: string; email: string; role: string; created_at: string; suspended?: boolean }
+interface ListingRow { id: string; status: string; created_at: string; zone: string | null; bedrooms: number; bathrooms: number; hourly_rate: number; frequency: string; customer_name: string; customer_email: string; hidden?: boolean }
+interface ApplicationRow { id: string; status: string; created_at: string; message?: string; cleaner_name: string; customer_name: string; zone: string }
+interface ConversationRow { id: string; created_at: string; cleaner_name: string; customer_name: string; zone: string; message_count: number; last_message: string; last_message_at: string | null }
+interface ViolationRow { id: string; created_at: string; conversation_id: string; message_content: string; triggered_keywords: string[]; sender_role: string; sender_name: string }
 
-interface UserRow {
-  id: string
-  full_name: string
-  email: string
-  role: string
-  created_at: string
-  suspended?: boolean
-}
-
-interface ListingRow {
-  id: string
-  status: string
-  created_at: string
-  zone: string | null
-  bedrooms: number
-  bathrooms: number
-  hourly_rate: number
-  frequency: string
-  customer_name: string
-  customer_email: string
-  hidden?: boolean
-}
-
-interface ApplicationRow {
-  id: string
-  status: string
-  created_at: string
-  message?: string
-  cleaner_name: string
-  customer_name: string
-  zone: string
-}
-
-interface ConversationRow {
-  id: string
-  created_at: string
-  cleaner_name: string
-  customer_name: string
-  zone: string
-  message_count: number
-  last_message: string
-  last_message_at: string | null
-}
-
-interface ViolationRow {
-  id: string
-  created_at: string
-  conversation_id: string
-  message_content: string
-  triggered_keywords: string[]
-  sender_role: string
-  sender_name: string
-}
-
-type Tab = 'overview' | 'users' | 'listings' | 'applications' | 'conversations' | 'violations' | 'customer-view' | 'cleaner-view'
+type Tab = 'overview' | 'users' | 'listings' | 'applications' | 'conversations' | 'violations' | 'customer-view' | 'cleaner-view' | 'tests'
 
 const ZONE_LABELS: Record<string, string> = {
-  central_south_east: 'Central / South East',
-  north_west: 'North West',
-  north_east_roffey: 'North East / Roffey',
-  south_west: 'South West',
-  warnham_north: 'Warnham / North',
-  broadbridge_heath: 'Broadbridge Heath',
-  mannings_heath: 'Mannings Heath',
-  faygate_kilnwood_vale: 'Faygate / Kilnwood Vale',
-  christs_hospital: "Christ's Hospital",
+  central_south_east: 'Central / South East', north_west: 'North West',
+  north_east_roffey: 'North East / Roffey', south_west: 'South West',
+  warnham_north: 'Warnham / North', broadbridge_heath: 'Broadbridge Heath',
+  mannings_heath: 'Mannings Heath', faygate_kilnwood_vale: 'Faygate / Kilnwood Vale',
+  christs_hospital: "Christ's Hospital", southwater: 'Southwater',
 }
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function ago(iso: string) {
   const diff = Date.now() - new Date(iso).getTime()
@@ -95,28 +33,15 @@ function ago(iso: string) {
   if (hrs < 24) return `${hrs}h ago`
   return `${Math.floor(hrs / 24)}d ago`
 }
-
 function fmt(iso: string) {
   return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-// ─── Admin API helper ─────────────────────────────────────────────────────────
-
 async function adminAction(body: Record<string, unknown>) {
-  const res = await fetch('/api/admin/actions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
-  if (!res.ok) {
-    const err = await res.json()
-    console.error('Admin action failed:', err)
-    return false
-  }
+  const res = await fetch('/api/admin/actions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+  if (!res.ok) { const err = await res.json(); console.error('Admin action failed:', err); return false }
   return true
 }
-
-// ─── Stat Card ────────────────────────────────────────────────────────────────
 
 function StatCard({ label, value, color = '#2563eb', sub }: { label: string; value: number | string; color?: string; sub?: string }) {
   return (
@@ -128,31 +53,18 @@ function StatCard({ label, value, color = '#2563eb', sub }: { label: string; val
   )
 }
 
-// ─── Badge ────────────────────────────────────────────────────────────────────
-
 function Badge({ label, color }: { label: string; color: string }) {
   const cfg: Record<string, { bg: string; text: string; border: string }> = {
-    green:  { bg: '#f0fdf4', text: '#15803d', border: '#bbf7d0' },
-    yellow: { bg: '#fefce8', text: '#854d0e', border: '#fef08a' },
-    red:    { bg: '#fef2f2', text: '#dc2626', border: '#fecaca' },
-    blue:   { bg: '#eff6ff', text: '#1d4ed8', border: '#bfdbfe' },
-    gray:   { bg: '#f8fafc', text: '#64748b', border: '#e2e8f0' },
-    purple: { bg: '#f5f3ff', text: '#6d28d9', border: '#ddd6fe' },
+    green: { bg: '#f0fdf4', text: '#15803d', border: '#bbf7d0' }, yellow: { bg: '#fefce8', text: '#854d0e', border: '#fef08a' },
+    red: { bg: '#fef2f2', text: '#dc2626', border: '#fecaca' }, blue: { bg: '#eff6ff', text: '#1d4ed8', border: '#bfdbfe' },
+    gray: { bg: '#f8fafc', text: '#64748b', border: '#e2e8f0' }, purple: { bg: '#f5f3ff', text: '#6d28d9', border: '#ddd6fe' },
     orange: { bg: '#fff7ed', text: '#c2410c', border: '#fed7aa' },
   }
   const c = cfg[color] ?? cfg.gray
-  return (
-    <span style={{ background: c.bg, color: c.text, border: `1px solid ${c.border}`, borderRadius: '100px', padding: '2px 10px', fontSize: '11px', fontWeight: 700 }}>
-      {label}
-    </span>
-  )
+  return <span style={{ background: c.bg, color: c.text, border: `1px solid ${c.border}`, borderRadius: '100px', padding: '2px 10px', fontSize: '11px', fontWeight: 700 }}>{label}</span>
 }
 
-// ─── Confirm Modal ────────────────────────────────────────────────────────────
-
-function ConfirmModal({ message, onConfirm, onCancel, danger = true }: {
-  message: string; onConfirm: () => void; onCancel: () => void; danger?: boolean
-}) {
+function ConfirmModal({ message, onConfirm, onCancel, danger = true }: { message: string; onConfirm: () => void; onCancel: () => void; danger?: boolean }) {
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
       <div style={{ background: 'white', borderRadius: '20px', padding: '32px', maxWidth: '400px', width: '100%', textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
@@ -166,26 +78,18 @@ function ConfirmModal({ message, onConfirm, onCancel, danger = true }: {
   )
 }
 
-// ─── Conversation Modal ───────────────────────────────────────────────────────
-
-function ConversationModal({ conversationId, cleanerName, customerName, onClose }: {
-  conversationId: string; cleanerName: string; customerName: string; onClose: () => void
-}) {
+function ConversationModal({ conversationId, cleanerName, customerName, onClose }: { conversationId: string; cleanerName: string; customerName: string; onClose: () => void }) {
   const [messages, setMessages] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const supabase = createClient()
-
   useEffect(() => {
     const load = async () => {
-      const { data } = await (supabase as any)
-        .from('messages').select('*').eq('conversation_id', conversationId)
-        .order('created_at', { ascending: true })
+      const { data } = await (supabase as any).from('messages').select('*').eq('conversation_id', conversationId).order('created_at', { ascending: true })
       setMessages(data ?? [])
       setLoading(false)
     }
     load()
   }, [conversationId])
-
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 500, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
       <div style={{ background: 'white', borderRadius: '20px', width: '100%', maxWidth: '560px', maxHeight: '80vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -197,43 +101,66 @@ function ConversationModal({ conversationId, cleanerName, customerName, onClose 
           <button onClick={onClose} style={{ background: '#f1f5f9', border: 'none', borderRadius: '50%', width: '32px', height: '32px', fontSize: '16px', cursor: 'pointer', color: '#64748b' }}>✕</button>
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
-          {loading ? (
-            <p style={{ color: '#94a3b8', fontSize: '13px', textAlign: 'center' }}>Loading…</p>
-          ) : messages.length === 0 ? (
-            <p style={{ color: '#94a3b8', fontSize: '13px', textAlign: 'center' }}>No messages yet</p>
-          ) : (
-            messages.map(msg => {
-              const hasViolation = ['07', '+44', 'whatsapp', 'email', '@', 'bank', 'go direct', 'go private', 'direct payment', 'cash', 'address']
-                .some(w => msg.content?.toLowerCase().includes(w))
+          {loading ? <p style={{ color: '#94a3b8', fontSize: '13px', textAlign: 'center' }}>Loading…</p>
+            : messages.length === 0 ? <p style={{ color: '#94a3b8', fontSize: '13px', textAlign: 'center' }}>No messages yet</p>
+            : messages.map(msg => {
+              const hasViolation = ['07', '+44', 'whatsapp', 'email', '@', 'bank', 'go direct', 'go private', 'direct payment', 'cash', 'address'].some(w => msg.content?.toLowerCase().includes(w))
               return (
                 <div key={msg.id} style={{ marginBottom: '12px' }}>
                   <div style={{ fontSize: '10px', fontWeight: 700, color: msg.sender_role === 'cleaner' ? '#2563eb' : '#16a085', textTransform: 'uppercase', marginBottom: '3px' }}>
                     {msg.sender_role === 'cleaner' ? cleanerName : customerName}
-                    <span style={{ fontWeight: 400, color: '#94a3b8', marginLeft: '8px' }}>
-                      {new Date(msg.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} · {fmt(msg.created_at)}
-                    </span>
+                    <span style={{ fontWeight: 400, color: '#94a3b8', marginLeft: '8px' }}>{new Date(msg.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} · {fmt(msg.created_at)}</span>
                   </div>
-                  <div style={{
-                    padding: '8px 12px', borderRadius: '10px', fontSize: '13px', lineHeight: 1.5,
-                    background: hasViolation ? '#fef2f2' : '#f8fafc',
-                    border: hasViolation ? '1px solid #fecaca' : '1px solid #f1f5f9',
-                    color: '#0f172a',
-                  }}>
-                    {msg.content}
-                    {hasViolation && <span style={{ marginLeft: '8px', fontSize: '10px', fontWeight: 700, color: '#dc2626' }}>⚠ keyword</span>}
+                  <div style={{ padding: '8px 12px', borderRadius: '10px', fontSize: '13px', lineHeight: 1.5, background: hasViolation ? '#fef2f2' : '#f8fafc', border: hasViolation ? '1px solid #fecaca' : '1px solid #f1f5f9', color: '#0f172a' }}>
+                    {msg.content}{hasViolation && <span style={{ marginLeft: '8px', fontSize: '10px', fontWeight: 700, color: '#dc2626' }}>⚠ keyword</span>}
                   </div>
                 </div>
               )
-            })
-          )}
+            })}
         </div>
       </div>
     </div>
   )
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
+// ─── Test Card component ───────────────────────────────────────────────────────
+function TestCard({ title, description, buttonLabel, buttonColor = '#2563eb', comingSoon = false, onRun }: {
+  title: string; description: string; buttonLabel: string; buttonColor?: string; comingSoon?: boolean
+  onRun?: () => Promise<{ success: boolean; message: string }>
+}) {
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
+  const [resultMsg, setResultMsg] = useState('')
+  const run = async () => {
+    if (!onRun || comingSoon) return
+    setStatus('loading'); setResultMsg('')
+    try {
+      const result = await onRun()
+      setStatus(result.success ? 'success' : 'error')
+      setResultMsg(result.message)
+    } catch (e: any) { setStatus('error'); setResultMsg(e.message ?? 'Unknown error') }
+  }
+  return (
+    <div style={{ background: 'white', borderRadius: '16px', border: '1.5px solid #e2e8f0', padding: '24px 28px' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px' }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a', marginBottom: '4px' }}>{title}</div>
+          <div style={{ fontSize: '13px', color: '#64748b', lineHeight: 1.6 }}>{description}</div>
+        </div>
+        {comingSoon ? (
+          <span style={{ background: '#f8fafc', color: '#94a3b8', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 16px', fontSize: '12px', fontWeight: 600, whiteSpace: 'nowrap' }}>Coming soon</span>
+        ) : (
+          <button onClick={run} disabled={status === 'loading'} style={{ background: status === 'loading' ? '#94a3b8' : buttonColor, color: 'white', border: 'none', borderRadius: '8px', padding: '10px 20px', fontSize: '13px', fontWeight: 700, cursor: status === 'loading' ? 'not-allowed' : 'pointer', fontFamily: "'DM Sans', sans-serif", whiteSpace: 'nowrap', flexShrink: 0 }}>
+            {status === 'loading' ? 'Sending…' : buttonLabel}
+          </button>
+        )}
+      </div>
+      {status === 'success' && <div style={{ marginTop: '12px', padding: '10px 14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', fontSize: '13px', color: '#15803d', fontWeight: 600 }}>✅ {resultMsg}</div>}
+      {status === 'error' && <div style={{ marginTop: '12px', padding: '10px 14px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', fontSize: '13px', color: '#dc2626', fontWeight: 600 }}>❌ {resultMsg}</div>}
+    </div>
+  )
+}
 
+// ─── Main Page ────────────────────────────────────────────────────────────────
 export default function AdminDashboard() {
   const router = useRouter()
   const [tab, setTab] = useState<Tab>('overview')
@@ -264,98 +191,60 @@ export default function AdminDashboard() {
   }, [])
 
   const loadStats = async () => {
-    const [
-      { count: customers }, { count: cleaners }, { count: listingsCount },
-      { count: apps }, { count: convs }, { count: msgs }, { count: viols },
-    ] = await Promise.all([
+    const [{ count: customers }, { count: cleaners }, { count: listingsCount }, { count: apps }, { count: convs }, { count: msgs }, { count: viols }] = await Promise.all([
       (supabase as any).from('customers').select('*', { count: 'exact', head: true }),
       (supabase as any).from('cleaners').select('*', { count: 'exact', head: true }),
       (supabase as any).from('clean_requests').select('*', { count: 'exact', head: true }).eq('status', 'active').not('hidden', 'eq', true),
       (supabase as any).from('applications').select('*', { count: 'exact', head: true }),
       (supabase as any).from('conversations').select('*', { count: 'exact', head: true }),
       (supabase as any).from('messages').select('*', { count: 'exact', head: true }),
-      (supabase as any).from('keyword_violations').select('*', { count: 'exact', head: true })
-        .gte('created_at', new Date(Date.now() - 86400000).toISOString()),
+      (supabase as any).from('keyword_violations').select('*', { count: 'exact', head: true }).gte('created_at', new Date(Date.now() - 86400000).toISOString()),
     ])
-    setStats({
-      totalCustomers: customers ?? 0, totalCleaners: cleaners ?? 0,
-      activeListings: listingsCount ?? 0, totalApplications: apps ?? 0,
-      totalConversations: convs ?? 0, totalMessages: msgs ?? 0, violationsToday: viols ?? 0,
-    })
+    setStats({ totalCustomers: customers ?? 0, totalCleaners: cleaners ?? 0, activeListings: listingsCount ?? 0, totalApplications: apps ?? 0, totalConversations: convs ?? 0, totalMessages: msgs ?? 0, violationsToday: viols ?? 0 })
   }
 
   const loadUsers = async () => {
-    const { data } = await (supabase as any)
-      .from('profiles').select('id, full_name, email, role, created_at, suspended')
-      .in('role', ['customer', 'cleaner']).order('created_at', { ascending: false }).limit(200)
+    const { data } = await (supabase as any).from('profiles').select('id, full_name, email, role, created_at, suspended').in('role', ['customer', 'cleaner']).order('created_at', { ascending: false }).limit(200)
     setUsers(data ?? [])
   }
 
   const loadListings = async () => {
-    const { data: reqs } = await (supabase as any)
-      .from('clean_requests')
-      .select('id, status, created_at, zone, bedrooms, bathrooms, hourly_rate, frequency, customer_id, hidden')
-      .order('created_at', { ascending: false }).limit(200)
+    const { data: reqs } = await (supabase as any).from('clean_requests').select('id, status, created_at, zone, bedrooms, bathrooms, hourly_rate, frequency, customer_id, hidden').order('created_at', { ascending: false }).limit(200)
     if (!reqs) return
     const enriched = await Promise.all(reqs.map(async (r: any) => {
-      const { data: cust } = await (supabase as any)
-        .from('customers').select('profiles(full_name, email)').eq('id', r.customer_id).single()
-      return {
-        id: r.id, status: r.status, created_at: r.created_at, zone: r.zone,
-        bedrooms: r.bedrooms, bathrooms: r.bathrooms, hourly_rate: r.hourly_rate,
-        frequency: r.frequency, hidden: r.hidden ?? false,
-        customer_name: (cust as any)?.profiles?.full_name ?? 'Unknown',
-        customer_email: (cust as any)?.profiles?.email ?? '',
-      }
+      const { data: cust } = await (supabase as any).from('customers').select('profiles(full_name, email)').eq('id', r.customer_id).single()
+      return { id: r.id, status: r.status, created_at: r.created_at, zone: r.zone, bedrooms: r.bedrooms, bathrooms: r.bathrooms, hourly_rate: r.hourly_rate, frequency: r.frequency, hidden: r.hidden ?? false, customer_name: (cust as any)?.profiles?.full_name ?? 'Unknown', customer_email: (cust as any)?.profiles?.email ?? '' }
     }))
     setListings(enriched)
   }
 
   const loadApplications = async () => {
-    const { data: apps } = await (supabase as any)
-      .from('applications').select('id, status, created_at, message, cleaner_id, request_id')
-      .order('created_at', { ascending: false }).limit(100)
+    const { data: apps } = await (supabase as any).from('applications').select('id, status, created_at, message, cleaner_id, request_id').order('created_at', { ascending: false }).limit(100)
     if (!apps) return
     const enriched = await Promise.all(apps.map(async (app: any) => {
       const { data: cleaner } = await (supabase as any).from('cleaners').select('profiles(full_name)').eq('id', app.cleaner_id).single()
       const { data: req } = await (supabase as any).from('clean_requests').select('zone, customer_id').eq('id', app.request_id).single()
       const { data: customer } = req ? await (supabase as any).from('customers').select('profiles(full_name)').eq('id', req.customer_id).single() : { data: null }
-      return {
-        id: app.id, status: app.status, created_at: app.created_at, message: app.message,
-        cleaner_name: cleaner?.profiles?.full_name ?? 'Unknown',
-        customer_name: (customer as any)?.profiles?.full_name ?? 'Unknown',
-        zone: req?.zone ?? '—',
-      }
+      return { id: app.id, status: app.status, created_at: app.created_at, message: app.message, cleaner_name: cleaner?.profiles?.full_name ?? 'Unknown', customer_name: (customer as any)?.profiles?.full_name ?? 'Unknown', zone: req?.zone ?? '—' }
     }))
     setApplications(enriched)
   }
 
   const loadConversations = async () => {
-    const { data: convs } = await (supabase as any)
-      .from('conversations').select('id, created_at, cleaner_id, customer_id, clean_request_id')
-      .order('created_at', { ascending: false }).limit(100)
+    const { data: convs } = await (supabase as any).from('conversations').select('id, created_at, cleaner_id, customer_id, clean_request_id').order('created_at', { ascending: false }).limit(100)
     if (!convs) return
     const enriched = await Promise.all(convs.map(async (conv: any) => {
       const { data: cleaner } = await (supabase as any).from('cleaners').select('profiles(full_name)').eq('id', conv.cleaner_id).single()
       const { data: customer } = await (supabase as any).from('profiles').select('full_name').eq('id', conv.customer_id).single()
       const { data: req } = await (supabase as any).from('clean_requests').select('zone').eq('id', conv.clean_request_id).single()
-      const { data: msgs, count } = await (supabase as any).from('messages').select('content, created_at', { count: 'exact' })
-        .eq('conversation_id', conv.id).order('created_at', { ascending: false }).limit(1)
-      return {
-        id: conv.id, created_at: conv.created_at,
-        cleaner_name: cleaner?.profiles?.full_name ?? 'Unknown',
-        customer_name: (customer as any)?.full_name ?? 'Unknown',
-        zone: req?.zone ?? '—', message_count: count ?? 0,
-        last_message: msgs?.[0]?.content ?? '', last_message_at: msgs?.[0]?.created_at ?? null,
-      }
+      const { data: msgs, count } = await (supabase as any).from('messages').select('content, created_at', { count: 'exact' }).eq('conversation_id', conv.id).order('created_at', { ascending: false }).limit(1)
+      return { id: conv.id, created_at: conv.created_at, cleaner_name: cleaner?.profiles?.full_name ?? 'Unknown', customer_name: (customer as any)?.full_name ?? 'Unknown', zone: req?.zone ?? '—', message_count: count ?? 0, last_message: msgs?.[0]?.content ?? '', last_message_at: msgs?.[0]?.created_at ?? null }
     }))
     setConversations(enriched)
   }
 
   const loadViolations = async () => {
-    const { data } = await (supabase as any)
-      .from('keyword_violations').select('id, created_at, conversation_id, message_content, triggered_keywords, sender_role, sender_id')
-      .order('created_at', { ascending: false }).limit(100)
+    const { data } = await (supabase as any).from('keyword_violations').select('id, created_at, conversation_id, message_content, triggered_keywords, sender_role, sender_id').order('created_at', { ascending: false }).limit(100)
     if (!data) return
     const enriched = await Promise.all((data as any[]).map(async (v) => {
       const { data: profile } = await (supabase as any).from('profiles').select('full_name').eq('id', v.sender_id).single()
@@ -363,8 +252,6 @@ export default function AdminDashboard() {
     }))
     setViolations(enriched)
   }
-
-  // ─── Write actions — all go through service-role API route ────────────────
 
   const suspendUser = async (userId: string, suspended: boolean) => {
     const ok = await adminAction({ action: 'suspend_user', userId, suspended })
@@ -392,11 +279,7 @@ export default function AdminDashboard() {
     )
   }
 
-  const filteredUsers = users.filter(u =>
-    u.full_name?.toLowerCase().includes(userSearch.toLowerCase()) ||
-    u.email?.toLowerCase().includes(userSearch.toLowerCase())
-  )
-
+  const filteredUsers = users.filter(u => u.full_name?.toLowerCase().includes(userSearch.toLowerCase()) || u.email?.toLowerCase().includes(userSearch.toLowerCase()))
   const filteredListings = listings
     .filter(l => listingFilter === 'all' ? true : listingFilter === 'hidden' ? l.hidden : !l.hidden && l.status !== 'deleted')
     .filter(l => l.customer_name?.toLowerCase().includes(listingSearch.toLowerCase()) || l.zone?.toLowerCase().includes(listingSearch.toLowerCase()))
@@ -410,6 +293,7 @@ export default function AdminDashboard() {
     { id: 'violations', label: 'Violations', icon: '🚨' },
     { id: 'customer-view', label: 'Customer view', icon: '👤' },
     { id: 'cleaner-view', label: 'Cleaner view', icon: '🧹' },
+    { id: 'tests', label: 'Tests', icon: '🧪' },
   ]
 
   return (
@@ -417,30 +301,22 @@ export default function AdminDashboard() {
       <style>{`* { box-sizing: border-box; }`}</style>
       <div style={{ minHeight: '100vh', background: '#f8fafc', fontFamily: "'DM Sans', sans-serif" }}>
         <Header userRole="admin" />
-
         <div style={{ maxWidth: '1300px', margin: '0 auto', padding: '40px 24px 80px' }}>
 
-        <div style={{ marginBottom: '32px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+          <div style={{ marginBottom: '32px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
             <div>
               <h1 style={{ fontFamily: "'Lora', serif", fontSize: '28px', fontWeight: 700, color: '#0f172a', margin: '0 0 4px' }}>Admin Portal</h1>
               <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>Full platform visibility and controls</p>
             </div>
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <a href="/customer/dashboard" target="_blank" style={{ background: '#f0fdf4', color: '#15803d', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: 600, textDecoration: 'none' }}>
-                🏠 Open customer dashboard ↗
-              </a>
-              <a href="/cleaner/dashboard" target="_blank" style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: 600, textDecoration: 'none' }}>
-                🧹 Open cleaner dashboard ↗
-              </a>
-              <button
-                onClick={async () => {
-                  const supabase = createClient()
-                  await supabase.auth.signOut()
-                  router.refresh()
-                  router.replace('/')
-                }}
-                style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
-              >
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              <button onClick={() => setTab('customer-view')} style={{ background: '#f0fdf4', color: '#15803d', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
+                👤 Customer view
+              </button>
+              <button onClick={() => setTab('cleaner-view')} style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
+                🧹 Cleaner view
+              </button>
+              <button onClick={async () => { const supabase = createClient(); await supabase.auth.signOut(); router.refresh(); router.replace('/') }}
+                style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
                 Sign out
               </button>
             </div>
@@ -449,23 +325,13 @@ export default function AdminDashboard() {
           {/* Tabs */}
           <div style={{ display: 'flex', gap: '4px', marginBottom: '32px', background: 'white', padding: '4px', borderRadius: '12px', border: '1px solid #e2e8f0', flexWrap: 'wrap' }}>
             {tabs.map(t => (
-              <button key={t.id} onClick={() => setTab(t.id)} style={{
-                padding: '8px 14px', borderRadius: '9px', border: 'none', cursor: 'pointer',
-                background: tab === t.id ? '#0f172a' : 'transparent',
-                color: tab === t.id ? 'white' : '#64748b',
-                fontSize: '12px', fontWeight: 600, fontFamily: "'DM Sans', sans-serif",
-                display: 'flex', alignItems: 'center', gap: '5px',
-              }}>
+              <button key={t.id} onClick={() => setTab(t.id)} style={{ padding: '8px 14px', borderRadius: '9px', border: 'none', cursor: 'pointer', background: tab === t.id ? '#0f172a' : 'transparent', color: tab === t.id ? 'white' : '#64748b', fontSize: '12px', fontWeight: 600, fontFamily: "'DM Sans', sans-serif", display: 'flex', alignItems: 'center', gap: '5px' }}>
                 {t.icon} {t.label}
                 {t.id === 'violations' && violations.filter(v => { const today = new Date(); today.setHours(0,0,0,0); return new Date(v.created_at) >= today }).length > 0 && (
-                  <span style={{ background: '#ef4444', color: 'white', borderRadius: '100px', padding: '0 5px', fontSize: '10px', fontWeight: 700 }}>
-                    {violations.filter(v => { const today = new Date(); today.setHours(0,0,0,0); return new Date(v.created_at) >= today }).length}
-                  </span>
+                  <span style={{ background: '#ef4444', color: 'white', borderRadius: '100px', padding: '0 5px', fontSize: '10px', fontWeight: 700 }}>{violations.filter(v => { const today = new Date(); today.setHours(0,0,0,0); return new Date(v.created_at) >= today }).length}</span>
                 )}
                 {t.id === 'listings' && listings.filter(l => l.hidden).length > 0 && (
-                  <span style={{ background: '#f59e0b', color: 'white', borderRadius: '100px', padding: '0 5px', fontSize: '10px', fontWeight: 700 }}>
-                    {listings.filter(l => l.hidden).length}
-                  </span>
+                  <span style={{ background: '#f59e0b', color: 'white', borderRadius: '100px', padding: '0 5px', fontSize: '10px', fontWeight: 700 }}>{listings.filter(l => l.hidden).length}</span>
                 )}
               </button>
             ))}
@@ -493,17 +359,11 @@ export default function AdminDashboard() {
                         <div style={{ fontSize: '11px', color: '#94a3b8' }}>{v.sender_name} · {v.sender_role} · {ago(v.created_at)}</div>
                       </div>
                       <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', flexShrink: 0 }}>
-                        {v.triggered_keywords.map(k => (
-                          <span key={k} style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '4px', padding: '1px 6px', fontSize: '10px', fontWeight: 700 }}>{k}</span>
-                        ))}
+                        {v.triggered_keywords.map(k => (<span key={k} style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '4px', padding: '1px 6px', fontSize: '10px', fontWeight: 700 }}>{k}</span>))}
                       </div>
                     </div>
                   ))}
-                  {violations.length > 5 && (
-                    <button onClick={() => setTab('violations')} style={{ marginTop: '12px', background: 'none', border: 'none', color: '#dc2626', fontSize: '12px', fontWeight: 700, cursor: 'pointer', padding: 0 }}>
-                      View all {violations.length} violations →
-                    </button>
-                  )}
+                  {violations.length > 5 && <button onClick={() => setTab('violations')} style={{ marginTop: '12px', background: 'none', border: 'none', color: '#dc2626', fontSize: '12px', fontWeight: 700, cursor: 'pointer', padding: 0 }}>View all {violations.length} violations →</button>}
                 </div>
               )}
             </div>
@@ -513,19 +373,12 @@ export default function AdminDashboard() {
           {tab === 'users' && (
             <div>
               <div style={{ marginBottom: '16px', display: 'flex', gap: '12px', alignItems: 'center' }}>
-                <input value={userSearch} onChange={e => setUserSearch(e.target.value)} placeholder="Search by name or email…"
-                  style={{ padding: '10px 16px', borderRadius: '10px', border: '1.5px solid #e2e8f0', fontSize: '14px', fontFamily: "'DM Sans', sans-serif", outline: 'none', width: '300px', color: '#0f172a' }} />
+                <input value={userSearch} onChange={e => setUserSearch(e.target.value)} placeholder="Search by name or email…" style={{ padding: '10px 16px', borderRadius: '10px', border: '1.5px solid #e2e8f0', fontSize: '14px', fontFamily: "'DM Sans', sans-serif", outline: 'none', width: '300px', color: '#0f172a' }} />
                 <span style={{ fontSize: '13px', color: '#94a3b8' }}>{filteredUsers.length} users</span>
               </div>
               <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                  <thead>
-                    <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                      {['Name', 'Email', 'Role', 'Joined', 'Status', 'Actions'].map(h => (
-                        <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
+                  <thead><tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>{['Name', 'Email', 'Role', 'Joined', 'Status', 'Actions'].map(h => <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>)}</tr></thead>
                   <tbody>
                     {filteredUsers.map((u, i) => (
                       <tr key={u.id} style={{ borderBottom: i < filteredUsers.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
@@ -535,12 +388,7 @@ export default function AdminDashboard() {
                         <td style={{ padding: '12px 16px', color: '#94a3b8' }}>{fmt(u.created_at)}</td>
                         <td style={{ padding: '12px 16px' }}><Badge label={u.suspended ? 'Suspended' : 'Active'} color={u.suspended ? 'red' : 'green'} /></td>
                         <td style={{ padding: '12px 16px' }}>
-                          <button onClick={() => suspendUser(u.id, !u.suspended)} style={{
-                            background: u.suspended ? '#f0fdf4' : '#fef2f2',
-                            color: u.suspended ? '#15803d' : '#dc2626',
-                            border: `1px solid ${u.suspended ? '#bbf7d0' : '#fecaca'}`,
-                            borderRadius: '8px', padding: '4px 12px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
-                          }}>
+                          <button onClick={() => suspendUser(u.id, !u.suspended)} style={{ background: u.suspended ? '#f0fdf4' : '#fef2f2', color: u.suspended ? '#15803d' : '#dc2626', border: `1px solid ${u.suspended ? '#bbf7d0' : '#fecaca'}`, borderRadius: '8px', padding: '4px 12px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
                             {u.suspended ? 'Reinstate' : 'Suspend'}
                           </button>
                         </td>
@@ -556,57 +404,27 @@ export default function AdminDashboard() {
           {tab === 'listings' && (
             <div>
               <div style={{ marginBottom: '16px', display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-                <input value={listingSearch} onChange={e => setListingSearch(e.target.value)} placeholder="Search by customer or zone…"
-                  style={{ padding: '10px 16px', borderRadius: '10px', border: '1.5px solid #e2e8f0', fontSize: '14px', fontFamily: "'DM Sans', sans-serif", outline: 'none', width: '280px', color: '#0f172a' }} />
+                <input value={listingSearch} onChange={e => setListingSearch(e.target.value)} placeholder="Search by customer or zone…" style={{ padding: '10px 16px', borderRadius: '10px', border: '1.5px solid #e2e8f0', fontSize: '14px', fontFamily: "'DM Sans', sans-serif", outline: 'none', width: '280px', color: '#0f172a' }} />
                 <div style={{ display: 'flex', gap: '4px', background: 'white', padding: '4px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                  {(['all', 'active', 'hidden'] as const).map(f => (
-                    <button key={f} onClick={() => setListingFilter(f)} style={{
-                      padding: '5px 14px', borderRadius: '6px', border: 'none', cursor: 'pointer',
-                      background: listingFilter === f ? '#0f172a' : 'transparent',
-                      color: listingFilter === f ? 'white' : '#64748b',
-                      fontSize: '12px', fontWeight: 600, fontFamily: "'DM Sans', sans-serif",
-                    }}>{f.charAt(0).toUpperCase() + f.slice(1)}</button>
-                  ))}
+                  {(['all', 'active', 'hidden'] as const).map(f => <button key={f} onClick={() => setListingFilter(f)} style={{ padding: '5px 14px', borderRadius: '6px', border: 'none', cursor: 'pointer', background: listingFilter === f ? '#0f172a' : 'transparent', color: listingFilter === f ? 'white' : '#64748b', fontSize: '12px', fontWeight: 600, fontFamily: "'DM Sans', sans-serif" }}>{f.charAt(0).toUpperCase() + f.slice(1)}</button>)}
                 </div>
                 <span style={{ fontSize: '13px', color: '#94a3b8' }}>{filteredListings.length} listings</span>
               </div>
               <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                  <thead>
-                    <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                      {['Customer', 'Zone', 'Details', 'Status', 'Posted', 'Actions'].map(h => (
-                        <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
+                  <thead><tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>{['Customer', 'Zone', 'Details', 'Status', 'Posted', 'Actions'].map(h => <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>)}</tr></thead>
                   <tbody>
                     {filteredListings.map((l, i) => (
                       <tr key={l.id} style={{ borderBottom: i < filteredListings.length - 1 ? '1px solid #f1f5f9' : 'none', opacity: l.hidden ? 0.6 : 1 }}>
-                        <td style={{ padding: '12px 16px' }}>
-                          <div style={{ fontWeight: 600, color: '#0f172a' }}>{l.customer_name}</div>
-                          <div style={{ fontSize: '11px', color: '#94a3b8' }}>{l.customer_email}</div>
-                        </td>
+                        <td style={{ padding: '12px 16px' }}><div style={{ fontWeight: 600, color: '#0f172a' }}>{l.customer_name}</div><div style={{ fontSize: '11px', color: '#94a3b8' }}>{l.customer_email}</div></td>
                         <td style={{ padding: '12px 16px', color: '#64748b' }}>{ZONE_LABELS[l.zone ?? ''] ?? l.zone ?? '—'}</td>
                         <td style={{ padding: '12px 16px', color: '#64748b' }}>{l.bedrooms}bd · {l.bathrooms}ba · £{l.hourly_rate}/hr · {l.frequency}</td>
-                        <td style={{ padding: '12px 16px' }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            <Badge label={l.status} color={l.status === 'active' ? 'green' : l.status === 'pending_review' ? 'yellow' : 'gray'} />
-                            {l.hidden && <Badge label="Hidden" color="orange" />}
-                          </div>
-                        </td>
+                        <td style={{ padding: '12px 16px' }}><div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><Badge label={l.status} color={l.status === 'active' ? 'green' : l.status === 'pending_review' ? 'yellow' : 'gray'} />{l.hidden && <Badge label="Hidden" color="orange" />}</div></td>
                         <td style={{ padding: '12px 16px', color: '#94a3b8', whiteSpace: 'nowrap' }}>{ago(l.created_at)}</td>
                         <td style={{ padding: '12px 16px' }}>
                           <div style={{ display: 'flex', gap: '6px' }}>
-                            <button onClick={() => hideListing(l.id, !l.hidden)}
-                              style={{ background: l.hidden ? '#fff7ed' : '#f8fafc', color: l.hidden ? '#c2410c' : '#64748b', border: `1px solid ${l.hidden ? '#fed7aa' : '#e2e8f0'}`, borderRadius: '6px', padding: '4px 10px', fontSize: '11px', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
-                              {l.hidden ? '👁 Unhide' : '🚫 Hide'}
-                            </button>
-                            <button onClick={() => setConfirmAction({
-                              message: `Permanently delete this listing from ${l.customer_name}? This cannot be undone.`,
-                              onConfirm: () => { deleteListing(l.id); setConfirmAction(null) }
-                            })} style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '6px', padding: '4px 10px', fontSize: '11px', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
-                              🗑 Delete
-                            </button>
+                            <button onClick={() => hideListing(l.id, !l.hidden)} style={{ background: l.hidden ? '#fff7ed' : '#f8fafc', color: l.hidden ? '#c2410c' : '#64748b', border: `1px solid ${l.hidden ? '#fed7aa' : '#e2e8f0'}`, borderRadius: '6px', padding: '4px 10px', fontSize: '11px', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>{l.hidden ? '👁 Unhide' : '🚫 Hide'}</button>
+                            <button onClick={() => setConfirmAction({ message: `Permanently delete this listing from ${l.customer_name}? This cannot be undone.`, onConfirm: () => { deleteListing(l.id); setConfirmAction(null) } })} style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '6px', padding: '4px 10px', fontSize: '11px', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>🗑 Delete</button>
                           </div>
                         </td>
                       </tr>
@@ -626,22 +444,14 @@ export default function AdminDashboard() {
               <div style={{ marginBottom: '16px', fontSize: '13px', color: '#94a3b8' }}>{applications.length} applications</div>
               <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                  <thead>
-                    <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                      {['Cleaner', 'Customer', 'Zone', 'Status', 'Message', 'Date'].map(h => (
-                        <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
+                  <thead><tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>{['Cleaner', 'Customer', 'Zone', 'Status', 'Message', 'Date'].map(h => <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>)}</tr></thead>
                   <tbody>
                     {applications.map((app, i) => (
                       <tr key={app.id} style={{ borderBottom: i < applications.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
                         <td style={{ padding: '12px 16px', fontWeight: 600, color: '#0f172a' }}>{app.cleaner_name}</td>
                         <td style={{ padding: '12px 16px', color: '#64748b' }}>{app.customer_name}</td>
                         <td style={{ padding: '12px 16px', color: '#64748b' }}>{ZONE_LABELS[app.zone] ?? app.zone}</td>
-                        <td style={{ padding: '12px 16px' }}>
-                          <Badge label={app.status} color={app.status === 'accepted' ? 'green' : app.status === 'pending' ? 'yellow' : 'red'} />
-                        </td>
+                        <td style={{ padding: '12px 16px' }}><Badge label={app.status} color={app.status === 'accepted' ? 'green' : app.status === 'pending' ? 'yellow' : 'red'} /></td>
                         <td style={{ padding: '12px 16px', color: '#64748b', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{app.message || '—'}</td>
                         <td style={{ padding: '12px 16px', color: '#94a3b8', whiteSpace: 'nowrap' }}>{ago(app.created_at)}</td>
                       </tr>
@@ -658,13 +468,7 @@ export default function AdminDashboard() {
               <div style={{ marginBottom: '16px', fontSize: '13px', color: '#94a3b8' }}>{conversations.length} conversations</div>
               <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                  <thead>
-                    <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                      {['Cleaner', 'Customer', 'Zone', 'Messages', 'Last message', 'Started', ''].map(h => (
-                        <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
+                  <thead><tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>{['Cleaner', 'Customer', 'Zone', 'Messages', 'Last message', 'Started', ''].map(h => <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>)}</tr></thead>
                   <tbody>
                     {conversations.map((conv, i) => (
                       <tr key={conv.id} style={{ borderBottom: i < conversations.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
@@ -674,11 +478,7 @@ export default function AdminDashboard() {
                         <td style={{ padding: '12px 16px', fontWeight: 600, color: '#0f172a' }}>{conv.message_count}</td>
                         <td style={{ padding: '12px 16px', color: '#64748b', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{conv.last_message || '—'}</td>
                         <td style={{ padding: '12px 16px', color: '#94a3b8', whiteSpace: 'nowrap' }}>{ago(conv.created_at)}</td>
-                        <td style={{ padding: '12px 16px' }}>
-                          <button onClick={() => setViewingConv(conv)} style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '4px 12px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
-                            Read →
-                          </button>
-                        </td>
+                        <td style={{ padding: '12px 16px' }}><button onClick={() => setViewingConv(conv)} style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '4px 12px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>Read →</button></td>
                       </tr>
                     ))}
                   </tbody>
@@ -705,15 +505,10 @@ export default function AdminDashboard() {
                           <div style={{ fontSize: '14px', color: '#0f172a', marginBottom: '4px', fontStyle: 'italic' }}>"{v.message_content}"</div>
                           <div style={{ fontSize: '12px', color: '#94a3b8' }}>{v.sender_name} · {v.sender_role} · {ago(v.created_at)}</div>
                         </div>
-                        <button onClick={() => { const conv = conversations.find(c => c.id === v.conversation_id); if (conv) setViewingConv(conv) }}
-                          style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '8px', padding: '4px 12px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", flexShrink: 0 }}>
-                          View chat →
-                        </button>
+                        <button onClick={() => { const conv = conversations.find(c => c.id === v.conversation_id); if (conv) setViewingConv(conv) }} style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '8px', padding: '4px 12px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", flexShrink: 0 }}>View chat →</button>
                       </div>
                       <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                        {v.triggered_keywords.map(k => (
-                          <span key={k} style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '6px', padding: '2px 8px', fontSize: '11px', fontWeight: 700 }}>⚠ {k}</span>
-                        ))}
+                        {v.triggered_keywords.map(k => (<span key={k} style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '6px', padding: '2px 8px', fontSize: '11px', fontWeight: 700 }}>⚠ {k}</span>))}
                       </div>
                     </div>
                   ))}
@@ -726,8 +521,7 @@ export default function AdminDashboard() {
           {tab === 'customer-view' && (
             <div>
               <div style={{ marginBottom: '16px', padding: '12px 16px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', fontSize: '13px', color: '#15803d', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span>ℹ️</span>
-                <span>You're viewing the customer dashboard as admin. Any requests you post will publish normally. You will not be signed out.</span>
+                <span>ℹ️</span><span>You're viewing the customer dashboard as admin.</span>
               </div>
               <iframe src="/customer/dashboard" style={{ width: '100%', height: '85vh', border: 'none', borderRadius: '16px', boxShadow: '0 2px 16px rgba(0,0,0,0.08)' }} />
             </div>
@@ -737,31 +531,52 @@ export default function AdminDashboard() {
           {tab === 'cleaner-view' && (
             <div>
               <div style={{ marginBottom: '16px', padding: '12px 16px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '10px', fontSize: '13px', color: '#1d4ed8', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span>ℹ️</span>
-                <span>You're viewing the cleaner dashboard as admin. You can browse jobs and test the cleaner experience without affecting your admin session.</span>
+                <span>ℹ️</span><span>You're viewing the cleaner dashboard as admin.</span>
               </div>
               <iframe src="/cleaner/dashboard" style={{ width: '100%', height: '85vh', border: 'none', borderRadius: '16px', boxShadow: '0 2px 16px rgba(0,0,0,0.08)' }} />
             </div>
           )}
 
+          {/* ── Tests ── */}
+          {tab === 'tests' && (
+            <div>
+              <div style={{ marginBottom: '24px' }}>
+                <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#0f172a', margin: '0 0 4px' }}>Email tests</h2>
+                <p style={{ fontSize: '13px', color: '#64748b', margin: 0 }}>All test emails send to <strong>adamjbell95@gmail.com</strong> using live test data.</p>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+                <TestCard
+                  title="🧹 Cleaner acceptance email"
+                  description="Sends the 'You've been chosen' email that a cleaner receives when a customer selects them and confirms a start date via GoCardless. Uses Alison C. as the cleaner and Adam Bell as the customer."
+                  buttonLabel="Send test email →"
+                  buttonColor="#2563eb"
+                  onRun={async () => {
+                    const res = await fetch(
+                      '/api/admin/test-cleaner-email?secret=vouchee-test&applicationId=5d2c5f56-080d-48cd-b552-a666881bde38&startDate=2026-04-17&overrideTo=adamjbell95@gmail.com'
+                    )
+                    const data = await res.json()
+                    if (data.success) return { success: true, message: `Sent to ${data.sentTo}` }
+                    return { success: false, message: data.error ?? 'Failed' }
+                  }}
+                />
+
+                <TestCard
+                  title="👤 Customer confirmation email"
+                  description="Sends the confirmation email that a customer receives after they've set up their Direct Debit and their cleaner has been assigned. This email is not built yet."
+                  buttonLabel="Send test email →"
+                  buttonColor="#16a34a"
+                  comingSoon
+                />
+
+              </div>
+            </div>
+          )}
+
         </div>
 
-        {viewingConv && (
-          <ConversationModal
-            conversationId={viewingConv.id}
-            cleanerName={viewingConv.cleaner_name}
-            customerName={viewingConv.customer_name}
-            onClose={() => setViewingConv(null)}
-          />
-        )}
-
-        {confirmAction && (
-          <ConfirmModal
-            message={confirmAction.message}
-            onConfirm={confirmAction.onConfirm}
-            onCancel={() => setConfirmAction(null)}
-          />
-        )}
+        {viewingConv && <ConversationModal conversationId={viewingConv.id} cleanerName={viewingConv.cleaner_name} customerName={viewingConv.customer_name} onClose={() => setViewingConv(null)} />}
+        {confirmAction && <ConfirmModal message={confirmAction.message} onConfirm={confirmAction.onConfirm} onCancel={() => setConfirmAction(null)} />}
       </div>
     </>
   )
