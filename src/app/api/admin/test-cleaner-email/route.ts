@@ -45,7 +45,7 @@ function formatDate(iso: string): string {
 }
 
 function getFreqLabel(frequency: string | null | undefined): string {
-  if (!frequency) return '—'
+  if (!frequency) return 'Not specified'
   const map: Record<string, string> = { weekly: 'Weekly', fortnightly: 'Fortnightly', monthly: 'Monthly' }
   return map[frequency] ?? frequency
 }
@@ -79,7 +79,7 @@ function buildCleanerEmail(args: {
       <div style="font-size:13px;font-weight:800;color:#0f172a;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;">Tasks requested</div>
       ${standardTasks.length > 0 ? `<div style="margin-bottom:6px;">${standardTasks.map(greenChip).join('')}</div>` : ''}
       ${specialTasks.length > 0 ? `
-        <div style="font-size:11px;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:0.06em;margin:10px 0 6px;">Special requests</div>
+        <div style="font-size:13px;font-weight:800;color:#92400e;text-transform:uppercase;letter-spacing:0.06em;margin:10px 0 6px;">Special requests</div>
         <div>${specialTasks.map(yellowChip).join('')}</div>
       ` : ''}
     </div>`
@@ -102,10 +102,10 @@ function buildCleanerEmail(args: {
   <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:22px 28px;margin-bottom:20px;">
     <div style="font-size:13px;font-weight:800;color:#0f172a;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:16px;text-align:center;">Job summary</div>
     <table width="100%" cellpadding="0" cellspacing="0">
-      <tr><td style="padding:8px 0;border-bottom:1px solid #f1f5f9;font-size:13px;color:#64748b;">Bedrooms</td><td style="padding:8px 0;border-bottom:1px solid #f1f5f9;text-align:right;font-size:13px;font-weight:700;color:#0f172a;">${bedrooms}</td></tr>
-      <tr><td style="padding:8px 0;border-bottom:1px solid #f1f5f9;font-size:13px;color:#64748b;">Bathrooms</td><td style="padding:8px 0;border-bottom:1px solid #f1f5f9;text-align:right;font-size:13px;font-weight:700;color:#0f172a;">${bathrooms}</td></tr>
-      <tr><td style="padding:8px 0;border-bottom:1px solid #f1f5f9;font-size:13px;color:#64748b;">Frequency</td><td style="padding:8px 0;border-bottom:1px solid #f1f5f9;text-align:right;font-size:13px;font-weight:700;color:#0f172a;">${freqLabel}</td></tr>
-      <tr><td style="padding:8px 0;font-size:13px;color:#64748b;">Hours per clean</td><td style="padding:8px 0;text-align:right;font-size:13px;font-weight:700;color:#0f172a;">${hours_per_session} hrs</td></tr>
+      <tr><td style="padding:8px 0;border-bottom:1px solid #f1f5f9;font-size:13px;color:#374151;">Bedrooms</td><td style="padding:8px 0;border-bottom:1px solid #f1f5f9;text-align:right;font-size:13px;font-weight:700;color:#0f172a;">${bedrooms}</td></tr>
+      <tr><td style="padding:8px 0;border-bottom:1px solid #f1f5f9;font-size:13px;color:#374151;">Bathrooms</td><td style="padding:8px 0;border-bottom:1px solid #f1f5f9;text-align:right;font-size:13px;font-weight:700;color:#0f172a;">${bathrooms}</td></tr>
+      <tr><td style="padding:8px 0;border-bottom:1px solid #f1f5f9;font-size:13px;color:#374151;">Frequency</td><td style="padding:8px 0;border-bottom:1px solid #f1f5f9;text-align:right;font-size:13px;font-weight:700;color:#0f172a;">${freqLabel}</td></tr>
+      <tr><td style="padding:8px 0;font-size:13px;color:#374151;">Hours per clean</td><td style="padding:8px 0;text-align:right;font-size:13px;font-weight:700;color:#0f172a;">${hours_per_session} hrs</td></tr>
     </table>
   </div>
   ${taskSection}
@@ -116,18 +116,18 @@ function buildCleanerEmail(args: {
       <tr><td style="padding:8px 0;border-bottom:1px solid #dbeafe;font-size:13px;color:#3b82f6;width:38%;">Name</td><td style="padding:8px 0;border-bottom:1px solid #dbeafe;text-align:right;font-size:13px;font-weight:700;color:#1e40af;">${customerFullName}</td></tr>
       <tr><td style="padding:8px 0;border-bottom:1px solid #dbeafe;font-size:13px;color:#3b82f6;">Email</td><td style="padding:8px 0;border-bottom:1px solid #dbeafe;text-align:right;"><a href="mailto:${customerEmail}" style="font-size:13px;font-weight:700;color:#1e40af;text-decoration:none;">${customerEmail}</a></td></tr>
       ${customerPhone ? `<tr><td style="padding:8px 0;border-bottom:1px solid #dbeafe;font-size:13px;color:#3b82f6;">Phone</td><td style="padding:8px 0;border-bottom:1px solid #dbeafe;text-align:right;"><a href="tel:${customerPhone}" style="font-size:13px;font-weight:700;color:#1e40af;text-decoration:none;">${customerPhone}</a></td></tr>` : ''}
-      <tr><td style="padding:8px 0;vertical-align:top;font-size:13px;color:#3b82f6;">Address</td><td style="padding:8px 0;text-align:right;"><span style="font-size:13px;font-weight:700;color:#1e40af;">${address}</span><div style="font-size:12px;color:#60a5fa;margin-top:3px;">${zoneLabel}, West Sussex</div></td></tr>
+      <tr><td style="padding:8px 0;vertical-align:top;font-size:13px;color:#3b82f6;">Address</td><td style="padding:8px 0;text-align:right;"><span style="font-size:13px;font-weight:700;color:#1e40af;">${address}</span></td></tr>
     </table>
   </div>
-  <div style="background:#fefce8;border:1px solid #fef08a;border-radius:12px;padding:24px 28px;margin-bottom:16px;text-align:center;">
-    <div style="font-size:15px;font-weight:700;color:#854d0e;margin-bottom:8px;">🧴 Need to restock before your clean?</div>
-    <div style="font-size:13px;color:#92400e;line-height:1.6;margin-bottom:18px;">We've put together a page with everything you might need in one place.</div>
+  <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:24px 28px;margin-bottom:16px;text-align:center;">
+    <div style="font-size:15px;font-weight:700;color:#15803d;margin-bottom:8px;">🧴 Need to restock before your clean?</div>
+    <div style="font-size:13px;color:#166534;line-height:1.6;margin-bottom:18px;">We've put together a page with everything you might need in one place.</div>
     <a href="${appUrl}/cleaning-supplies" style="display:inline-block;background:#16a34a;color:white;font-size:13px;font-weight:700;padding:11px 28px;border-radius:8px;text-decoration:none;">Browse cleaning supplies →</a>
   </div>
-  <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:24px 28px;margin-bottom:28px;text-align:center;">
-    <div style="font-size:15px;font-weight:700;color:#1d4ed8;margin-bottom:8px;">👋 Reach out before the first clean</div>
-    <div style="font-size:13px;color:#1e40af;line-height:1.6;margin-bottom:18px;">We recommend contacting ${customerFirstName} before the first clean to reassure them you'll be there.<br>Use the chat on your dashboard or their contact details above!</div>
-    <a href="${appUrl}/cleaner/dashboard" style="display:inline-block;background:#2563eb;color:white;font-size:13px;font-weight:700;padding:11px 28px;border-radius:8px;text-decoration:none;">View your dashboard →</a>
+  <div style="background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:12px;padding:24px 28px;margin-bottom:28px;text-align:center;">
+    <div style="font-size:15px;font-weight:700;color:#15803d;margin-bottom:8px;">👋 Reach out before the first clean</div>
+    <div style="font-size:13px;color:#166534;line-height:1.6;margin-bottom:18px;">We recommend contacting ${customerFirstName} before the first clean to reassure them you'll be there.<br>Use the chat on your dashboard or their contact details above!</div>
+    <a href="${appUrl}/cleaner/dashboard" style="display:inline-block;background:#16a34a;color:white;font-size:13px;font-weight:700;padding:11px 28px;border-radius:8px;text-decoration:none;">View your dashboard →</a>
   </div>
   <p style="font-size:12px;color:#94a3b8;text-align:center;margin:0;">Questions? <a href="mailto:cleaners@vouchee.co.uk" style="color:#94a3b8;">cleaners@vouchee.co.uk</a></p>
 </td></tr>
