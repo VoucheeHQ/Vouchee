@@ -65,6 +65,8 @@ function getZoneFromPostcode(postcode: string): string | null {
   return SECTOR_TO_ZONE[clean.slice(0, 5)] ?? SECTOR_TO_ZONE[clean.slice(0, 4)] ?? null
 }
 
+const MAX_HOURS = 4 // cap for display — 4+ is the ceiling
+
 function getSuggestedHours(bedrooms: number, bathrooms: number, tasks: string[] = []) {
   const bathBonus = Math.round((Math.max(0, bathrooms - 1) * 0.5) / 0.5) * 0.5
   const deepBonus = tasks.some(t => DEEP_CLEAN_TASKS.includes(t)) ? 0.5 : 0
@@ -75,10 +77,19 @@ function getSuggestedHours(bedrooms: number, bathrooms: number, tasks: string[] 
   else if (bedrooms === 4) base = { min: 3,   max: 4,   preselect: 3.5 }
   else                     base = { min: 3.5, max: 4,   preselect: 4   }
   return {
-    min:       Math.min(base.min + bathBonus + deepBonus, 4),
-    max:       Math.min(base.max + bathBonus + deepBonus, 4),
-    preselect: Math.min(base.preselect + bathBonus + deepBonus, 4),
+    // Cap min at MAX_HOURS so 3.5 is never "below" a min of 4
+    min:       Math.min(base.min + bathBonus + deepBonus, MAX_HOURS),
+    max:       Math.min(base.max + bathBonus + deepBonus, MAX_HOURS),
+    preselect: Math.min(base.preselect + bathBonus + deepBonus, MAX_HOURS),
   }
+}
+
+// Format the suggested range label — always show 4+ when max hits ceiling
+function formatSuggestedRange(min: number, max: number): string {
+  const minStr = min >= MAX_HOURS ? '4+' : `${min}`
+  const maxStr = max >= MAX_HOURS ? '4+' : `${max}`
+  if (minStr === maxStr) return `${minStr} hours`
+  return `${minStr}–${maxStr} hours`
 }
 
 function RequestStep1Content() {
@@ -174,7 +185,7 @@ function RequestStep1Content() {
     const errors = []
     if (!postcode || postcodeError) errors.push('postcode')
     if (detectedSector && !addressLine1.trim()) errors.push('address')
-    if (detectedSector && !addressLine2.trim()) errors.push('street')   // ← NEW: street name required
+    if (detectedSector && !addressLine2.trim()) errors.push('street')
     if (selectedTasks.length === 0) errors.push('tasks')
     if (!hoursPerSession) errors.push('hours')
     if (preferredDays.length === 0) errors.push('days')
@@ -196,9 +207,12 @@ function RequestStep1Content() {
 
   const allTasks = [...CLEANING_TASKS, ...ADDITIONAL_TASKS]
 
-  const hoursHintState = hoursPerSession !== null ? (() => {
-    if (hoursPerSession < suggested.min) return 'low'
-    if (hoursPerSession > suggested.max) return 'high'
+  // Hours hint: only show "low" if strictly below suggested min
+  // Use 4.5 as the effective "above max" threshold since 4+ maps to 4.5
+  const effectiveHours = hoursPerSession === 4.5 ? 4.5 : hoursPerSession
+  const hoursHintState = effectiveHours !== null ? (() => {
+    if (effectiveHours < suggested.min) return 'low'
+    if (effectiveHours > MAX_HOURS) return 'high'
     return 'inRange'
   })() : null
 
@@ -229,6 +243,15 @@ function RequestStep1Content() {
       <div style={{ minHeight: '100vh', background: 'linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%)', fontFamily: "'DM Sans', sans-serif", padding: '24px 16px 48px' }}>
         <div style={{ maxWidth: '600px', margin: '0 auto' }}>
 
+          {/* Logo */}
+          <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+            <img
+              src="https://www.vouchee.co.uk/full-logo-black.png"
+              alt="Vouchee"
+              style={{ height: '36px', width: 'auto', display: 'inline-block' }}
+            />
+          </div>
+
           <div style={{ marginBottom: '32px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
               <div style={{ fontSize: '13px', fontWeight: 600, color: '#3b82f6', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Step 1 of 4</div>
@@ -240,8 +263,7 @@ function RequestStep1Content() {
           </div>
 
           <div style={{ marginBottom: '28px' }}>
-            <h1 style={{ fontSize: '28px', fontWeight: 800, color: '#0f172a', margin: '0 0 8px', lineHeight: 1.2 }}>Tell us about your property</h1>
-            <p style={{ fontSize: '15px', color: '#64748b', lineHeight: 1.6, margin: 0 }}>This helps cleaners understand what's involved before they apply</p>
+            <h1 style={{ fontSize: '28px', fontWeight: 800, color: '#0f172a', margin: 0, lineHeight: 1.2 }}>Tell us about your property</h1>
           </div>
 
           <div style={{ background: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(16px)', borderRadius: '20px', border: '1.5px solid rgba(255,255,255,0.9)', boxShadow: '0 2px 16px rgba(0,0,0,0.05)', padding: '24px', marginBottom: '12px' }}>
@@ -383,8 +405,8 @@ function RequestStep1Content() {
           <div style={{ background: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(16px)', borderRadius: '20px', border: `1.5px solid ${showErrors && !hoursPerSession ? '#fecaca' : 'rgba(255,255,255,0.9)'}`, boxShadow: '0 2px 16px rgba(0,0,0,0.05)', padding: '24px', marginBottom: '12px' }}>
             <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '4px' }}>⏱ How many hours per clean?</div>
             <p style={{ fontSize: '13px', color: '#64748b', margin: '0 0 14px', lineHeight: 1.55 }}>
-              For a <strong>{bedrooms}-bed / {bathrooms}-bath</strong> home, most customers find between{' '}
-              <strong>{suggested.min === 4 ? '3.5–4' : `${suggested.min}–${suggested.max === 4 ? '4' : suggested.max}`} hours</strong> works well.
+              For a <strong>{bedrooms}-bed / {bathrooms}-bath</strong> home, most customers find{' '}
+              <strong>{formatSuggestedRange(suggested.min, suggested.max)}</strong> works well.
             </p>
 
             <select
@@ -407,7 +429,7 @@ function RequestStep1Content() {
             {hoursPerSession !== null && hoursHintState && (
               <div style={{ marginTop: '10px', padding: '12px 14px', borderRadius: '12px', background: hoursHintState === 'low' ? '#fffbeb' : '#f0fdf4', border: `1px solid ${hoursHintState === 'low' ? '#fde68a' : '#bbf7d0'}`, fontSize: '13px', lineHeight: 1.55 }}>
                 {hoursHintState === 'low' && (
-                  <p style={{ fontWeight: 600, color: '#92400e', margin: 0 }}>⚠️ On the lower end — typical for this property is {suggested.min}–{suggested.max} hours. Your cleaner may not be able to cover everything, but you can agree this with them directly.</p>
+                  <p style={{ fontWeight: 600, color: '#92400e', margin: 0 }}>⚠️ On the lower end — typical for this property is {formatSuggestedRange(suggested.min, suggested.max)}. Your cleaner may not be able to cover everything, but you can agree this with them directly.</p>
                 )}
                 {hoursHintState === 'inRange' && (
                   <p style={{ fontWeight: 600, color: '#166534', margin: 0 }}>✅ This is within the typical range for your home. 💡 Consider asking your cleaner for an extra hour on the first visit to get on top of things.</p>
