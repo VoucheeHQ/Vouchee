@@ -201,6 +201,7 @@ async function publishRequest(data: RequestData, userId: string): Promise<string
       time_of_day: data.preferredTime ?? null,
       hourly_rate: data.hourlyRate ?? null,
       hours_per_session: data.hoursPerSession ?? null,
+      frequency: data.frequency ?? null,
       tasks: data.tasks ?? [],
       customer_notes: data.sessionNotes ?? data.finalNotes ?? null,
       price_per_session: data.hourlyRate && data.hoursPerSession ? data.hourlyRate * data.hoursPerSession : null,
@@ -359,7 +360,6 @@ export default function ReviewPublishPage() {
     const supabase = createClient()
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
-        // Role guard: cleaners cannot post listings
         const { data: profile } = await (supabase as any)
           .from('profiles').select('role').eq('id', session.user.id).single()
         if (profile?.role === 'cleaner') {
@@ -399,7 +399,6 @@ export default function ReviewPublishPage() {
     }
     setIsPublishing(true)
     try {
-      // ✅ Final safety check — block cleaners from publishing
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
@@ -502,7 +501,6 @@ export default function ReviewPublishPage() {
             <div style={{ background: "linear-gradient(135deg, #1e40af, #3b82f6)", padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                 <div style={{ fontSize: "10px", fontWeight: 700, color: "rgba(255,255,255,0.65)", textTransform: "uppercase", letterSpacing: "0.08em", background: "rgba(255,255,255,0.12)", borderRadius: "100px", padding: "3px 10px", whiteSpace: "nowrap" }}>Live preview</div>
-                {/* ✅ FIX: use areaLabel which resolves zone → human readable name */}
                 <div style={{ fontSize: "16px", fontWeight: 800, color: "white" }}>📍 {areaLabel}</div>
               </div>
               <button onClick={() => setShowEdit(true)} title="Edit listing" style={{ background: "rgba(255,255,255,0.15)", border: "1.5px solid rgba(255,255,255,0.25)", borderRadius: "10px", width: "36px", height: "36px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>
@@ -579,7 +577,7 @@ export default function ReviewPublishPage() {
 
           <div style={{ background: "white", borderRadius: "14px", border: "1px solid #e2e8f0", padding: "14px 18px", marginBottom: "24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div>
-              <div style={{ fontSize: "13px", fontWeight: 700, color: "#0f172a", marginBottom: "2px" }}>Vouchee fee · {pricing.label}</div>
+              <div style={{ fontSize: "13px", fontWeight: 700, color: "#0f172a", marginBottom: "2px" }}>Vouchee service fee · {pricing.label}</div>
               <div style={{ fontSize: "11px", color: "#94a3b8" }}>Direct Debit set up once you've chosen a cleaner and start date</div>
             </div>
             <div style={{ textAlign: "right", flexShrink: 0, marginLeft: "12px" }}>
