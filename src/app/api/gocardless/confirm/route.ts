@@ -27,11 +27,17 @@ const ZONE_LABELS: Record<string, string> = {
 }
 
 function formatAddress(a1: string, a2: string | null, city: string, postcode: string): string {
-  return [a1, a2, city, postcode].filter(Boolean).join(', ')
+  return [a1, a2, city, formatPostcode(postcode)].filter(Boolean).join(', ')
 }
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+}
+
+function formatPostcode(raw: string): string {
+  const clean = raw.toUpperCase().replace(/\s+/g, '')
+  if (clean.length > 4) return clean.slice(0, -3) + ' ' + clean.slice(-3)
+  return clean
 }
 
 function getFreqLabel(frequency: string | null | undefined): string {
@@ -140,28 +146,28 @@ function buildCleanerEmail({
       </div>` : ''}
 
       <!-- Customer details (all blue, no clipboard) -->
-      <div style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:12px;padding:22px 28px;margin-bottom:24px;">
-        <div style="font-size:13px;font-weight:800;color:#1d4ed8;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:16px;text-align:center;">Customer details</div>
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:22px 28px;margin-bottom:24px;">
+        <div style="font-size:13px;font-weight:800;color:#0f172a;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:16px;text-align:center;">Customer details</div>
         <table width="100%" cellpadding="0" cellspacing="0">
           <tr>
-            <td style="padding:8px 0;border-bottom:1px solid #dbeafe;font-size:13px;color:#3b82f6;width:38%;">Name</td>
-            <td style="padding:8px 0;border-bottom:1px solid #dbeafe;text-align:right;font-size:13px;font-weight:700;color:#1e40af;">${customerFullName}</td>
+            <td style="padding:8px 0;border-bottom:1px solid #f1f5f9;font-size:13px;color:#374151;width:38%;">Name</td>
+            <td style="padding:8px 0;border-bottom:1px solid #f1f5f9;text-align:right;font-size:13px;font-weight:700;color:#0f172a;">${customerFullName}</td>
           </tr>
           <tr>
-            <td style="padding:8px 0;border-bottom:1px solid #dbeafe;font-size:13px;color:#3b82f6;">Email</td>
+            <td style="padding:8px 0;border-bottom:1px solid #f1f5f9;font-size:13px;color:#374151;">Email</td>
             <td style="padding:8px 0;border-bottom:1px solid #dbeafe;text-align:right;">
-              <a href="mailto:${customerEmail}" style="font-size:13px;font-weight:700;color:#1e40af;text-decoration:none;">${customerEmail}</a>
+              <a href="mailto:${customerEmail}" style="font-size:13px;font-weight:700;color:#0f172a;text-decoration:none;">${customerEmail}</a>
             </td>
           </tr>
           ${customerPhone ? `
           <tr>
-            <td style="padding:8px 0;border-bottom:1px solid #dbeafe;font-size:13px;color:#3b82f6;">Phone</td>
+            <td style="padding:8px 0;border-bottom:1px solid #f1f5f9;font-size:13px;color:#374151;">Phone</td>
             <td style="padding:8px 0;border-bottom:1px solid #dbeafe;text-align:right;">
-              <a href="tel:${customerPhone}" style="font-size:13px;font-weight:700;color:#1e40af;text-decoration:none;">${customerPhone}</a>
+              <a href="tel:${customerPhone}" style="font-size:13px;font-weight:700;color:#0f172a;text-decoration:none;">${customerPhone}</a>
             </td>
           </tr>` : ''}
           <tr>
-            <td style="padding:8px 0;vertical-align:top;font-size:13px;color:#3b82f6;">Address</td>
+            <td style="padding:8px 0;vertical-align:top;font-size:13px;color:#374151;">Address</td>
             <td style="padding:8px 0;text-align:right;">
               <span style="font-size:13px;font-weight:700;color:#1e40af;">${address}</span>
             </td>
