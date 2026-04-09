@@ -199,6 +199,11 @@ export default function RequestFrequencyPage() {
       <div style={{ minHeight: '100vh', background: 'linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%)', fontFamily: "'DM Sans', sans-serif", padding: '24px 16px 48px' }}>
         <div style={{ maxWidth: '600px', margin: '0 auto' }}>
 
+          {/* Logo */}
+          <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+            <img src="https://www.vouchee.co.uk/full-logo-black.png" alt="Vouchee" style={{ height: '36px', width: 'auto', display: 'inline-block' }} />
+          </div>
+
           <div style={{ marginBottom: '32px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
               <div style={{ fontSize: '13px', fontWeight: 600, color: '#3b82f6', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Step 2 of 4</div>
@@ -209,8 +214,8 @@ export default function RequestFrequencyPage() {
             </div>
           </div>
 
-          <div style={{ marginBottom: '28px' }}>
-            <h1 style={{ fontSize: '28px', fontWeight: 800, color: '#0f172a', margin: '0 0 8px', lineHeight: 1.2 }}>Set your rate &amp; frequency</h1>
+          <div style={{ marginBottom: '28px', textAlign: 'center' }}>
+            <h1 style={{ fontSize: '28px', fontWeight: 800, color: '#0f172a', margin: '0 0 8px', lineHeight: 1.2, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Set your rate &amp; frequency</h1>
             <p style={{ fontSize: '15px', color: '#64748b', lineHeight: 1.6, margin: 0 }}>You set the price — cleaners apply to your listing and you choose who you want.</p>
           </div>
 
@@ -263,23 +268,23 @@ export default function RequestFrequencyPage() {
             </div>
 
             <div className="rate-hint" style={{ marginTop: '12px', padding: '12px 14px', borderRadius: '12px', background: !selectedFrequency ? '#f8fafc' : rateInRange ? '#eff6ff' : rateLow ? '#fefce8' : '#f0fdf4', border: `1px solid ${!selectedFrequency ? '#e2e8f0' : rateInRange ? '#bfdbfe' : rateLow ? '#fde68a' : '#bbf7d0'}` }}>
-              {(!selectedFrequency || hourlyRate === null) && <p style={{ fontSize: '13px', fontWeight: 500, color: '#94a3b8', margin: 0 }}>💡 Select a frequency above and we'll suggest a rate range for your property.</p>}
+              {(!selectedFrequency || hourlyRate === null) && <p style={{ fontSize: '13px', fontWeight: 500, color: '#94a3b8', margin: 0, textAlign: 'center' }}>💡 Select a frequency above and we'll suggest a rate range for your property.</p>}
               {selectedFrequency && rateInRange && (
                 <>
-                  <p style={{ fontSize: '13px', fontWeight: 600, color: '#1e40af', margin: '0 0 4px' }}>✅ Within the suggested range — £{suggestion.low}–£{suggestion.high}/hr</p>
+                  <p style={{ fontSize: '13px', fontWeight: 600, color: '#1e40af', margin: '0 0 4px', textAlign: 'center' }}>✅ Within the suggested range — £{suggestion.low}–£{suggestion.high}/hr</p>
                   <p style={{ fontSize: '12px', color: '#3b82f6', margin: 0, lineHeight: 1.55 }}>{suggestion.reason}</p>
                   {selectedFrequency === 'monthly' && <p style={{ fontSize: '12px', color: '#3b82f6', margin: '8px 0 0', padding: '8px 10px', background: 'rgba(59,130,246,0.06)', borderRadius: '8px', lineHeight: 1.55 }}>💡 Tip: Monthly cleans often take longer per visit than weekly or fortnightly cleans.</p>}
                 </>
               )}
               {selectedFrequency && rateLow && (
                 <>
-                  <p style={{ fontSize: '13px', fontWeight: 600, color: '#92400e', margin: '0 0 3px' }}>⚠️ Below the suggested range of £{suggestion.low}–£{suggestion.high}/hr</p>
+                  <p style={{ fontSize: '13px', fontWeight: 600, color: '#92400e', margin: '0 0 3px', textAlign: 'center' }}>⚠️ Below the suggested range of £{suggestion.low}–£{suggestion.high}/hr</p>
                   <p style={{ fontSize: '12px', color: '#b45309', margin: 0, lineHeight: 1.5 }}>A lower rate may reduce the number of cleaners who apply.</p>
                 </>
               )}
               {selectedFrequency && rateHigh && (
                 <>
-                  <p style={{ fontSize: '13px', fontWeight: 600, color: '#166534', margin: '0 0 3px' }}>💚 Above the suggested range — you'll attract a strong field of applicants</p>
+                  <p style={{ fontSize: '13px', fontWeight: 600, color: '#166534', margin: '0 0 3px', textAlign: 'center' }}>💚 Above the suggested range — you'll attract a strong field of applicants</p>
                   <p style={{ fontSize: '12px', color: '#16a34a', margin: 0, lineHeight: 1.5 }}>Offering above the typical rate gives you the best pick of available cleaners in Horsham.</p>
                 </>
               )}
@@ -289,7 +294,7 @@ export default function RequestFrequencyPage() {
           </div>
 
           <div style={{ background: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(16px)', borderRadius: '20px', border: '1.5px solid rgba(255,255,255,0.9)', boxShadow: '0 2px 16px rgba(0,0,0,0.05)', padding: '24px', marginBottom: '24px' }}>
-            <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '14px' }}>What you can expect from Vouchee</div>
+            <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '14px', textAlign: 'center' }}>What you can expect from Vouchee</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {[
                 'Local vetted and vouched cleaners',
