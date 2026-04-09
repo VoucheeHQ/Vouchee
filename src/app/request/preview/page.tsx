@@ -463,11 +463,15 @@ export default function ReviewPublishPage() {
 
   return (
     <>
-      <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
-      <style>{`* { box-sizing: border-box; } .go-live-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(22,163,74,0.4) !important; }`}</style>
+<style>{`* { box-sizing: border-box; } .go-live-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(22,163,74,0.4) !important; }`}</style>
 
       <div style={{ minHeight: "100vh", background: "linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%)", fontFamily: "'DM Sans', sans-serif", padding: "24px 16px 48px" }}>
         <div style={{ maxWidth: "540px", margin: "0 auto" }}>
+
+          {/* Logo */}
+          <div style={{ textAlign: "center", marginBottom: "28px" }}>
+            <img src="https://www.vouchee.co.uk/full-logo-black.png" alt="Vouchee" style={{ height: "36px", width: "auto", display: "inline-block" }} />
+          </div>
 
           <div style={{ marginBottom: "28px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
@@ -479,9 +483,14 @@ export default function ReviewPublishPage() {
             </div>
           </div>
 
-          <div style={{ marginBottom: "20px" }}>
-            <h1 style={{ fontSize: "26px", fontWeight: 800, color: "#0f172a", margin: "0 0 6px" }}>Here's your listing</h1>
-            <p style={{ fontSize: "14px", color: "#64748b", margin: 0 }}>This is what cleaners will see. Happy with it? Go live.</p>
+          {/* Logo */}
+          <div style={{ textAlign: "center", marginBottom: "20px" }}>
+            <img src="https://www.vouchee.co.uk/full-logo-black.png" alt="Vouchee" style={{ height: "36px", width: "auto", display: "inline-block" }} />
+          </div>
+
+          <div style={{ marginBottom: "20px", textAlign: "center" }}>
+            <h1 style={{ fontSize: "28px", fontWeight: 800, color: "#0f172a", margin: "0 0 8px", fontFamily: "'Sora', sans-serif" }}>Here's your listing</h1>
+            <p style={{ fontSize: "15px", color: "#64748b", margin: 0 }}>This is what cleaners will see. Happy with it? Go live.</p>
           </div>
 
           {!userId && (
@@ -586,7 +595,7 @@ export default function ReviewPublishPage() {
             </div>
           </div>
 
-          <button className="go-live-btn" onClick={() => userId ? handlePublish() : router.push("/auth/login?redirectTo=/request/preview")} disabled={isPublishing} style={{ width: "100%", padding: "20px", borderRadius: "16px", border: "none", background: isPublishing ? "#e2e8f0" : "linear-gradient(135deg, #16a34a, #22c55e)", color: isPublishing ? "#94a3b8" : "white", fontSize: "18px", fontWeight: 800, fontFamily: "'Plus Jakarta Sans', sans-serif", cursor: isPublishing ? "not-allowed" : "pointer", boxShadow: isPublishing ? "none" : "0 4px 20px rgba(22,163,74,0.3)", transition: "transform 0.2s, box-shadow 0.2s" }}>
+          <button className="go-live-btn" onClick={() => userId ? handlePublish() : router.push("/auth/login?redirectTo=/request/preview")} disabled={isPublishing} style={{ width: "100%", padding: "20px", borderRadius: "16px", border: "none", background: isPublishing ? "#e2e8f0" : "linear-gradient(135deg, #16a34a, #22c55e)", color: isPublishing ? "#94a3b8" : "white", fontSize: "18px", fontWeight: 800, fontFamily: "'Sora', sans-serif", cursor: isPublishing ? "not-allowed" : "pointer", boxShadow: isPublishing ? "none" : "0 4px 20px rgba(22,163,74,0.3)", transition: "transform 0.2s, box-shadow 0.2s" }}>
             {isPublishing ? "Publishing…" : userId ? "🚀 Go live" : "Sign in to publish →"}
           </button>
 

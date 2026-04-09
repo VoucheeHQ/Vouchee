@@ -214,9 +214,7 @@ function RequestStep1Content() {
 
   return (
     <>
-      <link rel="preconnect" href="https://fonts.googleapis.com" />
-      <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
-      <style>{`
+<style>{`
         * { box-sizing: border-box; }
         .task-btn { transition: all 0.15s ease; }
         .task-btn:hover { border-color: #93c5fd !important; }
@@ -491,7 +489,7 @@ function RequestStep1Content() {
           <button
             className="continue-btn"
             onClick={handleNext}
-            style={{ width: '100%', padding: '18px', borderRadius: '16px', border: 'none', background: 'linear-gradient(135deg, #2563eb, #3b82f6)', color: 'white', fontSize: '17px', fontWeight: 700, fontFamily: "'Plus Jakarta Sans', sans-serif", cursor: 'pointer', boxShadow: '0 4px 20px rgba(37,99,235,0.3)', transition: 'transform 0.2s, box-shadow 0.2s' }}
+            style={{ width: '100%', padding: '18px', borderRadius: '16px', border: 'none', background: 'linear-gradient(135deg, #2563eb, #3b82f6)', color: 'white', fontSize: '17px', fontWeight: 700, fontFamily: "'Sora', sans-serif", cursor: 'pointer', boxShadow: '0 4px 20px rgba(37,99,235,0.3)', transition: 'transform 0.2s, box-shadow 0.2s' }}
           >
             Continue to pricing →
           </button>

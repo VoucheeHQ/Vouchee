@@ -182,9 +182,7 @@ export default function RequestFrequencyPage() {
 
   return (
     <>
-      <link rel="preconnect" href="https://fonts.googleapis.com" />
-      <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
-      <style>{`
+<style>{`
         * { box-sizing: border-box; }
         .freq-card { transition: all 0.2s ease; cursor: pointer; }
         .freq-card:hover { transform: translateY(-2px); }
@@ -215,7 +213,7 @@ export default function RequestFrequencyPage() {
           </div>
 
           <div style={{ marginBottom: '28px', textAlign: 'center' }}>
-            <h1 style={{ fontSize: '28px', fontWeight: 800, color: '#0f172a', margin: '0 0 8px', lineHeight: 1.2, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Set your rate &amp; frequency</h1>
+            <h1 style={{ fontSize: '28px', fontWeight: 800, color: '#0f172a', margin: '0 0 8px', lineHeight: 1.2, fontFamily: "'Sora', sans-serif" }}>Set your rate &amp; frequency</h1>
             <p style={{ fontSize: '15px', color: '#64748b', lineHeight: 1.6, margin: 0 }}>You set the price — cleaners apply to your listing and you choose who you want.</p>
           </div>
 
@@ -312,7 +310,7 @@ export default function RequestFrequencyPage() {
             </div>
           </div>
 
-          <button className="continue-btn" onClick={handleContinue} disabled={!selectedFrequency} style={{ width: '100%', padding: '18px', borderRadius: '16px', border: 'none', background: 'linear-gradient(135deg, #2563eb, #3b82f6)', color: 'white', fontSize: '17px', fontWeight: 700, fontFamily: "'Plus Jakarta Sans', sans-serif", cursor: selectedFrequency ? 'pointer' : 'not-allowed', boxShadow: '0 4px 20px rgba(37,99,235,0.3)', transition: 'transform 0.2s, box-shadow 0.2s' }}>
+          <button className="continue-btn" onClick={handleContinue} disabled={!selectedFrequency} style={{ width: '100%', padding: '18px', borderRadius: '16px', border: 'none', background: 'linear-gradient(135deg, #2563eb, #3b82f6)', color: 'white', fontSize: '17px', fontWeight: 700, fontFamily: "'Sora', sans-serif", cursor: selectedFrequency ? 'pointer' : 'not-allowed', boxShadow: '0 4px 20px rgba(37,99,235,0.3)', transition: 'transform 0.2s, box-shadow 0.2s' }}>
             Continue →
           </button>
 

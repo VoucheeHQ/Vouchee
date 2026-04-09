@@ -101,7 +101,16 @@ export default function TermsAcceptancePage() {
       fontFamily: "'DM Sans', sans-serif",
       padding: "24px 16px 48px",
     }}>
-      <div style={{ maxWidth: "600px", margin: "0 auto" }}>
+<div style={{ maxWidth: "600px", margin: "0 auto" }}>
+
+        {/* Logo */}
+        <div style={{ textAlign: "center", marginBottom: "28px" }}>
+          <img
+            src="https://www.vouchee.co.uk/full-logo-black.png"
+            alt="Vouchee"
+            style={{ height: "36px", width: "auto", display: "inline-block" }}
+          />
+        </div>
 
         {/* Progress */}
         <div style={{ marginBottom: "32px" }}>
@@ -110,17 +119,17 @@ export default function TermsAcceptancePage() {
               Step 3 of 4
             </div>
           </div>
-          <div style={{ height: "4px", background: "#e2e8f0", borderRadius: "100px", overflow: "hidden", marginBottom: "8px" }}>
+          <div style={{ height: "4px", background: "#e2e8f0", borderRadius: "100px", overflow: "hidden" }}>
             <div style={{ height: "100%", width: "75%", background: "linear-gradient(90deg, #3b82f6 0%, #facc15 50%, #22c55e 100%)", borderRadius: "100px" }} />
           </div>
         </div>
 
-        {/* Header */}
-        <div style={{ marginBottom: "32px" }}>
-          <h1 style={{ fontSize: "30px", fontWeight: 800, color: "#0f172a", margin: "0 0 12px", lineHeight: 1.2 }}>
+        {/* Header — centred, Sora */}
+        <div style={{ marginBottom: "32px", textAlign: "center" }}>
+          <h1 style={{ fontSize: "30px", fontWeight: 800, color: "#0f172a", margin: "0 0 12px", lineHeight: 1.2, fontFamily: "'Sora', sans-serif" }}>
             Our commitment to you
           </h1>
-          <p style={{ fontSize: "16px", color: "#64748b", lineHeight: 1.6, margin: 0 }}>
+          <p style={{ fontSize: "15px", color: "#64748b", lineHeight: 1.6, margin: 0 }}>
             Here's exactly what Vouchee commits to you — and what we ask in return. Plain English, no surprises.
           </p>
         </div>
@@ -208,7 +217,7 @@ export default function TermsAcceptancePage() {
             width: "100%", padding: "18px", borderRadius: "16px", border: "none",
             background: canProceed ? "linear-gradient(135deg, #2563eb, #3b82f6)" : "#e2e8f0",
             color: canProceed ? "white" : "#94a3b8",
-            fontSize: "17px", fontWeight: 700, fontFamily: "'DM Sans', sans-serif",
+            fontSize: "17px", fontWeight: 700, fontFamily: "'Sora', sans-serif",
             cursor: canProceed ? "pointer" : "not-allowed",
             transition: "all 0.25s ease",
             boxShadow: canProceed ? "0 4px 20px rgba(37,99,235,0.35)" : "none",
