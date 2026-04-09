@@ -65,8 +65,6 @@ function getZoneFromPostcode(postcode: string): string | null {
   return SECTOR_TO_ZONE[clean.slice(0, 5)] ?? SECTOR_TO_ZONE[clean.slice(0, 4)] ?? null
 }
 
-const MAX_HOURS = 4 // cap for display — 4+ is the ceiling
-
 function getSuggestedHours(bedrooms: number, bathrooms: number, tasks: string[] = []) {
   const bathBonus = Math.round((Math.max(0, bathrooms - 1) * 0.5) / 0.5) * 0.5
   const deepBonus = tasks.some(t => DEEP_CLEAN_TASKS.includes(t)) ? 0.5 : 0
@@ -77,17 +75,16 @@ function getSuggestedHours(bedrooms: number, bathrooms: number, tasks: string[] 
   else if (bedrooms === 4) base = { min: 3,   max: 4,   preselect: 3.5 }
   else                     base = { min: 3.5, max: 4,   preselect: 4   }
   return {
-    // Cap min at MAX_HOURS so 3.5 is never "below" a min of 4
-    min:       Math.min(base.min + bathBonus + deepBonus, MAX_HOURS),
-    max:       Math.min(base.max + bathBonus + deepBonus, MAX_HOURS),
-    preselect: Math.min(base.preselect + bathBonus + deepBonus, MAX_HOURS),
+    min:       Math.min(base.min + bathBonus + deepBonus, 3.5), // cap min at 3.5 — preselect can reach 4
+    max:       Math.min(base.max + bathBonus + deepBonus, 4),
+    preselect: Math.min(base.preselect + bathBonus + deepBonus, 4),
   }
 }
 
-// Format the suggested range label — always show 4+ when max hits ceiling
+// Format the range label — show 4+ only when max hits 4 (the ceiling)
 function formatSuggestedRange(min: number, max: number): string {
-  const minStr = min >= MAX_HOURS ? '4+' : `${min}`
-  const maxStr = max >= MAX_HOURS ? '4+' : `${max}`
+  const maxStr = max >= 4 ? '4+' : `${max}`
+  const minStr = `${min}`
   if (minStr === maxStr) return `${minStr} hours`
   return `${minStr}–${maxStr} hours`
 }
@@ -207,12 +204,11 @@ function RequestStep1Content() {
 
   const allTasks = [...CLEANING_TASKS, ...ADDITIONAL_TASKS]
 
-  // Hours hint: only show "low" if strictly below suggested min
-  // Use 4.5 as the effective "above max" threshold since 4+ maps to 4.5
-  const effectiveHours = hoursPerSession === 4.5 ? 4.5 : hoursPerSession
-  const hoursHintState = effectiveHours !== null ? (() => {
-    if (effectiveHours < suggested.min) return 'low'
-    if (effectiveHours > MAX_HOURS) return 'high'
+  // Hours hint: 4.5 in the dropdown means "4+" — treat as high/generous
+  const hoursHintState = hoursPerSession !== null ? (() => {
+    if (hoursPerSession === 4.5) return 'high'
+    if (hoursPerSession < suggested.min) return 'low'
+    if (hoursPerSession > suggested.max) return 'high'
     return 'inRange'
   })() : null
 
