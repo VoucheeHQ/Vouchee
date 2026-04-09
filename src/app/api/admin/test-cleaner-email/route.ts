@@ -91,7 +91,7 @@ function buildCleanerEmail(args: {
 <tr><td style="background:#fff;padding:36px 40px 32px;text-align:center;border-radius:16px 16px 0 0;">
   <!-- Preheader: controls Gmail preview text -->
   <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">You&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;</div>
-  <img src="https://www.vouchee.co.uk/full-logo-black.png" width="200" height="46" alt="Vouchee" style="display:block;margin:0 auto 20px;" />
+  <img src="https://www.vouchee.co.uk/full-logo-black.png" width="260" height="60" alt="Vouchee" style="display:block;margin:0 auto 16px;max-width:100%;" />
   <div style="font-size:32px;font-weight:800;color:#0f172a;">You've been chosen! 🎉</div>
 </td></tr>
 <tr><td style="background:white;padding:36px 40px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 16px 16px;">

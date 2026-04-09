@@ -93,7 +93,7 @@ function buildCleanerEmail({
     <!-- Header: white, logo + title only -->
     <tr><td style="background:#ffffff;padding:36px 40px 32px;text-align:center;border-radius:16px 16px 0 0;">
       <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;</div>
-      <div style="margin-bottom:20px;"><img src="https://www.vouchee.co.uk/full-logo-black.png" width="200" height="46" alt="Vouchee" style="display:block;margin:0 auto;" /></div>
+      <div style="margin-bottom:20px;"><img src="https://www.vouchee.co.uk/full-logo-black.png" width="260" height="60" alt="Vouchee" style="display:block;margin:0 auto 16px;max-width:100%;" /></div>
       <div style="font-size:32px;font-weight:800;color:#0f172a;letter-spacing:-0.5px;line-height:1.15;">You've been chosen! 🎉</div>
     </td></tr>
 
@@ -211,7 +211,7 @@ function buildRejectionEmail(customerFirstName: string, zone: string): string {
   <tr><td align="center">
   <table width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;">
     <tr><td style="background:#ffffff;padding:28px 40px;text-align:center;border-radius:16px 16px 0 0;">
-      <img src="https://www.vouchee.co.uk/full-logo-black.png" width="200" height="46" alt="Vouchee" style="display:block;margin:0 auto;" />
+      <img src="https://www.vouchee.co.uk/full-logo-black.png" width="260" height="60" alt="Vouchee" style="display:block;margin:0 auto 16px;max-width:100%;" />
     </td></tr>
     <tr><td style="background:white;padding:36px 40px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 16px 16px;">
       <div style="font-size:20px;font-weight:800;color:#0f172a;margin-bottom:12px;">Application update</div>
