@@ -470,7 +470,7 @@ export default function ReviewPublishPage() {
 
           {/* Logo */}
           <div style={{ textAlign: "center", marginBottom: "28px" }}>
-            <img src="https://www.vouchee.co.uk/full-logo-black.png" alt="Vouchee" style={{ height: "36px", width: "auto", display: "inline-block" }} />
+            <img src="https://www.vouchee.co.uk/full-logo-black.png" alt="Vouchee" style={{ width: "160px", height: "auto", display: "inline-block" }} />
           </div>
 
           <div style={{ marginBottom: "28px" }}>
@@ -481,11 +481,6 @@ export default function ReviewPublishPage() {
             <div style={{ height: "4px", background: "#e2e8f0", borderRadius: "100px", overflow: "hidden" }}>
               <div style={{ height: "100%", width: "100%", background: "linear-gradient(90deg, #3b82f6, #22c55e)", borderRadius: "100px" }} />
             </div>
-          </div>
-
-          {/* Logo */}
-          <div style={{ textAlign: "center", marginBottom: "20px" }}>
-            <img src="https://www.vouchee.co.uk/full-logo-black.png" alt="Vouchee" style={{ height: "36px", width: "auto", display: "inline-block" }} />
           </div>
 
           <div style={{ marginBottom: "20px", textAlign: "center" }}>
