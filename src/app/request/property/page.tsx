@@ -76,18 +76,17 @@ function getSuggestedHours(bedrooms: number, bathrooms: number, tasks: string[] 
   else if (bedrooms === 4) base = { min: 3,   max: 4,   preselect: 3.5 }
   else                     base = { min: 3.5, max: 4,   preselect: 4   }
   return {
-    min:       Math.min(base.min + bathBonus + deepBonus, 3.5), // cap min at 3.5 — preselect can reach 4
+    min:       Math.min(base.min + bathBonus + deepBonus, 3.5),
     max:       Math.min(base.max + bathBonus + deepBonus, 4),
     preselect: Math.min(base.preselect + bathBonus + deepBonus, 4),
   }
 }
 
-// Format the range label — show 4+ only when max hits 4 (the ceiling)
 function formatSuggestedRange(min: number, max: number): string {
   const maxStr = max >= 4 ? '4+' : `${max}`
   const minStr = `${min}`
   if (minStr === maxStr) return `${minStr} hours`
-  return `${minStr}–${maxStr} hours`
+  return `${minStr}\u2013${maxStr} hours`
 }
 
 function RequestStep1Content() {
@@ -188,7 +187,6 @@ function RequestStep1Content() {
     if (!hoursPerSession) errors.push('hours')
     if (preferredDays.length === 0) errors.push('days')
     if (!preferredTime) errors.push('time')
-
     if (errors.length > 0) { setShowErrors(true); return }
 
     sessionStorage.setItem('cleanRequest', JSON.stringify({
@@ -205,7 +203,6 @@ function RequestStep1Content() {
 
   const allTasks = [...CLEANING_TASKS, ...ADDITIONAL_TASKS]
 
-  // Hours hint: 4.5 in the dropdown means "4+" — treat as high/generous
   const hoursHintState = hoursPerSession !== null ? (() => {
     if (hoursPerSession === 4.5) return 'high'
     if (hoursPerSession < suggested.min) return 'low'
@@ -215,7 +212,7 @@ function RequestStep1Content() {
 
   return (
     <>
-<style>{`
+      <style>{`
         * { box-sizing: border-box; }
         .task-btn { transition: all 0.15s ease; }
         .task-btn:hover { border-color: #93c5fd !important; }
@@ -235,113 +232,111 @@ function RequestStep1Content() {
         .day-btn.error-ring { border-color: #ef4444; }
       `}</style>
 
-      <OnboardingShell>
+      <OnboardingShell
+        step={1}
+        title="Tell us about your property"
+        onBack={() => router.push('/')}
+      >
 
-          {/* Logo */}
-          <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-            <img
-              src="https://www.vouchee.co.uk/full-logo-black.png"
-              alt="Vouchee"
-              style={{ width: '160px', height: 'auto', display: 'inline-block' }}
-            />
-          </div>
-
-          <div style={{ marginBottom: '32px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <div style={{ fontSize: '13px', fontWeight: 600, color: '#3b82f6', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Step 1 of 4</div>
-              <button onClick={() => router.push('/')} style={{ fontSize: '13px', fontWeight: 600, color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>← Back</button>
+        <div style={{ background: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(16px)', borderRadius: '20px', border: '1.5px solid rgba(255,255,255,0.9)', boxShadow: '0 2px 16px rgba(0,0,0,0.05)', padding: '24px', marginBottom: '12px' }}>
+          <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '16px' }}>Property size</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div>
+              <label style={{ fontSize: '13px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '6px' }}>Bedrooms</label>
+              <select className="vou-select" value={bedrooms} onChange={e => handleBedroomsChange(Number(e.target.value))}>
+                {[1,2,3,4,5,6].map(n => <option key={n} value={n}>{n === 6 ? '6+' : n}</option>)}
+              </select>
             </div>
-            <div style={{ height: '4px', background: '#e2e8f0', borderRadius: '100px', overflow: 'hidden' }}>
-              <div style={{ height: '100%', width: '25%', background: 'linear-gradient(90deg, #3b82f6 0%, #facc15 50%, #22c55e 100%)', borderRadius: '100px' }} />
+            <div>
+              <label style={{ fontSize: '13px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '6px' }}>Bathrooms</label>
+              <select className="vou-select" value={bathrooms} onChange={e => handleBathroomsChange(Number(e.target.value))}>
+                {[1,2,3,4,5,6].map(n => <option key={n} value={n}>{n === 6 ? '6+' : n}</option>)}
+              </select>
             </div>
           </div>
+        </div>
 
-          <div style={{ marginBottom: '28px', textAlign: 'center' }}>
-            <h1 style={{ fontSize: '28px', fontWeight: 800, color: '#0f172a', margin: 0, lineHeight: 1.2, fontFamily: "'Sora', sans-serif", textAlign: 'center' }}>Tell us about your property</h1>
-          </div>
+        <div style={{ background: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(16px)', borderRadius: '20px', border: `1.5px solid ${showErrors && (!postcode || postcodeError) ? '#fecaca' : 'rgba(255,255,255,0.9)'}`, boxShadow: '0 2px 16px rgba(0,0,0,0.05)', padding: '24px', marginBottom: '12px' }}>
+          <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '16px' }}>Your address</div>
+          <label style={{ fontSize: '13px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '6px' }}>Postcode</label>
+          <input
+            className={`vou-input${showErrors && (!postcode || postcodeError) ? ' error' : ''}`}
+            placeholder="RH12 1AB"
+            value={postcode}
+            onChange={e => handlePostcodeChange(e.target.value)}
+            style={{ fontSize: '16px', marginBottom: '8px' }}
+          />
+          {postcodeError && <p style={{ fontSize: '13px', color: '#ef4444', margin: '0 0 8px' }}>{postcodeError}</p>}
+          {showErrors && !postcode && !postcodeError && <p style={{ fontSize: '13px', color: '#ef4444', margin: '0 0 8px' }}>Please enter your postcode</p>}
 
-          <div style={{ background: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(16px)', borderRadius: '20px', border: '1.5px solid rgba(255,255,255,0.9)', boxShadow: '0 2px 16px rgba(0,0,0,0.05)', padding: '24px', marginBottom: '12px' }}>
-            <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '16px' }}>Property size</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <div>
-                <label style={{ fontSize: '13px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '6px' }}>Bedrooms</label>
-                <select className="vou-select" value={bedrooms} onChange={e => handleBedroomsChange(Number(e.target.value))}>
-                  {[1,2,3,4,5,6].map(n => <option key={n} value={n}>{n === 6 ? '6+' : n}</option>)}
-                </select>
+          {detectedSector && (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600, color: '#15803d', margin: '4px 0 14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '8px 12px' }}>
+                <span>📍</span> Your area: <strong>{detectedSector}</strong>
               </div>
-              <div>
-                <label style={{ fontSize: '13px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '6px' }}>Bathrooms</label>
-                <select className="vou-select" value={bathrooms} onChange={e => handleBathroomsChange(Number(e.target.value))}>
-                  {[1,2,3,4,5,6].map(n => <option key={n} value={n}>{n === 6 ? '6+' : n}</option>)}
-                </select>
+              <label style={{ fontSize: '13px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '6px' }}>
+                House number or name <span style={{ color: '#ef4444' }}>*</span>
+              </label>
+              <input
+                className={`vou-input${showErrors && !addressLine1.trim() ? ' error' : ''}`}
+                placeholder="e.g. 14 or Rosewood Cottage"
+                value={addressLine1}
+                onChange={e => setAddressLine1(e.target.value)}
+                style={{ marginBottom: '4px' }}
+              />
+              {showErrors && !addressLine1.trim() && <p style={{ fontSize: '13px', color: '#ef4444', margin: '0 0 8px' }}>Please enter your house number or name</p>}
+              <label style={{ fontSize: '13px', fontWeight: 600, color: '#475569', display: 'block', margin: '10px 0 6px' }}>
+                Street name <span style={{ color: '#ef4444' }}>*</span>
+              </label>
+              <input
+                className={`vou-input${showErrors && !addressLine2.trim() ? ' error' : ''}`}
+                placeholder="e.g. Nightingale Road"
+                value={addressLine2}
+                onChange={e => setAddressLine2(e.target.value)}
+                style={{ marginBottom: addressLine2.trim() || !showErrors ? '12px' : '4px' }}
+              />
+              {showErrors && !addressLine2.trim() && <p style={{ fontSize: '13px', color: '#ef4444', margin: '0 0 12px' }}>Please enter your street name</p>}
+              <div style={{ padding: '10px 14px', background: '#f0fdf4', borderRadius: '10px', border: '1px solid #bbf7d0', display: 'flex', gap: '8px' }}>
+                <span style={{ fontSize: '14px', flexShrink: 0 }}>🔒</span>
+                <span style={{ fontSize: '12px', color: '#166534', lineHeight: 1.5 }}>
+                  Only your area will be displayed. Your chosen cleaner will be emailed your full address once you have selected one.
+                </span>
               </div>
-            </div>
+            </>
+          )}
+        </div>
+
+        <div style={{ background: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(16px)', borderRadius: '20px', border: '1.5px solid rgba(255,255,255,0.9)', boxShadow: '0 2px 16px rgba(0,0,0,0.05)', padding: '24px', marginBottom: '12px' }}>
+          <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '16px' }}>What needs cleaning?</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '10px' }}>
+            {CLEANING_TASKS.map(task => {
+              const selected = selectedTasks.includes(task.id)
+              return (
+                <button key={task.id} className="task-btn" type="button" onClick={() => toggleTask(task.id)} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '12px', borderRadius: '14px', border: `2px solid ${selected ? '#3b82f6' : '#e2e8f0'}`, background: selected ? 'rgba(59,130,246,0.06)' : 'rgba(255,255,255,0.6)', cursor: 'pointer', textAlign: 'left' }}>
+                  <div style={{ width: '18px', height: '18px', borderRadius: '50%', flexShrink: 0, marginTop: '1px', border: selected ? '2px solid #3b82f6' : '2px solid #cbd5e1', background: selected ? '#3b82f6' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {selected && <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a' }}>{task.label}</div>
+                    <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>{task.description}</div>
+                  </div>
+                </button>
+              )
+            })}
           </div>
 
-          <div style={{ background: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(16px)', borderRadius: '20px', border: `1.5px solid ${showErrors && (!postcode || postcodeError) ? '#fecaca' : 'rgba(255,255,255,0.9)'}`, boxShadow: '0 2px 16px rgba(0,0,0,0.05)', padding: '24px', marginBottom: '12px' }}>
-            <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '16px' }}>Your address</div>
+          <button type="button" onClick={() => setShowAdditional(!showAdditional)} style={{ width: '100%', padding: '11px 14px', borderRadius: '12px', border: '1.5px dashed #cbd5e1', background: 'transparent', fontSize: '13px', fontWeight: 600, color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', transition: 'all 0.2s' }}>
+            <span>+ Special requests (deep cleans, ironing, laundry…)</span>
+            <span style={{ transform: showAdditional ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', fontSize: '11px' }}>▾</span>
+          </button>
 
-            <label style={{ fontSize: '13px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '6px' }}>Postcode</label>
-            <input
-              className={`vou-input${showErrors && (!postcode || postcodeError) ? ' error' : ''}`}
-              placeholder="RH12 1AB"
-              value={postcode}
-              onChange={e => handlePostcodeChange(e.target.value)}
-              style={{ fontSize: '16px', marginBottom: '8px' }}
-            />
-            {postcodeError && <p style={{ fontSize: '13px', color: '#ef4444', margin: '0 0 8px' }}>{postcodeError}</p>}
-            {showErrors && !postcode && !postcodeError && <p style={{ fontSize: '13px', color: '#ef4444', margin: '0 0 8px' }}>Please enter your postcode</p>}
-
-            {detectedSector && (
-              <>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600, color: '#15803d', margin: '4px 0 14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '8px 12px' }}>
-                  <span>📍</span> Your area: <strong>{detectedSector}</strong>
-                </div>
-
-                <label style={{ fontSize: '13px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '6px' }}>
-                  House number or name <span style={{ color: '#ef4444' }}>*</span>
-                </label>
-                <input
-                  className={`vou-input${showErrors && !addressLine1.trim() ? ' error' : ''}`}
-                  placeholder="e.g. 14 or Rosewood Cottage"
-                  value={addressLine1}
-                  onChange={e => setAddressLine1(e.target.value)}
-                  style={{ marginBottom: '4px' }}
-                />
-                {showErrors && !addressLine1.trim() && <p style={{ fontSize: '13px', color: '#ef4444', margin: '0 0 8px' }}>Please enter your house number or name</p>}
-
-                <label style={{ fontSize: '13px', fontWeight: 600, color: '#475569', display: 'block', margin: '10px 0 6px' }}>
-                  Street name <span style={{ color: '#ef4444' }}>*</span>
-                </label>
-                <input
-                  className={`vou-input${showErrors && !addressLine2.trim() ? ' error' : ''}`}
-                  placeholder="e.g. Nightingale Road"
-                  value={addressLine2}
-                  onChange={e => setAddressLine2(e.target.value)}
-                  style={{ marginBottom: addressLine2.trim() || !showErrors ? '12px' : '4px' }}
-                />
-                {showErrors && !addressLine2.trim() && (
-                  <p style={{ fontSize: '13px', color: '#ef4444', margin: '0 0 12px' }}>Please enter your street name</p>
-                )}
-
-                <div style={{ padding: '10px 14px', background: '#f0fdf4', borderRadius: '10px', border: '1px solid #bbf7d0', display: 'flex', gap: '8px' }}>
-                  <span style={{ fontSize: '14px', flexShrink: 0 }}>🔒</span>
-                  <span style={{ fontSize: '12px', color: '#166534', lineHeight: 1.5 }}>
-                    Only your area will be displayed. Your chosen cleaner will be emailed your full address once you have selected one.
-                  </span>
-                </div>
-              </>
-            )}
-          </div>
-
-          <div style={{ background: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(16px)', borderRadius: '20px', border: '1.5px solid rgba(255,255,255,0.9)', boxShadow: '0 2px 16px rgba(0,0,0,0.05)', padding: '24px', marginBottom: '12px' }}>
-            <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '16px' }}>What needs cleaning?</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '10px' }}>
-              {CLEANING_TASKS.map(task => {
+          {showAdditional && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '8px' }}>
+              {ADDITIONAL_TASKS.map(task => {
                 const selected = selectedTasks.includes(task.id)
                 return (
-                  <button key={task.id} className="task-btn" type="button" onClick={() => toggleTask(task.id)} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '12px', borderRadius: '14px', border: `2px solid ${selected ? '#3b82f6' : '#e2e8f0'}`, background: selected ? 'rgba(59,130,246,0.06)' : 'rgba(255,255,255,0.6)', cursor: 'pointer', textAlign: 'left' }}>
-                    <div style={{ width: '18px', height: '18px', borderRadius: '50%', flexShrink: 0, marginTop: '1px', border: selected ? '2px solid #3b82f6' : '2px solid #cbd5e1', background: selected ? '#3b82f6' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <button key={task.id} className="task-btn" type="button" onClick={() => toggleTask(task.id)} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '12px', borderRadius: '14px', border: `2px solid ${selected ? '#f59e0b' : '#e2e8f0'}`, background: selected ? 'rgba(245,158,11,0.06)' : 'rgba(255,255,255,0.6)', cursor: 'pointer', textAlign: 'left' }}>
+                    <div style={{ width: '18px', height: '18px', borderRadius: '50%', flexShrink: 0, marginTop: '1px', border: selected ? '2px solid #f59e0b' : '2px solid #cbd5e1', background: selected ? '#f59e0b' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       {selected && <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                     </div>
                     <div>
@@ -352,147 +347,105 @@ function RequestStep1Content() {
                 )
               })}
             </div>
+          )}
 
-            <button type="button" onClick={() => setShowAdditional(!showAdditional)} style={{ width: '100%', padding: '11px 14px', borderRadius: '12px', border: '1.5px dashed #cbd5e1', background: 'transparent', fontSize: '13px', fontWeight: 600, color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', transition: 'all 0.2s' }}>
-              <span>+ Special requests (deep cleans, ironing, laundry…)</span>
-              <span style={{ transform: showAdditional ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', fontSize: '11px' }}>▾</span>
-            </button>
-
-            {showAdditional && (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '8px' }}>
-                {ADDITIONAL_TASKS.map(task => {
-                  const selected = selectedTasks.includes(task.id)
+          {selectedTasks.length > 0 && (
+            <div style={{ marginTop: '12px', padding: '12px', background: '#f8fafc', borderRadius: '12px' }}>
+              <div style={{ fontSize: '12px', fontWeight: 600, color: '#64748b', marginBottom: '8px' }}>Selected tasks:</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                {selectedTasks.map(id => {
+                  const task = allTasks.find(t => t.id === id)
+                  if (!task) return null
+                  const isSpecial = ADDITIONAL_TASKS.some(t => t.id === id)
                   return (
-                    <button key={task.id} className="task-btn" type="button" onClick={() => toggleTask(task.id)} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '12px', borderRadius: '14px', border: `2px solid ${selected ? '#f59e0b' : '#e2e8f0'}`, background: selected ? 'rgba(245,158,11,0.06)' : 'rgba(255,255,255,0.6)', cursor: 'pointer', textAlign: 'left' }}>
-                      <div style={{ width: '18px', height: '18px', borderRadius: '50%', flexShrink: 0, marginTop: '1px', border: selected ? '2px solid #f59e0b' : '2px solid #cbd5e1', background: selected ? '#f59e0b' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        {selected && <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-                      </div>
-                      <div>
-                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a' }}>{task.label}</div>
-                        <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>{task.description}</div>
-                      </div>
-                    </button>
+                    <span key={id} style={{ fontSize: '12px', fontWeight: 600, padding: '3px 10px', borderRadius: '100px', background: isSpecial ? '#fef3c7' : '#eff6ff', color: isSpecial ? '#92400e' : '#1e40af', border: `1px solid ${isSpecial ? '#fde68a' : '#bfdbfe'}` }}>
+                      {task.label}
+                    </span>
                   )
                 })}
               </div>
-            )}
-
-            {selectedTasks.length > 0 && (
-              <div style={{ marginTop: '12px', padding: '12px', background: '#f8fafc', borderRadius: '12px' }}>
-                <div style={{ fontSize: '12px', fontWeight: 600, color: '#64748b', marginBottom: '8px' }}>Selected tasks:</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                  {selectedTasks.map(id => {
-                    const task = allTasks.find(t => t.id === id)
-                    if (!task) return null
-                    const isSpecial = ADDITIONAL_TASKS.some(t => t.id === id)
-                    return (
-                      <span key={id} style={{ fontSize: '12px', fontWeight: 600, padding: '3px 10px', borderRadius: '100px', background: isSpecial ? '#fef3c7' : '#eff6ff', color: isSpecial ? '#92400e' : '#1e40af', border: `1px solid ${isSpecial ? '#fde68a' : '#bfdbfe'}` }}>
-                        {task.label}
-                      </span>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div style={{ background: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(16px)', borderRadius: '20px', border: `1.5px solid ${showErrors && !hoursPerSession ? '#fecaca' : 'rgba(255,255,255,0.9)'}`, boxShadow: '0 2px 16px rgba(0,0,0,0.05)', padding: '24px', marginBottom: '12px' }}>
-            <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '4px' }}>⏱ How many hours per clean?</div>
-            <p style={{ fontSize: '13px', color: '#64748b', margin: '0 0 14px', lineHeight: 1.55 }}>
-              For a <strong>{bedrooms}-bed / {bathrooms}-bath</strong> home, most customers find{' '}
-              <strong>{formatSuggestedRange(suggested.min, suggested.max)}</strong> works well.
-            </p>
-
-            <select
-              className={`vou-select${showErrors && !hoursPerSession ? ' error' : ''}`}
-              value={hoursPerSession?.toString() ?? ''}
-              onChange={e => {
-                const val = parseFloat(e.target.value)
-                setHoursPerSession(isNaN(val) ? null : val)
-                setUserPickedHours(true)
-              }}
-            >
-              <option value="" disabled>Select hours</option>
-              {HOURS_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-            </select>
-
-            {showErrors && !hoursPerSession && (
-              <p style={{ fontSize: '13px', color: '#ef4444', marginTop: '6px' }}>Please select a session length</p>
-            )}
-
-            {hoursPerSession !== null && hoursHintState && (
-              <div style={{ marginTop: '10px', padding: '12px 14px', borderRadius: '12px', background: hoursHintState === 'low' ? '#fffbeb' : '#f0fdf4', border: `1px solid ${hoursHintState === 'low' ? '#fde68a' : '#bbf7d0'}`, fontSize: '13px', lineHeight: 1.55 }}>
-                {hoursHintState === 'low' && (
-                  <p style={{ fontWeight: 600, color: '#92400e', margin: 0 }}>⚠️ On the lower end — typical for this property is {formatSuggestedRange(suggested.min, suggested.max)}. Your cleaner may not be able to cover everything, but you can agree this with them directly.</p>
-                )}
-                {hoursHintState === 'inRange' && (
-                  <p style={{ fontWeight: 600, color: '#166534', margin: 0 }}>✅ This is within the typical range for your home. 💡 Consider asking your cleaner for an extra hour on the first visit to get on top of things.</p>
-                )}
-                {hoursHintState === 'high' && (
-                  <p style={{ fontWeight: 600, color: '#166534', margin: 0 }}>✅ Generous — your cleaner will have plenty of time for a thorough clean.</p>
-                )}
-              </div>
-            )}
-
-            <div style={{ marginTop: '16px' }}>
-              <label style={{ fontSize: '13px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '6px' }}>
-                Any notes for your cleaner?{' '}
-                <span style={{ fontSize: '11px', fontWeight: 400, color: '#94a3b8' }}>optional</span>
-              </label>
-              <textarea
-                className="vou-textarea"
-                placeholder="e.g. please focus extra time on the kitchen each visit, or avoid the top floor on alternate weeks…"
-                value={sessionNotes}
-                onChange={e => setSessionNotes(e.target.value)}
-              />
             </div>
-          </div>
+          )}
+        </div>
 
-          <div style={{ background: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(16px)', borderRadius: '20px', border: `1.5px solid ${showErrors && (preferredDays.length === 0 || !preferredTime) ? '#fecaca' : 'rgba(255,255,255,0.9)'}`, boxShadow: '0 2px 16px rgba(0,0,0,0.05)', padding: '24px', marginBottom: '24px' }}>
-            <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '16px' }}>📅 Preferred schedule</div>
-
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ fontSize: '13px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '8px' }}>Preferred days</label>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
-                {DAYS_OF_WEEK.map(day => {
-                  const active = preferredDays.includes(day)
-                  return (
-                    <button key={day} type="button" onClick={() => toggleDay(day)}
-                      className={`day-btn${active ? ' active' : ''}${showErrors && preferredDays.length === 0 ? ' error-ring' : ''}`}
-                    >
-                      {day.substring(0, 3)}
-                    </button>
-                  )
-                })}
-              </div>
-              {showErrors && preferredDays.length === 0 && (
-                <p style={{ fontSize: '13px', color: '#ef4444', margin: '6px 0 0' }}>Please select at least one preferred day</p>
-              )}
-            </div>
-
-            <div>
-              <label style={{ fontSize: '13px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '6px' }}>Preferred time</label>
-              <select
-                className={`vou-select${showErrors && !preferredTime ? ' error' : ''}`}
-                value={preferredTime}
-                onChange={e => setPreferredTime(e.target.value)}
-              >
-                <option value="" disabled>Select a time preference</option>
-                {TIME_SLOTS.map(slot => <option key={slot} value={slot}>{slot}</option>)}
-              </select>
-              {showErrors && !preferredTime && (
-                <p style={{ fontSize: '13px', color: '#ef4444', margin: '6px 0 0' }}>Please select a preferred time</p>
-              )}
-            </div>
-          </div>
-
-          <button
-            className="continue-btn"
-            onClick={handleNext}
-            style={{ width: '100%', padding: '18px', borderRadius: '16px', border: 'none', background: 'linear-gradient(135deg, #2563eb, #3b82f6)', color: 'white', fontSize: '17px', fontWeight: 700, fontFamily: "'Sora', sans-serif", cursor: 'pointer', boxShadow: '0 4px 20px rgba(37,99,235,0.3)', transition: 'transform 0.2s, box-shadow 0.2s' }}
+        <div style={{ background: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(16px)', borderRadius: '20px', border: `1.5px solid ${showErrors && !hoursPerSession ? '#fecaca' : 'rgba(255,255,255,0.9)'}`, boxShadow: '0 2px 16px rgba(0,0,0,0.05)', padding: '24px', marginBottom: '12px' }}>
+          <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '4px' }}>⏱ How many hours per clean?</div>
+          <p style={{ fontSize: '13px', color: '#64748b', margin: '0 0 14px', lineHeight: 1.55 }}>
+            For a <strong>{bedrooms}-bed / {bathrooms}-bath</strong> home, most customers find{' '}
+            <strong>{formatSuggestedRange(suggested.min, suggested.max)}</strong> works well.
+          </p>
+          <select
+            className={`vou-select${showErrors && !hoursPerSession ? ' error' : ''}`}
+            value={hoursPerSession?.toString() ?? ''}
+            onChange={e => {
+              const val = parseFloat(e.target.value)
+              setHoursPerSession(isNaN(val) ? null : val)
+              setUserPickedHours(true)
+            }}
           >
-            Continue to pricing →
-          </button>
+            <option value="" disabled>Select hours</option>
+            {HOURS_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+          </select>
+          {showErrors && !hoursPerSession && <p style={{ fontSize: '13px', color: '#ef4444', marginTop: '6px' }}>Please select a session length</p>}
+          {hoursPerSession !== null && hoursHintState && (
+            <div style={{ marginTop: '10px', padding: '12px 14px', borderRadius: '12px', background: hoursHintState === 'low' ? '#fffbeb' : '#f0fdf4', border: `1px solid ${hoursHintState === 'low' ? '#fde68a' : '#bbf7d0'}`, fontSize: '13px', lineHeight: 1.55 }}>
+              {hoursHintState === 'low' && <p style={{ fontWeight: 600, color: '#92400e', margin: 0 }}>⚠️ On the lower end — typical for this property is {formatSuggestedRange(suggested.min, suggested.max)}. Your cleaner may not be able to cover everything, but you can agree this with them directly.</p>}
+              {hoursHintState === 'inRange' && <p style={{ fontWeight: 600, color: '#166534', margin: 0 }}>✅ This is within the typical range for your home. 💡 Consider asking your cleaner for an extra hour on the first visit to get on top of things.</p>}
+              {hoursHintState === 'high' && <p style={{ fontWeight: 600, color: '#166534', margin: 0 }}>✅ Generous — your cleaner will have plenty of time for a thorough clean.</p>}
+            </div>
+          )}
+          <div style={{ marginTop: '16px' }}>
+            <label style={{ fontSize: '13px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '6px' }}>
+              Any notes for your cleaner?{' '}<span style={{ fontSize: '11px', fontWeight: 400, color: '#94a3b8' }}>optional</span>
+            </label>
+            <textarea
+              className="vou-textarea"
+              placeholder="e.g. please focus extra time on the kitchen each visit, or avoid the top floor on alternate weeks…"
+              value={sessionNotes}
+              onChange={e => setSessionNotes(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div style={{ background: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(16px)', borderRadius: '20px', border: `1.5px solid ${showErrors && (preferredDays.length === 0 || !preferredTime) ? '#fecaca' : 'rgba(255,255,255,0.9)'}`, boxShadow: '0 2px 16px rgba(0,0,0,0.05)', padding: '24px', marginBottom: '24px' }}>
+          <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '16px' }}>📅 Preferred schedule</div>
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ fontSize: '13px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '8px' }}>Preferred days</label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
+              {DAYS_OF_WEEK.map(day => {
+                const active = preferredDays.includes(day)
+                return (
+                  <button key={day} type="button" onClick={() => toggleDay(day)}
+                    className={`day-btn${active ? ' active' : ''}${showErrors && preferredDays.length === 0 ? ' error-ring' : ''}`}
+                  >
+                    {day.substring(0, 3)}
+                  </button>
+                )
+              })}
+            </div>
+            {showErrors && preferredDays.length === 0 && <p style={{ fontSize: '13px', color: '#ef4444', margin: '6px 0 0' }}>Please select at least one preferred day</p>}
+          </div>
+          <div>
+            <label style={{ fontSize: '13px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '6px' }}>Preferred time</label>
+            <select
+              className={`vou-select${showErrors && !preferredTime ? ' error' : ''}`}
+              value={preferredTime}
+              onChange={e => setPreferredTime(e.target.value)}
+            >
+              <option value="" disabled>Select a time preference</option>
+              {TIME_SLOTS.map(slot => <option key={slot} value={slot}>{slot}</option>)}
+            </select>
+            {showErrors && !preferredTime && <p style={{ fontSize: '13px', color: '#ef4444', margin: '6px 0 0' }}>Please select a preferred time</p>}
+          </div>
+        </div>
+
+        <button
+          className="continue-btn"
+          onClick={handleNext}
+          style={{ width: '100%', padding: '18px', borderRadius: '16px', border: 'none', background: 'linear-gradient(135deg, #2563eb, #3b82f6)', color: 'white', fontSize: '17px', fontWeight: 700, fontFamily: "'Sora', sans-serif", cursor: 'pointer', boxShadow: '0 4px 20px rgba(37,99,235,0.3)', transition: 'transform 0.2s, box-shadow 0.2s' }}
+        >
+          Continue to pricing →
+        </button>
 
       </OnboardingShell>
     </>
