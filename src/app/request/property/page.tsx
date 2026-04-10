@@ -256,8 +256,8 @@ function RequestStep1Content() {
             </div>
           </div>
 
-          <div style={{ marginBottom: '28px' }}>
-            <h1 style={{ fontSize: '28px', fontWeight: 800, color: '#0f172a', margin: 0, lineHeight: 1.2 }}>Tell us about your property</h1>
+          <div style={{ marginBottom: '28px', textAlign: 'center' }}>
+            <h1 style={{ fontSize: '28px', fontWeight: 800, color: '#0f172a', margin: 0, lineHeight: 1.2, fontFamily: "'Sora', sans-serif", textAlign: 'center' }}>Tell us about your property</h1>
           </div>
 
           <div style={{ background: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(16px)', borderRadius: '20px', border: '1.5px solid rgba(255,255,255,0.9)', boxShadow: '0 2px 16px rgba(0,0,0,0.05)', padding: '24px', marginBottom: '12px' }}>

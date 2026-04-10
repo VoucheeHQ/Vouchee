@@ -96,38 +96,13 @@ export default function TermsAcceptancePage() {
   };
 
   return (
-    <OnboardingShell>
+    <OnboardingShell
+      step={3}
+      title="Our commitment to you"
+      subtitle="Here's exactly what Vouchee commits to you — and what we ask in return. Plain English, no surprises."
+    >
 
-        {/* Logo */}
-        <div style={{ textAlign: "center", marginBottom: "28px" }}>
-          <img
-            src="https://www.vouchee.co.uk/full-logo-black.png"
-            alt="Vouchee"
-            style={{ width: "160px", height: "auto", display: "inline-block" }}
-          />
-        </div>
 
-        {/* Progress */}
-        <div style={{ marginBottom: "32px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
-            <div style={{ fontSize: "13px", fontWeight: 600, color: "#3b82f6", letterSpacing: "0.05em", textTransform: "uppercase" }}>
-              Step 3 of 4
-            </div>
-          </div>
-          <div style={{ height: "4px", background: "#e2e8f0", borderRadius: "100px", overflow: "hidden" }}>
-            <div style={{ height: "100%", width: "75%", background: "linear-gradient(90deg, #3b82f6 0%, #facc15 50%, #22c55e 100%)", borderRadius: "100px" }} />
-          </div>
-        </div>
-
-        {/* Header — centred, Sora */}
-        <div style={{ marginBottom: "32px", textAlign: "center" }}>
-          <h1 style={{ fontSize: "30px", fontWeight: 800, color: "#0f172a", margin: "0 0 12px", lineHeight: 1.2, fontFamily: "'Sora', sans-serif" }}>
-            Our commitment to you
-          </h1>
-          <p style={{ fontSize: "15px", color: "#64748b", lineHeight: 1.6, margin: 0 }}>
-            Here's exactly what Vouchee commits to you — and what we ask in return. Plain English, no surprises.
-          </p>
-        </div>
 
         {/* Promise cards */}
         <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "32px" }}>

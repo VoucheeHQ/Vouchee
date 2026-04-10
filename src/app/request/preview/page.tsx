@@ -466,27 +466,14 @@ export default function ReviewPublishPage() {
     <>
 <style>{`* { box-sizing: border-box; } .go-live-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(22,163,74,0.4) !important; }`}</style>
 
-      <OnboardingShell>
+      <OnboardingShell
+        step={4}
+        title="Here's your listing"
+        subtitle="This is what cleaners will see. Happy with it? Go live."
+        onBack={() => router.back()}
+      >
 
-          {/* Logo */}
-          <div style={{ textAlign: "center", marginBottom: "28px" }}>
-            <img src="https://www.vouchee.co.uk/full-logo-black.png" alt="Vouchee" style={{ width: "160px", height: "auto", display: "inline-block" }} />
-          </div>
 
-          <div style={{ marginBottom: "28px" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
-              <div style={{ fontSize: "13px", fontWeight: 600, color: "#3b82f6", letterSpacing: "0.05em", textTransform: "uppercase" }}>Almost there</div>
-              <button onClick={() => router.back()} style={{ fontSize: "13px", fontWeight: 600, color: "#94a3b8", background: "none", border: "none", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>← Back</button>
-            </div>
-            <div style={{ height: "4px", background: "#e2e8f0", borderRadius: "100px", overflow: "hidden" }}>
-              <div style={{ height: "100%", width: "100%", background: "linear-gradient(90deg, #3b82f6, #22c55e)", borderRadius: "100px" }} />
-            </div>
-          </div>
-
-          <div style={{ marginBottom: "20px", textAlign: "center" }}>
-            <h1 style={{ fontSize: "28px", fontWeight: 800, color: "#0f172a", margin: "0 0 8px", fontFamily: "'Sora', sans-serif" }}>Here's your listing</h1>
-            <p style={{ fontSize: "15px", color: "#64748b", margin: 0 }}>This is what cleaners will see. Happy with it? Go live.</p>
-          </div>
 
           {!userId && (
             <div style={{ background: "#fffbeb", border: "1.5px solid #fcd34d", borderRadius: "16px", padding: "14px 18px", marginBottom: "16px", display: "flex", gap: "10px", alignItems: "flex-start" }}>

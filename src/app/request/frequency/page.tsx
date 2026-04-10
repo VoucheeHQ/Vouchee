@@ -195,27 +195,14 @@ export default function RequestFrequencyPage() {
         .back-btn:hover { color: #3b82f6; }
       `}</style>
 
-      <OnboardingShell>
+      <OnboardingShell
+        step={2}
+        title="Set your rate &amp; frequency"
+        subtitle="You set the price — cleaners apply to your listing and you choose who you want."
+        onBack={() => router.back()}
+      >
 
-          {/* Logo */}
-          <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-            <img src="https://www.vouchee.co.uk/full-logo-black.png" alt="Vouchee" style={{ width: '160px', height: 'auto', display: 'inline-block' }} />
-          </div>
 
-          <div style={{ marginBottom: '32px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <div style={{ fontSize: '13px', fontWeight: 600, color: '#3b82f6', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Step 2 of 4</div>
-              <button className="back-btn" onClick={() => router.back()} style={{ fontSize: '13px', fontWeight: 600, color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", transition: 'color 0.15s' }}>← Back</button>
-            </div>
-            <div style={{ height: '4px', background: '#e2e8f0', borderRadius: '100px', overflow: 'hidden' }}>
-              <div style={{ height: '100%', width: '50%', background: 'linear-gradient(90deg, #3b82f6 0%, #facc15 50%, #22c55e 100%)', borderRadius: '100px' }} />
-            </div>
-          </div>
-
-          <div style={{ marginBottom: '28px', textAlign: 'center' }}>
-            <h1 style={{ fontSize: '28px', fontWeight: 800, color: '#0f172a', margin: '0 0 8px', lineHeight: 1.2, fontFamily: "'Sora', sans-serif" }}>Set your rate &amp; frequency</h1>
-            <p style={{ fontSize: '15px', color: '#64748b', lineHeight: 1.6, margin: 0 }}>You set the price — cleaners apply to your listing and you choose who you want.</p>
-          </div>
 
           <div style={{ background: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(16px)', borderRadius: '20px', border: '1.5px solid rgba(255,255,255,0.9)', boxShadow: '0 2px 16px rgba(0,0,0,0.05)', padding: '24px', marginBottom: '12px' }}>
             <div style={{ padding: '10px 14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '12px', marginBottom: '16px', display: 'flex', gap: '8px' }}>
