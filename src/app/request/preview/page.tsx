@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
+import { OnboardingShell } from '@/components/layout/onboarding-shell'
 
 const TASK_LABELS: Record<string, string> = {
   general: "General cleaning", hoovering: "Hoovering", mopping: "Mopping",
@@ -465,8 +466,7 @@ export default function ReviewPublishPage() {
     <>
 <style>{`* { box-sizing: border-box; } .go-live-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(22,163,74,0.4) !important; }`}</style>
 
-      <div style={{ minHeight: "100vh", background: "linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%)", fontFamily: "'DM Sans', sans-serif", padding: "24px 16px 48px" }}>
-        <div style={{ maxWidth: "540px", margin: "0 auto" }}>
+      <OnboardingShell>
 
           {/* Logo */}
           <div style={{ textAlign: "center", marginBottom: "28px" }}>
@@ -599,8 +599,7 @@ export default function ReviewPublishPage() {
             <Link href="/legal/terms" style={{ color: "#3b82f6", textDecoration: "none" }}>Full terms</Link>
           </p>
 
-        </div>
-      </div>
+      </OnboardingShell>
 
       {showEdit && <EditModal data={data} onSave={handleSaveEdit} onClose={() => setShowEdit(false)} />}
     </>

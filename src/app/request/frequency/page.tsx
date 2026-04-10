@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { FrequencyType } from '@/types'
 import { formatPrice } from '@/lib/utils'
+import { OnboardingShell } from '@/components/layout/onboarding-shell'
 
 interface RequestData {
   bedrooms: number
@@ -194,8 +195,7 @@ export default function RequestFrequencyPage() {
         .back-btn:hover { color: #3b82f6; }
       `}</style>
 
-      <div style={{ minHeight: '100vh', background: 'linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%)', fontFamily: "'DM Sans', sans-serif", padding: '24px 16px 48px' }}>
-        <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+      <OnboardingShell>
 
           {/* Logo */}
           <div style={{ textAlign: 'center', marginBottom: '28px' }}>
@@ -314,8 +314,7 @@ export default function RequestFrequencyPage() {
             Continue →
           </button>
 
-        </div>
-      </div>
+      </OnboardingShell>
     </>
   )
 }
