@@ -242,7 +242,7 @@ function RequestStep1Content() {
             <img
               src="https://www.vouchee.co.uk/full-logo-black.png"
               alt="Vouchee"
-              style={{ height: '36px', width: 'auto', display: 'inline-block' }}
+              style={{ width: '160px', height: 'auto', display: 'inline-block' }}
             />
           </div>
 

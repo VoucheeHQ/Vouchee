@@ -199,7 +199,7 @@ export default function RequestFrequencyPage() {
 
           {/* Logo */}
           <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-            <img src="https://www.vouchee.co.uk/full-logo-black.png" alt="Vouchee" style={{ height: '36px', width: 'auto', display: 'inline-block' }} />
+            <img src="https://www.vouchee.co.uk/full-logo-black.png" alt="Vouchee" style={{ width: '160px', height: 'auto', display: 'inline-block' }} />
           </div>
 
           <div style={{ marginBottom: '32px' }}>
