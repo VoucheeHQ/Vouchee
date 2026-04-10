@@ -1,5 +1,7 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
+
 // ─── Design tokens (single source of truth) ───────────────────────────────────
 const SHELL = {
   maxWidth:     '560px',
@@ -20,12 +22,12 @@ const SHELL = {
 }
 
 interface OnboardingShellProps {
-  children:   React.ReactNode
-  step:       number
-  title:      string
-  subtitle?:  string
-  onBack?:    () => void
-  backLabel?: string
+  children:     React.ReactNode
+  step:         number        // 1-4, or 5 = "Almost there"
+  title:        string
+  subtitle?:    string
+  onBack?:      () => void
+  backLabel?:   string
 }
 
 export function OnboardingShell({
@@ -43,15 +45,14 @@ export function OnboardingShell({
 
   return (
     <div style={{
-      minHeight:  '100vh',
-      overflowY:  'scroll',
-      background: SHELL.background,
-      fontFamily: SHELL.fontFamily,
-      padding:    SHELL.padding,
+      minHeight:   '100vh',
+      background:  SHELL.background,
+      fontFamily:  SHELL.fontFamily,
+      padding:     SHELL.padding,
     }}>
       <div style={{ maxWidth: SHELL.maxWidth, margin: '0 auto' }}>
 
-        {/* ── Logo ── */}
+        {/* ── Logo ── identical on every page */}
         <div style={{ textAlign: 'center', marginBottom: SHELL.logoMB }}>
           <img
             src={SHELL.logoUrl}
@@ -60,7 +61,7 @@ export function OnboardingShell({
           />
         </div>
 
-        {/* ── Progress bar ── */}
+        {/* ── Progress bar ── identical on every page */}
         <div style={{ marginBottom: SHELL.progressMB }}>
           <div style={{
             display: 'flex', alignItems: 'center',
@@ -95,7 +96,7 @@ export function OnboardingShell({
           </div>
         </div>
 
-        {/* ── Title + subtitle ── */}
+        {/* ── Title + subtitle ── identical on every page */}
         <div style={{ marginBottom: SHELL.titleMB, textAlign: 'center' }}>
           <h1 style={{
             fontSize:   SHELL.titleSize,

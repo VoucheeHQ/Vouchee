@@ -16,9 +16,10 @@
     @apply bg-surface text-ink antialiased;
   }
 
-  /* Smooth scrolling */
+  /* Prevent layout shift from scrollbar appearing/disappearing */
   html {
     scroll-behavior: smooth;
+    scrollbar-gutter: stable;
   }
 
   /* Focus visible styles */
