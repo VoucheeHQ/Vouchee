@@ -33,15 +33,35 @@ const MONTHLY_AMOUNT_PENCE: Record<string, number> = {
   monthly:     2499, // £24.99
 }
 
-// Calculate pro-rata amount for the first partial month
-function calcProRata(startDate: string, monthlyAmountPence: number): number {
+// Per-clean fees in pence
+const PER_CLEAN_PENCE: Record<string, number> = {
+  weekly:      999,  // £9.99
+  fortnightly: 1499, // £14.99
+  monthly:     2499, // £24.99
+}
+
+// Calculate pro-rata based on actual cleans in the partial first month
+// startDate is the first clean date — we count forward at the clean interval
+function calcProRata(startDate: string, frequency: string): number {
+  if (frequency === 'monthly') return PER_CLEAN_PENCE.monthly
+
+  const intervalDays = frequency === 'weekly' ? 7 : 14
+  const perCleanPence = PER_CLEAN_PENCE[frequency] ?? PER_CLEAN_PENCE.fortnightly
+
   const start = new Date(startDate)
   const year = start.getFullYear()
   const month = start.getMonth()
-  const daysInMonth = new Date(year, month + 1, 0).getDate()
-  const dayOfMonth = start.getDate()
-  const remainingDays = daysInMonth - dayOfMonth + 1
-  return Math.round((monthlyAmountPence * remainingDays) / daysInMonth)
+  const endOfMonth = new Date(year, month + 1, 0) // last day of start month
+
+  // Count how many cleans fall within this month (including start date)
+  let cleans = 0
+  let cleanDate = new Date(start)
+  while (cleanDate <= endOfMonth) {
+    cleans++
+    cleanDate.setDate(cleanDate.getDate() + intervalDays)
+  }
+
+  return cleans * perCleanPence
 }
 
 // First billing date must be at least 3 working days from today (Bacs requirement)
@@ -393,10 +413,20 @@ export async function GET(request: NextRequest) {
     if (mandateId) {
       const frequency = cleanRequest.frequency ?? 'fortnightly'
       const monthlyAmountPence = MONTHLY_AMOUNT_PENCE[frequency] ?? MONTHLY_AMOUNT_PENCE.fortnightly
-      const firstBillingDate = getFirstBillingDate(startDate)
-      const proRataAmount = calcProRata(firstBillingDate, monthlyAmountPence)
 
-      console.log(`Creating subscription: frequency=${frequency}, monthly=${monthlyAmountPence}p, firstBillingDate=${firstBillingDate}, proRata=${proRataAmount}p`)
+      // Fetch mandate to get next_possible_charge_date (GoCardless enforces this)
+      const mandateRes = await fetch(`${gcBaseUrl}/mandates/${mandateId}`, {
+        headers: {
+          'Authorization': `Bearer ${gcToken}`,
+          'GoCardless-Version': '2015-07-06',
+          'Accept': 'application/json',
+        },
+      })
+      const mandateData = mandateRes.ok ? await mandateRes.json() : null
+      const nextPossibleChargeDate = mandateData?.mandates?.next_possible_charge_date ?? getFirstBillingDate(startDate)
+      const proRataAmount = calcProRata(startDate, frequency) // clean-based, uses actual start date
+
+      console.log(`Creating subscription: frequency=${frequency}, monthly=${monthlyAmountPence}p, nextPossibleChargeDate=${nextPossibleChargeDate}, proRata=${proRataAmount}p (clean-based)`)
 
       // First: pro-rata one-off payment for the partial first month
       if (proRataAmount > 0 && proRataAmount < monthlyAmountPence) {
@@ -413,7 +443,7 @@ export async function GET(request: NextRequest) {
             payments: {
               amount: proRataAmount,
               currency: 'GBP',
-              charge_date: firstBillingDate,
+              charge_date: nextPossibleChargeDate,
               description: `Vouchee service fee (pro-rata)`,
               links: { mandate: mandateId },
               metadata: { vouchee_request_id: requestId, type: 'pro_rata' },
@@ -422,7 +452,6 @@ export async function GET(request: NextRequest) {
         })
         if (!proRataRes.ok) {
           console.error('Pro-rata payment creation failed:', await proRataRes.text())
-          // Non-fatal — continue to create subscription
         } else {
           console.log('Pro-rata payment created successfully')
         }
