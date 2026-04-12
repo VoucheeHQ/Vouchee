@@ -458,7 +458,7 @@ export async function GET(request: NextRequest) {
       }
 
       // Then: recurring monthly subscription starting next month
-      const nextMonthDate = new Date(firstBillingDate)
+      const nextMonthDate = new Date(nextPossibleChargeDate)
       nextMonthDate.setMonth(nextMonthDate.getMonth() + 1)
       nextMonthDate.setDate(1) // 1st of next month
       const recurringStartDate = nextMonthDate.toISOString().split('T')[0]
