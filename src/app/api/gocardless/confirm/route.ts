@@ -314,13 +314,18 @@ export async function GET(request: NextRequest) {
 
       const brData = await brRes.json()
       const brStatus = brData.billing_requests?.status
-      mandateId = brData.billing_requests?.links?.mandate ?? null
+      // Mandate ID can be at links.mandate or links.mandate_request (GoCardless API variation)
+      mandateId = brData.billing_requests?.links?.mandate
+        ?? brData.billing_requests?.links?.mandate_request
+        ?? null
 
       console.log('Billing request status:', brStatus, 'mandateId:', mandateId)
+      console.log('Full billing request links:', JSON.stringify(brData.billing_requests?.links))
 
-      // If mandate not fulfilled, customer abandoned — do not proceed
-      if (brStatus !== 'fulfilled' || !mandateId) {
-        console.log('Mandate not fulfilled — redirecting to dashboard')
+      // Status fulfilled is sufficient — proceed even if mandateId is null
+      // (mandate may not be linked yet; subscription will be created on webhook)
+      if (brStatus !== 'fulfilled') {
+        console.log('Billing request not fulfilled — redirecting to dashboard')
         return NextResponse.redirect(`${appUrl}/customer/dashboard?gc_abandoned=1&conversationId=${conversationId}`)
       }
     } else {
