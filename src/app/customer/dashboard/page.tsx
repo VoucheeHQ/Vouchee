@@ -101,6 +101,13 @@ const MONTHLY_FEES: Record<Frequency, number> = {
   monthly: 2499,
 }
 
+// Per-clean fees in pence — used for accurate clean-based pro-rata
+const PER_CLEAN_PENCE: Record<Frequency, number> = {
+  weekly:      999,  // £9.99
+  fortnightly: 1499, // £14.99
+  monthly:     2499, // £24.99
+}
+
 const TIME_SLOTS = ['Morning (8am - 12pm)', 'During the day (8am - 5pm)', 'Afternoon (12pm - 5pm)', 'Evening (5pm - 8pm)', 'Flexible']
 const ALL_DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
 const DAY_SHORT: Record<string, string> = {
@@ -132,6 +139,7 @@ function daysSince(iso: string) {
   return Math.floor((Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60 * 24))
 }
 
+// Clean-based pro-rata: counts actual cleans from start date to end of month
 function calculateBilling(frequency: Frequency, startDate: string): {
   firstChargePence: number
   monthlyPence: number
@@ -141,8 +149,6 @@ function calculateBilling(frequency: Frequency, startDate: string): {
 } {
   const monthly = MONTHLY_FEES[frequency]
   const start = new Date(startDate)
-  const day = start.getDate()
-  const daysInMonth = new Date(start.getFullYear(), start.getMonth() + 1, 0).getDate()
 
   if (frequency === 'monthly') {
     return {
@@ -153,13 +159,26 @@ function calculateBilling(frequency: Frequency, startDate: string): {
     }
   }
 
-  const daysRemaining = daysInMonth - day + 1
-  const proRata = Math.round(monthly * (daysRemaining / daysInMonth))
+  // Count actual cleans from start date to end of month
+  const intervalDays = frequency === 'weekly' ? 7 : 14
+  const perCleanPence = PER_CLEAN_PENCE[frequency]
+  const endOfMonth = new Date(start.getFullYear(), start.getMonth() + 1, 0)
+
+  let cleans = 0
+  const cleanDate = new Date(start)
+  while (cleanDate <= endOfMonth) {
+    cleans++
+    cleanDate.setDate(cleanDate.getDate() + intervalDays)
+  }
+
+  const proRata = cleans * perCleanPence
+  const isFullMonth = proRata >= monthly
+
   return {
     firstChargePence: proRata, monthlyPence: monthly,
     firstChargeLabel: `£${(proRata / 100).toFixed(2)}`,
     monthlyLabel: `£${(monthly / 100).toFixed(2)}/month`,
-    isFullMonth: daysRemaining === daysInMonth,
+    isFullMonth,
   }
 }
 
@@ -215,23 +234,15 @@ function Stepper({ label, value, onDown, onUp, min, max, prefix = '', suffix = '
 // ─── Start Date Modal ─────────────────────────────────────────────────────────
 
 function StartDateModal({ cleanerName, frequency, applicationId, requestId, conversationId, onCancel, onConfirm, loading }: {
-  cleanerName: string
-  frequency: Frequency
-  applicationId: string
-  requestId: string
-  conversationId: string
-  onCancel: () => void
-  onConfirm: (startDate: string) => void
-  loading: boolean
+  cleanerName: string; frequency: Frequency; applicationId: string; requestId: string
+  conversationId: string; onCancel: () => void; onConfirm: (startDate: string) => void; loading: boolean
 }) {
   const minDate = getMinDate()
   const [startDate, setStartDate] = useState(minDate)
-
   const firstName = cleanerName.split(' ')[0]
   const billing = calculateBilling(frequency, startDate)
   const day = new Date(startDate).getDate()
   const showLateMonthWarning = day > 24
-
   const nextMonth = new Date(startDate)
   nextMonth.setMonth(nextMonth.getMonth() + 1)
   nextMonth.setDate(1)
@@ -245,29 +256,15 @@ function StartDateModal({ cleanerName, frequency, applicationId, requestId, conv
         <h3 style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '26px', fontWeight: 800, color: '#0f172a', textAlign: 'center', margin: '0 0 32px', letterSpacing: '-0.3px' }}>
           When would you like {firstName} to start?
         </h3>
-
-        {/* Date picker — full bar clickable */}
         <div style={{ marginBottom: '28px' }}>
-          <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '10px' }}>
-            Start date
-          </label>
+          <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '10px' }}>Start date</label>
           <div onClick={() => { const input = document.getElementById('start-date-input') as HTMLInputElement | null; input?.showPicker?.() }} style={{ position: 'relative', cursor: 'pointer' }}>
-            <input
-              id="start-date-input"
-              type="date"
-              value={startDate}
-              min={minDate}
-              onChange={e => setStartDate(e.target.value)}
-              style={{ width: '100%', padding: '14px 16px', border: '1.5px solid #e2e8f0', borderRadius: '12px', fontSize: '17px', fontWeight: 600, color: '#0f172a', fontFamily: "'DM Sans', sans-serif", outline: 'none', boxSizing: 'border-box', cursor: 'pointer', pointerEvents: 'none' }}
-            />
+            <input id="start-date-input" type="date" value={startDate} min={minDate} onChange={e => setStartDate(e.target.value)}
+              style={{ width: '100%', padding: '14px 16px', border: '1.5px solid #e2e8f0', borderRadius: '12px', fontSize: '17px', fontWeight: 600, color: '#0f172a', fontFamily: "'DM Sans', sans-serif", outline: 'none', boxSizing: 'border-box', cursor: 'pointer', pointerEvents: 'none' }} />
           </div>
         </div>
-
-        {/* Pricing breakdown */}
         <div style={{ background: '#f8fafc', borderRadius: '14px', padding: '20px', marginBottom: '12px', border: '1px solid #e2e8f0' }}>
-          <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '16px' }}>
-            Vouchee service fee · {freqLabel}
-          </div>
+          <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '16px' }}>Vouchee service fee · {freqLabel}</div>
           <div style={{ marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid #e2e8f0' }}>
             <div style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a', marginBottom: '4px' }}>{billing.firstChargeLabel} today</div>
             <div style={{ fontSize: '13px', color: '#94a3b8' }}>
@@ -279,32 +276,21 @@ function StartDateModal({ cleanerName, frequency, applicationId, requestId, conv
             <div style={{ fontSize: '13px', color: '#94a3b8' }}>Billed on the 1st of each month</div>
           </div>
         </div>
-
-        <div style={{ fontSize: '13px', color: '#64748b', textAlign: 'center', margin: '0 0 12px' }}>
-          Cancel anytime with 30 days' notice.
-        </div>
-
+        <div style={{ fontSize: '13px', color: '#64748b', textAlign: 'center', margin: '0 0 12px' }}>Cancel anytime with 30 days' notice.</div>
         {showLateMonthWarning && (
           <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '10px', padding: '14px 16px', marginBottom: '14px', fontSize: '14px', color: '#92400e', lineHeight: 1.6 }}>
             ⚠️ Your first payment is taken now, then monthly on the 1st. You may see two payments close together — this is normal and only happens when setting up your Direct Debit.
           </div>
         )}
-
-        {/* Trust badge */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '12px 16px', marginBottom: '28px' }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M12 1L3 5V11C3 16.55 6.84 21.74 12 23C17.16 21.74 21 16.55 21 11V5L12 1Z" fill="#16a34a" opacity="0.15" stroke="#16a34a" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             <path d="M9 12L11 14L15 10" stroke="#16a34a" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: '#475569' }}>
-            Secure Direct Debit via GoCardless · Protected by the Direct Debit Guarantee
-          </span>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: '#475569' }}>Secure Direct Debit via GoCardless · Protected by the Direct Debit Guarantee</span>
         </div>
-
         <div style={{ display: 'flex', gap: '12px' }}>
-          <button onClick={onCancel} disabled={loading} style={{ flex: 1, background: 'white', border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '15px', fontSize: '15px', fontWeight: 600, color: '#64748b', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
-            Cancel
-          </button>
+          <button onClick={onCancel} disabled={loading} style={{ flex: 1, background: 'white', border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '15px', fontSize: '15px', fontWeight: 600, color: '#64748b', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>Cancel</button>
           <button onClick={() => onConfirm(startDate)} disabled={loading || !startDate} style={{ flex: 2, background: '#16a34a', border: 'none', borderRadius: '12px', padding: '15px', fontSize: '15px', fontWeight: 700, color: 'white', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, fontFamily: "'DM Sans', sans-serif" }}>
             {loading ? 'Setting up…' : 'Secure your cleaner →'}
           </button>
@@ -320,26 +306,17 @@ function SuccessBanner({ onClose }: { onClose: () => void }) {
   return (
     <>
       <style>{`
-        @keyframes successSlideUp {
-          from { opacity: 0; transform: translateX(-50%) translateY(20px); }
-          to   { opacity: 1; transform: translateX(-50%) translateY(0); }
-        }
-        @keyframes popIn {
-          0%   { transform: scale(0.5); }
-          70%  { transform: scale(1.2); }
-          100% { transform: scale(1); }
-        }
+        @keyframes successSlideUp { from { opacity: 0; transform: translateX(-50%) translateY(20px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+        @keyframes popIn { 0% { transform: scale(0.5); } 70% { transform: scale(1.2); } 100% { transform: scale(1); } }
         @keyframes confetti1 { 0% { transform: translateY(0) rotate(0deg); opacity: 1; } 100% { transform: translateY(-60px) rotate(180deg); opacity: 0; } }
         @keyframes confetti2 { 0% { transform: translateY(0) rotate(0deg); opacity: 1; } 100% { transform: translateY(-80px) translateX(20px) rotate(-120deg); opacity: 0; } }
         @keyframes confetti3 { 0% { transform: translateY(0) rotate(0deg); opacity: 1; } 100% { transform: translateY(-70px) translateX(-15px) rotate(240deg); opacity: 0; } }
       `}</style>
       <div style={{ position: 'fixed', bottom: '24px', left: '50%', transform: 'translateX(-50%)', zIndex: 400, animation: 'successSlideUp 0.4s ease forwards', maxWidth: '500px', width: 'calc(100vw - 48px)' }}>
         <div style={{ background: 'linear-gradient(135deg, #16a34a, #15803d)', color: 'white', borderRadius: '16px', padding: '20px 24px', boxShadow: '0 16px 48px rgba(22,163,74,0.45)', display: 'flex', alignItems: 'flex-start', gap: '14px', position: 'relative', overflow: 'hidden' }}>
-          {/* Confetti dots */}
           <span style={{ position: 'absolute', top: '12px', right: '60px', width: '8px', height: '8px', borderRadius: '50%', background: '#fef08a', animation: 'confetti1 1s ease forwards 0.2s', opacity: 0 }} />
           <span style={{ position: 'absolute', top: '20px', right: '80px', width: '6px', height: '6px', borderRadius: '50%', background: '#bfdbfe', animation: 'confetti2 1.1s ease forwards 0.3s', opacity: 0 }} />
           <span style={{ position: 'absolute', top: '8px', right: '70px', width: '7px', height: '7px', borderRadius: '50%', background: '#fca5a5', animation: 'confetti3 0.9s ease forwards 0.1s', opacity: 0 }} />
-
           <div style={{ fontSize: '32px', flexShrink: 0, animation: 'popIn 0.5s ease forwards' }}>🎉</div>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: '16px', fontWeight: 800, marginBottom: '4px', letterSpacing: '-0.2px' }}>Direct Debit confirmed!</div>
@@ -392,7 +369,6 @@ function ActiveRequestCard({ request, onPause, onRepublish, onDelete, onEdit }: 
   const daysLabel = formatDays(request.preferred_days)
   const visibleTasks = (request.tasks ?? []).slice(0, 6)
   const extraTasks = (request.tasks ?? []).length - 6
-
   const statusConfig: Record<string, { label: string; dot: string; border: string; headerBg: string; textColor: string }> = {
     active:         { label: 'Live — accepting applications', dot: '#22c55e', border: '#bbf7d0', headerBg: '#f0fdf4', textColor: '#15803d' },
     pending_review: { label: 'Under review',                  dot: '#f59e0b', border: '#fde68a', headerBg: '#fffbeb', textColor: '#92400e' },
@@ -404,7 +380,6 @@ function ActiveRequestCard({ request, onPause, onRepublish, onDelete, onEdit }: 
     fulfilled:      { label: 'Cleaner confirmed',             dot: '#16a34a', border: '#bbf7d0', headerBg: '#f0fdf4', textColor: '#15803d' },
   }
   const sc = statusConfig[request.status] ?? statusConfig.active
-
   return (
     <div style={{ background: 'white', borderRadius: '16px', border: `1.5px solid ${sc.border}`, boxShadow: '0 2px 12px rgba(0,0,0,0.06)', marginBottom: '16px', overflow: 'hidden' }}>
       <div style={{ background: sc.headerBg, padding: '12px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -417,7 +392,7 @@ function ActiveRequestCard({ request, onPause, onRepublish, onDelete, onEdit }: 
       <div style={{ padding: '20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '14px' }}>
           <span style={{ fontSize: '16px' }}>📍</span>
-          <span style={{ fontFamily: "'Lora', serif", fontSize: '20px', fontWeight: 700, color: '#0f172a' }}>{locationLabel}</span>
+          <span style={{ fontSize: '20px', fontWeight: 700, color: '#0f172a' }}>{locationLabel}</span>
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '16px' }}>
           {request.bedrooms ? <Chip>{request.bedrooms} bed</Chip> : null}
@@ -515,14 +490,12 @@ function PastListingRow({ request }: { request: CleaningRequest }) {
 // ─── Application Card ─────────────────────────────────────────────────────────
 
 function ApplicationCard({ app, onAccept, onDecline, onOpenChat, accepting, declining }: {
-  app: Application; onAccept: () => void; onDecline: () => void
-  onOpenChat: () => void; accepting: boolean; declining: boolean
+  app: Application; onAccept: () => void; onDecline: () => void; onOpenChat: () => void; accepting: boolean; declining: boolean
 }) {
   const displayName = app.cleaner_name || 'Cleaner'
   const initial = displayName[0]?.toUpperCase() || 'C'
   const memberSince = app.cleaner_member_since || 'recently'
   const appliedLabel = daysSince(app.created_at) === 0 ? 'Applied today' : `Applied ${daysSince(app.created_at)}d ago`
-
   return (
     <div style={{ background: 'white', borderRadius: '16px', border: '1.5px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
       <div style={{ padding: '20px 20px 16px' }}>
@@ -574,18 +547,12 @@ function ApplicationCard({ app, onAccept, onDecline, onOpenChat, accepting, decl
       <div style={{ padding: '16px 20px 20px', borderTop: '1px solid #f1f5f9', display: 'flex', gap: '12px' }}>
         {app.status === 'pending' && (
           <>
-            <button onClick={onAccept} disabled={accepting} style={{ flex: 1, background: '#16a34a', color: 'white', border: 'none', borderRadius: '10px', padding: '14px 0', fontSize: '14px', fontWeight: 700, cursor: accepting ? 'not-allowed' : 'pointer', fontFamily: "'DM Sans', sans-serif", opacity: accepting ? 0.7 : 1 }}>
-              {accepting ? 'Opening…' : '✓ Accept & chat'}
-            </button>
-            <button onClick={onDecline} disabled={declining} style={{ flex: 1, background: 'white', color: '#ef4444', border: '1.5px solid #fecaca', borderRadius: '10px', padding: '14px 0', fontSize: '14px', fontWeight: 700, cursor: declining ? 'not-allowed' : 'pointer', fontFamily: "'DM Sans', sans-serif", opacity: declining ? 0.7 : 1 }}>
-              {declining ? 'Declining…' : '✕ Decline'}
-            </button>
+            <button onClick={onAccept} disabled={accepting} style={{ flex: 1, background: '#16a34a', color: 'white', border: 'none', borderRadius: '10px', padding: '14px 0', fontSize: '14px', fontWeight: 700, cursor: accepting ? 'not-allowed' : 'pointer', fontFamily: "'DM Sans', sans-serif", opacity: accepting ? 0.7 : 1 }}>{accepting ? 'Opening…' : '✓ Accept & chat'}</button>
+            <button onClick={onDecline} disabled={declining} style={{ flex: 1, background: 'white', color: '#ef4444', border: '1.5px solid #fecaca', borderRadius: '10px', padding: '14px 0', fontSize: '14px', fontWeight: 700, cursor: declining ? 'not-allowed' : 'pointer', fontFamily: "'DM Sans', sans-serif", opacity: declining ? 0.7 : 1 }}>{declining ? 'Declining…' : '✕ Decline'}</button>
           </>
         )}
         {app.status === 'accepted' && (
-          <button onClick={onOpenChat} style={{ flex: 1, background: '#2563eb', color: 'white', border: 'none', borderRadius: '10px', padding: '14px 0', fontSize: '14px', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
-            💬 Open chat
-          </button>
+          <button onClick={onOpenChat} style={{ flex: 1, background: '#2563eb', color: 'white', border: 'none', borderRadius: '10px', padding: '14px 0', fontSize: '14px', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>💬 Open chat</button>
         )}
         {app.status === 'rejected' && (
           <div style={{ flex: 1, textAlign: 'center', fontSize: '13px', color: '#94a3b8', padding: '14px 0', fontStyle: 'italic' }}>Application declined</div>
@@ -598,8 +565,7 @@ function ApplicationCard({ app, onAccept, onDecline, onOpenChat, accepting, decl
 // ─── Applications Section ─────────────────────────────────────────────────────
 
 function ApplicationsSection({ requestIds, requests, onAccept, onOpenChat }: {
-  requestIds: string[]
-  requests: CleaningRequest[]
+  requestIds: string[]; requests: CleaningRequest[]
   onAccept: (applicationId: string, requestId: string, cleanerName: string, frequency: Frequency) => void
   onOpenChat: (applicationId: string, requestId: string) => void
 }) {
@@ -612,13 +578,11 @@ function ApplicationsSection({ requestIds, requests, onAccept, onOpenChat }: {
     if (!requestIds.length) { setLoading(false); return }
     const fetchApplications = async () => {
       const supabase = createClient()
-      const { data: appData, error } = await (supabase as any)
-        .from('applications').select('*').in('request_id', requestIds).order('created_at', { ascending: false })
+      const { data: appData, error } = await (supabase as any).from('applications').select('*').in('request_id', requestIds).order('created_at', { ascending: false })
       if (error || !appData) { setLoading(false); return }
       const enriched: Application[] = await Promise.all(
         appData.map(async (app: any) => {
-          const { data: cleaner } = await (supabase as any)
-            .from('cleaners').select('profile_id, created_at, profiles(full_name)').eq('id', app.cleaner_id).single()
+          const { data: cleaner } = await (supabase as any).from('cleaners').select('profile_id, created_at, profiles(full_name)').eq('id', app.cleaner_id).single()
           const fullName = cleaner?.profiles?.full_name ?? ''
           const memberSince = cleaner?.created_at ? new Date(cleaner.created_at).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }) : 'Recently'
           return { ...app, cleaner_name: fullName ? formatFirstLastInitial(fullName) : 'Cleaner', cleaner_initial: fullName ? fullName[0]?.toUpperCase() : 'C', cleaner_member_since: memberSince }
@@ -648,13 +612,9 @@ function ApplicationsSection({ requestIds, requests, onAccept, onOpenChat }: {
 
   return (
     <div style={{ marginBottom: '36px' }}>
-      <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '14px' }}>
-        Applications {applications.length > 0 ? `(${applications.length})` : ''}
-      </div>
+      <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '14px' }}>Applications {applications.length > 0 ? `(${applications.length})` : ''}</div>
       {loading ? (
-        <div style={{ background: 'white', borderRadius: '14px', border: '1px solid #e2e8f0', padding: '24px', textAlign: 'center' }}>
-          <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0 }}>Loading applications…</p>
-        </div>
+        <div style={{ background: 'white', borderRadius: '14px', border: '1px solid #e2e8f0', padding: '24px', textAlign: 'center' }}><p style={{ fontSize: '13px', color: '#94a3b8', margin: 0 }}>Loading applications…</p></div>
       ) : applications.length === 0 ? (
         <div style={{ background: 'white', borderRadius: '14px', border: '1.5px dashed #e2e8f0', padding: '32px 24px', textAlign: 'center' }}>
           <div style={{ fontSize: '28px', marginBottom: '10px' }}>👀</div>
@@ -664,11 +624,7 @@ function ApplicationsSection({ requestIds, requests, onAccept, onOpenChat }: {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {applications.map(app => (
-            <ApplicationCard key={app.id} app={app}
-              onAccept={() => handleAccept(app)} onDecline={() => handleDecline(app)}
-              onOpenChat={() => onOpenChat(app.id, app.request_id)}
-              accepting={accepting === app.id} declining={declining === app.id}
-            />
+            <ApplicationCard key={app.id} app={app} onAccept={() => handleAccept(app)} onDecline={() => handleDecline(app)} onOpenChat={() => onOpenChat(app.id, app.request_id)} accepting={accepting === app.id} declining={declining === app.id} />
           ))}
         </div>
       )}
@@ -690,10 +646,7 @@ function CustomerDashboardContent() {
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [showSuccessBanner, setShowSuccessBanner] = useState(false)
-
-  const [startDateModal, setStartDateModal] = useState<{
-    applicationId: string; requestId: string; conversationId: string; cleanerName: string; frequency: Frequency
-  } | null>(null)
+  const [startDateModal, setStartDateModal] = useState<{ applicationId: string; requestId: string; conversationId: string; cleanerName: string; frequency: Frequency } | null>(null)
   const [startDateLoading, setStartDateLoading] = useState(false)
   const systemMessageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const timerFiredRef = useRef(false)
@@ -704,43 +657,23 @@ function CustomerDashboardContent() {
         const supabase = createClient()
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) { router.replace('/login'); return }
-
-        const { data: profileData, error: profileError } = await (supabase as any)
-          .from('profiles').select('full_name, email, role').eq('id', user.id).single()
+        const { data: profileData, error: profileError } = await (supabase as any).from('profiles').select('full_name, email, role').eq('id', user.id).single()
         if (profileError || !profileData) throw new Error('Could not load your profile.')
         if (profileData.role !== 'customer' && profileData.role !== 'admin') { router.replace('/cleaner/dashboard'); return }
-
-        const { data: customerRecord } = await (supabase as any)
-          .from('customers').select('id').eq('profile_id', user.id).single()
+        const { data: customerRecord } = await (supabase as any).from('customers').select('id').eq('profile_id', user.id).single()
         const customerId = customerRecord?.id ?? null
-
         const { data: requestData, error: requestError } = customerId
           ? await (supabase as any).from('clean_requests').select('*').eq('customer_id', customerId).order('created_at', { ascending: false })
           : { data: [], error: null }
         if (requestError) throw new Error(requestError.message)
-
         setProfile(profileData)
         setRequests(requestData ?? [])
-
-        // Check for GoCardless success redirect
-        if (searchParams.get('gc_success') === '1') {
-          setShowSuccessBanner(true)
-        }
-
+        if (searchParams.get('gc_success') === '1') setShowSuccessBanner(true)
         const acceptAppId = searchParams.get('accept')
         const acceptReqId = searchParams.get('request')
-        if (acceptAppId && acceptReqId) {
-          handleAcceptApplication(acceptAppId, acceptReqId)
-          router.replace('/customer/dashboard')
-        }
-
-        // Open chat if redirected from GC confirm
+        if (acceptAppId && acceptReqId) { handleAcceptApplication(acceptAppId, acceptReqId); router.replace('/customer/dashboard') }
         const chatId = searchParams.get('chat')
-        if (chatId) {
-          setTimeout(() => {
-            window.dispatchEvent(new CustomEvent('vouchee:open-chat', { detail: { conversationId: chatId } }))
-          }, 800)
-        }
+        if (chatId) setTimeout(() => window.dispatchEvent(new CustomEvent('vouchee:open-chat', { detail: { conversationId: chatId } })), 800)
       } catch (err: any) {
         setError(err?.message ?? 'Something went wrong.')
       } finally {
@@ -777,14 +710,14 @@ function CustomerDashboardContent() {
 
   const handleCancelStartDate = async () => {
     if (systemMessageTimerRef.current) { clearTimeout(systemMessageTimerRef.current); systemMessageTimerRef.current = null }
-    const modal = startDateModal
+    const m = startDateModal
     setStartDateModal(null)
-    if (timerFiredRef.current && modal) {
+    if (timerFiredRef.current && m) {
       try {
         const supabase = createClient()
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
-        await (supabase as any).from('messages').insert({ conversation_id: modal.conversationId, sender_id: user.id, sender_role: 'customer', content: '__system__ Customer did not complete set-up.' })
+        await (supabase as any).from('messages').insert({ conversation_id: m.conversationId, sender_id: user.id, sender_role: 'customer', content: '__system__ Customer did not complete set-up.' })
       } catch (e) {}
     }
     timerFiredRef.current = false
@@ -825,11 +758,7 @@ function CustomerDashboardContent() {
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3500) }
 
-  const handleSignOut = async () => {
-    const supabase = createClient()
-    await supabase.auth.signOut()
-    router.push('/')
-  }
+  const handleSignOut = async () => { const supabase = createClient(); await supabase.auth.signOut(); router.push('/') }
 
   const handlePause = async (id: string) => {
     const supabase = createClient()
@@ -866,25 +795,17 @@ function CustomerDashboardContent() {
     } catch (err: any) { showToast('Failed to save — please try again') } finally { setSaving(false) }
   }
 
-  if (loading) {
-    return (
-      <div style={{ minHeight: '100vh', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans', sans-serif" }}>
-        <div style={{ textAlign: 'center' }}><div style={{ fontSize: '32px', marginBottom: '12px' }}>🧹</div><p style={{ fontSize: '14px', color: '#64748b' }}>Loading your dashboard…</p></div>
-      </div>
-    )
-  }
+  if (loading) return <div style={{ minHeight: '100vh', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans', sans-serif" }}><div style={{ textAlign: 'center' }}><div style={{ fontSize: '32px', marginBottom: '12px' }}>🧹</div><p style={{ fontSize: '14px', color: '#64748b' }}>Loading your dashboard…</p></div></div>
 
-  if (error || !profile) {
-    return (
-      <div style={{ minHeight: '100vh', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans', sans-serif", padding: '24px' }}>
-        <div style={{ background: 'white', borderRadius: '20px', padding: '40px', maxWidth: '400px', textAlign: 'center', border: '1.5px solid #fecaca' }}>
-          <div style={{ fontSize: '32px', marginBottom: '12px' }}>⚠️</div>
-          <p style={{ fontSize: '14px', color: '#dc2626', margin: '0 0 16px' }}>{error ?? 'Could not load your dashboard.'}</p>
-          <button onClick={() => router.push('/login')} style={{ background: '#0f172a', color: 'white', border: 'none', borderRadius: '10px', padding: '10px 24px', fontSize: '14px', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>Back to login</button>
-        </div>
+  if (error || !profile) return (
+    <div style={{ minHeight: '100vh', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans', sans-serif", padding: '24px' }}>
+      <div style={{ background: 'white', borderRadius: '20px', padding: '40px', maxWidth: '400px', textAlign: 'center', border: '1.5px solid #fecaca' }}>
+        <div style={{ fontSize: '32px', marginBottom: '12px' }}>⚠️</div>
+        <p style={{ fontSize: '14px', color: '#dc2626', margin: '0 0 16px' }}>{error ?? 'Could not load your dashboard.'}</p>
+        <button onClick={() => router.push('/login')} style={{ background: '#0f172a', color: 'white', border: 'none', borderRadius: '10px', padding: '10px 24px', fontSize: '14px', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>Back to login</button>
       </div>
-    )
-  }
+    </div>
+  )
 
   const firstName = getFirstName(profile.full_name)
   const activeRequests = requests.filter(r => ACTIVE_STATUSES.includes(r.status))
@@ -902,12 +823,10 @@ function CustomerDashboardContent() {
         <Header userRole={profile.role} />
         <main style={{ flex: 1 }}>
           <div style={{ maxWidth: '720px', margin: '0 auto', padding: '40px 24px 60px' }}>
-
             <div style={{ marginBottom: '36px' }}>
-              <h1 style={{ fontFamily: "'Lora', serif", fontSize: '30px', fontWeight: 700, color: '#0f172a', marginBottom: '6px' }}>Hey {firstName}! 👋</h1>
+              <h1 style={{ fontSize: '30px', fontWeight: 700, color: '#0f172a', marginBottom: '6px' }}>Hey {firstName}! 👋</h1>
               <p style={{ fontSize: '15px', color: '#64748b' }}>{hasActive ? 'Your request is live — cleaners can apply.' : 'Manage your cleaning requests below.'}</p>
             </div>
-
             <div style={{ marginBottom: '36px' }}>
               <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '14px' }}>Request a clean</div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
@@ -915,11 +834,8 @@ function CustomerDashboardContent() {
                   {hasActive && <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.7)', borderRadius: '14px', zIndex: 1 }} />}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}><span style={{ fontSize: '22px' }}>🧹</span><span style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>Regular clean</span></div>
                   <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '14px', lineHeight: 1.4 }}>Weekly or fortnightly recurring clean</div>
-                  {hasActive ? (
-                    <div style={{ fontSize: '12px', color: '#94a3b8', fontStyle: 'italic' }}>{hasPaused ? 'Edit or delete your paused listing first' : 'You already have an active listing'}</div>
-                  ) : (
-                    <button onClick={() => router.push('/request/property')} style={{ background: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>Post request →</button>
-                  )}
+                  {hasActive ? <div style={{ fontSize: '12px', color: '#94a3b8', fontStyle: 'italic' }}>{hasPaused ? 'Edit or delete your paused listing first' : 'You already have an active listing'}</div>
+                    : <button onClick={() => router.push('/request/property')} style={{ background: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>Post request →</button>}
                 </div>
                 <div style={{ background: 'white', borderRadius: '14px', border: '1.5px solid #e2e8f0', padding: '18px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}><span style={{ fontSize: '22px' }}>🏠</span><span style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>End of tenancy</span></div>
@@ -941,66 +857,40 @@ function CustomerDashboardContent() {
                   <button onClick={() => showToast('Oven cleans — contact us at contact@vouchee.co.uk')} style={{ background: '#f1f5f9', color: '#64748b', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>Enquire</button>
                 </div>
               </div>
-              {hasPaused && !hasActive && (
-                <div style={{ marginTop: '12px', padding: '12px 16px', background: '#fefce8', border: '1px solid #fef08a', borderRadius: '10px', fontSize: '13px', color: '#92400e' }}>
-                  💡 You have a paused listing. Consider editing or deleting it before posting a new request.
-                </div>
-              )}
+              {hasPaused && !hasActive && <div style={{ marginTop: '12px', padding: '12px 16px', background: '#fefce8', border: '1px solid #fef08a', borderRadius: '10px', fontSize: '13px', color: '#92400e' }}>💡 You have a paused listing. Consider editing or deleting it before posting a new request.</div>}
             </div>
-
             {activeRequests.length > 0 && (
               <div style={{ marginBottom: '36px' }}>
                 <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '14px' }}>Your listing</div>
-                {activeRequests.map(req => (
-                  <ActiveRequestCard key={req.id} request={req} onPause={() => setModal({ type: 'pause', id: req.id })} onRepublish={() => setModal({ type: 'republish', id: req.id })} onDelete={() => setModal({ type: 'delete', id: req.id })} onEdit={() => setEditingRequest(req)} />
-                ))}
+                {activeRequests.map(req => <ActiveRequestCard key={req.id} request={req} onPause={() => setModal({ type: 'pause', id: req.id })} onRepublish={() => setModal({ type: 'republish', id: req.id })} onDelete={() => setModal({ type: 'delete', id: req.id })} onEdit={() => setEditingRequest(req)} />)}
               </div>
             )}
-
             {!hasActive && pausedRequests.length > 0 && (
               <div style={{ marginBottom: '36px' }}>
                 <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '14px' }}>Paused listing</div>
-                {pausedRequests.map(req => (
-                  <ActiveRequestCard key={req.id} request={req} onPause={() => setModal({ type: 'pause', id: req.id })} onRepublish={() => setModal({ type: 'republish', id: req.id })} onDelete={() => setModal({ type: 'delete', id: req.id })} onEdit={() => setEditingRequest(req)} />
-                ))}
+                {pausedRequests.map(req => <ActiveRequestCard key={req.id} request={req} onPause={() => setModal({ type: 'pause', id: req.id })} onRepublish={() => setModal({ type: 'republish', id: req.id })} onDelete={() => setModal({ type: 'delete', id: req.id })} onEdit={() => setEditingRequest(req)} />)}
               </div>
             )}
-
-            {activeRequestIds.length > 0 && (
-              <ApplicationsSection requestIds={activeRequestIds} requests={activeRequests} onAccept={handleAcceptApplication} onOpenChat={handleOpenChat} />
-            )}
-
+            {activeRequestIds.length > 0 && <ApplicationsSection requestIds={activeRequestIds} requests={activeRequests} onAccept={handleAcceptApplication} onOpenChat={handleOpenChat} />}
             {fulfilledRequests.length > 0 && (
               <div style={{ marginBottom: '36px' }}>
                 <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '14px' }}>Confirmed cleaners</div>
-                {fulfilledRequests.map(req => (
-                  <ActiveRequestCard key={req.id} request={req} onPause={() => {}} onRepublish={() => {}} onDelete={() => setModal({ type: 'delete', id: req.id })} onEdit={() => setEditingRequest(req)} />
-                ))}
+                {fulfilledRequests.map(req => <ActiveRequestCard key={req.id} request={req} onPause={() => {}} onRepublish={() => {}} onDelete={() => setModal({ type: 'delete', id: req.id })} onEdit={() => setEditingRequest(req)} />)}
               </div>
             )}
-
             {pastRequests.filter(r => r.status !== 'paused' && r.status !== 'fulfilled').length > 0 && (
               <div>
                 <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '14px' }}>Past listings</div>
                 {pastRequests.filter(r => r.status !== 'paused' && r.status !== 'fulfilled').map(req => <PastListingRow key={req.id} request={req} />)}
               </div>
             )}
-
-            {requests.length === 0 && (
-              <div style={{ textAlign: 'center', padding: '40px 0', color: '#94a3b8' }}>
-                <div style={{ fontSize: '40px', marginBottom: '12px' }}>🧹</div>
-                <p style={{ fontSize: '15px' }}>No requests yet — use the buttons above to get started.</p>
-              </div>
-            )}
+            {requests.length === 0 && <div style={{ textAlign: 'center', padding: '40px 0', color: '#94a3b8' }}><div style={{ fontSize: '40px', marginBottom: '12px' }}>🧹</div><p style={{ fontSize: '15px' }}>No requests yet — use the buttons above to get started.</p></div>}
           </div>
         </main>
-
         <div style={{ borderTop: '1px solid #e2e8f0', padding: '32px 24px', display: 'flex', justifyContent: 'center' }}>
           <button onClick={() => setModal({ type: 'signout', id: '' })} style={{ background: 'none', border: '1px solid #fecaca', borderRadius: '8px', padding: '8px 20px', fontSize: '13px', fontWeight: 600, color: '#ef4444', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>Sign out</button>
         </div>
-
         <Footer />
-
         {modal?.type === 'signout' && <ConfirmModal message="Are you sure you want to sign out?" onConfirm={handleSignOut} onCancel={() => setModal(null)} />}
         {modal?.type === 'pause' && <ConfirmModal message="Pause your request? It won't be visible to cleaners until you republish." onConfirm={() => handlePause(modal.id)} onCancel={() => setModal(null)} />}
         {modal?.type === 'republish' && <ConfirmModal message="Republish your request? It will be visible to cleaners again." onConfirm={() => handleRepublish(modal.id)} onCancel={() => setModal(null)} />}
@@ -1008,15 +898,7 @@ function CustomerDashboardContent() {
         {editingRequest && <EditModal request={editingRequest} onSave={handleSaveEdit} onClose={() => setEditingRequest(null)} saving={saving} />}
         {toast && <ComingSoonBanner message={toast} onClose={() => setToast(null)} />}
         {showSuccessBanner && <SuccessBanner onClose={() => setShowSuccessBanner(false)} />}
-
-        {startDateModal && (
-          <StartDateModal
-            cleanerName={startDateModal.cleanerName} frequency={startDateModal.frequency}
-            applicationId={startDateModal.applicationId} requestId={startDateModal.requestId}
-            conversationId={startDateModal.conversationId}
-            onCancel={handleCancelStartDate} onConfirm={handleConfirmStartDate} loading={startDateLoading}
-          />
-        )}
+        {startDateModal && <StartDateModal cleanerName={startDateModal.cleanerName} frequency={startDateModal.frequency} applicationId={startDateModal.applicationId} requestId={startDateModal.requestId} conversationId={startDateModal.conversationId} onCancel={handleCancelStartDate} onConfirm={handleConfirmStartDate} loading={startDateLoading} />}
       </div>
     </>
   )
@@ -1033,18 +915,16 @@ function EditModal({ request, onSave, onClose, saving }: {
     preferred_days: (request.preferred_days ?? []).map(d => d.toLowerCase()),
     time_of_day: request.time_of_day ?? 'Flexible', tasks: request.tasks ?? [],
   })
-
   const estPerSession = (draft.hours_per_session * draft.hourly_rate).toFixed(2)
   const toggleDay = (day: string) => setDraft(d => ({ ...d, preferred_days: d.preferred_days.includes(day) ? d.preferred_days.filter(x => x !== day) : [...d.preferred_days, day] }))
   const toggleTask = (task: string) => setDraft(d => ({ ...d, tasks: d.tasks.includes(task) ? d.tasks.filter(x => x !== task) : [...d.tasks, task] }))
-
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 200, padding: '0' }}>
       <div style={{ background: 'white', borderRadius: '24px 24px 0 0', width: '100%', maxWidth: '720px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 -8px 40px rgba(0,0,0,0.15)' }}>
         <div style={{ position: 'sticky', top: 0, background: 'white', borderBottom: '1px solid #f1f5f9', padding: '16px 24px 14px', zIndex: 10 }}>
           <div style={{ width: '40px', height: '4px', background: '#e2e8f0', borderRadius: '2px', margin: '0 auto 16px' }} />
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <h2 style={{ fontFamily: "'Lora', serif", fontSize: '20px', fontWeight: 700, color: '#0f172a', margin: 0 }}>Edit listing</h2>
+            <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#0f172a', margin: 0 }}>Edit listing</h2>
             <button onClick={onClose} style={{ background: '#f1f5f9', border: 'none', borderRadius: '50%', width: '32px', height: '32px', fontSize: '16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>✕</button>
           </div>
         </div>
