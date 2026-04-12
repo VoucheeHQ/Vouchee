@@ -11,7 +11,7 @@ const SHELL = {
   logoMB:       '28px',
   progressMB:   '32px',
   titleMB:      '28px',
-  titleFont:    "'Sora', sans-serif",
+  titleFont:    "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif",
   titleSize:    '28px',
   titleWeight:  800,
   titleColor:   '#0f172a',

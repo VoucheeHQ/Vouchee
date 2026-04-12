@@ -1,16 +1,9 @@
 import type { Metadata } from 'next'
-import { Sora, DM_Sans } from 'next/font/google'
+import { DM_Sans } from 'next/font/google'
 import './globals.css'
 import { Toaster } from 'sonner'
 import { AuthListener } from '@/components/auth-listener'
 import { ChatWidget } from '@/components/chat-widget'
-
-const sora = Sora({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700', '800'],
-  variable: '--font-display',
-  display: 'swap',
-})
 
 const dmSans = DM_Sans({
   subsets: ['latin'],
@@ -56,7 +49,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className={`${sora.variable} ${dmSans.variable}`}>
+    <html lang="en" className={dmSans.variable}>
       <body>
         <AuthListener />
         {children}
