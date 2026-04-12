@@ -26,6 +26,44 @@ const ZONE_LABELS: Record<string, string> = {
   christs_hospital: "Christ's Hospital", southwater: 'Southwater',
 }
 
+// Vouchee monthly fees in pence
+const MONTHLY_AMOUNT_PENCE: Record<string, number> = {
+  weekly:      4333, // £43.33
+  fortnightly: 3248, // £32.48
+  monthly:     2499, // £24.99
+}
+
+// Calculate pro-rata amount for the first partial month
+function calcProRata(startDate: string, monthlyAmountPence: number): number {
+  const start = new Date(startDate)
+  const year = start.getFullYear()
+  const month = start.getMonth()
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  const dayOfMonth = start.getDate()
+  const remainingDays = daysInMonth - dayOfMonth + 1
+  return Math.round((monthlyAmountPence * remainingDays) / daysInMonth)
+}
+
+// First billing date must be at least 3 working days from today (Bacs requirement)
+function getFirstBillingDate(startDate: string): string {
+  const start = new Date(startDate)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  // Count 3 working days from today
+  let workingDays = 0
+  const minDate = new Date(today)
+  while (workingDays < 3) {
+    minDate.setDate(minDate.getDate() + 1)
+    const day = minDate.getDay()
+    if (day !== 0 && day !== 6) workingDays++ // skip weekends
+  }
+
+  // Use the later of the cleaning start date or the minimum billing date
+  const billingDate = start > minDate ? start : minDate
+  return billingDate.toISOString().split('T')[0]
+}
+
 function formatAddress(a1: string, a2: string | null, city: string, postcode: string): string {
   return [a1, a2, city, formatPostcode(postcode)].filter(Boolean).join(', ')
 }
@@ -96,23 +134,19 @@ function buildCleanerEmail({
   <tr><td align="center">
   <table width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;">
 
-    <!-- Header: white, logo + title only -->
     <tr><td style="background:#ffffff;padding:36px 40px 32px;text-align:center;border-radius:16px 16px 0 0;">
       <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;&#8203;</div>
       <div style="margin-bottom:20px;"><img src="https://www.vouchee.co.uk/full-logo-black.png" width="260" height="60" alt="Vouchee" style="display:block;margin:0 auto 16px;max-width:100%;" /></div>
       <div style="font-size:32px;font-weight:800;color:#0f172a;letter-spacing:-0.5px;line-height:1.15;">You've been chosen! 🎉</div>
     </td></tr>
 
-    <!-- Body -->
     <tr><td style="background:white;padding:36px 40px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 16px 16px;">
 
-      <!-- Start date -->
       <div style="background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:12px;padding:22px 28px;margin-bottom:24px;text-align:center;">
         <div style="font-size:12px;font-weight:800;color:#15803d;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">📅 Start date</div>
         <div style="font-size:24px;font-weight:800;color:#0f172a;">${formatDate(startDate)}</div>
       </div>
 
-      <!-- Job summary -->
       <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:22px 28px;margin-bottom:20px;">
         <div style="font-size:13px;font-weight:800;color:#0f172a;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:16px;text-align:center;">Job summary</div>
         <table width="100%" cellpadding="0" cellspacing="0">
@@ -135,17 +169,14 @@ function buildCleanerEmail({
         </table>
       </div>
 
-      <!-- Tasks -->
       ${taskSection}
 
-      <!-- Customer notes (grey) -->
       ${customerNotes ? `
       <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 24px;margin-bottom:20px;">
         <div style="font-size:13px;font-weight:800;color:#0f172a;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;text-align:center;">Customer notes</div>
         <div style="font-size:14px;color:#475569;line-height:1.6;font-style:italic;">"${customerNotes}"</div>
       </div>` : ''}
 
-      <!-- Customer details (all blue, no clipboard) -->
       <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:22px 28px;margin-bottom:24px;">
         <div style="font-size:13px;font-weight:800;color:#0f172a;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:16px;text-align:center;">Customer details</div>
         <table width="100%" cellpadding="0" cellspacing="0">
@@ -175,14 +206,12 @@ function buildCleanerEmail({
         </table>
       </div>
 
-      <!-- Cleaning supplies (FIRST) -->
       <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:24px 28px;margin-bottom:16px;text-align:center;">
         <div style="font-size:15px;font-weight:700;color:#15803d;margin-bottom:8px;">🧴 Need to restock before your clean?</div>
         <div style="font-size:13px;color:#166534;line-height:1.6;margin-bottom:18px;">We've put together a page with everything you might need in one place.</div>
         <a href="${appUrl}/cleaning-supplies" style="display:inline-block;background:#16a34a;color:white;font-size:13px;font-weight:700;padding:11px 28px;border-radius:8px;text-decoration:none;">Browse cleaning supplies →</a>
       </div>
 
-      <!-- Reach out (SECOND, blue, dashboard button) -->
       <div style="background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:12px;padding:24px 28px;margin-bottom:28px;text-align:center;">
         <div style="font-size:15px;font-weight:700;color:#15803d;margin-bottom:8px;">👋 Reach out before the first clean</div>
         <div style="font-size:13px;color:#166534;line-height:1.6;margin-bottom:18px;">We recommend contacting ${customerFirstName} before the first clean to reassure them you'll be there.<br>Use the chat on your dashboard or their contact details above!</div>
@@ -195,7 +224,6 @@ function buildCleanerEmail({
 
     </td></tr>
 
-    <!-- Footer -->
     <tr><td style="padding:24px 0;text-align:center;">
       <p style="margin:0;font-size:12px;color:#94a3b8;">© 2026 Vouchee · <a href="https://www.vouchee.co.uk" style="color:#94a3b8;text-decoration:none;">vouchee.co.uk</a></p>
     </td></tr>
@@ -246,19 +274,59 @@ export async function GET(request: NextRequest) {
   )
 
   const { searchParams } = new URL(request.url)
-  const requestId = searchParams.get('requestId')
-  const applicationId = searchParams.get('applicationId')
+  const requestId      = searchParams.get('requestId')
+  const applicationId  = searchParams.get('applicationId')
   const conversationId = searchParams.get('conversationId')
-  const startDate = searchParams.get('startDate') ?? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.vouchee.co.uk'
+  const startDate      = searchParams.get('startDate') ?? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+  const billingRequestId = searchParams.get('billing_request') // GoCardless passes this back
+  const appUrl         = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.vouchee.co.uk'
+
+  const gcEnvironment = process.env.GOCARDLESS_ENVIRONMENT ?? 'sandbox'
+  const gcBaseUrl     = gcEnvironment === 'live'
+    ? 'https://api.gocardless.com'
+    : 'https://api-sandbox.gocardless.com'
+  const gcToken = process.env.GOCARDLESS_ACCESS_TOKEN!
 
   if (!requestId || !applicationId || !conversationId) {
     return NextResponse.redirect(`${appUrl}/customer/dashboard?gc_error=1`)
   }
 
   try {
-    console.log('GC confirm: requestId', requestId, 'applicationId', applicationId, 'startDate', startDate)
+    console.log('GC confirm: requestId', requestId, 'applicationId', applicationId, 'startDate', startDate, 'billingRequestId', billingRequestId)
 
+    // ── 1. Verify mandate completed with GoCardless ──────────────────────────
+    let mandateId: string | null = null
+
+    if (billingRequestId) {
+      const brRes = await fetch(`${gcBaseUrl}/billing_requests/${billingRequestId}`, {
+        headers: {
+          'Authorization': `Bearer ${gcToken}`,
+          'GoCardless-Version': '2015-07-06',
+          'Accept': 'application/json',
+        },
+      })
+
+      if (!brRes.ok) {
+        console.error('GoCardless billing request lookup failed:', await brRes.text())
+        return NextResponse.redirect(`${appUrl}/customer/dashboard?gc_error=1`)
+      }
+
+      const brData = await brRes.json()
+      const brStatus = brData.billing_requests?.status
+      mandateId = brData.billing_requests?.links?.mandate ?? null
+
+      console.log('Billing request status:', brStatus, 'mandateId:', mandateId)
+
+      // If mandate not fulfilled, customer abandoned — do not proceed
+      if (brStatus !== 'fulfilled' || !mandateId) {
+        console.log('Mandate not fulfilled — redirecting to dashboard')
+        return NextResponse.redirect(`${appUrl}/customer/dashboard?gc_abandoned=1&conversationId=${conversationId}`)
+      }
+    } else {
+      console.warn('No billing_request param — proceeding without mandate verification (dev/test flow)')
+    }
+
+    // ── 2. Look up DB records ────────────────────────────────────────────────
     const { data: application, error: appError } = await supabaseAdmin
       .from('applications').select('id, cleaner_id, request_id, status').eq('id', applicationId).single()
     if (appError || !application) {
@@ -294,18 +362,16 @@ export async function GET(request: NextRequest) {
       ? await supabaseAdmin.from('profiles').select('full_name, email').eq('id', cleanerRecord.profile_id).single()
       : { data: null }
 
-    console.log('Cleaner profile_id:', cleanerRecord?.profile_id, 'email:', cleanerProfile?.email)
-
     const { data: customerProfile } = await supabaseAdmin
       .from('profiles').select('full_name, email, phone').eq('id', customerRecord.profile_id).single()
 
-    const customerFirstName = customerProfile?.full_name?.split(' ')[0] ?? 'Your customer'
-    const customerFullName = customerProfile?.full_name ?? 'Your customer'
-    const customerEmail = customerProfile?.email ?? ''
-    const customerPhone = customerProfile?.phone ?? null
-    const cleanerFullName = cleanerProfile?.full_name ?? 'Cleaner'
-    const cleanerEmail = cleanerProfile?.email ?? null
-    const cleanerFirstName = cleanerFullName.split(' ')[0]
+    const customerFirstName  = customerProfile?.full_name?.split(' ')[0] ?? 'Your customer'
+    const customerFullName   = customerProfile?.full_name ?? 'Your customer'
+    const customerEmail      = customerProfile?.email ?? ''
+    const customerPhone      = customerProfile?.phone ?? null
+    const cleanerFullName    = cleanerProfile?.full_name ?? 'Cleaner'
+    const cleanerEmail       = cleanerProfile?.email ?? null
+    const cleanerFirstName   = cleanerFullName.split(' ')[0]
 
     const address = formatAddress(
       customerRecord.address_line1,
@@ -315,21 +381,114 @@ export async function GET(request: NextRequest) {
     )
 
     const formattedStartDate = formatDate(startDate)
-    console.log('Firing all post-confirmation actions. cleanerEmail:', cleanerEmail, 'customerEmail:', customerEmail)
+
+    // ── 3. Create GoCardless subscription ────────────────────────────────────
+    if (mandateId) {
+      const frequency = cleanRequest.frequency ?? 'fortnightly'
+      const monthlyAmountPence = MONTHLY_AMOUNT_PENCE[frequency] ?? MONTHLY_AMOUNT_PENCE.fortnightly
+      const firstBillingDate = getFirstBillingDate(startDate)
+      const proRataAmount = calcProRata(firstBillingDate, monthlyAmountPence)
+
+      console.log(`Creating subscription: frequency=${frequency}, monthly=${monthlyAmountPence}p, firstBillingDate=${firstBillingDate}, proRata=${proRataAmount}p`)
+
+      // First: pro-rata one-off payment for the partial first month
+      if (proRataAmount > 0 && proRataAmount < monthlyAmountPence) {
+        const proRataRes = await fetch(`${gcBaseUrl}/payments`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${gcToken}`,
+            'GoCardless-Version': '2015-07-06',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Idempotency-Key': `prorata-${requestId}-${applicationId}`,
+          },
+          body: JSON.stringify({
+            payments: {
+              amount: proRataAmount,
+              currency: 'GBP',
+              charge_date: firstBillingDate,
+              description: `Vouchee service fee (pro-rata)`,
+              links: { mandate: mandateId },
+              metadata: { vouchee_request_id: requestId, type: 'pro_rata' },
+            },
+          }),
+        })
+        if (!proRataRes.ok) {
+          console.error('Pro-rata payment creation failed:', await proRataRes.text())
+          // Non-fatal — continue to create subscription
+        } else {
+          console.log('Pro-rata payment created successfully')
+        }
+      }
+
+      // Then: recurring monthly subscription starting next month
+      const nextMonthDate = new Date(firstBillingDate)
+      nextMonthDate.setMonth(nextMonthDate.getMonth() + 1)
+      nextMonthDate.setDate(1) // 1st of next month
+      const recurringStartDate = nextMonthDate.toISOString().split('T')[0]
+
+      const subRes = await fetch(`${gcBaseUrl}/subscriptions`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${gcToken}`,
+          'GoCardless-Version': '2015-07-06',
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Idempotency-Key': `sub-${requestId}-${applicationId}`,
+        },
+        body: JSON.stringify({
+          subscriptions: {
+            amount: monthlyAmountPence,
+            currency: 'GBP',
+            interval_unit: 'monthly',
+            interval: 1,
+            start_date: recurringStartDate,
+            name: `Vouchee service fee — ${frequency}`,
+            links: { mandate: mandateId },
+            metadata: { vouchee_request_id: requestId, vouchee_application_id: applicationId },
+          },
+        }),
+      })
+
+      if (!subRes.ok) {
+        const subErr = await subRes.text()
+        console.error('Subscription creation failed:', subErr)
+        // Non-fatal — mandate is captured, subscription can be created manually if needed
+      } else {
+        const subData = await subRes.json()
+        console.log('Subscription created:', subData.subscriptions?.id)
+
+        // Store subscription ID on the clean request for reference
+        await supabaseAdmin
+          .from('clean_requests')
+          .update({ gocardless_subscription_id: subData.subscriptions?.id } as any)
+          .eq('id', requestId)
+      }
+    }
+
+    // ── 4. Fire all post-confirmation actions ────────────────────────────────
+    console.log('Firing all post-confirmation actions. cleanerEmail:', cleanerEmail)
 
     await Promise.all([
       supabaseAdmin.from('clean_requests').update({
-        status: 'fulfilled', start_date: startDate, assigned_cleaner_id: application.cleaner_id,
+        status: 'fulfilled',
+        start_date: startDate,
+        assigned_cleaner_id: application.cleaner_id,
+        ...(mandateId ? { gocardless_mandate_id: mandateId } as any : {}),
       }).eq('id', requestId),
+
       supabaseAdmin.from('applications').update({ status: 'accepted' }).eq('id', applicationId),
+
       supabaseAdmin.from('applications').update({ status: 'rejected' })
         .eq('request_id', requestId).neq('id', applicationId).in('status', ['pending', 'accepted']),
+
       supabaseAdmin.from('messages').insert({
         conversation_id: conversationId,
         sender_id: customerRecord.profile_id,
         sender_role: 'customer',
         content: `🎉 __system__ Direct Debit confirmed — start date ${formattedStartDate}. Your address has been shared with your cleaner.`,
       }),
+
       cleanerEmail
         ? resend.emails.send({
             from: 'Vouchee <hello@vouchee.co.uk>',
@@ -344,7 +503,7 @@ export async function GET(request: NextRequest) {
               customerNotes: cleanRequest.customer_notes ?? null,
             }),
           })
-        : (console.error('No cleaner email found — skipping email'), Promise.resolve(null)),
+        : (console.error('No cleaner email — skipping'), Promise.resolve(null)),
     ])
 
     console.log('Core actions complete. Processing rejections...')
