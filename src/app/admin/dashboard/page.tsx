@@ -123,7 +123,7 @@ function ConversationModal({ conversationId, cleanerName, customerName, onClose 
   )
 }
 
-// ─── Test Card component ───────────────────────────────────────────────────────
+// ─── Test Card ────────────────────────────────────────────────────────────────
 function TestCard({ title, description, buttonLabel, buttonColor = '#2563eb', comingSoon = false, onRun }: {
   title: string; description: string; buttonLabel: string; buttonColor?: string; comingSoon?: boolean
   onRun?: () => Promise<{ success: boolean; message: string }>
@@ -305,20 +305,14 @@ export default function AdminDashboard() {
 
           <div style={{ marginBottom: '32px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
             <div>
-              <h1 style={{ fontFamily: "'Lora', serif", fontSize: '28px', fontWeight: 700, color: '#0f172a', margin: '0 0 4px' }}>Admin Portal</h1>
+              <h1 style={{ fontSize: '28px', fontWeight: 700, color: '#0f172a', margin: '0 0 4px' }}>Admin Portal</h1>
               <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>Full platform visibility and controls</p>
             </div>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-              <button onClick={() => setTab('customer-view')} style={{ background: '#f0fdf4', color: '#15803d', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
-                👤 Customer view
-              </button>
-              <button onClick={() => setTab('cleaner-view')} style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
-                🧹 Cleaner view
-              </button>
+              <button onClick={() => setTab('customer-view')} style={{ background: '#f0fdf4', color: '#15803d', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>👤 Customer view</button>
+              <button onClick={() => setTab('cleaner-view')} style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>🧹 Cleaner view</button>
               <button onClick={async () => { const supabase = createClient(); await supabase.auth.signOut(); router.refresh(); router.replace('/') }}
-                style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
-                Sign out
-              </button>
+                style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>Sign out</button>
             </div>
           </div>
 
@@ -563,10 +557,17 @@ export default function AdminDashboard() {
 
                 <TestCard
                   title="👤 Customer confirmation email"
-                  description="Sends the confirmation email that a customer receives after they've set up their Direct Debit and their cleaner has been assigned. This email is not built yet."
+                  description="Sends the confirmation email that a customer receives after they've set up their Direct Debit and their cleaner has been assigned. Includes cleaner details, start date, tasks, and cleaning supplies link."
                   buttonLabel="Send test email →"
                   buttonColor="#16a34a"
-                  comingSoon
+                  onRun={async () => {
+                    const res = await fetch(
+                      '/api/admin/test-customer-email?secret=vouchee-test&applicationId=5d2c5f56-080d-48cd-b552-a666881bde38&startDate=2026-04-17&overrideTo=adamjbell95@gmail.com'
+                    )
+                    const data = await res.json()
+                    if (data.success) return { success: true, message: `Sent to ${data.sentTo}` }
+                    return { success: false, message: data.error ?? 'Failed' }
+                  }}
                 />
 
               </div>
