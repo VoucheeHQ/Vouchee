@@ -314,9 +314,10 @@ export async function GET(request: NextRequest) {
 
       const brData = await brRes.json()
       const brStatus = brData.billing_requests?.status
-      // Mandate ID can be at links.mandate or links.mandate_request (GoCardless API variation)
-      mandateId = brData.billing_requests?.links?.mandate
-        ?? brData.billing_requests?.links?.mandate_request
+      // mandate_request_mandate is the actual mandate ID for payments/subscriptions
+      // mandate_request is just the request object ID — not usable for charging
+      mandateId = brData.billing_requests?.links?.mandate_request_mandate
+        ?? brData.billing_requests?.links?.mandate
         ?? null
 
       console.log('Billing request status:', brStatus, 'mandateId:', mandateId)
