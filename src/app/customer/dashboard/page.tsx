@@ -101,11 +101,10 @@ const MONTHLY_FEES: Record<Frequency, number> = {
   monthly: 2499,
 }
 
-// Per-clean fees in pence — used for accurate clean-based pro-rata
 const PER_CLEAN_PENCE: Record<Frequency, number> = {
-  weekly:      999,  // £9.99
-  fortnightly: 1499, // £14.99
-  monthly:     2499, // £24.99
+  weekly:      999,
+  fortnightly: 1499,
+  monthly:     2499,
 }
 
 const TIME_SLOTS = ['Morning (8am - 12pm)', 'During the day (8am - 5pm)', 'Afternoon (12pm - 5pm)', 'Evening (5pm - 8pm)', 'Flexible']
@@ -139,7 +138,6 @@ function daysSince(iso: string) {
   return Math.floor((Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60 * 24))
 }
 
-// Clean-based pro-rata: counts actual cleans from start date to end of month
 function calculateBilling(frequency: Frequency, startDate: string): {
   firstChargePence: number
   monthlyPence: number
@@ -159,7 +157,6 @@ function calculateBilling(frequency: Frequency, startDate: string): {
     }
   }
 
-  // Count actual cleans from start date to end of month
   const intervalDays = frequency === 'weekly' ? 7 : 14
   const perCleanPence = PER_CLEAN_PENCE[frequency]
   const endOfMonth = new Date(start.getFullYear(), start.getMonth() + 1, 0)
@@ -331,14 +328,18 @@ function SuccessBanner({ onClose }: { onClose: () => void }) {
 
 // ─── Confirm Modal ────────────────────────────────────────────────────────────
 
-function ConfirmModal({ message, onConfirm, onCancel }: { message: string; onConfirm: () => void; onCancel: () => void }) {
+function ConfirmModal({ message, subMessage, onConfirm, onCancel, confirmLabel = 'Confirm', danger = true }: {
+  message: string; subMessage?: string; onConfirm: () => void; onCancel: () => void; confirmLabel?: string; danger?: boolean
+}) {
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: '24px' }}>
-      <div style={{ background: 'white', borderRadius: '20px', padding: '32px', maxWidth: '400px', width: '100%', textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
-        <p style={{ fontSize: '15px', color: '#0f172a', margin: '0 0 24px', lineHeight: 1.6 }}>{message}</p>
+      <div style={{ background: 'white', borderRadius: '20px', padding: '32px', maxWidth: '420px', width: '100%', textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+        <p style={{ fontSize: '15px', color: '#0f172a', margin: '0 0 8px', lineHeight: 1.6, fontWeight: 600 }}>{message}</p>
+        {subMessage && <p style={{ fontSize: '13px', color: '#64748b', margin: '0 0 24px', lineHeight: 1.6 }}>{subMessage}</p>}
+        {!subMessage && <div style={{ marginBottom: '24px' }} />}
         <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
           <button onClick={onCancel} style={{ background: 'none', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 20px', fontSize: '14px', fontWeight: 600, color: '#64748b', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>Cancel</button>
-          <button onClick={onConfirm} style={{ background: '#ef4444', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 20px', fontSize: '14px', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>Confirm</button>
+          <button onClick={onConfirm} style={{ background: danger ? '#ef4444' : '#2563eb', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 20px', fontSize: '14px', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>{confirmLabel}</button>
         </div>
       </div>
     </div>
@@ -648,6 +649,7 @@ function CustomerDashboardContent() {
   const [showSuccessBanner, setShowSuccessBanner] = useState(false)
   const [startDateModal, setStartDateModal] = useState<{ applicationId: string; requestId: string; conversationId: string; cleanerName: string; frequency: Frequency } | null>(null)
   const [startDateLoading, setStartDateLoading] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
   const systemMessageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const timerFiredRef = useRef(false)
 
@@ -777,9 +779,37 @@ function CustomerDashboardContent() {
   }
 
   const handleDelete = async (id: string) => {
-    const supabase = createClient()
-    await (supabase as any).from('clean_requests').update({ status: 'deleted' }).eq('id', id)
-    setRequests(r => r.map(req => req.id === id ? { ...req, status: 'deleted' as RequestStatus } : req))
+    const req = requests.find(r => r.id === id)
+    const isFulfilled = req?.status === 'fulfilled'
+
+    if (isFulfilled) {
+      // Cancel GoCardless subscription and notify cleaner
+      setCancelling(true)
+      try {
+        const res = await fetch('/api/gocardless/cancel-subscription', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ requestId: id }),
+        })
+        if (!res.ok) {
+          showToast('Could not cancel — please contact hello@vouchee.co.uk')
+          setCancelling(false)
+          setModal(null)
+          return
+        }
+        setRequests(r => r.map(req => req.id === id ? { ...req, status: 'cancelled' as RequestStatus } : req))
+      } catch (err) {
+        showToast('Something went wrong — please try again')
+      } finally {
+        setCancelling(false)
+      }
+    } else {
+      // Standard delete — no subscription involved
+      const supabase = createClient()
+      await (supabase as any).from('clean_requests').update({ status: 'deleted' }).eq('id', id)
+      setRequests(r => r.map(req => req.id === id ? { ...req, status: 'deleted' as RequestStatus } : req))
+    }
+
     setModal(null)
   }
 
@@ -815,6 +845,10 @@ function CustomerDashboardContent() {
   const hasActive = activeRequests.length > 0
   const hasPaused = pausedRequests.length > 0
   const activeRequestIds = activeRequests.map(r => r.id)
+
+  // Work out what kind of delete modal to show
+  const deletingRequest = modal?.type === 'delete' ? requests.find(r => r.id === modal.id) : null
+  const isFulfilledDelete = deletingRequest?.status === 'fulfilled'
 
   return (
     <>
@@ -891,10 +925,31 @@ function CustomerDashboardContent() {
           <button onClick={() => setModal({ type: 'signout', id: '' })} style={{ background: 'none', border: '1px solid #fecaca', borderRadius: '8px', padding: '8px 20px', fontSize: '13px', fontWeight: 600, color: '#ef4444', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>Sign out</button>
         </div>
         <Footer />
-        {modal?.type === 'signout' && <ConfirmModal message="Are you sure you want to sign out?" onConfirm={handleSignOut} onCancel={() => setModal(null)} />}
-        {modal?.type === 'pause' && <ConfirmModal message="Pause your request? It won't be visible to cleaners until you republish." onConfirm={() => handlePause(modal.id)} onCancel={() => setModal(null)} />}
-        {modal?.type === 'republish' && <ConfirmModal message="Republish your request? It will be visible to cleaners again." onConfirm={() => handleRepublish(modal.id)} onCancel={() => setModal(null)} />}
-        {modal?.type === 'delete' && <ConfirmModal message="Permanently remove this request? This cannot be undone." onConfirm={() => handleDelete(modal.id)} onCancel={() => setModal(null)} />}
+
+        {/* Modals */}
+        {modal?.type === 'signout' && (
+          <ConfirmModal message="Are you sure you want to sign out?" onConfirm={handleSignOut} onCancel={() => setModal(null)} confirmLabel="Sign out" />
+        )}
+        {modal?.type === 'pause' && (
+          <ConfirmModal message="Pause your request?" subMessage="It won't be visible to cleaners until you republish." onConfirm={() => handlePause(modal.id)} onCancel={() => setModal(null)} confirmLabel="Pause" />
+        )}
+        {modal?.type === 'republish' && (
+          <ConfirmModal message="Republish your request?" subMessage="It will be visible to cleaners again." onConfirm={() => handleRepublish(modal.id)} onCancel={() => setModal(null)} confirmLabel="Republish" danger={false} />
+        )}
+        {modal?.type === 'delete' && (
+          <ConfirmModal
+            message={isFulfilledDelete ? 'Cancel your cleaning subscription?' : 'Remove this listing?'}
+            subMessage={
+              isFulfilledDelete
+                ? 'Your Direct Debit will be cancelled and your cleaner will be notified. Our 30-day notice policy applies — they may continue cleaning for up to 30 more days.'
+                : 'This cannot be undone.'
+            }
+            onConfirm={() => handleDelete(modal.id)}
+            onCancel={() => setModal(null)}
+            confirmLabel={cancelling ? 'Cancelling…' : isFulfilledDelete ? 'Cancel subscription' : 'Remove listing'}
+          />
+        )}
+
         {editingRequest && <EditModal request={editingRequest} onSave={handleSaveEdit} onClose={() => setEditingRequest(null)} saving={saving} />}
         {toast && <ComingSoonBanner message={toast} onClose={() => setToast(null)} />}
         {showSuccessBanner && <SuccessBanner onClose={() => setShowSuccessBanner(false)} />}
