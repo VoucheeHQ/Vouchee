@@ -278,7 +278,8 @@ export async function GET(request: NextRequest) {
   const applicationId  = searchParams.get('applicationId')
   const conversationId = searchParams.get('conversationId')
   const startDate      = searchParams.get('startDate') ?? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-  const billingRequestId = searchParams.get('billing_request') // GoCardless passes this back
+  // We pass billingRequestId explicitly in redirect URL (GC sandbox doesn't append it reliably)
+  const billingRequestId = searchParams.get('billingRequestId') ?? searchParams.get('billing_request')
   const appUrl         = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.vouchee.co.uk'
 
   const gcEnvironment = process.env.GOCARDLESS_ENVIRONMENT ?? 'sandbox'

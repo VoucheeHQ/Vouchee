@@ -57,8 +57,7 @@ export async function POST(request: NextRequest) {
     const gcToken = process.env.GOCARDLESS_ACCESS_TOKEN!
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.vouchee.co.uk'
 
-    // IMPORTANT: GoCardless mandate_request.metadata and billing_request.metadata
-    // both have a hard limit of 3 keys. startDate is passed via redirect URL instead.
+    // GoCardless metadata has a hard limit of 3 keys
     const meta = {
       vouchee_request_id: String(requestId),
       vouchee_application_id: String(applicationId),
@@ -66,18 +65,6 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. Create GoCardless billing request (mandate only)
-    const billingRequestBody = {
-      billing_requests: {
-        mandate_request: {
-          scheme: 'bacs',
-          metadata: meta,
-        },
-        metadata: meta,
-      },
-    }
-
-    console.log('Creating GC billing request:', JSON.stringify(billingRequestBody))
-
     const billingRequestRes = await fetch(`${gcBaseUrl}/billing_requests`, {
       method: 'POST',
       headers: {
@@ -86,7 +73,12 @@ export async function POST(request: NextRequest) {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
       },
-      body: JSON.stringify(billingRequestBody),
+      body: JSON.stringify({
+        billing_requests: {
+          mandate_request: { scheme: 'bacs', metadata: meta },
+          metadata: meta,
+        },
+      }),
     })
 
     if (!billingRequestRes.ok) {
@@ -100,21 +92,9 @@ export async function POST(request: NextRequest) {
     console.log('GC billing request created:', billingRequestId)
 
     // 4. Create billing request flow (hosted page)
-    // startDate lives in the redirect URL — confirm route reads it from query params
-    const flowBody = {
-      billing_request_flows: {
-        redirect_uri: `${appUrl}/api/gocardless/confirm?requestId=${requestId}&applicationId=${applicationId}&conversationId=${conversationId}&startDate=${encodeURIComponent(startDate)}`,
-        exit_uri: `${appUrl}/customer/dashboard?gc_abandoned=1&conversationId=${conversationId}`,
-        links: { billing_request: billingRequestId },
-        prefilled_customer: {
-          given_name: profile.full_name?.split(' ')[0] ?? '',
-          family_name: profile.full_name?.split(' ').slice(1).join(' ') ?? '',
-          email: profile.email ?? '',
-        },
-      },
-    }
-
-    console.log('Creating GC flow')
+    // We explicitly pass billingRequestId in the redirect URL — do NOT rely on
+    // GoCardless appending it, as this is inconsistent in sandbox.
+    const redirectUri = `${appUrl}/api/gocardless/confirm?requestId=${requestId}&applicationId=${applicationId}&conversationId=${conversationId}&startDate=${encodeURIComponent(startDate)}&billingRequestId=${billingRequestId}`
 
     const flowRes = await fetch(`${gcBaseUrl}/billing_request_flows`, {
       method: 'POST',
@@ -124,7 +104,18 @@ export async function POST(request: NextRequest) {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
       },
-      body: JSON.stringify(flowBody),
+      body: JSON.stringify({
+        billing_request_flows: {
+          redirect_uri: redirectUri,
+          exit_uri: `${appUrl}/customer/dashboard?gc_abandoned=1&conversationId=${conversationId}`,
+          links: { billing_request: billingRequestId },
+          prefilled_customer: {
+            given_name: profile.full_name?.split(' ')[0] ?? '',
+            family_name: profile.full_name?.split(' ').slice(1).join(' ') ?? '',
+            email: profile.email ?? '',
+          },
+        },
+      }),
     })
 
     if (!flowRes.ok) {
@@ -138,8 +129,7 @@ export async function POST(request: NextRequest) {
     const flowId = flowData.billing_request_flows.id
     console.log('GC flow created:', flowId)
 
-    // 5. Persist flow_id and start_date in parallel
-    // Requires: ALTER TABLE clean_requests ADD COLUMN IF NOT EXISTS start_date date;
+    // 5. Persist flow_id and start_date
     await Promise.all([
       supabaseAdmin
         .from('customers')
