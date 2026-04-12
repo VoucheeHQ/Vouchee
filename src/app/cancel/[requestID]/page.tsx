@@ -1,18 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter, useParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
-
-const ZONE_LABELS: Record<string, string> = {
-  central_south_east: 'Central / South East', north_west: 'North West',
-  north_east_roffey: 'North East / Roffey', south_west: 'South West',
-  warnham_north: 'Warnham / North', broadbridge_heath: 'Broadbridge Heath',
-  mannings_heath: 'Mannings Heath', faygate_kilnwood_vale: 'Faygate / Kilnwood Vale',
-  christs_hospital: "Christ's Hospital", southwater: 'Southwater',
-}
 
 const FREQUENCY_LABEL: Record<string, string> = {
   weekly: 'Weekly', fortnightly: 'Fortnightly', monthly: 'Monthly',
@@ -30,10 +22,9 @@ const RETENTION_POINTS: { icon: string; text: string }[] = [
   { icon: '⭐', text: 'The ability to leave a verified review for your cleaner' },
 ]
 
-export default function CancelPage() {
+export default function CancelPage({ params }: { params: { requestId: string } }) {
+  const { requestId } = params
   const router = useRouter()
-  const params = useParams()
-  const requestId = params?.requestId as string | undefined
 
   const [loading, setLoading] = useState(true)
   const [cancelling, setCancelling] = useState(false)
@@ -46,11 +37,6 @@ export default function CancelPage() {
   const [daysTogether, setDaysTogether] = useState(0)
 
   useEffect(() => {
-    // Guard: if no requestId yet, wait for next render
-    if (requestId === undefined) return
-    // Guard: if requestId is empty string
-    if (!requestId) { setNotFound(true); setLoading(false); return }
-
     const load = async () => {
       try {
         const supabase = createClient()
@@ -72,7 +58,6 @@ export default function CancelPage() {
 
         if (reqErr || !req) { setNotFound(true); setLoading(false); return }
 
-        // Only allow access if fulfilled — anything else redirect to dashboard
         if (req.status !== 'fulfilled') {
           setLoading(false)
           router.replace('/customer/dashboard')
@@ -105,7 +90,6 @@ export default function CancelPage() {
   }, [requestId, router])
 
   const handleCancel = async () => {
-    if (!requestId) return
     setCancelling(true)
     setError(null)
     try {
