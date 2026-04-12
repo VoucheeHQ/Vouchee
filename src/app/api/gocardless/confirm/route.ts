@@ -41,7 +41,6 @@ const PER_CLEAN_PENCE: Record<string, number> = {
 }
 
 // Calculate pro-rata based on actual cleans in the partial first month
-// startDate is the first clean date — we count forward at the clean interval
 function calcProRata(startDate: string, frequency: string): number {
   if (frequency === 'monthly') return PER_CLEAN_PENCE.monthly
 
@@ -51,9 +50,8 @@ function calcProRata(startDate: string, frequency: string): number {
   const start = new Date(startDate)
   const year = start.getFullYear()
   const month = start.getMonth()
-  const endOfMonth = new Date(year, month + 1, 0) // last day of start month
+  const endOfMonth = new Date(year, month + 1, 0)
 
-  // Count how many cleans fall within this month (including start date)
   let cleans = 0
   let cleanDate = new Date(start)
   while (cleanDate <= endOfMonth) {
@@ -64,22 +62,19 @@ function calcProRata(startDate: string, frequency: string): number {
   return cleans * perCleanPence
 }
 
-// First billing date must be at least 3 working days from today (Bacs requirement)
 function getFirstBillingDate(startDate: string): string {
   const start = new Date(startDate)
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
-  // Count 3 working days from today
   let workingDays = 0
   const minDate = new Date(today)
   while (workingDays < 3) {
     minDate.setDate(minDate.getDate() + 1)
     const day = minDate.getDay()
-    if (day !== 0 && day !== 6) workingDays++ // skip weekends
+    if (day !== 0 && day !== 6) workingDays++
   }
 
-  // Use the later of the cleaning start date or the minimum billing date
   const billingDate = start > minDate ? start : minDate
   return billingDate.toISOString().split('T')[0]
 }
@@ -261,6 +256,7 @@ function buildCustomerConfirmEmail({
   cleanerFullName,
   cleanerEmail,
   cleanerPhone,
+  cleanerCardUrl,
   startDate,
   bedrooms,
   bathrooms,
@@ -273,6 +269,7 @@ function buildCustomerConfirmEmail({
   cleanerFullName: string
   cleanerEmail: string
   cleanerPhone: string | null
+  cleanerCardUrl: string
   startDate: string
   bedrooms: number
   bathrooms: number
@@ -283,7 +280,6 @@ function buildCustomerConfirmEmail({
 }): string {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.vouchee.co.uk'
   const freqLabel = getFreqLabel(frequency)
-  const zoneLabel = ZONE_LABELS[zone] ?? zone
   const cleanerFirstName = cleanerFullName.split(' ')[0]
 
   const standardTasks = (tasks ?? []).filter(t => STANDARD_TASK_IDS.has(t))
@@ -315,7 +311,7 @@ function buildCustomerConfirmEmail({
     <!-- Header -->
     <tr><td style="background:#ffffff;padding:36px 40px 32px;text-align:center;border-radius:16px 16px 0 0;">
       <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">Your cleaner is confirmed — here are all the details you need.</div>
-      <img src="https://www.vouchee.co.uk/full-logo-black.png" width="160" alt="Vouchee" style="display:block;margin:0 auto 20px;max-width:100%;" />
+      <img src="https://www.vouchee.co.uk/full-logo-black.png" width="260" height="60" alt="Vouchee" style="display:block;margin:0 auto 20px;max-width:100%;" />
       <div style="font-size:32px;font-weight:800;color:#0f172a;letter-spacing:-0.5px;line-height:1.15;">You're all set! 🎉</div>
       <div style="font-size:16px;color:#64748b;margin-top:8px;">${cleanerFirstName} is confirmed for your first clean.</div>
     </td></tr>
@@ -330,7 +326,7 @@ function buildCustomerConfirmEmail({
       </div>
 
       <!-- Cleaner details -->
-      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:22px 28px;margin-bottom:20px;">
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:22px 28px;margin-bottom:16px;">
         <div style="font-size:13px;font-weight:800;color:#0f172a;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:16px;text-align:center;">Your cleaner</div>
         <table width="100%" cellpadding="0" cellspacing="0">
           <tr>
@@ -345,16 +341,17 @@ function buildCustomerConfirmEmail({
           </tr>
           ${cleanerPhone ? `
           <tr>
-            <td style="padding:8px 0;border-bottom:1px solid #f1f5f9;font-size:13px;color:#374151;">Phone</td>
-            <td style="padding:8px 0;border-bottom:1px solid #f1f5f9;text-align:right;">
+            <td style="padding:8px 0;font-size:13px;color:#374151;">Phone</td>
+            <td style="padding:8px 0;text-align:right;">
               <a href="tel:${cleanerPhone}" style="font-size:13px;font-weight:700;color:#1e40af;text-decoration:none;">${cleanerPhone}</a>
             </td>
           </tr>` : ''}
-          <tr>
-            <td style="padding:8px 0;font-size:13px;color:#374151;">Area</td>
-            <td style="padding:8px 0;text-align:right;font-size:13px;font-weight:700;color:#0f172a;">${zoneLabel}</td>
-          </tr>
         </table>
+      </div>
+
+      <!-- Cleaner card CTA -->
+      <div style="text-align:center;margin-bottom:24px;">
+        <a href="${cleanerCardUrl}" style="display:inline-block;background:#f8fafc;border:1.5px solid #e2e8f0;color:#0f172a;font-size:13px;font-weight:700;padding:10px 24px;border-radius:8px;text-decoration:none;">View ${cleanerFirstName}'s profile →</a>
       </div>
 
       <!-- Job summary -->
@@ -398,20 +395,27 @@ function buildCustomerConfirmEmail({
       </div>
 
       <!-- What to expect -->
-      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:20px 24px;margin-bottom:28px;">
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:20px 24px;margin-bottom:20px;">
         <div style="font-size:13px;font-weight:800;color:#0f172a;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:14px;text-align:center;">What happens next</div>
         <div style="display:flex;flex-direction:column;gap:10px;">
           ${[
             ['💬', `${cleanerFirstName} will reach out to introduce themselves before your first clean`],
             ['🔑', 'Discuss access arrangements and any special instructions'],
             ['🧹', `Your first clean is on ${formatDate(startDate)}`],
-            ['💳', 'Your Direct Debit will be collected monthly going forward'],
+            ['💳', 'Your Direct Debit will be collected monthly — this covers the Vouchee service fee only, not your cleaner\'s payment'],
           ].map(([icon, text]) => `
           <div style="display:flex;gap:12px;align-items:flex-start;">
             <span style="font-size:18px;flex-shrink:0;line-height:1.4;">${icon}</span>
             <span style="font-size:13px;color:#475569;line-height:1.55;">${text}</span>
           </div>`).join('')}
         </div>
+      </div>
+
+      <!-- DD clarification notice -->
+      <div style="background:#fefce8;border:1px solid #fde68a;border-radius:10px;padding:14px 18px;margin-bottom:28px;">
+        <p style="margin:0;font-size:12px;color:#854d0e;line-height:1.6;text-align:center;">
+          <strong>Note:</strong> Your Direct Debit is for the <strong>Vouchee service fee only</strong> — it does not cover your cleaner's payment. You and ${cleanerFirstName} will agree payment terms directly.
+        </p>
       </div>
 
       <p style="font-size:12px;color:#94a3b8;text-align:center;margin:0;line-height:1.6;">
@@ -475,7 +479,6 @@ export async function GET(request: NextRequest) {
   const applicationId  = searchParams.get('applicationId')
   const conversationId = searchParams.get('conversationId')
   const startDate      = searchParams.get('startDate') ?? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-  // We pass billingRequestId explicitly in redirect URL (GC sandbox doesn't append it reliably)
   const billingRequestId = searchParams.get('billingRequestId') ?? searchParams.get('billing_request')
   const appUrl         = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.vouchee.co.uk'
 
@@ -511,8 +514,6 @@ export async function GET(request: NextRequest) {
 
       const brData = await brRes.json()
       const brStatus = brData.billing_requests?.status
-      // mandate_request_mandate is the actual mandate ID for payments/subscriptions
-      // mandate_request is just the request object ID — not usable for charging
       mandateId = brData.billing_requests?.links?.mandate_request_mandate
         ?? brData.billing_requests?.links?.mandate
         ?? null
@@ -520,8 +521,6 @@ export async function GET(request: NextRequest) {
       console.log('Billing request status:', brStatus, 'mandateId:', mandateId)
       console.log('Full billing request links:', JSON.stringify(brData.billing_requests?.links))
 
-      // Status fulfilled is sufficient — proceed even if mandateId is null
-      // (mandate may not be linked yet; subscription will be created on webhook)
       if (brStatus !== 'fulfilled') {
         console.log('Billing request not fulfilled — redirecting to dashboard')
         return NextResponse.redirect(`${appUrl}/customer/dashboard?gc_abandoned=1&conversationId=${conversationId}`)
@@ -563,7 +562,7 @@ export async function GET(request: NextRequest) {
     const { data: cleanerRecord } = await supabaseAdmin
       .from('cleaners').select('profile_id').eq('id', application.cleaner_id).single()
     const { data: cleanerProfile } = cleanerRecord
-      ? await supabaseAdmin.from('profiles').select('full_name, email').eq('id', cleanerRecord.profile_id).single()
+      ? await supabaseAdmin.from('profiles').select('full_name, email, phone').eq('id', cleanerRecord.profile_id).single()
       : { data: null }
 
     const { data: customerProfile } = await supabaseAdmin
@@ -575,7 +574,11 @@ export async function GET(request: NextRequest) {
     const customerPhone      = customerProfile?.phone ?? null
     const cleanerFullName    = cleanerProfile?.full_name ?? 'Cleaner'
     const cleanerEmail       = cleanerProfile?.email ?? null
+    const cleanerPhone       = cleanerProfile?.phone ?? null
     const cleanerFirstName   = cleanerFullName.split(' ')[0]
+
+    // Cleaner card URL — links to the cleaner's public profile page
+    const cleanerCardUrl = `${appUrl}/cleaners/${application.cleaner_id}`
 
     const address = formatAddress(
       customerRecord.address_line1,
@@ -591,7 +594,6 @@ export async function GET(request: NextRequest) {
       const frequency = cleanRequest.frequency ?? 'fortnightly'
       const monthlyAmountPence = MONTHLY_AMOUNT_PENCE[frequency] ?? MONTHLY_AMOUNT_PENCE.fortnightly
 
-      // Fetch mandate to get next_possible_charge_date (GoCardless enforces this)
       const mandateRes = await fetch(`${gcBaseUrl}/mandates/${mandateId}`, {
         headers: {
           'Authorization': `Bearer ${gcToken}`,
@@ -601,11 +603,10 @@ export async function GET(request: NextRequest) {
       })
       const mandateData = mandateRes.ok ? await mandateRes.json() : null
       const nextPossibleChargeDate = mandateData?.mandates?.next_possible_charge_date ?? getFirstBillingDate(startDate)
-      const proRataAmount = calcProRata(startDate, frequency) // clean-based, uses actual start date
+      const proRataAmount = calcProRata(startDate, frequency)
 
       console.log(`Creating subscription: frequency=${frequency}, monthly=${monthlyAmountPence}p, nextPossibleChargeDate=${nextPossibleChargeDate}, proRata=${proRataAmount}p (clean-based)`)
 
-      // First: pro-rata one-off payment for the partial first month
       if (proRataAmount > 0 && proRataAmount < monthlyAmountPence) {
         const proRataRes = await fetch(`${gcBaseUrl}/payments`, {
           method: 'POST',
@@ -634,10 +635,9 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Then: recurring monthly subscription starting next month
       const nextMonthDate = new Date(nextPossibleChargeDate)
       nextMonthDate.setMonth(nextMonthDate.getMonth() + 1)
-      nextMonthDate.setDate(1) // 1st of next month
+      nextMonthDate.setDate(1)
       const recurringStartDate = nextMonthDate.toISOString().split('T')[0]
 
       const subRes = await fetch(`${gcBaseUrl}/subscriptions`, {
@@ -666,12 +666,10 @@ export async function GET(request: NextRequest) {
       if (!subRes.ok) {
         const subErr = await subRes.text()
         console.error('Subscription creation failed:', subErr)
-        // Non-fatal — mandate is captured, subscription can be created manually if needed
       } else {
         const subData = await subRes.json()
         console.log('Subscription created:', subData.subscriptions?.id)
 
-        // Store subscription ID on the clean request for reference
         await supabaseAdmin
           .from('clean_requests')
           .update({ gocardless_subscription_id: subData.subscriptions?.id } as any)
@@ -728,7 +726,8 @@ export async function GET(request: NextRequest) {
               customerFirstName,
               cleanerFullName,
               cleanerEmail: cleanerEmail ?? '',
-              cleanerPhone: null,
+              cleanerPhone,
+              cleanerCardUrl,
               startDate,
               bedrooms: cleanRequest.bedrooms,
               bathrooms: cleanRequest.bathrooms,
