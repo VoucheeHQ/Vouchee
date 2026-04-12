@@ -96,15 +96,11 @@ const FREQUENCY_LABEL: Record<Frequency, string> = {
 }
 
 const MONTHLY_FEES: Record<Frequency, number> = {
-  weekly: 4333,
-  fortnightly: 3248,
-  monthly: 2499,
+  weekly: 4333, fortnightly: 3248, monthly: 2499,
 }
 
 const PER_CLEAN_PENCE: Record<Frequency, number> = {
-  weekly:      999,
-  fortnightly: 1499,
-  monthly:     2499,
+  weekly: 999, fortnightly: 1499, monthly: 2499,
 }
 
 const TIME_SLOTS = ['Morning (8am - 12pm)', 'During the day (8am - 5pm)', 'Afternoon (12pm - 5pm)', 'Evening (5pm - 8pm)', 'Flexible']
@@ -276,7 +272,7 @@ function StartDateModal({ cleanerName, frequency, applicationId, requestId, conv
         <div style={{ fontSize: '13px', color: '#64748b', textAlign: 'center', margin: '0 0 12px' }}>Cancel anytime with 30 days' notice.</div>
         {showLateMonthWarning && (
           <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '10px', padding: '14px 16px', marginBottom: '14px', fontSize: '14px', color: '#92400e', lineHeight: 1.6 }}>
-            ⚠️ Your first payment is taken now, then monthly on the 1st. You may see two payments close together — this is normal and only happens when setting up your Direct Debit.
+            ⚠️ Your first payment is taken now, then monthly on the 1st. You may see two payments close together.
           </div>
         )}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '12px 16px', marginBottom: '28px' }}>
@@ -370,6 +366,8 @@ function ActiveRequestCard({ request, onPause, onRepublish, onDelete, onEdit }: 
   const daysLabel = formatDays(request.preferred_days)
   const visibleTasks = (request.tasks ?? []).slice(0, 6)
   const extraTasks = (request.tasks ?? []).length - 6
+  const isFulfilled = request.status === 'fulfilled'
+
   const statusConfig: Record<string, { label: string; dot: string; border: string; headerBg: string; textColor: string }> = {
     active:         { label: 'Live — accepting applications', dot: '#22c55e', border: '#bbf7d0', headerBg: '#f0fdf4', textColor: '#15803d' },
     pending_review: { label: 'Under review',                  dot: '#f59e0b', border: '#fde68a', headerBg: '#fffbeb', textColor: '#92400e' },
@@ -381,6 +379,7 @@ function ActiveRequestCard({ request, onPause, onRepublish, onDelete, onEdit }: 
     fulfilled:      { label: 'Cleaner confirmed',             dot: '#16a34a', border: '#bbf7d0', headerBg: '#f0fdf4', textColor: '#15803d' },
   }
   const sc = statusConfig[request.status] ?? statusConfig.active
+
   return (
     <div style={{ background: 'white', borderRadius: '16px', border: `1.5px solid ${sc.border}`, boxShadow: '0 2px 12px rgba(0,0,0,0.06)', marginBottom: '16px', overflow: 'hidden' }}>
       <div style={{ background: sc.headerBg, padding: '12px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -428,14 +427,17 @@ function ActiveRequestCard({ request, onPause, onRepublish, onDelete, onEdit }: 
         )}
         {request.status === 'pending_review' && (
           <div style={{ padding: '10px 14px', background: '#fffbeb', borderRadius: '10px', border: '1px solid #fde68a', marginBottom: '16px' }}>
-            <p style={{ margin: 0, fontSize: '13px', color: '#92400e', lineHeight: 1.5 }}>⏳ Your request is under review. We'll notify you once it's approved and visible to cleaners.</p>
+            <p style={{ margin: 0, fontSize: '13px', color: '#92400e', lineHeight: 1.5 }}>⏳ Your request is under review.</p>
           </div>
         )}
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           <ActionBtn onClick={onEdit} primary>Edit listing</ActionBtn>
           {request.status === 'active' && pausesLeft > 0 && <ActionBtn onClick={onPause}>Pause listing</ActionBtn>}
           {request.status === 'paused' && (!isRelocked ? <ActionBtn onClick={onRepublish}>Republish</ActionBtn> : <span style={{ fontSize: '12px', color: '#94a3b8', alignSelf: 'center' }}>Available to republish in 24h</span>)}
-          <ActionBtn onClick={onDelete} danger>Remove listing</ActionBtn>
+          {/* Fulfilled cards navigate to cancel page; others show delete modal */}
+          <ActionBtn onClick={onDelete} danger>
+            {isFulfilled ? 'Cancel subscription' : 'Remove listing'}
+          </ActionBtn>
         </div>
       </div>
     </div>
@@ -600,6 +602,8 @@ function ApplicationsSection({ requestIds, requests, onAccept, onOpenChat }: {
     const req = requests.find(r => r.id === app.request_id)
     const frequency = req?.frequency ?? 'monthly'
     await onAccept(app.id, app.request_id, app.cleaner_name ?? 'Cleaner', frequency)
+    // ✅ Fix: update local state so card switches to "Open chat" immediately
+    setApplications(prev => prev.map(a => a.id === app.id ? { ...a, status: 'accepted' } : a))
     setAccepting(null)
   }
 
@@ -649,7 +653,6 @@ function CustomerDashboardContent() {
   const [showSuccessBanner, setShowSuccessBanner] = useState(false)
   const [startDateModal, setStartDateModal] = useState<{ applicationId: string; requestId: string; conversationId: string; cleanerName: string; frequency: Frequency } | null>(null)
   const [startDateLoading, setStartDateLoading] = useState(false)
-  const [cancelling, setCancelling] = useState(false)
   const systemMessageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const timerFiredRef = useRef(false)
 
@@ -759,7 +762,6 @@ function CustomerDashboardContent() {
   }
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3500) }
-
   const handleSignOut = async () => { const supabase = createClient(); await supabase.auth.signOut(); router.push('/') }
 
   const handlePause = async (id: string) => {
@@ -780,36 +782,14 @@ function CustomerDashboardContent() {
 
   const handleDelete = async (id: string) => {
     const req = requests.find(r => r.id === id)
-    const isFulfilled = req?.status === 'fulfilled'
-
-    if (isFulfilled) {
-      // Cancel GoCardless subscription and notify cleaner
-      setCancelling(true)
-      try {
-        const res = await fetch('/api/gocardless/cancel-subscription', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ requestId: id }),
-        })
-        if (!res.ok) {
-          showToast('Could not cancel — please contact hello@vouchee.co.uk')
-          setCancelling(false)
-          setModal(null)
-          return
-        }
-        setRequests(r => r.map(req => req.id === id ? { ...req, status: 'cancelled' as RequestStatus } : req))
-      } catch (err) {
-        showToast('Something went wrong — please try again')
-      } finally {
-        setCancelling(false)
-      }
-    } else {
-      // Standard delete — no subscription involved
-      const supabase = createClient()
-      await (supabase as any).from('clean_requests').update({ status: 'deleted' }).eq('id', id)
-      setRequests(r => r.map(req => req.id === id ? { ...req, status: 'deleted' as RequestStatus } : req))
+    if (req?.status === 'fulfilled') {
+      // Navigate to retention/cancel page instead of modal
+      router.push(`/cancel/${id}`)
+      return
     }
-
+    const supabase = createClient()
+    await (supabase as any).from('clean_requests').update({ status: 'deleted' }).eq('id', id)
+    setRequests(r => r.map(req => req.id === id ? { ...req, status: 'deleted' as RequestStatus } : req))
     setModal(null)
   }
 
@@ -845,10 +825,6 @@ function CustomerDashboardContent() {
   const hasActive = activeRequests.length > 0
   const hasPaused = pausedRequests.length > 0
   const activeRequestIds = activeRequests.map(r => r.id)
-
-  // Work out what kind of delete modal to show
-  const deletingRequest = modal?.type === 'delete' ? requests.find(r => r.id === modal.id) : null
-  const isFulfilledDelete = deletingRequest?.status === 'fulfilled'
 
   return (
     <>
@@ -893,23 +869,24 @@ function CustomerDashboardContent() {
               </div>
               {hasPaused && !hasActive && <div style={{ marginTop: '12px', padding: '12px 16px', background: '#fefce8', border: '1px solid #fef08a', borderRadius: '10px', fontSize: '13px', color: '#92400e' }}>💡 You have a paused listing. Consider editing or deleting it before posting a new request.</div>}
             </div>
+
             {activeRequests.length > 0 && (
               <div style={{ marginBottom: '36px' }}>
                 <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '14px' }}>Your listing</div>
-                {activeRequests.map(req => <ActiveRequestCard key={req.id} request={req} onPause={() => setModal({ type: 'pause', id: req.id })} onRepublish={() => setModal({ type: 'republish', id: req.id })} onDelete={() => setModal({ type: 'delete', id: req.id })} onEdit={() => setEditingRequest(req)} />)}
+                {activeRequests.map(req => <ActiveRequestCard key={req.id} request={req} onPause={() => setModal({ type: 'pause', id: req.id })} onRepublish={() => setModal({ type: 'republish', id: req.id })} onDelete={() => handleDelete(req.id)} onEdit={() => setEditingRequest(req)} />)}
               </div>
             )}
             {!hasActive && pausedRequests.length > 0 && (
               <div style={{ marginBottom: '36px' }}>
                 <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '14px' }}>Paused listing</div>
-                {pausedRequests.map(req => <ActiveRequestCard key={req.id} request={req} onPause={() => setModal({ type: 'pause', id: req.id })} onRepublish={() => setModal({ type: 'republish', id: req.id })} onDelete={() => setModal({ type: 'delete', id: req.id })} onEdit={() => setEditingRequest(req)} />)}
+                {pausedRequests.map(req => <ActiveRequestCard key={req.id} request={req} onPause={() => setModal({ type: 'pause', id: req.id })} onRepublish={() => setModal({ type: 'republish', id: req.id })} onDelete={() => handleDelete(req.id)} onEdit={() => setEditingRequest(req)} />)}
               </div>
             )}
             {activeRequestIds.length > 0 && <ApplicationsSection requestIds={activeRequestIds} requests={activeRequests} onAccept={handleAcceptApplication} onOpenChat={handleOpenChat} />}
             {fulfilledRequests.length > 0 && (
               <div style={{ marginBottom: '36px' }}>
                 <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '14px' }}>Confirmed cleaners</div>
-                {fulfilledRequests.map(req => <ActiveRequestCard key={req.id} request={req} onPause={() => {}} onRepublish={() => {}} onDelete={() => setModal({ type: 'delete', id: req.id })} onEdit={() => setEditingRequest(req)} />)}
+                {fulfilledRequests.map(req => <ActiveRequestCard key={req.id} request={req} onPause={() => {}} onRepublish={() => {}} onDelete={() => handleDelete(req.id)} onEdit={() => setEditingRequest(req)} />)}
               </div>
             )}
             {pastRequests.filter(r => r.status !== 'paused' && r.status !== 'fulfilled').length > 0 && (
@@ -926,29 +903,10 @@ function CustomerDashboardContent() {
         </div>
         <Footer />
 
-        {/* Modals */}
-        {modal?.type === 'signout' && (
-          <ConfirmModal message="Are you sure you want to sign out?" onConfirm={handleSignOut} onCancel={() => setModal(null)} confirmLabel="Sign out" />
-        )}
-        {modal?.type === 'pause' && (
-          <ConfirmModal message="Pause your request?" subMessage="It won't be visible to cleaners until you republish." onConfirm={() => handlePause(modal.id)} onCancel={() => setModal(null)} confirmLabel="Pause" />
-        )}
-        {modal?.type === 'republish' && (
-          <ConfirmModal message="Republish your request?" subMessage="It will be visible to cleaners again." onConfirm={() => handleRepublish(modal.id)} onCancel={() => setModal(null)} confirmLabel="Republish" danger={false} />
-        )}
-        {modal?.type === 'delete' && (
-          <ConfirmModal
-            message={isFulfilledDelete ? 'Cancel your cleaning subscription?' : 'Remove this listing?'}
-            subMessage={
-              isFulfilledDelete
-                ? 'Your Direct Debit will be cancelled and your cleaner will be notified. Our 30-day notice policy applies — they may continue cleaning for up to 30 more days.'
-                : 'This cannot be undone.'
-            }
-            onConfirm={() => handleDelete(modal.id)}
-            onCancel={() => setModal(null)}
-            confirmLabel={cancelling ? 'Cancelling…' : isFulfilledDelete ? 'Cancel subscription' : 'Remove listing'}
-          />
-        )}
+        {modal?.type === 'signout' && <ConfirmModal message="Are you sure you want to sign out?" onConfirm={handleSignOut} onCancel={() => setModal(null)} confirmLabel="Sign out" />}
+        {modal?.type === 'pause' && <ConfirmModal message="Pause your request?" subMessage="It won't be visible to cleaners until you republish." onConfirm={() => handlePause(modal.id)} onCancel={() => setModal(null)} confirmLabel="Pause" />}
+        {modal?.type === 'republish' && <ConfirmModal message="Republish your request?" subMessage="It will be visible to cleaners again." onConfirm={() => handleRepublish(modal.id)} onCancel={() => setModal(null)} confirmLabel="Republish" danger={false} />}
+        {modal?.type === 'delete' && <ConfirmModal message="Remove this listing?" subMessage="This cannot be undone." onConfirm={() => handleDelete(modal.id)} onCancel={() => setModal(null)} confirmLabel="Remove listing" />}
 
         {editingRequest && <EditModal request={editingRequest} onSave={handleSaveEdit} onClose={() => setEditingRequest(null)} saving={saving} />}
         {toast && <ComingSoonBanner message={toast} onClose={() => setToast(null)} />}
