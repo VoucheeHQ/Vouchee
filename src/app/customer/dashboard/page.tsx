@@ -434,7 +434,6 @@ function ActiveRequestCard({ request, onPause, onRepublish, onDelete, onEdit }: 
           <ActionBtn onClick={onEdit} primary>Edit listing</ActionBtn>
           {request.status === 'active' && pausesLeft > 0 && <ActionBtn onClick={onPause}>Pause listing</ActionBtn>}
           {request.status === 'paused' && (!isRelocked ? <ActionBtn onClick={onRepublish}>Republish</ActionBtn> : <span style={{ fontSize: '12px', color: '#94a3b8', alignSelf: 'center' }}>Available to republish in 24h</span>)}
-          {/* Fulfilled cards navigate to cancel page; others show delete modal */}
           <ActionBtn onClick={onDelete} danger>
             {isFulfilled ? 'Cancel subscription' : 'Remove listing'}
           </ActionBtn>
@@ -602,8 +601,7 @@ function ApplicationsSection({ requestIds, requests, onAccept, onOpenChat }: {
     const req = requests.find(r => r.id === app.request_id)
     const frequency = req?.frequency ?? 'monthly'
     await onAccept(app.id, app.request_id, app.cleaner_name ?? 'Cleaner', frequency)
-    // ✅ Fix: update local state so card switches to "Open chat" immediately
-    setApplications(prev => prev.map(a => a.id === app.id ? { ...a, status: 'accepted' } : a))
+    setApplications(prev => prev.filter(a => a.id !== app.id))
     setAccepting(null)
   }
 
@@ -611,7 +609,7 @@ function ApplicationsSection({ requestIds, requests, onAccept, onOpenChat }: {
     setDeclining(app.id)
     try {
       await fetch('/api/decline-application', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ applicationId: app.id }) })
-      setApplications(prev => prev.map(a => a.id === app.id ? { ...a, status: 'rejected' } : a))
+      setApplications(prev => prev.filter(a => a.id !== app.id))
     } catch (err) { console.error('Decline error:', err) } finally { setDeclining(null) }
   }
 
@@ -783,7 +781,6 @@ function CustomerDashboardContent() {
   const handleDelete = async (id: string) => {
     const req = requests.find(r => r.id === id)
     if (req?.status === 'fulfilled') {
-      // Navigate to retention/cancel page instead of modal
       router.push(`/cancel/${id}`)
       return
     }

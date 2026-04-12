@@ -33,20 +33,24 @@ const RETENTION_POINTS: { icon: string; text: string }[] = [
 export default function CancelPage() {
   const router = useRouter()
   const params = useParams()
-  const requestId = params?.requestId as string
+  const requestId = params?.requestId as string | undefined
 
   const [loading, setLoading] = useState(true)
   const [cancelling, setCancelling] = useState(false)
   const [cancelled, setCancelled] = useState(false)
+  const [notFound, setNotFound] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [frequency, setFrequency] = useState('fortnightly')
-  const [zone, setZone] = useState('')
   const [cleanerName, setCleanerName] = useState<string | null>(null)
   const [customerName, setCustomerName] = useState<string | null>(null)
   const [daysTogether, setDaysTogether] = useState(0)
 
   useEffect(() => {
-    if (!requestId) return
+    // Guard: if no requestId yet, wait for next render
+    if (requestId === undefined) return
+    // Guard: if requestId is empty string
+    if (!requestId) { setNotFound(true); setLoading(false); return }
+
     const load = async () => {
       try {
         const supabase = createClient()
@@ -66,12 +70,16 @@ export default function CancelPage() {
           .eq('id', requestId)
           .single()
 
-        if (reqErr || !req || req.status !== 'fulfilled') {
-          router.replace('/customer/dashboard'); return
+        if (reqErr || !req) { setNotFound(true); setLoading(false); return }
+
+        // Only allow access if fulfilled — anything else redirect to dashboard
+        if (req.status !== 'fulfilled') {
+          setLoading(false)
+          router.replace('/customer/dashboard')
+          return
         }
 
         setFrequency(req.frequency ?? 'fortnightly')
-        setZone(req.zone ?? '')
         setDaysTogether(req.start_date
           ? Math.max(0, Math.floor((Date.now() - new Date(req.start_date).getTime()) / (1000 * 60 * 60 * 24)))
           : 0
@@ -86,9 +94,10 @@ export default function CancelPage() {
             setCleanerName(cleanerProfile?.full_name?.split(' ')[0] ?? null)
           }
         }
+
+        setLoading(false)
       } catch {
         setError('Could not load your subscription details.')
-      } finally {
         setLoading(false)
       }
     }
@@ -96,6 +105,7 @@ export default function CancelPage() {
   }, [requestId, router])
 
   const handleCancel = async () => {
+    if (!requestId) return
     setCancelling(true)
     setError(null)
     try {
@@ -120,6 +130,17 @@ export default function CancelPage() {
     return (
       <div style={{ minHeight: '100vh', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans', sans-serif" }}>
         <p style={{ color: '#64748b', fontSize: '14px' }}>Loading…</p>
+      </div>
+    )
+  }
+
+  if (notFound || error) {
+    return (
+      <div style={{ minHeight: '100vh', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans', sans-serif", padding: '24px' }}>
+        <div style={{ textAlign: 'center' }}>
+          <p style={{ color: '#dc2626', fontSize: '14px', marginBottom: '16px' }}>{error ?? 'This subscription could not be found.'}</p>
+          <button onClick={() => router.push('/customer/dashboard')} style={{ background: '#0f172a', color: 'white', border: 'none', borderRadius: '10px', padding: '10px 24px', fontSize: '14px', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>Back to dashboard</button>
+        </div>
       </div>
     )
   }
@@ -151,7 +172,6 @@ export default function CancelPage() {
     )
   }
 
-  const zoneLabel = ZONE_LABELS[zone] ?? zone
   const freqLabel = FREQUENCY_LABEL[frequency] ?? frequency
   const monthlyFee = MONTHLY_FEE[frequency] ?? MONTHLY_FEE.fortnightly
 
@@ -161,7 +181,6 @@ export default function CancelPage() {
       <main style={{ flex: 1 }}>
         <div style={{ maxWidth: '560px', margin: '0 auto', padding: '48px 24px 80px' }}>
 
-          {/* Heading */}
           <div style={{ textAlign: 'center', marginBottom: '40px' }}>
             <div style={{ fontSize: '44px', marginBottom: '16px' }}>😔</div>
             <h1 style={{ fontSize: '28px', fontWeight: 800, color: '#0f172a', margin: '0 0 10px', letterSpacing: '-0.3px' }}>
@@ -174,7 +193,6 @@ export default function CancelPage() {
             </p>
           </div>
 
-          {/* What you'd be giving up */}
           <div style={{ background: 'white', borderRadius: '16px', border: '1.5px solid #e2e8f0', padding: '24px 28px', marginBottom: '16px' }}>
             <div style={{ fontSize: '13px', fontWeight: 800, color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '18px' }}>
               What you'd be giving up
@@ -187,7 +205,6 @@ export default function CancelPage() {
             ))}
           </div>
 
-          {/* Fee reminder */}
           <div style={{ background: '#f0fdf4', borderRadius: '12px', border: '1.5px solid #bbf7d0', padding: '18px 22px', marginBottom: '16px' }}>
             <div style={{ fontSize: '13px', fontWeight: 700, color: '#15803d', marginBottom: '4px' }}>
               {'💰 You\'re only paying £' + (monthlyFee / 100).toFixed(2) + '/month for the Vouchee service fee'}
@@ -197,7 +214,6 @@ export default function CancelPage() {
             </div>
           </div>
 
-          {/* Pause suggestion */}
           <div style={{ background: '#eff6ff', borderRadius: '12px', border: '1.5px solid #bfdbfe', padding: '20px 22px', marginBottom: '32px' }}>
             <div style={{ fontSize: '14px', fontWeight: 700, color: '#1e40af', marginBottom: '6px' }}>
               🤔 Not ready to commit right now?
@@ -213,7 +229,6 @@ export default function CancelPage() {
             </button>
           </div>
 
-          {/* Primary CTA */}
           <button
             onClick={() => router.push('/customer/dashboard')}
             style={{ width: '100%', background: '#16a34a', color: 'white', border: 'none', borderRadius: '12px', padding: '16px', fontSize: '16px', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", marginBottom: '12px' }}
@@ -221,7 +236,6 @@ export default function CancelPage() {
             Keep my cleaner ✓
           </button>
 
-          {/* 30-day notice warning */}
           <div style={{ background: '#fefce8', border: '1px solid #fde68a', borderRadius: '10px', padding: '14px 18px', marginBottom: '20px' }}>
             <p style={{ margin: 0, fontSize: '12px', color: '#854d0e', lineHeight: 1.6 }}>
               <strong>30-day notice period applies.</strong>
@@ -229,14 +243,12 @@ export default function CancelPage() {
             </p>
           </div>
 
-          {/* Error */}
           {error && (
             <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '12px 16px', marginBottom: '16px', fontSize: '13px', color: '#dc2626', textAlign: 'center' }}>
               {error}
             </div>
           )}
 
-          {/* Cancel link */}
           <div style={{ textAlign: 'center' }}>
             <button
               onClick={handleCancel}
