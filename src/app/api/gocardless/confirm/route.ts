@@ -40,7 +40,6 @@ const PER_CLEAN_PENCE: Record<string, number> = {
   monthly:     2499, // £24.99
 }
 
-// Calculate pro-rata based on actual cleans in the partial first month
 function calcProRata(startDate: string, frequency: string): number {
   if (frequency === 'monthly') return PER_CLEAN_PENCE.monthly
 
@@ -311,9 +310,8 @@ function buildCustomerConfirmEmail({
     <!-- Header -->
     <tr><td style="background:#ffffff;padding:36px 40px 32px;text-align:center;border-radius:16px 16px 0 0;">
       <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">Your cleaner is confirmed — here are all the details you need.</div>
-      <img src="https://www.vouchee.co.uk/full-logo-black.png" width="260" height="60" alt="Vouchee" style="display:block;margin:0 auto 20px;max-width:100%;" />
+      <img src="https://www.vouchee.co.uk/full-logo-black.png" width="260" height="60" alt="Vouchee" style="display:block;margin:0 auto 36px;max-width:100%;" />
       <div style="font-size:32px;font-weight:800;color:#0f172a;letter-spacing:-0.5px;line-height:1.15;">You're all set! 🎉</div>
-      <div style="font-size:16px;color:#64748b;margin-top:8px;">${cleanerFirstName} is confirmed for your first clean.</div>
     </td></tr>
 
     <!-- Body -->
@@ -394,21 +392,15 @@ function buildCustomerConfirmEmail({
         <a href="${appUrl}/customer/dashboard" style="display:inline-block;background:#2563eb;color:white;font-size:13px;font-weight:700;padding:11px 28px;border-radius:8px;text-decoration:none;">Open your dashboard →</a>
       </div>
 
-      <!-- What to expect -->
+      <!-- What happens next -->
       <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:20px 24px;margin-bottom:20px;">
         <div style="font-size:13px;font-weight:800;color:#0f172a;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:14px;text-align:center;">What happens next</div>
-        <div style="display:flex;flex-direction:column;gap:10px;">
-          ${[
-            ['💬', `${cleanerFirstName} will reach out to introduce themselves before your first clean`],
-            ['🔑', 'Discuss access arrangements and any special instructions'],
-            ['🧹', `Your first clean is on ${formatDate(startDate)}`],
-            ['💳', 'Your Direct Debit will be collected monthly — this covers the Vouchee service fee only, not your cleaner\'s payment'],
-          ].map(([icon, text]) => `
-          <div style="display:flex;gap:12px;align-items:flex-start;">
-            <span style="font-size:18px;flex-shrink:0;line-height:1.4;">${icon}</span>
-            <span style="font-size:13px;color:#475569;line-height:1.55;">${text}</span>
-          </div>`).join('')}
-        </div>
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr><td style="padding:6px 0;font-size:16px;width:28px;">💬</td><td style="padding:6px 0;font-size:13px;color:#475569;line-height:1.55;">${cleanerFirstName} will reach out to introduce themselves before your first clean</td></tr>
+          <tr><td style="padding:6px 0;font-size:16px;">🔑</td><td style="padding:6px 0;font-size:13px;color:#475569;line-height:1.55;">Discuss access arrangements and any special instructions</td></tr>
+          <tr><td style="padding:6px 0;font-size:16px;">🧹</td><td style="padding:6px 0;font-size:13px;color:#475569;line-height:1.55;">Your first clean is on ${formatDate(startDate)}</td></tr>
+          <tr><td style="padding:6px 0;font-size:16px;">💳</td><td style="padding:6px 0;font-size:13px;color:#475569;line-height:1.55;">Your Direct Debit will be collected monthly going forward</td></tr>
+        </table>
       </div>
 
       <!-- DD clarification notice -->
@@ -577,7 +569,6 @@ export async function GET(request: NextRequest) {
     const cleanerPhone       = cleanerProfile?.phone ?? null
     const cleanerFirstName   = cleanerFullName.split(' ')[0]
 
-    // Cleaner card URL — links to the cleaner's public profile page
     const cleanerCardUrl = `${appUrl}/cleaners/${application.cleaner_id}`
 
     const address = formatAddress(
@@ -716,7 +707,6 @@ export async function GET(request: NextRequest) {
           })
         : (console.error('No cleaner email — skipping'), Promise.resolve(null)),
 
-      // Customer confirmation email
       customerEmail
         ? resend.emails.send({
             from: 'Vouchee <hello@vouchee.co.uk>',

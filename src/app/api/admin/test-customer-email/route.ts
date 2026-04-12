@@ -77,9 +77,8 @@ function buildCustomerConfirmEmail({
     <!-- Header -->
     <tr><td style="background:#ffffff;padding:36px 40px 32px;text-align:center;border-radius:16px 16px 0 0;">
       <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">Your cleaner is confirmed — here are all the details you need.</div>
-      <img src="https://www.vouchee.co.uk/full-logo-black.png" width="260" height="60" alt="Vouchee" style="display:block;margin:0 auto 20px;max-width:100%;" />
+      <img src="https://www.vouchee.co.uk/full-logo-black.png" width="260" height="60" alt="Vouchee" style="display:block;margin:0 auto 36px;max-width:100%;" />
       <div style="font-size:32px;font-weight:800;color:#0f172a;letter-spacing:-0.5px;line-height:1.15;">You're all set! 🎉</div>
-      <div style="font-size:16px;color:#64748b;margin-top:8px;">${cleanerFirstName} is confirmed for your first clean.</div>
     </td></tr>
 
     <!-- Body -->
@@ -167,7 +166,7 @@ function buildCustomerConfirmEmail({
           <tr><td style="padding:6px 0;font-size:16px;width:28px;">💬</td><td style="padding:6px 0;font-size:13px;color:#475569;line-height:1.55;">${cleanerFirstName} will reach out to introduce themselves before your first clean</td></tr>
           <tr><td style="padding:6px 0;font-size:16px;">🔑</td><td style="padding:6px 0;font-size:13px;color:#475569;line-height:1.55;">Discuss access arrangements and any special instructions</td></tr>
           <tr><td style="padding:6px 0;font-size:16px;">🧹</td><td style="padding:6px 0;font-size:13px;color:#475569;line-height:1.55;">Your first clean is on ${formatDate(startDate)}</td></tr>
-          <tr><td style="padding:6px 0;font-size:16px;">💳</td><td style="padding:6px 0;font-size:13px;color:#475569;line-height:1.55;">Your Direct Debit will be collected monthly — this covers the Vouchee service fee only, not your cleaner's payment</td></tr>
+          <tr><td style="padding:6px 0;font-size:16px;">💳</td><td style="padding:6px 0;font-size:13px;color:#475569;line-height:1.55;">Your Direct Debit will be collected monthly going forward</td></tr>
         </table>
       </div>
 
