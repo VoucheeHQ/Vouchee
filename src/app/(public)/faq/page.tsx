@@ -1,8 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { Header } from '@/components/layout/header'
-import { Footer } from '@/components/layout/footer'
 import Link from 'next/link'
 
 const faqs = [
@@ -12,7 +10,7 @@ const faqs = [
     questions: [
       {
         q: 'How does Vouchee work?',
-        a: 'You post a listing describing your home, the tasks you need done, and the rate you\'re willing to pay. Vetted local cleaners then apply to you. You chat with them, check their reviews, and choose who you want. Once you accept a cleaner, they get your address and a start date, and regular cleans begin. Simple.',
+        a: 'You post a listing describing your home, the tasks you need done, and the rate you\'re willing to pay. Vetted local cleaners then apply to you. You chat with them, check their reviews, and choose who you want. Once you accept a cleaner, they get your address and a start date, and regular cleans begin.',
       },
       {
         q: 'Do I have to search for a cleaner myself?',
@@ -29,7 +27,7 @@ const faqs = [
     ],
   },
   {
-    category: 'Pricing & payments',
+    category: 'Pricing',
     emoji: '💰',
     questions: [
       {
@@ -127,7 +125,7 @@ function AccordionItem({ q, a }: { q: string; a: string }) {
         style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 0', background: 'none', border: 'none', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", textAlign: 'left', gap: '16px' }}
       >
         <span style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a', lineHeight: 1.4 }}>{q}</span>
-        <span style={{ fontSize: '20px', color: '#94a3b8', flexShrink: 0, transform: open ? 'rotate(45deg)' : 'none', transition: 'transform 0.2s ease', display: 'inline-block' }}>+</span>
+        <span style={{ fontSize: '20px', color: open ? '#2563eb' : '#94a3b8', flexShrink: 0, transform: open ? 'rotate(45deg)' : 'none', transition: 'transform 0.2s ease, color 0.2s ease', display: 'inline-block' }}>+</span>
       </button>
       {open && (
         <div style={{ paddingBottom: '20px' }}>
@@ -142,85 +140,78 @@ export default function FAQPage() {
   const [activeCategory, setActiveCategory] = useState(0)
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f8fafc', fontFamily: "'DM Sans', sans-serif", display: 'flex', flexDirection: 'column' }}>
-      <Header userRole={null} />
+    <>
+      <style>{`
+        @media (max-width: 640px) {
+          .faq-category-nav { overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
+          .faq-category-nav::-webkit-scrollbar { display: none; }
+        }
+      `}</style>
 
-      <main style={{ flex: 1 }}>
-
-        {/* Hero */}
-        <div style={{ background: 'linear-gradient(135deg, #f0fdf4 0%, #eff6ff 100%)', borderBottom: '1px solid #e2e8f0', padding: '72px 24px 64px', textAlign: 'center' }}>
-          <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-            <div style={{ fontSize: '48px', marginBottom: '20px' }}>🙋</div>
-            <h1 style={{ fontSize: 'clamp(28px, 5vw, 48px)', fontWeight: 800, color: '#0f172a', margin: '0 0 16px', letterSpacing: '-0.4px', lineHeight: 1.15 }}>
-              Frequently asked questions
-            </h1>
-            <p style={{ fontSize: '17px', color: '#64748b', margin: '0 0 28px', lineHeight: 1.7 }}>
-              Everything you need to know about Vouchee. Can't find an answer?
-            </p>
-            <a href="mailto:hello@vouchee.co.uk" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'white', border: '1.5px solid #e2e8f0', borderRadius: '10px', padding: '10px 20px', fontSize: '14px', fontWeight: 700, color: '#0f172a', textDecoration: 'none' }}>
-              📧 Email us at hello@vouchee.co.uk
-            </a>
-          </div>
+      {/* Hero — no emoji, no subtitle, no email */}
+      <div style={{ background: 'linear-gradient(135deg, #f0fdf4 0%, #eff6ff 100%)', borderBottom: '1px solid #e2e8f0', padding: '64px 24px 56px', textAlign: 'center' }}>
+        <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+          <h1 style={{ fontSize: 'clamp(28px, 5vw, 48px)', fontWeight: 800, color: '#0f172a', margin: '0', letterSpacing: '-0.4px', lineHeight: 1.15, fontFamily: "'DM Sans', sans-serif" }}>
+            Frequently asked questions
+          </h1>
         </div>
+      </div>
 
-        {/* Content */}
-        <div style={{ maxWidth: '820px', margin: '0 auto', padding: '60px 24px 80px', display: 'flex', gap: '48px', alignItems: 'flex-start' }}>
-
-          {/* Category nav — sticky sidebar */}
-          <div style={{ width: '200px', flexShrink: 0, position: 'sticky', top: '24px' }}>
-            <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '12px' }}>Categories</div>
+      {/* Horizontal category tabs */}
+      <div style={{ background: 'white', borderBottom: '1px solid #e2e8f0', position: 'sticky', top: 0, zIndex: 10 }}>
+        <div style={{ maxWidth: '820px', margin: '0 auto', padding: '0 24px' }}>
+          <div className="faq-category-nav" style={{ display: 'flex', gap: '4px', overflowX: 'auto', whiteSpace: 'nowrap' }}>
             {faqs.map((cat, i) => (
               <button
                 key={i}
                 onClick={() => setActiveCategory(i)}
-                style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '10px 12px', background: activeCategory === i ? '#eff6ff' : 'none', border: activeCategory === i ? '1.5px solid #bfdbfe' : '1.5px solid transparent', borderRadius: '10px', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", fontSize: '13px', fontWeight: activeCategory === i ? 700 : 600, color: activeCategory === i ? '#1d4ed8' : '#64748b', textAlign: 'left', marginBottom: '4px', transition: 'all 0.15s' }}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '6px',
+                  padding: '14px 18px', background: 'none', border: 'none',
+                  borderBottom: activeCategory === i ? '2.5px solid #2563eb' : '2.5px solid transparent',
+                  cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
+                  fontSize: '14px', fontWeight: activeCategory === i ? 700 : 600,
+                  color: activeCategory === i ? '#2563eb' : '#64748b',
+                  whiteSpace: 'nowrap', transition: 'all 0.15s', flexShrink: 0,
+                  marginBottom: '-1px',
+                }}
               >
                 <span>{cat.emoji}</span>
                 {cat.category}
               </button>
             ))}
           </div>
-
-          {/* Questions */}
-          <div style={{ flex: 1 }}>
-            {faqs.map((cat, i) => (
-              <div key={i} style={{ display: activeCategory === i ? 'block' : 'none' }}>
-                <div style={{ marginBottom: '32px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '4px' }}>
-                    <span style={{ fontSize: '28px' }}>{cat.emoji}</span>
-                    <h2 style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a', margin: 0 }}>{cat.category}</h2>
-                  </div>
-                </div>
-                <div style={{ background: 'white', borderRadius: '16px', padding: '4px 28px', border: '1.5px solid #e2e8f0', boxShadow: '0 2px 12px rgba(0,0,0,0.04)' }}>
-                  {cat.questions.map((item, j) => (
-                    <AccordionItem key={j} q={item.q} a={item.a} />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-
         </div>
+      </div>
 
-        {/* Bottom CTA */}
-        <div style={{ background: '#0f172a', padding: '60px 24px', textAlign: 'center' }}>
-          <div style={{ maxWidth: '480px', margin: '0 auto' }}>
-            <h2 style={{ fontSize: '26px', fontWeight: 800, color: 'white', margin: '0 0 12px' }}>Still have questions?</h2>
-            <p style={{ fontSize: '15px', color: '#94a3b8', margin: '0 0 28px', lineHeight: 1.7 }}>We're a small team and we actually reply. Drop us a message any time.</p>
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-              <a href="mailto:hello@vouchee.co.uk" style={{ background: 'white', color: '#0f172a', borderRadius: '12px', padding: '13px 28px', fontSize: '15px', fontWeight: 700, textDecoration: 'none' }}>
-                Email us →
-              </a>
-              <Link href="/how-it-works" style={{ background: 'rgba(255,255,255,0.1)', color: 'white', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '12px', padding: '13px 28px', fontSize: '15px', fontWeight: 700, textDecoration: 'none' }}>
-                How it works
-              </Link>
+      {/* Questions */}
+      <div style={{ maxWidth: '820px', margin: '0 auto', padding: '48px 24px 80px' }}>
+        {faqs.map((cat, i) => (
+          <div key={i} style={{ display: activeCategory === i ? 'block' : 'none' }}>
+            <div style={{ background: 'white', borderRadius: '16px', padding: '4px 32px', border: '1.5px solid #e2e8f0', boxShadow: '0 2px 12px rgba(0,0,0,0.04)' }}>
+              {cat.questions.map((item, j) => (
+                <AccordionItem key={j} q={item.q} a={item.a} />
+              ))}
             </div>
           </div>
+        ))}
+      </div>
+
+      {/* CTA — blue themed */}
+      <div style={{ background: 'linear-gradient(135deg, #1d4ed8 0%, #2563eb 50%, #3b82f6 100%)', padding: '64px 24px', textAlign: 'center' }}>
+        <div style={{ maxWidth: '480px', margin: '0 auto' }}>
+          <h2 style={{ fontSize: '26px', fontWeight: 800, color: 'white', margin: '0 0 12px', fontFamily: "'DM Sans', sans-serif" }}>Still have questions?</h2>
+          <p style={{ fontSize: '15px', color: 'rgba(255,255,255,0.8)', margin: '0 0 28px', lineHeight: 1.7, fontFamily: "'DM Sans', sans-serif" }}>We're a small team and we actually reply. Drop us a message any time.</p>
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <a href="mailto:hello@vouchee.co.uk" style={{ background: 'white', color: '#1d4ed8', borderRadius: '12px', padding: '13px 28px', fontSize: '15px', fontWeight: 700, textDecoration: 'none', display: 'inline-block', fontFamily: "'DM Sans', sans-serif" }}>
+              Email us →
+            </a>
+            <Link href="/how-it-works" style={{ background: 'rgba(255,255,255,0.15)', color: 'white', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '12px', padding: '13px 28px', fontSize: '15px', fontWeight: 700, textDecoration: 'none', display: 'inline-block', fontFamily: "'DM Sans', sans-serif" }}>
+              How it works
+            </Link>
+          </div>
         </div>
-
-      </main>
-
-      <Footer />
-    </div>
+      </div>
+    </>
   )
 }
