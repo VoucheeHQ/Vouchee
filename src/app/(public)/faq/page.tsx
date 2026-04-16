@@ -32,18 +32,18 @@ const faqs = [
     questions: [
       {
         q: 'How much does Vouchee cost?',
-        a: 'There\'s a small monthly service fee: £9.99/month for weekly cleans, £14.99/month for fortnightly, and £24.99/month for monthly. That\'s it. No commission on what you pay your cleaner, no booking fees.',
+        a: 'The Vouchee service fee is £9.99 per clean for weekly customers, £14.99 per clean for fortnightly, and £24.99/month for monthly. It\'s billed 30 days in advance, calculated as 52 weeks ÷ 12 months. That\'s it — no commission on what you pay your cleaner, no booking fees.',
       },
       {
         q: 'How do I pay my cleaner?',
-        a: 'You pay your cleaner directly — cash, bank transfer, or whatever you agree between yourselves. Vouchee only handles the service fee via Direct Debit. We never touch your cleaner\'s pay.',
+        a: 'You pay your cleaner directly — cash, bank transfer, or whatever you agree between yourselves. Vouchee only handles the service fee via Direct Debit. We never take a cut of your cleaner\'s earnings — what you pay them is entirely between you and them.',
       },
       {
-        q: 'What does the service fee actually cover?',
-        a: 'It covers the platform — the vetting, the matching, the messaging system, the reviews, and the support. Think of it like a small subscription to a service that finds and manages your cleaner relationship for you.',
+        q: 'What does the service fee cover?',
+        a: 'It covers everything you get from the platform: the vetting, the matching, the messaging system, the reviews, access to cover cleans, and ongoing support. Think of it like a small subscription that grants you access to some of the most trusted self-employed cleaners in Horsham — while making choosing one effortless.',
       },
       {
-        q: 'Can I cancel and stop paying?',
+        q: 'Can I cancel?',
         a: 'Yes, anytime. Just give 30 days\' notice. Your Direct Debit will be cancelled and no further payments will be taken. Your cleaner will be notified and given fair warning about their final clean.',
       },
     ],
@@ -156,7 +156,7 @@ export default function FAQPage() {
 
       <div style={{ background: 'linear-gradient(160deg, #eff6ff 0%, #f0fdf4 40%, #fefce8 70%, #f0fdf4 100%)', minHeight: '100%' }}>
 
-        {/* Hero — no subtitle */}
+        {/* Hero */}
         <div style={{ padding: '72px 24px 56px', textAlign: 'center' }}>
           <div style={{ maxWidth: '600px', margin: '0 auto' }}>
             <h1 style={{
