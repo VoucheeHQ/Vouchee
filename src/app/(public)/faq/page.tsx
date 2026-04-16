@@ -62,7 +62,7 @@ const faqs = [
       },
       {
         q: 'What if I\'m not happy with my cleaner?',
-        a: 'Get in touch with us at hello@vouchee.co.uk and we\'ll help you sort it. You can also remove your listing and post a new one to find a different cleaner. We take quality seriously and will follow up on any complaints.',
+        a: 'Get in touch with us at contact@vouchee.co.uk and we\'ll help you sort it. You can also remove your listing and post a new one to find a different cleaner. We take quality seriously and will follow up on any complaints.',
       },
       {
         q: 'Can my cleaner work for other people too?',
@@ -84,7 +84,7 @@ const faqs = [
       },
       {
         q: 'Can I change how often I have a clean?',
-        a: 'Yes — contact us at hello@vouchee.co.uk and we\'ll update your plan. The monthly service fee will adjust to reflect your new frequency.',
+        a: 'Yes — contact us at contact@vouchee.co.uk and we\'ll update your plan. The monthly service fee will adjust to reflect your new frequency.',
       },
       {
         q: 'What happens if my cleaner cancels?',
@@ -152,32 +152,24 @@ export default function FAQPage() {
 
   return (
     <>
-      <style>{`
-        * { box-sizing: border-box; }
-        .faq-sidebar-btn { transition: all 0.15s ease; }
-        .faq-sidebar-btn:hover { background: rgba(255,255,255,0.7) !important; }
-      `}</style>
+      <style>{`* { box-sizing: border-box; } .faq-sidebar-btn:hover { background: rgba(255,255,255,0.7) !important; }`}</style>
 
-      {/* Full page gradient background */}
       <div style={{ background: 'linear-gradient(160deg, #eff6ff 0%, #f0fdf4 40%, #fefce8 70%, #f0fdf4 100%)', minHeight: '100%' }}>
 
-        {/* Hero */}
+        {/* Hero — no subtitle */}
         <div style={{ padding: '72px 24px 56px', textAlign: 'center' }}>
           <div style={{ maxWidth: '600px', margin: '0 auto' }}>
             <h1 style={{
               fontSize: 'clamp(28px, 5vw, 50px)', fontWeight: 800, color: '#0f172a',
-              margin: '0 0 14px', letterSpacing: '-0.5px', lineHeight: 1.1,
+              margin: '0', letterSpacing: '-0.5px', lineHeight: 1.1,
               fontFamily: "'DM Sans', sans-serif",
             }}>
               Frequently asked questions
             </h1>
-            <p style={{ fontSize: '16px', color: '#64748b', margin: 0, fontFamily: "'DM Sans', sans-serif" }}>
-              Everything you need to know about Vouchee.
-            </p>
           </div>
         </div>
 
-        {/* Main content: sidebar + questions */}
+        {/* Main content */}
         <div style={{
           maxWidth: '900px', margin: '0 auto', padding: '0 24px 80px',
           display: 'flex', gap: '32px', alignItems: 'flex-start',
@@ -202,14 +194,13 @@ export default function FAQPage() {
                     display: 'flex', alignItems: 'center', gap: '10px',
                     width: '100%', padding: '11px 14px',
                     background: activeCategory === i ? 'white' : 'transparent',
-                    border: 'none',
-                    borderRadius: '12px',
+                    border: 'none', borderRadius: '12px',
                     cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
                     fontSize: '13px', fontWeight: activeCategory === i ? 700 : 500,
                     color: activeCategory === i ? '#0f172a' : '#64748b',
                     textAlign: 'left',
                     boxShadow: activeCategory === i ? '0 2px 8px rgba(0,0,0,0.08)' : 'none',
-                    marginBottom: '2px',
+                    marginBottom: '2px', transition: 'all 0.15s ease',
                   }}
                 >
                   <span style={{ fontSize: '15px', flexShrink: 0 }}>{cat.emoji}</span>
@@ -219,7 +210,7 @@ export default function FAQPage() {
             </div>
           </div>
 
-          {/* Questions panel */}
+          {/* Questions */}
           <div style={{ flex: 1, minWidth: 0 }}>
             {faqs.map((cat, i) => (
               <div key={i} style={{ display: activeCategory === i ? 'block' : 'none' }}>
@@ -240,10 +231,9 @@ export default function FAQPage() {
           </div>
 
         </div>
-
       </div>
 
-      {/* CTA — blue gradient, outside the page gradient */}
+      {/* CTA */}
       <div style={{ background: 'linear-gradient(135deg, #1d4ed8 0%, #2563eb 60%, #3b82f6 100%)', padding: '64px 24px', textAlign: 'center' }}>
         <div style={{ maxWidth: '480px', margin: '0 auto' }}>
           <h2 style={{ fontSize: '26px', fontWeight: 800, color: 'white', margin: '0 0 12px', fontFamily: "'DM Sans', sans-serif", letterSpacing: '-0.3px' }}>
@@ -253,16 +243,10 @@ export default function FAQPage() {
             We're a small team but we actually reply! Drop us a message any time :)
           </p>
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <a
-              href="mailto:hello@vouchee.co.uk"
-              style={{ background: 'white', color: '#1d4ed8', borderRadius: '12px', padding: '13px 28px', fontSize: '15px', fontWeight: 700, textDecoration: 'none', display: 'inline-block', fontFamily: "'DM Sans', sans-serif" }}
-            >
+            <a href="mailto:contact@vouchee.co.uk" style={{ background: 'white', color: '#1d4ed8', borderRadius: '12px', padding: '13px 28px', fontSize: '15px', fontWeight: 700, textDecoration: 'none', display: 'inline-block', fontFamily: "'DM Sans', sans-serif" }}>
               Email us →
             </a>
-            <Link
-              href="/how-it-works"
-              style={{ background: 'rgba(255,255,255,0.15)', color: 'white', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '12px', padding: '13px 28px', fontSize: '15px', fontWeight: 700, textDecoration: 'none', display: 'inline-block', fontFamily: "'DM Sans', sans-serif" }}
-            >
+            <Link href="/how-it-works" style={{ background: 'rgba(255,255,255,0.15)', color: 'white', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '12px', padding: '13px 28px', fontSize: '15px', fontWeight: 700, textDecoration: 'none', display: 'inline-block', fontFamily: "'DM Sans', sans-serif" }}>
               How it works
             </Link>
           </div>

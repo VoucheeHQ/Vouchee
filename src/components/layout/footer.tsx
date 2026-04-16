@@ -20,7 +20,7 @@ export function Footer() {
   }
 
   const contactLinks = [
-    { label: 'General enquiries', email: 'hello@vouchee.co.uk' },
+    { label: 'General enquiries', email: 'contact@vouchee.co.uk' },
     { label: 'Customer support', email: 'support@vouchee.co.uk' },
     { label: 'Cleaner applications', email: 'cleaners@vouchee.co.uk' },
     { label: 'Legal', email: 'legal@vouchee.co.uk' },
