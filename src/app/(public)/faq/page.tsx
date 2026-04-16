@@ -44,7 +44,7 @@ const faqs = [
       },
       {
         q: 'Can I cancel and stop paying?',
-        a: 'Yes, anytime. Just give 30 days\' notice. Your Direct Debit will be cancelled and no further payments will be taken. Your cleaner will be notified and given fair warning about your final clean.',
+        a: 'Yes, anytime. Just give 30 days\' notice. Your Direct Debit will be cancelled and no further payments will be taken. Your cleaner will be notified and given fair warning about their final clean.',
       },
     ],
   },
@@ -119,17 +119,28 @@ const faqs = [
 function AccordionItem({ q, a }: { q: string; a: string }) {
   const [open, setOpen] = useState(false)
   return (
-    <div style={{ borderBottom: '1px solid #f1f5f9' }}>
+    <div style={{ borderBottom: '1px solid rgba(226,232,240,0.8)' }}>
       <button
         onClick={() => setOpen(o => !o)}
-        style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 0', background: 'none', border: 'none', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", textAlign: 'left', gap: '16px' }}
+        style={{
+          width: '100%', display: 'flex', justifyContent: 'space-between',
+          alignItems: 'center', padding: '18px 0', background: 'none', border: 'none',
+          cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", textAlign: 'left', gap: '16px',
+        }}
       >
-        <span style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a', lineHeight: 1.4 }}>{q}</span>
-        <span style={{ fontSize: '20px', color: open ? '#2563eb' : '#94a3b8', flexShrink: 0, transform: open ? 'rotate(45deg)' : 'none', transition: 'transform 0.2s ease, color 0.2s ease', display: 'inline-block' }}>+</span>
+        <span style={{ fontSize: '15px', fontWeight: 600, color: '#0f172a', lineHeight: 1.45 }}>{q}</span>
+        <span style={{
+          width: '24px', height: '24px', borderRadius: '50%', flexShrink: 0,
+          background: open ? '#eff6ff' : '#f1f5f9',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: '14px', color: open ? '#2563eb' : '#94a3b8',
+          transform: open ? 'rotate(45deg)' : 'none',
+          transition: 'transform 0.2s ease, background 0.2s ease, color 0.2s ease',
+        }}>+</span>
       </button>
       {open && (
-        <div style={{ paddingBottom: '20px' }}>
-          <p style={{ margin: 0, fontSize: '14px', color: '#475569', lineHeight: 1.75 }}>{a}</p>
+        <div style={{ paddingBottom: '18px' }}>
+          <p style={{ margin: 0, fontSize: '14px', color: '#475569', lineHeight: 1.8 }}>{a}</p>
         </div>
       )}
     </div>
@@ -142,71 +153,116 @@ export default function FAQPage() {
   return (
     <>
       <style>{`
-        @media (max-width: 640px) {
-          .faq-category-nav { overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
-          .faq-category-nav::-webkit-scrollbar { display: none; }
-        }
+        * { box-sizing: border-box; }
+        .faq-sidebar-btn { transition: all 0.15s ease; }
+        .faq-sidebar-btn:hover { background: rgba(255,255,255,0.7) !important; }
       `}</style>
 
-      {/* Hero — no emoji, no subtitle, no email */}
-      <div style={{ background: 'linear-gradient(135deg, #f0fdf4 0%, #eff6ff 100%)', borderBottom: '1px solid #e2e8f0', padding: '64px 24px 56px', textAlign: 'center' }}>
-        <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-          <h1 style={{ fontSize: 'clamp(28px, 5vw, 48px)', fontWeight: 800, color: '#0f172a', margin: '0', letterSpacing: '-0.4px', lineHeight: 1.15, fontFamily: "'DM Sans', sans-serif" }}>
-            Frequently asked questions
-          </h1>
-        </div>
-      </div>
+      {/* Full page gradient background */}
+      <div style={{ background: 'linear-gradient(160deg, #eff6ff 0%, #f0fdf4 40%, #fefce8 70%, #f0fdf4 100%)', minHeight: '100%' }}>
 
-      {/* Horizontal category tabs */}
-      <div style={{ background: 'white', borderBottom: '1px solid #e2e8f0', position: 'sticky', top: 0, zIndex: 10 }}>
-        <div style={{ maxWidth: '820px', margin: '0 auto', padding: '0 24px' }}>
-          <div className="faq-category-nav" style={{ display: 'flex', gap: '4px', overflowX: 'auto', whiteSpace: 'nowrap' }}>
-            {faqs.map((cat, i) => (
-              <button
-                key={i}
-                onClick={() => setActiveCategory(i)}
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: '6px',
-                  padding: '14px 18px', background: 'none', border: 'none',
-                  borderBottom: activeCategory === i ? '2.5px solid #2563eb' : '2.5px solid transparent',
-                  cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
-                  fontSize: '14px', fontWeight: activeCategory === i ? 700 : 600,
-                  color: activeCategory === i ? '#2563eb' : '#64748b',
-                  whiteSpace: 'nowrap', transition: 'all 0.15s', flexShrink: 0,
-                  marginBottom: '-1px',
-                }}
-              >
-                <span>{cat.emoji}</span>
-                {cat.category}
-              </button>
-            ))}
+        {/* Hero */}
+        <div style={{ padding: '72px 24px 56px', textAlign: 'center' }}>
+          <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+            <h1 style={{
+              fontSize: 'clamp(28px, 5vw, 50px)', fontWeight: 800, color: '#0f172a',
+              margin: '0 0 14px', letterSpacing: '-0.5px', lineHeight: 1.1,
+              fontFamily: "'DM Sans', sans-serif",
+            }}>
+              Frequently asked questions
+            </h1>
+            <p style={{ fontSize: '16px', color: '#64748b', margin: 0, fontFamily: "'DM Sans', sans-serif" }}>
+              Everything you need to know about Vouchee.
+            </p>
           </div>
         </div>
-      </div>
 
-      {/* Questions */}
-      <div style={{ maxWidth: '820px', margin: '0 auto', padding: '48px 24px 80px' }}>
-        {faqs.map((cat, i) => (
-          <div key={i} style={{ display: activeCategory === i ? 'block' : 'none' }}>
-            <div style={{ background: 'white', borderRadius: '16px', padding: '4px 32px', border: '1.5px solid #e2e8f0', boxShadow: '0 2px 12px rgba(0,0,0,0.04)' }}>
-              {cat.questions.map((item, j) => (
-                <AccordionItem key={j} q={item.q} a={item.a} />
+        {/* Main content: sidebar + questions */}
+        <div style={{
+          maxWidth: '900px', margin: '0 auto', padding: '0 24px 80px',
+          display: 'flex', gap: '32px', alignItems: 'flex-start',
+        }}>
+
+          {/* iOS-style sidebar */}
+          <div style={{ width: '200px', flexShrink: 0, position: 'sticky', top: '24px' }}>
+            <div style={{
+              background: 'rgba(255,255,255,0.6)',
+              backdropFilter: 'blur(16px)',
+              borderRadius: '18px',
+              border: '1px solid rgba(255,255,255,0.8)',
+              padding: '8px',
+              boxShadow: '0 4px 24px rgba(0,0,0,0.06)',
+            }}>
+              {faqs.map((cat, i) => (
+                <button
+                  key={i}
+                  className="faq-sidebar-btn"
+                  onClick={() => setActiveCategory(i)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '10px',
+                    width: '100%', padding: '11px 14px',
+                    background: activeCategory === i ? 'white' : 'transparent',
+                    border: 'none',
+                    borderRadius: '12px',
+                    cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
+                    fontSize: '13px', fontWeight: activeCategory === i ? 700 : 500,
+                    color: activeCategory === i ? '#0f172a' : '#64748b',
+                    textAlign: 'left',
+                    boxShadow: activeCategory === i ? '0 2px 8px rgba(0,0,0,0.08)' : 'none',
+                    marginBottom: '2px',
+                  }}
+                >
+                  <span style={{ fontSize: '15px', flexShrink: 0 }}>{cat.emoji}</span>
+                  <span style={{ lineHeight: 1.3 }}>{cat.category}</span>
+                </button>
               ))}
             </div>
           </div>
-        ))}
+
+          {/* Questions panel */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {faqs.map((cat, i) => (
+              <div key={i} style={{ display: activeCategory === i ? 'block' : 'none' }}>
+                <div style={{
+                  background: 'rgba(255,255,255,0.7)',
+                  backdropFilter: 'blur(16px)',
+                  borderRadius: '20px',
+                  padding: '8px 28px',
+                  border: '1px solid rgba(255,255,255,0.9)',
+                  boxShadow: '0 4px 24px rgba(0,0,0,0.06)',
+                }}>
+                  {cat.questions.map((item, j) => (
+                    <AccordionItem key={j} q={item.q} a={item.a} />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+        </div>
+
       </div>
 
-      {/* CTA — blue themed */}
-      <div style={{ background: 'linear-gradient(135deg, #1d4ed8 0%, #2563eb 50%, #3b82f6 100%)', padding: '64px 24px', textAlign: 'center' }}>
+      {/* CTA — blue gradient, outside the page gradient */}
+      <div style={{ background: 'linear-gradient(135deg, #1d4ed8 0%, #2563eb 60%, #3b82f6 100%)', padding: '64px 24px', textAlign: 'center' }}>
         <div style={{ maxWidth: '480px', margin: '0 auto' }}>
-          <h2 style={{ fontSize: '26px', fontWeight: 800, color: 'white', margin: '0 0 12px', fontFamily: "'DM Sans', sans-serif" }}>Still have questions?</h2>
-          <p style={{ fontSize: '15px', color: 'rgba(255,255,255,0.8)', margin: '0 0 28px', lineHeight: 1.7, fontFamily: "'DM Sans', sans-serif" }}>We're a small team and we actually reply. Drop us a message any time.</p>
+          <h2 style={{ fontSize: '26px', fontWeight: 800, color: 'white', margin: '0 0 12px', fontFamily: "'DM Sans', sans-serif", letterSpacing: '-0.3px' }}>
+            Still have questions?
+          </h2>
+          <p style={{ fontSize: '15px', color: 'rgba(255,255,255,0.85)', margin: '0 0 28px', lineHeight: 1.7, fontFamily: "'DM Sans', sans-serif" }}>
+            We're a small team but we actually reply! Drop us a message any time :)
+          </p>
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <a href="mailto:hello@vouchee.co.uk" style={{ background: 'white', color: '#1d4ed8', borderRadius: '12px', padding: '13px 28px', fontSize: '15px', fontWeight: 700, textDecoration: 'none', display: 'inline-block', fontFamily: "'DM Sans', sans-serif" }}>
+            <a
+              href="mailto:hello@vouchee.co.uk"
+              style={{ background: 'white', color: '#1d4ed8', borderRadius: '12px', padding: '13px 28px', fontSize: '15px', fontWeight: 700, textDecoration: 'none', display: 'inline-block', fontFamily: "'DM Sans', sans-serif" }}
+            >
               Email us →
             </a>
-            <Link href="/how-it-works" style={{ background: 'rgba(255,255,255,0.15)', color: 'white', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '12px', padding: '13px 28px', fontSize: '15px', fontWeight: 700, textDecoration: 'none', display: 'inline-block', fontFamily: "'DM Sans', sans-serif" }}>
+            <Link
+              href="/how-it-works"
+              style={{ background: 'rgba(255,255,255,0.15)', color: 'white', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '12px', padding: '13px 28px', fontSize: '15px', fontWeight: 700, textDecoration: 'none', display: 'inline-block', fontFamily: "'DM Sans', sans-serif" }}
+            >
               How it works
             </Link>
           </div>
