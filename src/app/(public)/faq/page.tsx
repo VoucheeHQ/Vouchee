@@ -228,7 +228,8 @@ const faqs: { category: string; emoji: string; questions: FAQItem[] }[] = [
 ]
 
 function AccordionItem({ q, a, link }: FAQItem) {
-  const [open, setOpen] = useState(false)
+  // All items expanded by default
+  const [open, setOpen] = useState(true)
   return (
     <div style={{ borderBottom: '1px solid rgba(226,232,240,0.8)' }}>
       <button
@@ -280,9 +281,10 @@ export default function FAQPage() {
           </div>
         </div>
 
-        <div style={{ maxWidth: '900px', margin: '0 auto', padding: '0 24px 80px', display: 'flex', gap: '32px', alignItems: 'flex-start' }}>
+        <div style={{ maxWidth: '980px', margin: '0 auto', padding: '0 24px 80px', display: 'flex', gap: '32px', alignItems: 'flex-start' }}>
 
-          <div style={{ width: '200px', flexShrink: 0, position: 'sticky', top: '24px' }}>
+          {/* Sidebar — wider so "Managing your clean" fits on one line */}
+          <div style={{ width: '240px', flexShrink: 0, position: 'sticky', top: '24px' }}>
             <div style={{ background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(16px)', borderRadius: '18px', border: '1px solid rgba(255,255,255,0.8)', padding: '8px', boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
               {faqs.map((cat, i) => (
                 <button
@@ -297,18 +299,19 @@ export default function FAQPage() {
                     cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
                     fontSize: '13px', fontWeight: activeCategory === i ? 700 : 500,
                     color: activeCategory === i ? '#0f172a' : '#64748b',
-                    textAlign: 'left',
+                    textAlign: 'left', whiteSpace: 'nowrap',
                     boxShadow: activeCategory === i ? '0 2px 8px rgba(0,0,0,0.08)' : 'none',
                     marginBottom: '2px', transition: 'all 0.15s ease',
                   }}
                 >
                   <span style={{ fontSize: '15px', flexShrink: 0 }}>{cat.emoji}</span>
-                  <span style={{ lineHeight: 1.3 }}>{cat.category}</span>
+                  <span>{cat.category}</span>
                 </button>
               ))}
             </div>
           </div>
 
+          {/* Questions */}
           <div style={{ flex: 1, minWidth: 0 }}>
             {faqs.map((cat, i) => (
               <div key={i} style={{ display: activeCategory === i ? 'block' : 'none' }}>
