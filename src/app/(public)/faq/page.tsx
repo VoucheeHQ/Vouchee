@@ -187,7 +187,9 @@ const faqs: { category: string; emoji: string; questions: FAQItem[] }[] = [
         q: 'How do I join Vouchee as a cleaner?',
         a: (
           <>
-            <strong>Head to vouchee.co.uk/cleaner</strong> and fill in the application form. It takes about 4 minutes. We'll review your application and be in touch within 3 working days.
+            <Link href="/cleaner/onboarding" style={{ color: '#2563eb', fontWeight: 600, textDecoration: 'none' }}>Click here</Link> and complete the short application — <strong>it takes around 4 minutes</strong>.
+            <br /><br />
+            We'll review it and get back to you shortly.
           </>
         ),
       },
@@ -195,7 +197,9 @@ const faqs: { category: string; emoji: string; questions: FAQItem[] }[] = [
         q: 'Do I need my own insurance and DBS?',
         a: (
           <>
-            <strong>Yes — all three are required:</strong> a valid DBS check, public liability insurance, and the right to work in the UK. If you don't have everything yet, we can point you in the right direction when you apply.
+            <strong>Yes — all three are required:</strong> a valid DBS check, public liability insurance, and the right to work in the UK.
+            <br /><br />
+            If you don't have everything yet, we can help point you in the right direction once you've applied.
           </>
         ),
       },
@@ -203,7 +207,9 @@ const faqs: { category: string; emoji: string; questions: FAQItem[] }[] = [
         q: 'How do I get paid?',
         a: (
           <>
-            <strong>Customers pay you directly</strong> — cash, bank transfer, or whatever you agree. Vouchee doesn't take a cut of your hourly rate. We charge a small fee to customers for using the platform, not to you.
+            <strong>Customers pay you directly</strong> — cash, bank transfer, or whatever you agree.
+            <br /><br />
+            Vouchee doesn't take a cut of your hourly rate. We charge a small fee to customers for using the platform, not cleaners.
           </>
         ),
       },
@@ -211,7 +217,9 @@ const faqs: { category: string; emoji: string; questions: FAQItem[] }[] = [
         q: 'Can I choose which jobs I take?',
         a: (
           <>
-            <strong>Completely.</strong> You apply to the jobs you want, in the areas you want. You're self-employed — you decide your own schedule, your own rate, and your own clients.
+            <strong>You apply only to the jobs you want</strong>, in the areas you choose.
+            <br /><br />
+            You're self-employed — you set your own schedule, your own rate, and choose your own clients. We simply help you find customers.
           </>
         ),
       },
