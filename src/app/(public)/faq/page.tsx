@@ -227,39 +227,36 @@ const faqs: { category: string; emoji: string; questions: FAQItem[] }[] = [
   },
 ]
 
-function AccordionItem({ q, a, link }: FAQItem) {
-  // All items expanded by default
-  const [open, setOpen] = useState(true)
+function FAQPanel({ questions, active }: { questions: FAQItem[]; active: boolean }) {
   return (
-    <div style={{ borderBottom: '1px solid rgba(226,232,240,0.8)' }}>
-      <button
-        onClick={() => setOpen(o => !o)}
-        style={{
-          width: '100%', display: 'flex', justifyContent: 'space-between',
-          alignItems: 'center', padding: '18px 0', background: 'none', border: 'none',
-          cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", textAlign: 'left', gap: '16px',
-        }}
-      >
-        <span style={{ fontSize: '15px', fontWeight: 600, color: '#0f172a', lineHeight: 1.45 }}>{q}</span>
-        <span style={{
-          width: '24px', height: '24px', borderRadius: '50%', flexShrink: 0,
-          background: open ? '#eff6ff' : '#f1f5f9',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: '14px', color: open ? '#2563eb' : '#94a3b8',
-          transform: open ? 'rotate(45deg)' : 'none',
-          transition: 'transform 0.2s ease, background 0.2s ease, color 0.2s ease',
-        }}>+</span>
-      </button>
-      {open && (
-        <div style={{ paddingBottom: '18px' }}>
-          <div style={{ fontSize: '14px', color: '#475569', lineHeight: 1.8 }}>{a}</div>
-          {link && (
-            <Link href={link.href} style={{ display: 'inline-block', marginTop: '12px', fontSize: '14px', color: '#2563eb', fontWeight: 600, textDecoration: 'none' }}>
-              {link.text} →
+    <div style={{
+      gridArea: '1 / 1',
+      opacity: active ? 1 : 0,
+      pointerEvents: active ? 'auto' : 'none',
+      transition: 'opacity 0.2s ease',
+      background: 'rgba(255,255,255,0.7)',
+      backdropFilter: 'blur(16px)',
+      borderRadius: '20px',
+      padding: '8px 28px 20px',
+      border: '1px solid rgba(255,255,255,0.9)',
+      boxShadow: '0 4px 24px rgba(0,0,0,0.06)',
+    }}>
+      {questions.map((item, j) => (
+        <div key={j} style={{ borderBottom: j < questions.length - 1 ? '1px solid rgba(226,232,240,0.8)' : 'none', padding: '22px 0' }}>
+          {/* Larger, clearly distinct question title */}
+          <div style={{ fontSize: '17px', fontWeight: 700, color: '#0f172a', lineHeight: 1.4, marginBottom: '10px', fontFamily: "'DM Sans', sans-serif" }}>
+            {item.q}
+          </div>
+          <div style={{ fontSize: '14px', color: '#475569', lineHeight: 1.8, fontFamily: "'DM Sans', sans-serif" }}>
+            {item.a}
+          </div>
+          {item.link && (
+            <Link href={item.link.href} style={{ display: 'inline-block', marginTop: '12px', fontSize: '14px', color: '#2563eb', fontWeight: 600, textDecoration: 'none' }}>
+              {item.link.text} →
             </Link>
           )}
         </div>
-      )}
+      ))}
     </div>
   )
 }
@@ -283,7 +280,7 @@ export default function FAQPage() {
 
         <div style={{ maxWidth: '980px', margin: '0 auto', padding: '0 24px 80px', display: 'flex', gap: '32px', alignItems: 'flex-start' }}>
 
-          {/* Sidebar — wider so "Managing your clean" fits on one line */}
+          {/* Sidebar */}
           <div style={{ width: '240px', flexShrink: 0, position: 'sticky', top: '24px' }}>
             <div style={{ background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(16px)', borderRadius: '18px', border: '1px solid rgba(255,255,255,0.8)', padding: '8px', boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
               {faqs.map((cat, i) => (
@@ -311,16 +308,10 @@ export default function FAQPage() {
             </div>
           </div>
 
-          {/* Questions */}
-          <div style={{ flex: 1, minWidth: 0 }}>
+          {/* Questions — all panels stacked in same grid cell so height = tallest category */}
+          <div style={{ flex: 1, minWidth: 0, display: 'grid' }}>
             {faqs.map((cat, i) => (
-              <div key={i} style={{ display: activeCategory === i ? 'block' : 'none' }}>
-                <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(16px)', borderRadius: '20px', padding: '8px 28px', border: '1px solid rgba(255,255,255,0.9)', boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
-                  {cat.questions.map((item, j) => (
-                    <AccordionItem key={j} q={item.q} a={item.a} link={item.link} />
-                  ))}
-                </div>
-              </div>
+              <FAQPanel key={i} questions={cat.questions} active={activeCategory === i} />
             ))}
           </div>
 
