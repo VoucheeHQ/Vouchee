@@ -44,7 +44,7 @@ const steps = [
     emoji: '📅',
     title: 'Pick a start date and you\'re set',
     body: 'Once you\'ve chosen your cleaner, pick a start date and you\'re ready to go. You\'ll set up a small monthly Direct Debit for the Vouchee service fee — your cleaner is paid separately.',
-    aside: 'The Vouchee service fee is £9.99/clean for weekly, £14.99/clean for fortnightly, £24.99/month for monthly.',
+    aside: 'The Vouchee service fee is £9.99 per weekly clean, £14.99 per fortnightly clean, or £24.99 for monthly cleans. Your cleaner is paid directly — we never touch it.',
     asideIcon: '💰',
     color: '#16a34a',
     bg: '#f0fdf4',
@@ -75,7 +75,7 @@ const steps = [
   {
     number: '07',
     emoji: '🔄',
-    title: 'Need a different cleaner?',
+    title: 'Want a different cleaner?',
     body: 'You can repost your request in seconds and find a better match.',
     aside: 'We\'ll even discount your first clean with a new cleaner to help you get back on track.',
     asideIcon: '💙',
@@ -99,7 +99,7 @@ const steps = [
 const reassurances = [
   { icon: '🔍', title: 'Manually vetted', body: 'Every cleaner is interviewed prior to approval. We also require insurance, DBS, and right to work before they go live.' },
   { icon: '🔒', title: 'Address protected', body: 'Your address stays private until you\'ve chosen your cleaner and confirmed a start date.' },
-  { icon: '💬', title: 'Safe messaging', body: 'All chats happen on-platform, keeping everything secure and easy to manage.' },
+  { icon: '💬', title: 'Safe messaging', body: 'All chats stay on-platform, keeping everything secure and easy to manage.' },
   { icon: '💰', title: 'No hidden fees', body: 'One small monthly fee. Your cleaner keeps every penny of what you pay them.' },
   { icon: '⭐', title: 'Real reviews', body: 'Every review is tied to a completed clean. No fake ratings, no gaming the system.' },
   { icon: '🛡️', title: 'Cancel anytime', body: 'No penalties — just give your cleaner fair notice.' },
@@ -112,7 +112,7 @@ export default function HowItWorksPage() {
       <div style={{ background: 'linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%)', borderBottom: '1px solid #e2e8f0', padding: '72px 24px 64px' }}>
         <div style={{ maxWidth: '680px', margin: '0 auto', textAlign: 'center', fontFamily: "'DM Sans', sans-serif" }}>
           <h1 style={{ fontSize: 'clamp(32px, 5vw, 52px)', fontWeight: 800, color: '#0f172a', margin: '0 0 20px', lineHeight: 1.15, letterSpacing: '-0.5px' }}>
-            Find a trusted local cleaner — without the hassle
+            Find a trusted cleaner without the hassle
           </h1>
           <p style={{ fontSize: '18px', color: '#475569', lineHeight: 1.7, margin: '0 0 36px', maxWidth: '520px', marginLeft: 'auto', marginRight: 'auto' }}>
             Post your request and cleaners come to you. Compare, chat, and choose who feels right.
@@ -161,11 +161,11 @@ export default function HowItWorksPage() {
         </div>
       </div>
 
-      {/* Sandwiched CTA — between steps and trust section */}
+      {/* Sandwiched CTA */}
       <div style={{ padding: '40px 24px', textAlign: 'center', background: '#f8fafc', borderTop: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0', fontFamily: "'DM Sans', sans-serif" }}>
         <div style={{ maxWidth: '520px', margin: '0 auto' }}>
           <h2 style={{ fontSize: 'clamp(22px, 4vw, 32px)', fontWeight: 800, color: '#0f172a', margin: '0 0 12px', letterSpacing: '-0.3px' }}>
-            Ready to get started?
+            Ready to find your cleaner?
           </h2>
           <p style={{ fontSize: '15px', color: '#64748b', margin: '0 0 24px', lineHeight: 1.7 }}>
             Post your request in 4 minutes. No commitment until you choose a cleaner.
@@ -181,7 +181,7 @@ export default function HowItWorksPage() {
         </div>
       </div>
 
-      {/* Trust grid — blue, no subtitle */}
+      {/* Trust grid */}
       <div style={{ background: 'linear-gradient(135deg, #1d4ed8 0%, #2563eb 60%, #3b82f6 100%)', padding: '80px 24px', fontFamily: "'DM Sans', sans-serif" }}>
         <div style={{ maxWidth: '760px', margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: '48px' }}>
