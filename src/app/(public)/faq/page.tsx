@@ -101,7 +101,9 @@ const faqs: { category: string; emoji: string; questions: FAQItem[] }[] = [
         q: 'How are cleaners vetted?',
         a: (
           <>
-            <strong>Every cleaner goes through a manual review before they're approved.</strong> We check their DBS certificate, verify their right to work in the UK, and confirm they have valid public liability insurance. We also do a brief introductory call. No exceptions.
+            Every cleaner must provide a <strong>valid DBS certificate, public liability insurance</strong>, and verify their right to work in the UK.
+            <br /><br />
+            We also interview every cleaner to ensure they meet our standards and understand how to use the platform correctly.
           </>
         ),
       },
@@ -109,15 +111,19 @@ const faqs: { category: string; emoji: string; questions: FAQItem[] }[] = [
         q: 'When does my cleaner get my address?',
         a: (
           <>
-            <strong>Only once you've accepted them and confirmed a start date.</strong> Your address is never shown in your listing and is never shared during the application or chat stage. It's sent directly to your chosen cleaner by email when you confirm.
+            <strong>Only once you've accepted them and confirmed a start date.</strong> Your address is never shown in your listing and is never shared during the application or chat stage. It's sent directly to your chosen cleaner by email once you've picked one.
           </>
         ),
       },
       {
-        q: 'What if I\'m not happy with my cleaner?',
+        q: "What if I'm not happy with my cleaner?",
         a: (
           <>
-            <strong>Get in touch and we'll help you sort it.</strong> Contact us at contact@vouchee.co.uk. You can also remove your listing and post a new one to find a different cleaner. We take quality seriously and will follow up on any complaints.
+            <strong>Being a Vouchee customer means access to all cleaners</strong> — you can simply repost a request at the press of a button and have new cleaners apply.
+            <br /><br />
+            We'll even discount your first clean with the new cleaner to help with the transition.
+            <br /><br />
+            Be sure to let Vouchee know alongside any feedback you'd like to share: <a href="mailto:support@vouchee.co.uk" style={{ color: '#2563eb', fontWeight: 600 }}>support@vouchee.co.uk</a>
           </>
         ),
       },
@@ -125,7 +131,7 @@ const faqs: { category: string; emoji: string; questions: FAQItem[] }[] = [
         q: 'Can my cleaner work for other people too?',
         a: (
           <>
-            Yes — <strong>cleaners on Vouchee are self-employed</strong> and free to take on other clients. Vouchee is a marketplace, not an employer. Your cleaner works on their own terms, which is exactly why the quality is higher.
+            Yes. <strong>Cleaners on Vouchee are self-employed</strong> and free to take on other clients. Vouchee is a marketplace, not an employer. Your cleaner works on their own terms and Vouchee doesn't take a cut of their pay, which is exactly why quality and reliability can be higher.
           </>
         ),
       },
@@ -254,35 +260,18 @@ export default function FAQPage() {
 
       <div style={{ background: 'linear-gradient(160deg, #eff6ff 0%, #f0fdf4 40%, #fefce8 70%, #f0fdf4 100%)', minHeight: '100%' }}>
 
-        {/* Hero */}
         <div style={{ padding: '72px 24px 56px', textAlign: 'center' }}>
           <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-            <h1 style={{
-              fontSize: 'clamp(28px, 5vw, 50px)', fontWeight: 800, color: '#0f172a',
-              margin: '0', letterSpacing: '-0.5px', lineHeight: 1.1,
-              fontFamily: "'DM Sans', sans-serif",
-            }}>
+            <h1 style={{ fontSize: 'clamp(28px, 5vw, 50px)', fontWeight: 800, color: '#0f172a', margin: '0', letterSpacing: '-0.5px', lineHeight: 1.1, fontFamily: "'DM Sans', sans-serif" }}>
               Frequently asked questions
             </h1>
           </div>
         </div>
 
-        {/* Main content */}
-        <div style={{
-          maxWidth: '900px', margin: '0 auto', padding: '0 24px 80px',
-          display: 'flex', gap: '32px', alignItems: 'flex-start',
-        }}>
+        <div style={{ maxWidth: '900px', margin: '0 auto', padding: '0 24px 80px', display: 'flex', gap: '32px', alignItems: 'flex-start' }}>
 
-          {/* iOS-style sidebar */}
           <div style={{ width: '200px', flexShrink: 0, position: 'sticky', top: '24px' }}>
-            <div style={{
-              background: 'rgba(255,255,255,0.6)',
-              backdropFilter: 'blur(16px)',
-              borderRadius: '18px',
-              border: '1px solid rgba(255,255,255,0.8)',
-              padding: '8px',
-              boxShadow: '0 4px 24px rgba(0,0,0,0.06)',
-            }}>
+            <div style={{ background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(16px)', borderRadius: '18px', border: '1px solid rgba(255,255,255,0.8)', padding: '8px', boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
               {faqs.map((cat, i) => (
                 <button
                   key={i}
@@ -308,18 +297,10 @@ export default function FAQPage() {
             </div>
           </div>
 
-          {/* Questions */}
           <div style={{ flex: 1, minWidth: 0 }}>
             {faqs.map((cat, i) => (
               <div key={i} style={{ display: activeCategory === i ? 'block' : 'none' }}>
-                <div style={{
-                  background: 'rgba(255,255,255,0.7)',
-                  backdropFilter: 'blur(16px)',
-                  borderRadius: '20px',
-                  padding: '8px 28px',
-                  border: '1px solid rgba(255,255,255,0.9)',
-                  boxShadow: '0 4px 24px rgba(0,0,0,0.06)',
-                }}>
+                <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(16px)', borderRadius: '20px', padding: '8px 28px', border: '1px solid rgba(255,255,255,0.9)', boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
                   {cat.questions.map((item, j) => (
                     <AccordionItem key={j} q={item.q} a={item.a} link={item.link} />
                   ))}
@@ -331,7 +312,6 @@ export default function FAQPage() {
         </div>
       </div>
 
-      {/* CTA */}
       <div style={{ background: 'linear-gradient(135deg, #1d4ed8 0%, #2563eb 60%, #3b82f6 100%)', padding: '64px 24px', textAlign: 'center' }}>
         <div style={{ maxWidth: '480px', margin: '0 auto' }}>
           <h2 style={{ fontSize: '26px', fontWeight: 800, color: 'white', margin: '0 0 12px', fontFamily: "'DM Sans', sans-serif", letterSpacing: '-0.3px' }}>
