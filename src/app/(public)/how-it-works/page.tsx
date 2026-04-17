@@ -32,7 +32,7 @@ const steps = [
     number: '03',
     emoji: '💬',
     title: 'Chat with cleaners and choose who feels right',
-    body: 'When a cleaner applies, you can open a chat where you can ask questions, view their rating, see how long they\'ve been on the platform and understand everything needed before you make a decision.',
+    body: 'When a cleaner applies, you can chat with them directly — ask questions, check their ratings, and get a feel before deciding.',
     aside: 'Reviews are verified — they only come from real Vouchee customers who\'ve had cleans completed.',
     asideIcon: '⭐',
     color: '#f59e0b',
@@ -55,7 +55,7 @@ const steps = [
     emoji: '🏠',
     title: 'Your cleaner gets everything they need',
     body: 'Once you confirm, your cleaner receives your full address, contact info and start date by email. The chat stays open so you can sort any last details — parking, access, specific instructions.',
-    aside: 'This is the first and only time your information is shared. It goes directly to your chosen cleaner, nobody else. All other chats will be closed.',
+    aside: 'This is the first and only time your information is shared. It goes directly to your chosen cleaner, nobody else.',
     asideIcon: '🔐',
     color: '#06b6d4',
     bg: '#ecfeff',
@@ -65,7 +65,7 @@ const steps = [
     number: '06',
     emoji: '🧹',
     title: 'Your cleaner gets paid directly',
-    body: 'You pay your cleaner directly — cash, bank transfer, whatever you agree. Vouchee isn\'t involved in that payment.',
+    body: 'You pay your cleaner directly — cash, bank transfer, whatever you agree. Vouchee isn\'t involved in that payment. This keeps things simple and transparent.',
     aside: 'Cleaners keep 100% of their hourly rate. The Vouchee fee is separate — not a cut of their earnings.',
     asideIcon: '🤝',
     color: '#10b981',
@@ -75,8 +75,8 @@ const steps = [
   {
     number: '07',
     emoji: '🔄',
-    title: 'Not happy with your cleaner?',
-    body: 'You can republish your request in seconds and look for a new cleaner with the press of a button.',
+    title: 'Need a different cleaner?',
+    body: 'You can repost your request in seconds and find a better match.',
     aside: 'We\'ll even discount your first clean with a new cleaner to help you get back on track.',
     asideIcon: '💙',
     color: '#6366f1',
@@ -87,7 +87,7 @@ const steps = [
     number: '08',
     emoji: '😌',
     title: 'You can finally relax',
-    body: 'Regular cleans, on your schedule, with someone who knows your home. Pause, edit, or cancel anytime. No contracts, no awkward conversations.',
+    body: 'Regular cleans, on your schedule, with someone who knows your home. Pause, edit, or cancel anytime — no contracts, no awkward conversations.',
     aside: 'Cancel anytime with 30 days\' notice. Your cleaner is always notified and given fair warning.',
     asideIcon: '🛡️',
     color: '#0ea5e9',
@@ -99,10 +99,10 @@ const steps = [
 const reassurances = [
   { icon: '🔍', title: 'Manually vetted', body: 'Every cleaner is interviewed prior to approval. We also require insurance, DBS, and right to work before they go live.' },
   { icon: '🔒', title: 'Address protected', body: 'Your address stays private until you\'ve chosen your cleaner and confirmed a start date.' },
-  { icon: '💬', title: 'Safe messaging', body: 'All chats happen on platform. Our team monitors for any off-platform contact attempts.' },
+  { icon: '💬', title: 'Safe messaging', body: 'All chats happen on-platform, keeping everything secure and easy to manage.' },
   { icon: '💰', title: 'No hidden fees', body: 'One small monthly fee. Your cleaner keeps every penny of what you pay them.' },
   { icon: '⭐', title: 'Real reviews', body: 'Every review is tied to a completed clean. No fake ratings, no gaming the system.' },
-  { icon: '🛡️', title: 'Cancel anytime', body: '30 days\' notice, no penalty, no guilt. We just ask you let your cleaner know.' },
+  { icon: '🛡️', title: 'Cancel anytime', body: 'No penalties — just give your cleaner fair notice.' },
 ]
 
 export default function HowItWorksPage() {
@@ -115,7 +115,7 @@ export default function HowItWorksPage() {
             Find a trusted local cleaner — without the hassle
           </h1>
           <p style={{ fontSize: '18px', color: '#475569', lineHeight: 1.7, margin: '0 0 36px', maxWidth: '520px', marginLeft: 'auto', marginRight: 'auto' }}>
-            Post your request, compare vetted cleaners, and choose who feels right. No agencies, no pressure.
+            Post your request and cleaners come to you. Compare, chat, and choose who feels right.
           </p>
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
             <Link href="/request/property" style={{ background: '#2563eb', color: 'white', borderRadius: '12px', padding: '14px 28px', fontSize: '15px', fontWeight: 700, textDecoration: 'none', display: 'inline-block' }}>
@@ -129,7 +129,7 @@ export default function HowItWorksPage() {
       </div>
 
       {/* Steps */}
-      <div style={{ maxWidth: '760px', margin: '0 auto', padding: '80px 24px', fontFamily: "'DM Sans', sans-serif" }}>
+      <div style={{ maxWidth: '760px', margin: '0 auto', padding: '80px 24px 48px', fontFamily: "'DM Sans', sans-serif" }}>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           {steps.map((step, i) => (
             <div key={i} style={{ display: 'flex', position: 'relative' }}>
@@ -161,45 +161,42 @@ export default function HowItWorksPage() {
         </div>
       </div>
 
-      {/* Trust grid */}
-      <div style={{ background: '#0f172a', padding: '80px 24px', fontFamily: "'DM Sans', sans-serif" }}>
-        <div style={{ maxWidth: '760px', margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: '48px' }}>
-            <h2 style={{ fontSize: 'clamp(24px, 4vw, 36px)', fontWeight: 800, color: 'white', margin: '0 0 12px', letterSpacing: '-0.3px' }}>
-              Built on trust
-            </h2>
-            <p style={{ fontSize: '16px', color: '#94a3b8', margin: 0 }}>
-              Every decision we make is designed to protect both sides.
-            </p>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '16px' }}>
-            {reassurances.map((r, i) => (
-              <div key={i} style={{ background: '#1e293b', borderRadius: '16px', padding: '24px', border: '1px solid #334155' }}>
-                <div style={{ fontSize: '28px', marginBottom: '12px' }}>{r.icon}</div>
-                <div style={{ fontSize: '15px', fontWeight: 700, color: 'white', marginBottom: '6px' }}>{r.title}</div>
-                <div style={{ fontSize: '13px', color: '#94a3b8', lineHeight: 1.6 }}>{r.body}</div>
-              </div>
-            ))}
+      {/* Sandwiched CTA — between steps and trust section */}
+      <div style={{ padding: '40px 24px', textAlign: 'center', background: '#f8fafc', borderTop: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0', fontFamily: "'DM Sans', sans-serif" }}>
+        <div style={{ maxWidth: '520px', margin: '0 auto' }}>
+          <h2 style={{ fontSize: 'clamp(22px, 4vw, 32px)', fontWeight: 800, color: '#0f172a', margin: '0 0 12px', letterSpacing: '-0.3px' }}>
+            Ready to get started?
+          </h2>
+          <p style={{ fontSize: '15px', color: '#64748b', margin: '0 0 24px', lineHeight: 1.7 }}>
+            Post your request in 4 minutes. No commitment until you choose a cleaner.
+          </p>
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <Link href="/request/property" style={{ background: '#2563eb', color: 'white', borderRadius: '12px', padding: '13px 28px', fontSize: '15px', fontWeight: 700, textDecoration: 'none', display: 'inline-block' }}>
+              Post a request →
+            </Link>
+            <Link href="/faq" style={{ background: 'white', color: '#0f172a', border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '13px 28px', fontSize: '15px', fontWeight: 700, textDecoration: 'none', display: 'inline-block' }}>
+              Read the FAQ
+            </Link>
           </div>
         </div>
       </div>
 
-      {/* Bottom CTA */}
-      <div style={{ padding: '80px 24px', textAlign: 'center', background: '#f8fafc', fontFamily: "'DM Sans', sans-serif" }}>
-        <div style={{ maxWidth: '520px', margin: '0 auto' }}>
-          <h2 style={{ fontSize: 'clamp(24px, 4vw, 36px)', fontWeight: 800, color: '#0f172a', margin: '0 0 14px', letterSpacing: '-0.3px' }}>
-            Ready to get started?
-          </h2>
-          <p style={{ fontSize: '16px', color: '#64748b', margin: '0 0 32px', lineHeight: 1.7 }}>
-            Post your request in 4 minutes. No commitment until you choose a cleaner.
-          </p>
-          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Link href="/request/property" style={{ background: '#2563eb', color: 'white', borderRadius: '12px', padding: '14px 32px', fontSize: '15px', fontWeight: 700, textDecoration: 'none', display: 'inline-block' }}>
-              Post a request →
-            </Link>
-            <Link href="/faq" style={{ background: 'white', color: '#0f172a', border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '14px 32px', fontSize: '15px', fontWeight: 700, textDecoration: 'none', display: 'inline-block' }}>
-              Read the FAQ
-            </Link>
+      {/* Trust grid — blue, no subtitle */}
+      <div style={{ background: 'linear-gradient(135deg, #1d4ed8 0%, #2563eb 60%, #3b82f6 100%)', padding: '80px 24px', fontFamily: "'DM Sans', sans-serif" }}>
+        <div style={{ maxWidth: '760px', margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: '48px' }}>
+            <h2 style={{ fontSize: 'clamp(24px, 4vw, 36px)', fontWeight: 800, color: 'white', margin: '0', letterSpacing: '-0.3px' }}>
+              Built on trust
+            </h2>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '16px' }}>
+            {reassurances.map((r, i) => (
+              <div key={i} style={{ background: 'rgba(255,255,255,0.12)', borderRadius: '16px', padding: '24px', border: '1px solid rgba(255,255,255,0.2)', backdropFilter: 'blur(8px)' }}>
+                <div style={{ fontSize: '28px', marginBottom: '12px' }}>{r.icon}</div>
+                <div style={{ fontSize: '15px', fontWeight: 700, color: 'white', marginBottom: '6px' }}>{r.title}</div>
+                <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.75)', lineHeight: 1.6 }}>{r.body}</div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
