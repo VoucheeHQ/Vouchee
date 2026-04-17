@@ -10,19 +10,20 @@ const faqs = [
     questions: [
       {
         q: 'How does Vouchee work?',
-        a: 'You post a listing describing your home, the tasks you need done, and the rate you\'re willing to pay. Vetted local cleaners then apply to you. You chat with them, check their reviews, and choose who you want. Once you accept a cleaner, they get your address and a start date, and regular cleans begin.',
+        a: 'You post a request, describing your home, the tasks you\'d like done, and the rate you\'re happy to pay. Local, vetted cleaners then apply to you. You chat with them, check their reviews, and choose who you want. Once you accept a cleaner, they\'ll get an email with your address and a start date — and you can relax knowing it\'s one less thing to worry about.',
       },
       {
         q: 'Do I have to search for a cleaner myself?',
-        a: 'No — that\'s the whole point. You post your request and cleaners apply to you. You\'ll see their profile, read their message, and choose who feels right. No browsing endless directories.',
+        a: 'No, that\'s the whole point. You post your request and cleaners apply to you. You have complete control. You\'ll see their profile, their rating, how long they\'ve been with Vouchee, and how many reviews they have. You can read their message and choose who feels right.',
       },
       {
         q: 'How long does it take to find a cleaner?',
-        a: 'Most customers receive their first application within a few days of posting. Vouchee operates in the Horsham area, so availability varies by zone — but we\'ll always let you know if demand is high in your area.',
+        a: 'Cleaners get notified when a new request goes live in their area. Customers often receive their first application within hours, and many choose their cleaner within days.',
       },
       {
         q: 'What areas do you cover?',
-        a: 'We currently cover Horsham and the surrounding areas — including Central Horsham, Roffey, Broadbridge Heath, Southwater, Mannings Heath, and more. You can see the full coverage map when you sign up.',
+        a: 'Vouchee was made in Horsham, for Horsham. We also cover surrounding areas including Broadbridge Heath, Southwater, Kilnwood Vale, Mannings Heath, Christ\'s Hospital, Warnham and more.',
+        link: { text: 'See the full coverage map', href: '/coverage' },
       },
     ],
   },
@@ -116,7 +117,7 @@ const faqs = [
   },
 ]
 
-function AccordionItem({ q, a }: { q: string; a: string }) {
+function AccordionItem({ q, a, link }: { q: string; a: string; link?: { text: string; href: string } }) {
   const [open, setOpen] = useState(false)
   return (
     <div style={{ borderBottom: '1px solid rgba(226,232,240,0.8)' }}>
@@ -140,7 +141,12 @@ function AccordionItem({ q, a }: { q: string; a: string }) {
       </button>
       {open && (
         <div style={{ paddingBottom: '18px' }}>
-          <p style={{ margin: 0, fontSize: '14px', color: '#475569', lineHeight: 1.8 }}>{a}</p>
+          <p style={{ margin: '0 0 10px', fontSize: '14px', color: '#475569', lineHeight: 1.8 }}>{a}</p>
+          {link && (
+            <Link href={link.href} style={{ fontSize: '14px', color: '#2563eb', fontWeight: 600, textDecoration: 'none' }}>
+              {link.text} →
+            </Link>
+          )}
         </div>
       )}
     </div>
@@ -223,7 +229,7 @@ export default function FAQPage() {
                   boxShadow: '0 4px 24px rgba(0,0,0,0.06)',
                 }}>
                   {cat.questions.map((item, j) => (
-                    <AccordionItem key={j} q={item.q} a={item.a} />
+                    <AccordionItem key={j} q={item.q} a={item.a} link={(item as any).link} />
                   ))}
                 </div>
               </div>

@@ -33,10 +33,10 @@ export function Header({ userRole }: HeaderProps) {
     <header className="sticky top-0 z-50 w-full border-b border-ink/5 bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/60">
       <nav className="max-w-screen-2xl mx-auto px-6 flex h-20 items-center justify-between w-full">
 
-        {/* Logo — no fixed pixel dimensions, sized purely via CSS for sharper rendering */}
+        {/* Logo */}
         <Link href="/" className="flex items-center flex-shrink-0" aria-label="Vouchee home">
           <VoucheeLogoText
-            style={{ height: '36px', width: 'auto', display: 'block', strokeWidth: 6 }}
+            style={{ height: '36px', width: '140px', display: 'block', overflow: 'visible' }}
           />
         </Link>
 
