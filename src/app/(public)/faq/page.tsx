@@ -101,9 +101,9 @@ const faqs: { category: string; emoji: string; questions: FAQItem[] }[] = [
         q: 'How are cleaners vetted?',
         a: (
           <>
-            Every cleaner must provide a <strong>valid DBS certificate, public liability insurance</strong>, and verify their right to work in the UK.
+            Every cleaner must provide a <strong>valid DBS certificate, public liability insurance</strong>, and proof of their right to work in the UK.
             <br /><br />
-            We also interview every cleaner to ensure they meet our standards and understand how to use the platform correctly.
+            We also personally interview each cleaner to ensure they meet our standards.
           </>
         ),
       },
@@ -111,7 +111,7 @@ const faqs: { category: string; emoji: string; questions: FAQItem[] }[] = [
         q: 'When does my cleaner get my address?',
         a: (
           <>
-            <strong>Only once you've accepted them and confirmed a start date.</strong> Your address is never shown in your listing and is never shared during the application or chat stage. It's sent directly to your chosen cleaner by email once you've picked one.
+            <strong>Only once you've accepted them and confirmed a start date.</strong> Your address is never shown in your listing or shared during the application or chat stage. It's only sent to your chosen cleaner once everything is confirmed.
           </>
         ),
       },
@@ -119,11 +119,11 @@ const faqs: { category: string; emoji: string; questions: FAQItem[] }[] = [
         q: "What if I'm not happy with my cleaner?",
         a: (
           <>
-            <strong>Being a Vouchee customer means access to all cleaners</strong> — you can simply repost a request at the press of a button and have new cleaners apply.
+            <strong>If something doesn't feel right, you can repost your request in seconds</strong> and have new cleaners apply.
             <br /><br />
-            We'll even discount your first clean with the new cleaner to help with the transition.
+            We'll also discount your first clean with a new cleaner to help you get back on track.
             <br /><br />
-            Be sure to let Vouchee know alongside any feedback you'd like to share: <a href="mailto:support@vouchee.co.uk" style={{ color: '#2563eb', fontWeight: 600 }}>support@vouchee.co.uk</a>
+            You can also contact us anytime at <a href="mailto:support@vouchee.co.uk" style={{ color: '#2563eb', fontWeight: 600 }}>support@vouchee.co.uk</a>
           </>
         ),
       },
@@ -131,7 +131,7 @@ const faqs: { category: string; emoji: string; questions: FAQItem[] }[] = [
         q: 'Can my cleaner work for other people too?',
         a: (
           <>
-            Yes. <strong>Cleaners on Vouchee are self-employed</strong> and free to take on other clients. Vouchee is a marketplace, not an employer. Your cleaner works on their own terms and Vouchee doesn't take a cut of their pay, which is exactly why quality and reliability can be higher.
+            Yes — <strong>cleaners on Vouchee are self-employed</strong> and free to take on other clients. Vouchee is a marketplace, not an employer. This means cleaners set their own standards and rates, which often leads to higher quality and consistency.
           </>
         ),
       },
@@ -145,15 +145,15 @@ const faqs: { category: string; emoji: string; questions: FAQItem[] }[] = [
         q: 'Can I pause my listing?',
         a: (
           <>
-            <strong>Yes — you can pause anytime from your dashboard.</strong> For example if you're going on holiday. Your cleaner relationship stays intact and you can reactivate when you're ready.
+            <strong>Yes — you can pause anytime from your dashboard.</strong> Your cleaner relationship stays intact, and you can restart whenever you're ready. Your Direct Debits will also be put on hold until you continue.
           </>
         ),
       },
       {
-        q: 'What if I want to change my cleaner?',
+        q: 'Do I have to commit long-term?',
         a: (
           <>
-            You can <strong>remove your current listing and post a new one.</strong> We're working on a smoother process for this, but for now just let us know and we'll help you through it.
+            <strong>No — you can cancel anytime with 30 days' notice.</strong> There's no long-term contract, so you're always in control.
           </>
         ),
       },
@@ -161,7 +161,9 @@ const faqs: { category: string; emoji: string; questions: FAQItem[] }[] = [
         q: 'Can I change how often I have a clean?',
         a: (
           <>
-            <strong>Yes — just contact us at contact@vouchee.co.uk</strong> and we'll update your plan. The monthly service fee will adjust to reflect your new frequency.
+            <strong>Yes — just check with your cleaner and let us know at <a href="mailto:support@vouchee.co.uk" style={{ color: '#2563eb', fontWeight: 600 }}>support@vouchee.co.uk</a></strong>, and we'll update your plan.
+            <br /><br />
+            Your monthly service fee will adjust automatically.
           </>
         ),
       },
@@ -169,7 +171,9 @@ const faqs: { category: string; emoji: string; questions: FAQItem[] }[] = [
         q: 'What happens if my cleaner cancels?',
         a: (
           <>
-            That's <strong>between you and your cleaner to arrange directly</strong> — they're self-employed and will rebook at a time that suits you both. If there's a pattern of unreliability, let us know and we'll get involved.
+            <strong>Your cleaner will usually rearrange directly with you</strong> at a time that works.
+            <br /><br />
+            If none of their alternatives suit and you need a clean sooner, you can request a cover clean from your dashboard — local cleaners will be notified and can offer to help.
           </>
         ),
       },
