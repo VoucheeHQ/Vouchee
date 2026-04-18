@@ -101,7 +101,7 @@ const PRODUCTS: Record<string, Product[]> = {
     { name: 'Grout Brush', description: 'Narrow angled brush for getting into grout lines between tiles.', why: 'Narrow enough to fit into tight grout lines. The manual alternative to an electric scrubber.', url: 'https://amzn.to/4sKS86J', img: BASE_IMG + '61iD9mj9l7L.jpg' },
     { name: 'Pet Hair Scraper', description: 'Rubber-headed tool that lifts pet hair from carpets and upholstery.', why: 'Picks up pet hair that a hoover leaves behind. Essential for any house with animals.', tag: 'Pet hair essential', url: 'https://amzn.to/4bPXrf7', img: BASE_IMG + '71T9eWlsiaL.jpg' },
     { name: 'Glass & Razor Scraper', description: 'Stainless steel scraper for removing paint, sticker residue, and dried-on marks.', why: 'Removes things that no spray will touch. Keep one for end of tenancy jobs.', url: 'https://amzn.to/4bYT3ux', img: BASE_IMG + '7138TSQr+ML.jpg' },
-    { name: 'Extendable Duster', description: 'Long-handled microfibre duster for ceiling fans, light fittings, and high shelves.', why: "Gets into spots that are impossible to reach with a cloth.", url: 'https://amzn.to/4dnK1Ix', img: BASE_IMG + '616OoA4nOOL.jpg' },
+    { name: 'Extendable Duster', description: 'Long-handled microfibre duster for ceiling fans, light fittings, and high shelves.', why: 'Gets into spots that are impossible to reach with a cloth.', url: 'https://amzn.to/4dnK1Ix', img: BASE_IMG + '616OoA4nOOL.jpg' },
     { name: 'Cleaning Caddy Bag', description: 'Portable cleaning caddy for carrying sprays and tools room to room.', why: "Keeps everything to hand so you're not running back and forth.", url: 'https://amzn.to/4si13vt', img: BASE_IMG + '81R1FtooOxL.jpg' },
   ],
 }
@@ -119,73 +119,30 @@ const STARTER_KIT_URL =
   'ASIN.9=B0FCF12NXG&Quantity.9=1&' +
   'tag=vouchee-21'
 
-// Color palette — hue matches section icon bg
 const colorClasses: Record<string, {
-  card: string       // card border + hover border/bg
-  icon: string       // icon wrapper bg
-  badge: string      // tag pill
-  hover: string      // heading hover color
-  imgHue: string     // image area background tint (white base + very faint hue)
-  imgHover: string   // image area hover background
+  card: string
+  icon: string
+  badge: string
+  hover: string
+  imgHue: string
+  imgHover: string
 }> = {
-  blue: {
-    card:     'border-blue-100 hover:border-blue-300 hover:shadow-blue-100',
-    icon:     'bg-blue-100',
-    badge:    'bg-blue-100 text-blue-700',
-    hover:    'group-hover:text-blue-600',
-    imgHue:   'bg-blue-50/40',
-    imgHover: 'group-hover:bg-blue-50/70',
-  },
-  green: {
-    card:     'border-green-100 hover:border-green-300 hover:shadow-green-100',
-    icon:     'bg-green-100',
-    badge:    'bg-green-100 text-green-700',
-    hover:    'group-hover:text-green-600',
-    imgHue:   'bg-green-50/40',
-    imgHover: 'group-hover:bg-green-50/70',
-  },
-  purple: {
-    card:     'border-purple-100 hover:border-purple-300 hover:shadow-purple-100',
-    icon:     'bg-purple-100',
-    badge:    'bg-purple-100 text-purple-700',
-    hover:    'group-hover:text-purple-600',
-    imgHue:   'bg-purple-50/40',
-    imgHover: 'group-hover:bg-purple-50/70',
-  },
-  amber: {
-    card:     'border-amber-100 hover:border-amber-300 hover:shadow-amber-100',
-    icon:     'bg-amber-100',
-    badge:    'bg-amber-100 text-amber-700',
-    hover:    'group-hover:text-amber-600',
-    imgHue:   'bg-amber-50/40',
-    imgHover: 'group-hover:bg-amber-50/70',
-  },
-  red: {
-    card:     'border-red-100 hover:border-red-200 hover:shadow-red-50',
-    icon:     'bg-red-100',
-    badge:    'bg-red-100 text-red-700',
-    hover:    'group-hover:text-red-600',
-    imgHue:   'bg-red-50/30',
-    imgHover: 'group-hover:bg-red-50/50',
-  },
-  teal: {
-    card:     'border-teal-100 hover:border-teal-300 hover:shadow-teal-100',
-    icon:     'bg-teal-100',
-    badge:    'bg-teal-100 text-teal-700',
-    hover:    'group-hover:text-teal-600',
-    imgHue:   'bg-teal-50/40',
-    imgHover: 'group-hover:bg-teal-50/70',
-  },
+  blue:   { card: 'border-blue-100 hover:border-blue-300 hover:shadow-blue-100',     icon: 'bg-blue-100',   badge: 'bg-blue-100 text-blue-700',   hover: 'group-hover:text-blue-600',   imgHue: 'bg-blue-50/40',   imgHover: 'group-hover:bg-blue-50/70' },
+  green:  { card: 'border-green-100 hover:border-green-300 hover:shadow-green-100',   icon: 'bg-green-100',  badge: 'bg-green-100 text-green-700',  hover: 'group-hover:text-green-600',  imgHue: 'bg-green-50/40',  imgHover: 'group-hover:bg-green-50/70' },
+  purple: { card: 'border-purple-100 hover:border-purple-300 hover:shadow-purple-100', icon: 'bg-purple-100', badge: 'bg-purple-100 text-purple-700', hover: 'group-hover:text-purple-600', imgHue: 'bg-purple-50/40', imgHover: 'group-hover:bg-purple-50/70' },
+  amber:  { card: 'border-amber-100 hover:border-amber-300 hover:shadow-amber-100',   icon: 'bg-amber-100',  badge: 'bg-amber-100 text-amber-700',  hover: 'group-hover:text-amber-600',  imgHue: 'bg-amber-50/40',  imgHover: 'group-hover:bg-amber-50/70' },
+  red:    { card: 'border-red-100 hover:border-red-200 hover:shadow-red-50',           icon: 'bg-red-100',    badge: 'bg-red-100 text-red-700',      hover: 'group-hover:text-red-600',    imgHue: 'bg-red-50/30',    imgHover: 'group-hover:bg-red-50/50' },
+  teal:   { card: 'border-teal-100 hover:border-teal-300 hover:shadow-teal-100',       icon: 'bg-teal-100',   badge: 'bg-teal-100 text-teal-700',    hover: 'group-hover:text-teal-600',   imgHue: 'bg-teal-50/40',   imgHover: 'group-hover:bg-teal-50/70' },
 }
 
 export default function CleaningSuppliesPage() {
   return (
     <main className="min-h-screen bg-white">
 
-      {/* Hero — no badge, no subtitle, new title */}
+      {/* Hero */}
       <section className="bg-gradient-to-br from-blue-50 via-white to-green-50 border-b border-gray-100 py-16">
         <div className="container max-w-4xl mx-auto px-6 text-center">
-          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-3 leading-tight" style={{ fontFamily: 'Lora, serif' }}>
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-3 leading-tight">
             Cleaning products that actually work
           </h1>
           <p className="text-lg text-gray-500 mb-8">Recommended by professionals</p>
@@ -209,7 +166,7 @@ export default function CleaningSuppliesPage() {
         <div className="bg-gradient-to-r from-blue-600 to-green-500 rounded-2xl p-8 text-white flex flex-col md:flex-row items-center gap-6">
           <div className="flex-1">
             <div className="text-xs font-bold uppercase tracking-wider opacity-80 mb-2">⭐ Starter Kit Bundle</div>
-            <h2 className="text-2xl font-bold mb-2" style={{ fontFamily: 'Lora, serif' }}>
+            <h2 className="text-2xl font-bold mb-2">
               Everything you need to get started
             </h2>
             <p className="text-blue-100 text-sm leading-relaxed">
@@ -230,12 +187,10 @@ export default function CleaningSuppliesPage() {
         </div>
       </section>
 
-      {/* Category grid — no "click a category" subtitle */}
+      {/* Category grid */}
       <section className="container max-w-5xl mx-auto px-6 pb-12">
         <div className="text-center mb-10">
-          <h2 className="text-2xl font-bold text-gray-900" style={{ fontFamily: 'Lora, serif' }}>
-            Browse by category
-          </h2>
+          <h2 className="text-2xl font-bold text-gray-900">Browse by category</h2>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {CATEGORIES.map((cat) => {
@@ -246,7 +201,7 @@ export default function CleaningSuppliesPage() {
                   <span className="absolute top-4 right-4 text-xs font-semibold text-gray-400 bg-gray-100 rounded-full px-2.5 py-1">Coming soon</span>
                 )}
                 <div className={`w-12 h-12 ${c.icon} rounded-xl flex items-center justify-center text-2xl mb-4`}>{cat.emoji}</div>
-                <h3 className={`font-bold text-gray-900 text-lg mb-2 transition-colors font-sans ${!cat.comingSoon ? c.hover : ''}`}>{cat.name}</h3>
+                <h3 className={`font-bold text-gray-900 text-lg mb-2 transition-colors ${!cat.comingSoon ? c.hover : ''}`}>{cat.name}</h3>
                 <p className="text-sm text-gray-500 leading-relaxed mb-4">{cat.description}</p>
                 {!cat.comingSoon && (
                   <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${c.badge}`}>{cat.count} products →</span>
@@ -269,11 +224,10 @@ export default function CleaningSuppliesPage() {
         return (
           <section key={cat.id} id={cat.id} className="border-t border-gray-100 scroll-mt-20">
             <div className="container max-w-5xl mx-auto px-6 py-14">
-              {/* Section header — uses category description */}
               <div className="flex items-center gap-4 mb-10">
                 <div className={`w-12 h-12 ${c.icon} rounded-xl flex items-center justify-center text-2xl flex-shrink-0`}>{cat.emoji}</div>
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900" style={{ fontFamily: 'Lora, serif' }}>{cat.name}</h2>
+                  <h2 className="text-2xl font-bold text-gray-900">{cat.name}</h2>
                   <p className="text-sm text-gray-500 mt-0.5">{cat.description}</p>
                 </div>
               </div>
@@ -284,7 +238,6 @@ export default function CleaningSuppliesPage() {
                     key={i}
                     className={`group rounded-xl border-2 bg-white overflow-hidden hover:shadow-lg transition-all duration-200 flex flex-col ${c.card}`}
                   >
-                    {/* Product image — white bg with faint hue, deepens on hover */}
                     <a
                       href={product.url}
                       target="_blank"
@@ -301,7 +254,7 @@ export default function CleaningSuppliesPage() {
 
                     <div className="p-5 flex flex-col flex-1">
                       <div className="flex items-start justify-between gap-3 mb-2">
-                        <h3 className={`font-bold text-gray-900 text-sm leading-tight font-sans transition-colors ${c.hover}`}>{product.name}</h3>
+                        <h3 className={`font-bold text-gray-900 text-sm leading-tight transition-colors ${c.hover}`}>{product.name}</h3>
                         {product.tag && (
                           <span className={`text-xs font-semibold px-2 py-0.5 rounded-full whitespace-nowrap flex-shrink-0 ${c.badge}`}>{product.tag}</span>
                         )}
@@ -333,7 +286,7 @@ export default function CleaningSuppliesPage() {
       {/* Coming soon */}
       <section className="border-t border-gray-100 bg-gray-50 py-16">
         <div className="container max-w-5xl mx-auto px-6 text-center">
-          <h2 className="text-xl font-bold text-gray-700 mb-3" style={{ fontFamily: 'Lora, serif' }}>Specialist & Eco picks coming soon</h2>
+          <h2 className="text-xl font-bold text-gray-700 mb-3">Specialist & Eco picks coming soon</h2>
           <p className="text-sm text-gray-500 max-w-md mx-auto">We're currently testing and reviewing products for our Specialist and Eco & Sensitive categories. Check back soon.</p>
         </div>
       </section>
