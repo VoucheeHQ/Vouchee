@@ -19,17 +19,9 @@ const CATEGORIES = [
   {
     id: 'floors',
     emoji: '🧹',
-    name: 'Floors',
+    name: 'Floors & Equipment',
     description: 'From hardwood to tile, these keep every floor looking their best.',
     color: 'green',
-    count: 1,
-  },
-  {
-    id: 'large-items',
-    emoji: '🧳',
-    name: 'Large Items & Equipment',
-    description: 'Hoovers, steam mops, carpet cleaners — all the big tools for big jobs.',
-    color: 'purple',
     count: 7,
   },
   {
@@ -39,24 +31,6 @@ const CATEGORIES = [
     description: 'The small things that make a huge difference. Scrubbers, cloths, gloves.',
     color: 'amber',
     count: 9,
-  },
-  {
-    id: 'specialist',
-    emoji: '⚗️',
-    name: 'Specialist',
-    description: 'For the tough jobs. Targeted products for specific problem areas.',
-    color: 'red',
-    count: 0,
-    comingSoon: true,
-  },
-  {
-    id: 'eco',
-    emoji: '🌿',
-    name: 'Eco & Sensitive',
-    description: 'Effective cleaning without harsh chemicals. Kind to skin, home, and planet.',
-    color: 'teal',
-    count: 0,
-    comingSoon: true,
   },
 ]
 
@@ -71,38 +45,200 @@ interface Product {
 
 const PRODUCTS: Record<string, Product[]> = {
   'kitchen-bathroom': [
-    { name: 'Bar Keepers Friend', description: 'Powder cleanser that works on sinks, taps, ceramic hobs, and stubborn stains.', why: 'Our most-recommended product. Removes limescale and rust without scratching.', tag: 'Cleaner favourite', url: 'https://amzn.to/4e0ttq8', img: BASE_IMG + '71AHharn3CL.jpg' },
-    { name: 'The Pink Stuff', description: 'All-purpose miracle paste for ovens, grout, pots, and almost everything else.', why: 'Incredible at cutting through baked-on grease with minimal effort.', tag: 'Viral for a reason', url: 'https://amzn.to/4sS1OfP', img: BASE_IMG + '71JVOV7dQvL.jpg' },
-    { name: 'The Pink Stuff — Triple Pack', description: 'Three-pack of the miracle paste. Best value if you use it regularly.', why: 'Buying in bulk makes sense — this is one you will always reach for.', url: 'https://amzn.to/4bPdxWr', img: BASE_IMG + '619cOCMe5mL.jpg' },
-    { name: 'HG Mould Spray', description: 'Professional-strength mould remover for bathrooms, grouting, and silicone.', why: 'Works where other sprays give up. Leave it on, rinse off — done.', tag: 'Professional grade', url: 'https://amzn.to/4m5Zz5U', img: BASE_IMG + '61Q+Wc6BJBL.jpg' },
-    { name: 'Viakal Limescale Remover', description: 'The go-to for shower screens, taps, and showerheads.', why: "Nothing cuts through limescale faster. Essential in Horsham's hard water area.", tag: 'Hard water essential', url: 'https://amzn.to/3PPxeor', img: BASE_IMG + '71JScZyEm0L.jpg' },
-    { name: 'Harpic Power Plus', description: 'Thick bleach formula that clings under the toilet rim.', why: "The shape of the bottle gets right under the rim where other products can't reach.", url: 'https://amzn.to/4c5oMJ0', img: BASE_IMG + '71dBu93xcaL.jpg' },
-    { name: 'Flash Multi-Surface Spray', description: 'Everyday all-purpose cleaner for worktops, tiles, and kitchen surfaces.', why: 'Fast, effective, and the scent is clean without being overpowering.', url: 'https://amzn.to/3PPxxj5', img: BASE_IMG + '61cpzPfXQ6L.jpg' },
-    { name: 'Elbow Grease Degreaser', description: 'Heavy-duty degreaser for kitchen cookers, extractor fans, and surfaces.', why: 'Cuts through cooking grease that washing-up liquid just smears around.', tag: 'Kitchen must-have', url: 'https://amzn.to/4dqQAtV', img: BASE_IMG + '61t0TIrCkzL.jpg' },
-    { name: 'Cillit Bang Limescale Remover', description: 'Fast-acting spray for bathroom fixtures, taps, and shower trays.', why: 'Good for everyday maintenance when Viakal is overkill.', url: 'https://amzn.to/41GXZxY', img: BASE_IMG + '71lnEkoRyxL.jpg' },
+    {
+      name: 'Bar Keepers Friend',
+      description: 'Powder cleanser that works on sinks, taps, ceramic hobs, and stubborn stains.',
+      why: 'Our most-recommended product. Removes limescale and rust without scratching.',
+      tag: 'Cleaner favourite',
+      url: 'https://amzn.to/4e0ttq8',
+      img: BASE_IMG + '71AHharn3CL.jpg',
+    },
+    {
+      name: 'Bar Keepers Friend — Bundle Pack',
+      description: 'Power Spray, Power Cream, and Multi-Surface Cleaner in one bundle.',
+      why: 'Three formats in one order — spray for surfaces, cream for sinks, multi-surface for everything else.',
+      tag: 'Best value',
+      url: 'https://amzn.to/4csiAes',
+      img: BASE_IMG + '81QNrYYAgQL.jpg',
+    },
+    {
+      name: 'The Pink Stuff — Triple Pack',
+      description: 'Three-pack of the miracle paste. Best value if you use it regularly.',
+      why: 'Buying in bulk makes sense — this is one you will always reach for.',
+      url: 'https://amzn.to/4bPdxWr',
+      img: BASE_IMG + '619cOCMe5mL.jpg',
+    },
+    {
+      name: 'Fairy Original Washing Up Liquid',
+      description: 'The classic washing up liquid — but with a professional cleaning use most people miss.',
+      why: 'Using a small dot for windows and glass shower curtains makes a huge difference.',
+      tag: 'Pro tip',
+      url: 'https://amzn.to/42eC813',
+      img: BASE_IMG + '71gGV7n4CZL.jpg',
+    },
+    {
+      name: 'HG Mould Spray',
+      description: 'Professional-strength mould remover for bathrooms, grouting, and silicone.',
+      why: 'Works where other sprays give up. Leave it on, rinse off — done.',
+      tag: 'Professional grade',
+      url: 'https://amzn.to/4m5Zz5U',
+      img: BASE_IMG + '61Q+Wc6BJBL.jpg',
+    },
+    {
+      name: 'Viakal Limescale Remover',
+      description: 'The go-to for shower screens, taps, and showerheads.',
+      why: "Nothing cuts through limescale faster. Essential in Horsham's hard water area.",
+      tag: 'Hard water essential',
+      url: 'https://amzn.to/3PPxeor',
+      img: BASE_IMG + '71JScZyEm0L.jpg',
+    },
+    {
+      name: 'Harpic Power Plus',
+      description: 'Thick bleach formula that clings under the toilet rim.',
+      why: "The shape of the bottle gets right under the rim where other products can't reach.",
+      url: 'https://amzn.to/4c5oMJ0',
+      img: BASE_IMG + '71dBu93xcaL.jpg',
+    },
+    {
+      name: 'Flash Multi-Surface Spray',
+      description: 'Everyday all-purpose cleaner for worktops, tiles, and kitchen surfaces.',
+      why: 'Fast, effective, and the scent is clean without being overpowering.',
+      url: 'https://amzn.to/3PPxxj5',
+      img: BASE_IMG + '61cpzPfXQ6L.jpg',
+    },
+    {
+      name: 'Elbow Grease Degreaser',
+      description: 'Heavy-duty degreaser for kitchen cookers, extractor fans, and surfaces.',
+      why: 'Cuts through cooking grease that washing-up liquid just smears around.',
+      tag: 'Kitchen must-have',
+      url: 'https://amzn.to/4dqQAtV',
+      img: BASE_IMG + '61t0TIrCkzL.jpg',
+    },
   ],
   'floors': [
-    { name: 'Flash Floor Cleaner', description: 'Multi-surface floor cleaner for tiles, laminate, vinyl, and hardwood.', why: 'Works across all floor types without leaving a streaky residue.', tag: 'All floor types', url: 'https://amzn.to/418zoSz', img: BASE_IMG + '810EtK37AFL.jpg' },
-  ],
-  'large-items': [
-    { name: 'Henry Hoover', description: 'The iconic red cylinder hoover. Used by professional cleaners everywhere.', why: 'Robust, powerful, and reliable. The industry standard for a reason.', tag: 'Industry standard', url: 'https://amzn.to/4v8opX1', img: BASE_IMG + '51JoiICAzXL.jpg' },
-    { name: 'Dyson V11 Cordless', description: 'Lightweight cordless hoover for stairs, upholstery, and quick cleans.', why: 'Powerful suction without the cable. Perfect for between sessions.', tag: 'Cordless freedom', url: 'https://amzn.to/4m8c7d9', img: BASE_IMG + '518ee1h7cfL.jpg' },
-    { name: 'Shark Steam Mop', description: 'Chemical-free floor cleaning using high-temperature steam.', why: 'Sanitises hard floors without any product — great for allergy households.', url: 'https://amzn.to/3Oj9Pv6', img: BASE_IMG + '61VpOt4X1UL.jpg' },
-    { name: 'Flat Mop and Bucket', description: "Flat mop with wringer bucket — the professional's choice for hard floors.", why: 'Microfibre flat mops cover more ground and pick up more dirt than string mops.', url: 'https://amzn.to/4m9sGp3', img: BASE_IMG + '81pyye40tnL.jpg' },
-    { name: 'Vax Platinum Carpet Cleaner', description: 'Upright carpet washer for deep cleaning carpets and rugs.', why: 'Transforms tired-looking carpets. Ideal for end of tenancy cleans.', tag: 'End of tenancy', url: 'https://amzn.to/3Okz00i', img: BASE_IMG + '71IsZdvhKPL.jpg' },
-    { name: 'Cleaner Travel Bag', description: 'Multi-compartment tote bag for carrying cleaning supplies between jobs.', why: 'Keeps products organised and prevents leaks in transit.', url: 'https://amzn.to/4si13vt', img: BASE_IMG + '81R1FtooOxL.jpg' },
-    { name: 'Microfibre Flat Mop', description: 'Professional-grade flat mop with washable microfibre pads.', why: 'Reusable pads save money long-term and are more hygienic than disposable alternatives.', url: 'https://amzn.to/418zoSz', img: BASE_IMG + '810EtK37AFL.jpg' },
+    {
+      name: 'MEXERRIS Spray Mop',
+      description: 'Spray mop with 5 reusable microfibre pads and 2 refillable bottles. Works on all hard floors.',
+      why: 'Covers all floor types without any product waste. The refillable bottles mean you choose your own cleaner.',
+      tag: 'Staff pick',
+      url: 'https://amzn.to/4csiYcU',
+      img: BASE_IMG + '71sXvHk9b8L.jpg',
+    },
+    {
+      name: 'Vileda Turbo Spin Mop & Bucket',
+      description: '2-in-1 spin mop with foot pedal, telescopic handle, and microfibre head. Deep-cleans all hard floors.',
+      why: 'The foot pedal spin means no wringing with your hands. Fast, hygienic, and leaves floors streak-free.',
+      tag: 'Best mop & bucket',
+      url: 'https://amzn.to/4vUIctx',
+      img: BASE_IMG + '81WVXcAhliL.jpg',
+    },
+    {
+      name: 'Henry Hoover',
+      description: 'The iconic red cylinder hoover. Used by professional cleaners everywhere.',
+      why: 'Robust, powerful, and reliable. The industry standard for a reason.',
+      tag: 'Industry standard',
+      url: 'https://amzn.to/4v8opX1',
+      img: BASE_IMG + '51JoiICAzXL.jpg',
+    },
+    {
+      name: 'Dyson V11 Cordless',
+      description: 'Lightweight cordless hoover for stairs, upholstery, and quick cleans.',
+      why: 'Powerful suction without the cable. Perfect for between sessions.',
+      tag: 'Cordless freedom',
+      url: 'https://amzn.to/4m8c7d9',
+      img: BASE_IMG + '518ee1h7cfL.jpg',
+    },
+    {
+      name: 'Shark Steam Mop',
+      description: 'Chemical-free floor cleaning using high-temperature steam.',
+      why: 'Sanitises hard floors without any product — great for allergy households.',
+      url: 'https://amzn.to/3Oj9Pv6',
+      img: BASE_IMG + '61VpOt4X1UL.jpg',
+    },
+    {
+      name: 'Vax Platinum Carpet Cleaner',
+      description: 'Upright carpet washer for deep cleaning carpets and rugs.',
+      why: 'Transforms tired-looking carpets. Ideal for end of tenancy cleans.',
+      tag: 'End of tenancy',
+      url: 'https://amzn.to/3Okz00i',
+      img: BASE_IMG + '71IsZdvhKPL.jpg',
+    },
+    {
+      name: 'Microfibre Flat Mop',
+      description: 'Professional-grade flat mop with washable microfibre pads.',
+      why: 'Reusable pads save money long-term and are more hygienic than disposable alternatives.',
+      url: 'https://amzn.to/418zoSz',
+      img: BASE_IMG + '810EtK37AFL.jpg',
+    },
   ],
   'tools': [
-    { name: 'Scrub Daddy Sponge — 3 Pack', description: 'Scratch-free sponge that changes texture with water temperature.', why: 'Firm in cold water for scrubbing, soft in warm for wiping. Genuinely clever.', tag: 'Worth the hype', url: 'https://amzn.to/4mewkOy', img: BASE_IMG + '71AgZsmCo0L.jpg' },
-    { name: 'Microfibre Cloths — 24 Pack', description: 'The everyday workhorse of professional cleaning.', why: "Lint-free, streak-free, reusable. Buy in bulk — you'll always need more.", tag: 'Stock up', url: 'https://amzn.to/4mbf2Sg', img: BASE_IMG + '81yNkLEBVsL.jpg' },
-    { name: 'Elbow Grease Rubber Gloves', description: 'Thick, durable gloves that protect hands during heavy cleaning sessions.', why: 'Standard kitchen gloves tear too easily. These last far longer.', url: 'https://amzn.to/4m9qNIL', img: BASE_IMG + '81TWpbEP1zL.jpg' },
-    { name: 'Electric Spin Scrubber', description: 'Cordless electric scrubber with interchangeable heads for grout, tiles, and baths.', why: 'Saves serious elbow grease on grout lines and around taps.', tag: 'Game changer', url: 'https://amzn.to/41exhwx', img: BASE_IMG + '81p5vCyFJvL.jpg' },
-    { name: 'Grout Brush', description: 'Narrow angled brush for getting into grout lines between tiles.', why: 'Narrow enough to fit into tight grout lines. The manual alternative to an electric scrubber.', url: 'https://amzn.to/4sKS86J', img: BASE_IMG + '61iD9mj9l7L.jpg' },
-    { name: 'Pet Hair Scraper', description: 'Rubber-headed tool that lifts pet hair from carpets and upholstery.', why: 'Picks up pet hair that a hoover leaves behind. Essential for any house with animals.', tag: 'Pet hair essential', url: 'https://amzn.to/4bPXrf7', img: BASE_IMG + '71T9eWlsiaL.jpg' },
-    { name: 'Glass & Razor Scraper', description: 'Stainless steel scraper for removing paint, sticker residue, and dried-on marks.', why: 'Removes things that no spray will touch. Keep one for end of tenancy jobs.', url: 'https://amzn.to/4bYT3ux', img: BASE_IMG + '7138TSQr+ML.jpg' },
-    { name: 'Extendable Duster', description: 'Long-handled microfibre duster for ceiling fans, light fittings, and high shelves.', why: 'Gets into spots that are impossible to reach with a cloth.', url: 'https://amzn.to/4dnK1Ix', img: BASE_IMG + '616OoA4nOOL.jpg' },
-    { name: 'Cleaning Caddy Bag', description: 'Portable cleaning caddy for carrying sprays and tools room to room.', why: "Keeps everything to hand so you're not running back and forth.", url: 'https://amzn.to/4si13vt', img: BASE_IMG + '81R1FtooOxL.jpg' },
+    {
+      name: 'Scrub Daddy Sponge — 3 Pack',
+      description: 'Scratch-free sponge that changes texture with water temperature.',
+      why: 'Firm in cold water for scrubbing, soft in warm for wiping. Genuinely clever.',
+      tag: 'Worth the hype',
+      url: 'https://amzn.to/4mewkOy',
+      img: BASE_IMG + '71AgZsmCo0L.jpg',
+    },
+    {
+      name: 'Microfibre Cloths — 24 Pack',
+      description: 'The everyday workhorse of professional cleaning.',
+      why: "Lint-free, streak-free, reusable. Buy in bulk — you'll always need more.",
+      tag: 'Stock up',
+      url: 'https://amzn.to/4mbf2Sg',
+      img: BASE_IMG + '81yNkLEBVsL.jpg',
+    },
+    {
+      name: 'Elbow Grease Rubber Gloves',
+      description: 'Thick, durable gloves that protect hands during heavy cleaning sessions.',
+      why: 'Standard kitchen gloves tear too easily. These last far longer.',
+      url: 'https://amzn.to/4m9qNIL',
+      img: BASE_IMG + '81TWpbEP1zL.jpg',
+    },
+    {
+      name: 'Electric Spin Scrubber',
+      description: 'Cordless electric scrubber with interchangeable heads for grout, tiles, and baths.',
+      why: 'Saves serious elbow grease on grout lines and around taps.',
+      tag: 'Game changer',
+      url: 'https://amzn.to/41exhwx',
+      img: BASE_IMG + '81p5vCyFJvL.jpg',
+    },
+    {
+      name: 'Grout Brush',
+      description: 'Narrow angled brush for getting into grout lines between tiles.',
+      why: 'Narrow enough to fit into tight grout lines. The manual alternative to an electric scrubber.',
+      url: 'https://amzn.to/4sKS86J',
+      img: BASE_IMG + '61iD9mj9l7L.jpg',
+    },
+    {
+      name: 'Pet Hair Scraper',
+      description: 'Rubber-headed tool that lifts pet hair from carpets and upholstery.',
+      why: 'Picks up pet hair that a hoover leaves behind. Essential for any house with animals.',
+      tag: 'Pet hair essential',
+      url: 'https://amzn.to/4bPXrf7',
+      img: BASE_IMG + '71T9eWlsiaL.jpg',
+    },
+    {
+      name: 'Glass & Razor Scraper',
+      description: 'Stainless steel scraper for removing paint, sticker residue, and dried-on marks.',
+      why: 'Removes things that no spray will touch. Keep one for end of tenancy jobs.',
+      url: 'https://amzn.to/4bYT3ux',
+      img: BASE_IMG + '7138TSQr+ML.jpg',
+    },
+    {
+      name: 'Overcomo Extendable Duster',
+      description: 'Telescopic 2-in-1 duster with microfibre and cobweb brush heads. Extends to 84".',
+      why: 'Gets into spots that are impossible to reach with a cloth. Washable and reusable heads.',
+      url: 'https://amzn.to/4ufCAbF',
+      img: BASE_IMG + '81ZwbjpL2LL.jpg',
+    },
+    {
+      name: 'Cleaning Caddy Bag',
+      description: 'Portable cleaning caddy for carrying sprays and tools room to room.',
+      why: "Keeps everything to hand so you're not running back and forth.",
+      url: 'https://amzn.to/4si13vt',
+      img: BASE_IMG + '81R1FtooOxL.jpg',
+    },
   ],
 }
 
@@ -129,10 +265,7 @@ const colorClasses: Record<string, {
 }> = {
   blue:   { card: 'border-blue-100 hover:border-blue-300 hover:shadow-blue-100',     icon: 'bg-blue-100',   badge: 'bg-blue-100 text-blue-700',   hover: 'group-hover:text-blue-600',   imgHue: 'bg-blue-50/40',   imgHover: 'group-hover:bg-blue-50/70' },
   green:  { card: 'border-green-100 hover:border-green-300 hover:shadow-green-100',   icon: 'bg-green-100',  badge: 'bg-green-100 text-green-700',  hover: 'group-hover:text-green-600',  imgHue: 'bg-green-50/40',  imgHover: 'group-hover:bg-green-50/70' },
-  purple: { card: 'border-purple-100 hover:border-purple-300 hover:shadow-purple-100', icon: 'bg-purple-100', badge: 'bg-purple-100 text-purple-700', hover: 'group-hover:text-purple-600', imgHue: 'bg-purple-50/40', imgHover: 'group-hover:bg-purple-50/70' },
   amber:  { card: 'border-amber-100 hover:border-amber-300 hover:shadow-amber-100',   icon: 'bg-amber-100',  badge: 'bg-amber-100 text-amber-700',  hover: 'group-hover:text-amber-600',  imgHue: 'bg-amber-50/40',  imgHover: 'group-hover:bg-amber-50/70' },
-  red:    { card: 'border-red-100 hover:border-red-200 hover:shadow-red-50',           icon: 'bg-red-100',    badge: 'bg-red-100 text-red-700',      hover: 'group-hover:text-red-600',    imgHue: 'bg-red-50/30',    imgHover: 'group-hover:bg-red-50/50' },
-  teal:   { card: 'border-teal-100 hover:border-teal-300 hover:shadow-teal-100',       icon: 'bg-teal-100',   badge: 'bg-teal-100 text-teal-700',    hover: 'group-hover:text-teal-600',   imgHue: 'bg-teal-50/40',   imgHover: 'group-hover:bg-teal-50/70' },
 }
 
 export default function CleaningSuppliesPage() {
@@ -192,33 +325,25 @@ export default function CleaningSuppliesPage() {
         <div className="text-center mb-10">
           <h2 className="text-2xl font-bold text-gray-900">Browse by category</h2>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
           {CATEGORIES.map((cat) => {
             const c = colorClasses[cat.color]
-            const content = (
-              <div className={`group relative rounded-2xl border-2 bg-white p-6 transition-all duration-200 ${c.card} ${cat.comingSoon ? 'opacity-60 cursor-default' : 'hover:shadow-md hover:-translate-y-0.5 cursor-pointer'}`}>
-                {cat.comingSoon && (
-                  <span className="absolute top-4 right-4 text-xs font-semibold text-gray-400 bg-gray-100 rounded-full px-2.5 py-1">Coming soon</span>
-                )}
-                <div className={`w-12 h-12 ${c.icon} rounded-xl flex items-center justify-center text-2xl mb-4`}>{cat.emoji}</div>
-                <h3 className={`font-bold text-gray-900 text-lg mb-2 transition-colors ${!cat.comingSoon ? c.hover : ''}`}>{cat.name}</h3>
-                <p className="text-sm text-gray-500 leading-relaxed mb-4">{cat.description}</p>
-                {!cat.comingSoon && (
+            return (
+              <a key={cat.id} href={`#${cat.id}`} className="no-underline">
+                <div className={`group relative rounded-2xl border-2 bg-white p-6 transition-all duration-200 ${c.card} hover:shadow-md hover:-translate-y-0.5 cursor-pointer`}>
+                  <div className={`w-12 h-12 ${c.icon} rounded-xl flex items-center justify-center text-2xl mb-4`}>{cat.emoji}</div>
+                  <h3 className={`font-bold text-gray-900 text-lg mb-2 transition-colors ${c.hover}`}>{cat.name}</h3>
+                  <p className="text-sm text-gray-500 leading-relaxed mb-4">{cat.description}</p>
                   <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${c.badge}`}>{cat.count} products →</span>
-                )}
-              </div>
-            )
-            return cat.comingSoon ? (
-              <div key={cat.id}>{content}</div>
-            ) : (
-              <a key={cat.id} href={`#${cat.id}`} className="no-underline">{content}</a>
+                </div>
+              </a>
             )
           })}
         </div>
       </section>
 
       {/* Product sections */}
-      {CATEGORIES.filter(c => !c.comingSoon).map((cat) => {
+      {CATEGORIES.map((cat) => {
         const products = PRODUCTS[cat.id] ?? []
         const c = colorClasses[cat.color]
         return (
@@ -283,11 +408,16 @@ export default function CleaningSuppliesPage() {
         )
       })}
 
-      {/* Coming soon */}
+      {/* Something missing — replaces specialist/eco coming soon */}
       <section className="border-t border-gray-100 bg-gray-50 py-16">
         <div className="container max-w-5xl mx-auto px-6 text-center">
-          <h2 className="text-xl font-bold text-gray-700 mb-3">Specialist & Eco picks coming soon</h2>
-          <p className="text-sm text-gray-500 max-w-md mx-auto">We're currently testing and reviewing products for our Specialist and Eco & Sensitive categories. Check back soon.</p>
+          <p className="text-base text-gray-600">
+            Something missing? Email{' '}
+            <a href="mailto:contact@vouchee.co.uk" className="text-blue-600 font-semibold hover:underline">
+              contact@vouchee.co.uk
+            </a>{' '}
+            with your question and we'll get back to you as soon as we know best.
+          </p>
         </div>
       </section>
 
