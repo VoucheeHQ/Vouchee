@@ -7,7 +7,7 @@ export function Footer() {
   const footerLinks = {
     Product: [
       { name: 'How it works', href: '/how-it-works' },
-      { name: 'Pricing', href: '/pricing' },
+      { name: 'Pricing', href: '/faq#pricing' },
       { name: 'For cleaners', href: '/cleaner' },
       { name: 'FAQ', href: '/faq' },
     ],
