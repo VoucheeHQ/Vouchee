@@ -25,6 +25,9 @@ interface CleanerData {
   marketing_opt_in: boolean
   own_supplies: boolean
   created_at: string
+  dbs_expiry: string | null
+  insurance_expiry: string | null
+  cleans_completed?: number
 }
 
 const ZONE_LABELS: Record<string, string> = {
@@ -41,15 +44,31 @@ const ZONE_LABELS: Record<string, string> = {
 }
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+  return new Date(iso).toLocaleDateString('en-GB', {
+    day: 'numeric', month: 'long', year: 'numeric',
+  })
+}
+
+function formatMonthYear(iso: string) {
+  return new Date(iso).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
+}
+
+function formatExpiry(iso: string | null) {
+  if (!iso) return null
+  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+function isExpired(iso: string | null): boolean {
+  if (!iso) return false
+  return new Date(iso) < new Date()
 }
 
 function getInitial(name: string) {
   return name.trim().charAt(0).toUpperCase()
 }
 
-function formatFirstLastInitial(name: string) {
-  const parts = name.trim().split(' ')
+function formatShortName(fullName: string) {
+  const parts = fullName.trim().split(' ')
   if (parts.length === 1) return parts[0]
   return `${parts[0]} ${parts[parts.length - 1].charAt(0)}.`
 }
@@ -97,82 +116,84 @@ function SummaryRow({ label, value }: { label: string; value: React.ReactNode })
   )
 }
 
-// Live card preview — exactly how customers see it
-function CleanerCardPreview({ profile, cleaner }: { profile: CleanerProfile; cleaner: CleanerData }) {
-  const displayName = formatFirstLastInitial(profile.full_name)
-  const zones = (cleaner.zones ?? []).map(z => ZONE_LABELS[z] ?? z)
-  const joinYear = new Date(cleaner.created_at).getFullYear()
+// Credential row with optional expiry
+function CredRow({ active, label, expiry }: { active: boolean; label: string; expiry?: string | null }) {
+  const expired = isExpired(expiry ?? null)
+  const effectivelyActive = active && !expired
 
   return (
-    <div style={{ background: 'white', borderRadius: '16px', border: '1.5px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 16px rgba(0,0,0,0.06)' }}>
-
-      {/* Approved ribbon */}
-      <div style={{ background: 'linear-gradient(90deg, #16a34a 0%, #22c55e 100%)', padding: '8px 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-        <span style={{ fontSize: '13px' }}>✅</span>
-        <span style={{ fontSize: '12px', fontWeight: 700, color: 'white', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Approved Vouchee Cleaner</span>
-        <span style={{ fontSize: '13px' }}>✅</span>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 16px', background: effectivelyActive ? '#f8fffe' : active && expired ? '#fff8f8' : '#f9fafb', borderRadius: '12px', border: `1px solid ${effectivelyActive ? '#d1fae5' : active && expired ? '#fecaca' : '#e2e8f0'}` }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <span style={{ fontSize: '15px', fontWeight: 700, color: effectivelyActive ? '#16a34a' : '#dc2626', lineHeight: 1 }}>
+          {effectivelyActive ? '✓' : '✗'}
+        </span>
+        <span style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a' }}>{label}</span>
       </div>
-
-      <div style={{ padding: '20px' }}>
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', marginBottom: '14px' }}>
-          <div style={{ width: '52px', height: '52px', borderRadius: '50%', background: 'linear-gradient(135deg, #3b82f6, #6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', fontWeight: 800, color: 'white', flexShrink: 0 }}>
-            {getInitial(profile.full_name)}
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: '17px', fontWeight: 800, color: '#0f172a', marginBottom: '2px' }}>{displayName}</div>
-            <div style={{ fontSize: '12px', color: '#64748b' }}>Member since {joinYear}</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
-              {[1,2,3,4,5].map(i => <span key={i} style={{ color: '#f59e0b', fontSize: '13px' }}>★</span>)}
-              <span style={{ fontSize: '12px', color: '#64748b', marginLeft: '4px' }}>New cleaner</span>
-            </div>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end' }}>
-            {cleaner.dbs_checked && (
-              <span style={{ background: '#dcfce7', color: '#15803d', fontSize: '11px', fontWeight: 700, padding: '3px 8px', borderRadius: '100px' }}>✓ DBS</span>
-            )}
-            {cleaner.has_insurance && (
-              <span style={{ background: '#dbeafe', color: '#1d4ed8', fontSize: '11px', fontWeight: 700, padding: '3px 8px', borderRadius: '100px' }}>✓ Insured</span>
-            )}
-          </div>
-        </div>
-
-        {/* Areas */}
-        {zones.length > 0 && (
-          <div style={{ marginBottom: '14px' }}>
-            <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px' }}>Areas covered</div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
-              {zones.map(z => (
-                <span key={z} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', color: '#475569', fontSize: '11px', fontWeight: 600, padding: '3px 8px', borderRadius: '6px' }}>{z}</span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Supplies */}
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
-          <span style={{ background: cleaner.own_supplies ? '#f0fdf4' : '#f8fafc', border: `1px solid ${cleaner.own_supplies ? '#86efac' : '#e2e8f0'}`, color: cleaner.own_supplies ? '#15803d' : '#64748b', fontSize: '11px', fontWeight: 600, padding: '4px 10px', borderRadius: '8px' }}>
-            {cleaner.own_supplies ? '🧴 Brings own supplies' : '🧴 No supplies'}
+      <div>
+        {expiry && active && (
+          <span style={{ fontSize: '12px', fontWeight: 600, color: expired ? '#dc2626' : '#64748b', background: expired ? '#fee2e2' : '#f1f5f9', border: `1px solid ${expired ? '#fecaca' : '#e2e8f0'}`, borderRadius: '6px', padding: '3px 8px' }}>
+            {expired ? `⚠ Expired ${formatExpiry(expiry)}` : `Exp. ${formatExpiry(expiry)}`}
           </span>
+        )}
+        {!active && (
+          <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 500 }}>Not verified</span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// Profile card — as customers see it
+function ProfileCardPreview({ profile, cleaner }: { profile: CleanerProfile; cleaner: CleanerData }) {
+  const shortName = formatShortName(profile.full_name)
+  const memberSince = formatMonthYear(cleaner.created_at)
+  const cleans = cleaner.cleans_completed ?? 0
+
+  return (
+    <div style={{ background: 'white', borderRadius: '20px', border: '1.5px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 4px 24px rgba(0,0,0,0.07)', marginBottom: '20px' }}>
+      <div style={{ padding: '28px 28px 24px' }}>
+
+        {/* Top row: avatar + name + cleans stat */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '18px', marginBottom: '24px' }}>
+          <div style={{ position: 'relative', flexShrink: 0 }}>
+            <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'linear-gradient(135deg, #3b82f6, #6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', fontWeight: 800, color: 'white' }}>
+              {getInitial(profile.full_name)}
+            </div>
+            <div style={{ position: 'absolute', bottom: 0, right: 0, width: '20px', height: '20px', borderRadius: '50%', background: '#16a34a', border: '2px solid white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', color: 'white', fontWeight: 800 }}>✓</div>
+          </div>
+
+          <div style={{ flex: 1 }}>
+            <h3 style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a', margin: '0 0 3px', letterSpacing: '-0.2px' }}>{shortName}</h3>
+            <p style={{ fontSize: '13px', color: '#94a3b8', margin: '0 0 10px', fontWeight: 500 }}>Member since {memberSince}</p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              {[1,2,3,4,5].map(s => (
+                <span key={s} style={{ fontSize: '15px', color: '#e2e8f0' }}>★</span>
+              ))}
+              <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 600, marginLeft: '4px' }}>New cleaner</span>
+            </div>
+          </div>
+
+          <div style={{ textAlign: 'center', background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '14px', padding: '12px 18px', flexShrink: 0 }}>
+            <div style={{ fontSize: '24px', fontWeight: 800, color: '#0f172a', lineHeight: 1 }}>{cleans}</div>
+            <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 600, marginTop: '3px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Cleans</div>
+          </div>
         </div>
 
-        {/* Blurred reviews */}
-        <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '14px' }}>
-          <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>Reviews</div>
-          <div style={{ filter: 'blur(4px)', pointerEvents: 'none', userSelect: 'none' }}>
-            <div style={{ background: '#f8fafc', borderRadius: '8px', padding: '10px 12px', marginBottom: '6px' }}>
-              <div style={{ fontSize: '12px', color: '#0f172a', fontWeight: 600, marginBottom: '4px' }}>Customer review</div>
-              <div style={{ fontSize: '12px', color: '#475569', lineHeight: 1.5 }}>Absolutely brilliant cleaner, very thorough and friendly. Would highly recommend.</div>
-            </div>
-            <div style={{ background: '#f8fafc', borderRadius: '8px', padding: '10px 12px' }}>
-              <div style={{ fontSize: '12px', color: '#0f172a', fontWeight: 600, marginBottom: '4px' }}>Customer review</div>
-              <div style={{ fontSize: '12px', color: '#475569', lineHeight: 1.5 }}>Always on time and does an incredible job every single week.</div>
-            </div>
-          </div>
-          <div style={{ textAlign: 'center', marginTop: '8px' }}>
-            <span style={{ fontSize: '11px', color: '#94a3b8' }}>Reviews visible to customers after your first clean</span>
-          </div>
+        {/* Credential rows */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
+          <CredRow active={cleaner.dbs_checked} label="DBS Certificate" expiry={cleaner.dbs_expiry} />
+          <CredRow active={cleaner.has_insurance} label="Public Liability Insurance" expiry={cleaner.insurance_expiry} />
+          <CredRow active={cleaner.right_to_work} label="Right to Work" />
         </div>
+
+        {/* Intro message placeholder */}
+        <div style={{ background: '#f8fafc', borderRadius: '12px', padding: '16px', borderLeft: '3px solid #3b82f6' }}>
+          <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px' }}>Your intro message to customers</div>
+          <p style={{ margin: 0, fontSize: '13px', color: '#94a3b8', lineHeight: 1.6, fontStyle: 'italic' }}>
+            This is where your message will appear when you apply to a customer's listing. Make it personal and friendly!
+          </p>
+        </div>
+
       </div>
     </div>
   )
@@ -283,14 +304,8 @@ function PendingScreen({ profile, cleaner, emailConfirmed }: { profile: CleanerP
 function ApprovedShell({ profile, cleaner }: { profile: CleanerProfile; cleaner: CleanerData }) {
   return (
     <div style={{ maxWidth: '640px', margin: '0 auto', padding: '0 0 60px' }}>
-
-      {/* Live card preview */}
-      <div style={{ marginBottom: '24px' }}>
-        <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '10px' }}>
-          Your cleaner card — as customers see it
-        </div>
-        <CleanerCardPreview profile={profile} cleaner={cleaner} />
-      </div>
+      <p style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 10px' }}>Your profile — as customers see it</p>
+      <ProfileCardPreview profile={profile} cleaner={cleaner} />
 
       {[
         { icon: '🔔', title: 'Job alerts', desc: "You'll be notified when a customer posts a request in your area. Check your email to manage notification preferences.", colour: '#eff6ff', border: '#bfdbfe', iconBg: '#dbeafe' },
@@ -323,7 +338,7 @@ function BlockedScreen({ status }: { status: 'rejected' | 'suspended' }) {
     <div style={{ maxWidth: '480px', margin: '0 auto', padding: '0 0 60px' }}>
       <div style={{ background: 'white', borderRadius: '20px', padding: '40px', border: '1.5px solid #fecaca', textAlign: 'center', boxShadow: '0 2px 16px rgba(0,0,0,0.05)' }}>
         <div style={{ fontSize: '48px', marginBottom: '16px' }}>{status === 'rejected' ? '😔' : '⚠️'}</div>
-        <h2 style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a', margin: '0 0 12px' }}>
+        <h2 style={{ fontSize: '22px', fontWeight: 700, color: '#0f172a', margin: '0 0 12px' }}>
           {status === 'rejected' ? 'Application unsuccessful' : 'Account suspended'}
         </h2>
         <p style={{ fontSize: '14px', color: '#64748b', lineHeight: 1.7, margin: '0 0 24px' }}>
@@ -361,7 +376,7 @@ export default function CleanerDashboardPage() {
 
         const { data: cleanerData, error: cleanerError } = await supabase
           .from('cleaners')
-          .select('application_status, zones, dbs_checked, right_to_work, has_insurance, needs_credentials_help, cover_cleans_notify, job_notify, marketing_opt_in, own_supplies, created_at')
+          .select('application_status, zones, dbs_checked, right_to_work, has_insurance, needs_credentials_help, cover_cleans_notify, job_notify, marketing_opt_in, own_supplies, created_at, dbs_expiry, insurance_expiry, cleans_completed')
           .eq('profile_id', user.id).single()
         if (cleanerError || !cleanerData) throw new Error('Could not load your cleaner profile.')
 
@@ -384,7 +399,7 @@ export default function CleanerDashboardPage() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', background: 'linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ minHeight: '100vh', background: 'linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans', sans-serif" }}>
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: '32px', marginBottom: '12px' }}>🧹</div>
           <p style={{ fontSize: '14px', color: '#64748b' }}>Loading your dashboard…</p>
@@ -395,11 +410,11 @@ export default function CleanerDashboardPage() {
 
   if (error || !profile || !cleaner) {
     return (
-      <div style={{ minHeight: '100vh', background: 'linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+      <div style={{ minHeight: '100vh', background: 'linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans', sans-serif", padding: '24px' }}>
         <div style={{ background: 'white', borderRadius: '20px', padding: '40px', maxWidth: '400px', textAlign: 'center', border: '1.5px solid #fecaca' }}>
           <div style={{ fontSize: '32px', marginBottom: '12px' }}>⚠️</div>
           <p style={{ fontSize: '14px', color: '#dc2626', margin: '0 0 16px' }}>{error ?? 'Could not load your dashboard.'}</p>
-          <button onClick={() => router.push('/login')} style={{ background: '#0f172a', color: 'white', border: 'none', borderRadius: '10px', padding: '10px 24px', fontSize: '14px', fontWeight: 700, cursor: 'pointer' }}>
+          <button onClick={() => router.push('/login')} style={{ background: '#0f172a', color: 'white', border: 'none', borderRadius: '10px', padding: '10px 24px', fontSize: '14px', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
             Back to login
           </button>
         </div>
@@ -410,7 +425,7 @@ export default function CleanerDashboardPage() {
   const status = cleaner.application_status
 
   return (
-    <div style={{ minHeight: '100vh', background: 'linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%)', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', background: 'linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%)', fontFamily: "'DM Sans', sans-serif", display: 'flex', flexDirection: 'column' }}>
       <Header userRole="cleaner" />
 
       <main style={{ flex: 1 }}>
@@ -435,7 +450,7 @@ export default function CleanerDashboardPage() {
       <div style={{ borderTop: '1px solid #e2e8f0', padding: '32px 24px', display: 'flex', justifyContent: 'center' }}>
         <button
           onClick={handleSignOut}
-          style={{ background: 'none', border: '1px solid #fecaca', borderRadius: '8px', padding: '8px 20px', fontSize: '13px', fontWeight: 600, color: '#ef4444', cursor: 'pointer' }}
+          style={{ background: 'none', border: '1px solid #fecaca', borderRadius: '8px', padding: '8px 20px', fontSize: '13px', fontWeight: 600, color: '#ef4444', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
         >
           Sign out
         </button>
