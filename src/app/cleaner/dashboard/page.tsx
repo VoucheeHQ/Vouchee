@@ -41,13 +41,17 @@ const ZONE_LABELS: Record<string, string> = {
 }
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-GB', {
-    day: 'numeric', month: 'long', year: 'numeric',
-  })
+  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
 function getInitial(name: string) {
   return name.trim().charAt(0).toUpperCase()
+}
+
+function formatFirstLastInitial(name: string) {
+  const parts = name.trim().split(' ')
+  if (parts.length === 1) return parts[0]
+  return `${parts[0]} ${parts[parts.length - 1].charAt(0)}.`
 }
 
 function StatusBadge({ status }: { status: ApplicationStatus }) {
@@ -93,6 +97,87 @@ function SummaryRow({ label, value }: { label: string; value: React.ReactNode })
   )
 }
 
+// Live card preview — exactly how customers see it
+function CleanerCardPreview({ profile, cleaner }: { profile: CleanerProfile; cleaner: CleanerData }) {
+  const displayName = formatFirstLastInitial(profile.full_name)
+  const zones = (cleaner.zones ?? []).map(z => ZONE_LABELS[z] ?? z)
+  const joinYear = new Date(cleaner.created_at).getFullYear()
+
+  return (
+    <div style={{ background: 'white', borderRadius: '16px', border: '1.5px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 16px rgba(0,0,0,0.06)' }}>
+
+      {/* Approved ribbon */}
+      <div style={{ background: 'linear-gradient(90deg, #16a34a 0%, #22c55e 100%)', padding: '8px 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+        <span style={{ fontSize: '13px' }}>✅</span>
+        <span style={{ fontSize: '12px', fontWeight: 700, color: 'white', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Approved Vouchee Cleaner</span>
+        <span style={{ fontSize: '13px' }}>✅</span>
+      </div>
+
+      <div style={{ padding: '20px' }}>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', marginBottom: '14px' }}>
+          <div style={{ width: '52px', height: '52px', borderRadius: '50%', background: 'linear-gradient(135deg, #3b82f6, #6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', fontWeight: 800, color: 'white', flexShrink: 0 }}>
+            {getInitial(profile.full_name)}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: '17px', fontWeight: 800, color: '#0f172a', marginBottom: '2px' }}>{displayName}</div>
+            <div style={{ fontSize: '12px', color: '#64748b' }}>Member since {joinYear}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
+              {[1,2,3,4,5].map(i => <span key={i} style={{ color: '#f59e0b', fontSize: '13px' }}>★</span>)}
+              <span style={{ fontSize: '12px', color: '#64748b', marginLeft: '4px' }}>New cleaner</span>
+            </div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end' }}>
+            {cleaner.dbs_checked && (
+              <span style={{ background: '#dcfce7', color: '#15803d', fontSize: '11px', fontWeight: 700, padding: '3px 8px', borderRadius: '100px' }}>✓ DBS</span>
+            )}
+            {cleaner.has_insurance && (
+              <span style={{ background: '#dbeafe', color: '#1d4ed8', fontSize: '11px', fontWeight: 700, padding: '3px 8px', borderRadius: '100px' }}>✓ Insured</span>
+            )}
+          </div>
+        </div>
+
+        {/* Areas */}
+        {zones.length > 0 && (
+          <div style={{ marginBottom: '14px' }}>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px' }}>Areas covered</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+              {zones.map(z => (
+                <span key={z} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', color: '#475569', fontSize: '11px', fontWeight: 600, padding: '3px 8px', borderRadius: '6px' }}>{z}</span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Supplies */}
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
+          <span style={{ background: cleaner.own_supplies ? '#f0fdf4' : '#f8fafc', border: `1px solid ${cleaner.own_supplies ? '#86efac' : '#e2e8f0'}`, color: cleaner.own_supplies ? '#15803d' : '#64748b', fontSize: '11px', fontWeight: 600, padding: '4px 10px', borderRadius: '8px' }}>
+            {cleaner.own_supplies ? '🧴 Brings own supplies' : '🧴 No supplies'}
+          </span>
+        </div>
+
+        {/* Blurred reviews */}
+        <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '14px' }}>
+          <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>Reviews</div>
+          <div style={{ filter: 'blur(4px)', pointerEvents: 'none', userSelect: 'none' }}>
+            <div style={{ background: '#f8fafc', borderRadius: '8px', padding: '10px 12px', marginBottom: '6px' }}>
+              <div style={{ fontSize: '12px', color: '#0f172a', fontWeight: 600, marginBottom: '4px' }}>Customer review</div>
+              <div style={{ fontSize: '12px', color: '#475569', lineHeight: 1.5 }}>Absolutely brilliant cleaner, very thorough and friendly. Would highly recommend.</div>
+            </div>
+            <div style={{ background: '#f8fafc', borderRadius: '8px', padding: '10px 12px' }}>
+              <div style={{ fontSize: '12px', color: '#0f172a', fontWeight: 600, marginBottom: '4px' }}>Customer review</div>
+              <div style={{ fontSize: '12px', color: '#475569', lineHeight: 1.5 }}>Always on time and does an incredible job every single week.</div>
+            </div>
+          </div>
+          <div style={{ textAlign: 'center', marginTop: '8px' }}>
+            <span style={{ fontSize: '11px', color: '#94a3b8' }}>Reviews visible to customers after your first clean</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function PendingScreen({ profile, cleaner, emailConfirmed }: { profile: CleanerProfile; cleaner: CleanerData; emailConfirmed: boolean }) {
   const firstName = profile.full_name.trim().split(' ')[0]
   const zones = (cleaner.zones ?? []).map(z => ZONE_LABELS[z] ?? z)
@@ -109,11 +194,11 @@ function PendingScreen({ profile, cleaner, emailConfirmed }: { profile: CleanerP
     <div style={{ maxWidth: '640px', margin: '0 auto', padding: '0 0 60px' }}>
       <div style={{ background: 'white', borderRadius: '20px', padding: '32px', border: '1.5px solid #e2e8f0', marginBottom: '20px', boxShadow: '0 2px 16px rgba(0,0,0,0.05)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
-          <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'linear-gradient(135deg, #3b82f6, #6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', fontWeight: 800, color: 'white', fontFamily: 'Lora, serif', flexShrink: 0 }}>
+          <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'linear-gradient(135deg, #3b82f6, #6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', fontWeight: 800, color: 'white', flexShrink: 0 }}>
             {getInitial(profile.full_name)}
           </div>
           <div>
-            <h2 style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a', margin: '0 0 4px', fontFamily: 'Lora, serif' }}>Hi {firstName}!</h2>
+            <h2 style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a', margin: '0 0 4px' }}>Hi {firstName}!</h2>
             <StatusBadge status={cleaner.application_status} />
           </div>
         </div>
@@ -195,27 +280,16 @@ function PendingScreen({ profile, cleaner, emailConfirmed }: { profile: CleanerP
   )
 }
 
-function ApprovedShell({ profile }: { profile: CleanerProfile }) {
-  const firstName = profile.full_name.trim().split(' ')[0]
-
+function ApprovedShell({ profile, cleaner }: { profile: CleanerProfile; cleaner: CleanerData }) {
   return (
     <div style={{ maxWidth: '640px', margin: '0 auto', padding: '0 0 60px' }}>
-      <div style={{ background: 'linear-gradient(135deg, #3b82f6, #6366f1)', borderRadius: '20px', padding: '32px', marginBottom: '20px', color: 'white', boxShadow: '0 8px 32px rgba(59,130,246,0.25)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
-          <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', fontWeight: 800, color: 'white', fontFamily: 'Lora, serif', border: '2px solid rgba(255,255,255,0.3)', flexShrink: 0 }}>
-            {getInitial(profile.full_name)}
-          </div>
-          <div>
-            <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.8, marginBottom: '4px' }}>Approved cleaner</div>
-            <h2 style={{ fontSize: '22px', fontWeight: 800, margin: 0, fontFamily: 'Lora, serif' }}>Welcome, {firstName}!</h2>
-          </div>
+
+      {/* Live card preview */}
+      <div style={{ marginBottom: '24px' }}>
+        <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '10px' }}>
+          Your cleaner card — as customers see it
         </div>
-        <p style={{ fontSize: '14px', opacity: 0.9, lineHeight: 1.6, margin: '0 0 20px' }}>
-          You're live on Vouchee. Customers in your areas can now see your application when they post a cleaning request.
-        </p>
-        <a href="/jobs" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'white', color: '#2563eb', borderRadius: '12px', padding: '10px 20px', fontSize: '14px', fontWeight: 700, textDecoration: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>
-          Browse available jobs →
-        </a>
+        <CleanerCardPreview profile={profile} cleaner={cleaner} />
       </div>
 
       {[
@@ -249,7 +323,7 @@ function BlockedScreen({ status }: { status: 'rejected' | 'suspended' }) {
     <div style={{ maxWidth: '480px', margin: '0 auto', padding: '0 0 60px' }}>
       <div style={{ background: 'white', borderRadius: '20px', padding: '40px', border: '1.5px solid #fecaca', textAlign: 'center', boxShadow: '0 2px 16px rgba(0,0,0,0.05)' }}>
         <div style={{ fontSize: '48px', marginBottom: '16px' }}>{status === 'rejected' ? '😔' : '⚠️'}</div>
-        <h2 style={{ fontFamily: 'Lora, serif', fontSize: '22px', fontWeight: 700, color: '#0f172a', margin: '0 0 12px' }}>
+        <h2 style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a', margin: '0 0 12px' }}>
           {status === 'rejected' ? 'Application unsuccessful' : 'Account suspended'}
         </h2>
         <p style={{ fontSize: '14px', color: '#64748b', lineHeight: 1.7, margin: '0 0 24px' }}>
@@ -310,7 +384,7 @@ export default function CleanerDashboardPage() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', background: 'linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'DM Sans, sans-serif' }}>
+      <div style={{ minHeight: '100vh', background: 'linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: '32px', marginBottom: '12px' }}>🧹</div>
           <p style={{ fontSize: '14px', color: '#64748b' }}>Loading your dashboard…</p>
@@ -321,11 +395,11 @@ export default function CleanerDashboardPage() {
 
   if (error || !profile || !cleaner) {
     return (
-      <div style={{ minHeight: '100vh', background: 'linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'DM Sans, sans-serif', padding: '24px' }}>
+      <div style={{ minHeight: '100vh', background: 'linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
         <div style={{ background: 'white', borderRadius: '20px', padding: '40px', maxWidth: '400px', textAlign: 'center', border: '1.5px solid #fecaca' }}>
           <div style={{ fontSize: '32px', marginBottom: '12px' }}>⚠️</div>
           <p style={{ fontSize: '14px', color: '#dc2626', margin: '0 0 16px' }}>{error ?? 'Could not load your dashboard.'}</p>
-          <button onClick={() => router.push('/login')} style={{ background: '#0f172a', color: 'white', border: 'none', borderRadius: '10px', padding: '10px 24px', fontSize: '14px', fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
+          <button onClick={() => router.push('/login')} style={{ background: '#0f172a', color: 'white', border: 'none', borderRadius: '10px', padding: '10px 24px', fontSize: '14px', fontWeight: 700, cursor: 'pointer' }}>
             Back to login
           </button>
         </div>
@@ -336,12 +410,12 @@ export default function CleanerDashboardPage() {
   const status = cleaner.application_status
 
   return (
-    <div style={{ minHeight: '100vh', background: 'linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%)', fontFamily: 'DM Sans, sans-serif', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', background: 'linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%)', display: 'flex', flexDirection: 'column' }}>
       <Header userRole="cleaner" />
 
       <main style={{ flex: 1 }}>
         <div style={{ maxWidth: '640px', margin: '0 auto', padding: '40px 24px 20px' }}>
-          <h1 style={{ fontFamily: 'Lora, serif', fontSize: '28px', fontWeight: 700, color: '#0f172a', margin: '0 0 4px' }}>
+          <h1 style={{ fontSize: '28px', fontWeight: 800, color: '#0f172a', margin: '0 0 4px' }}>
             {status === 'approved' ? 'Your dashboard' : 'Application status'}
           </h1>
           <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>{profile.email}</p>
@@ -351,18 +425,17 @@ export default function CleanerDashboardPage() {
           {(status === 'submitted' || status === 'pending') && (
             <PendingScreen profile={profile} cleaner={cleaner} emailConfirmed={emailConfirmed} />
           )}
-          {status === 'approved' && <ApprovedShell profile={profile} />}
+          {status === 'approved' && <ApprovedShell profile={profile} cleaner={cleaner} />}
           {(status === 'rejected' || status === 'suspended') && (
             <BlockedScreen status={status} />
           )}
         </div>
       </main>
 
-      {/* ✅ Footer with red sign out */}
       <div style={{ borderTop: '1px solid #e2e8f0', padding: '32px 24px', display: 'flex', justifyContent: 'center' }}>
         <button
           onClick={handleSignOut}
-          style={{ background: 'none', border: '1px solid #fecaca', borderRadius: '8px', padding: '8px 20px', fontSize: '13px', fontWeight: 600, color: '#ef4444', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}
+          style={{ background: 'none', border: '1px solid #fecaca', borderRadius: '8px', padding: '8px 20px', fontSize: '13px', fontWeight: 600, color: '#ef4444', cursor: 'pointer' }}
         >
           Sign out
         </button>
