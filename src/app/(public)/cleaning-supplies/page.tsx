@@ -22,7 +22,7 @@ const CATEGORIES = [
     name: 'Floors & Equipment',
     description: 'From hardwood to tile, these keep every floor looking their best.',
     color: 'green',
-    count: 7,
+    count: 6,
   },
   {
     id: 'tools',
@@ -163,13 +163,6 @@ const PRODUCTS: Record<string, Product[]> = {
       url: 'https://amzn.to/3Okz00i',
       img: BASE_IMG + '71IsZdvhKPL.jpg',
     },
-    {
-      name: 'Microfibre Flat Mop',
-      description: 'Professional-grade flat mop with washable microfibre pads.',
-      why: 'Reusable pads save money long-term and are more hygienic than disposable alternatives.',
-      url: 'https://amzn.to/418zoSz',
-      img: BASE_IMG + '810EtK37AFL.jpg',
-    },
   ],
   'tools': [
     {
@@ -255,14 +248,7 @@ const STARTER_KIT_URL =
   'ASIN.9=B0FCF12NXG&Quantity.9=1&' +
   'tag=vouchee-21'
 
-const colorClasses: Record<string, {
-  card: string
-  icon: string
-  badge: string
-  hover: string
-  imgHue: string
-  imgHover: string
-}> = {
+const colorClasses: Record<string, { card: string; icon: string; badge: string; hover: string; imgHue: string; imgHover: string }> = {
   blue:   { card: 'border-blue-100 hover:border-blue-300 hover:shadow-blue-100',     icon: 'bg-blue-100',   badge: 'bg-blue-100 text-blue-700',   hover: 'group-hover:text-blue-600',   imgHue: 'bg-blue-50/40',   imgHover: 'group-hover:bg-blue-50/70' },
   green:  { card: 'border-green-100 hover:border-green-300 hover:shadow-green-100',   icon: 'bg-green-100',  badge: 'bg-green-100 text-green-700',  hover: 'group-hover:text-green-600',  imgHue: 'bg-green-50/40',  imgHover: 'group-hover:bg-green-50/70' },
   amber:  { card: 'border-amber-100 hover:border-amber-300 hover:shadow-amber-100',   icon: 'bg-amber-100',  badge: 'bg-amber-100 text-amber-700',  hover: 'group-hover:text-amber-600',  imgHue: 'bg-amber-50/40',  imgHover: 'group-hover:bg-amber-50/70' },
@@ -408,7 +394,7 @@ export default function CleaningSuppliesPage() {
         )
       })}
 
-      {/* Something missing — replaces specialist/eco coming soon */}
+      {/* Something missing */}
       <section className="border-t border-gray-100 bg-gray-50 py-16">
         <div className="container max-w-5xl mx-auto px-6 text-center">
           <p className="text-base text-gray-600">
