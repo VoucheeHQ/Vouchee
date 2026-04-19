@@ -486,9 +486,10 @@ export default function CleanerDashboardPage() {
           .eq('cleaner_id', (cleanerData as any).id)
 
         if (appData) {
-          const pending = appData.filter(a => a.status === 'pending').length
-          const accepted = appData.filter(a => a.status === 'accepted').length
-          const declined = appData.filter(a => a.status === 'declined').length
+          const apps = appData as { status: string }[]
+          const pending = apps.filter(a => a.status === 'pending').length
+          const accepted = apps.filter(a => a.status === 'accepted').length
+          const declined = apps.filter(a => a.status === 'declined').length
           setStats({ pendingApplications: pending, acceptedApplications: accepted, declinedApplications: declined, chatsAccepted: accepted, chatsDeclined: declined })
         }
 
