@@ -1,4 +1,5 @@
 'use client'
+
 import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
 import { useState, useEffect } from 'react'
@@ -14,6 +15,7 @@ interface CleanerProfile {
 }
 
 interface CleanerData {
+  id: string
   application_status: ApplicationStatus
   zones: string[]
   dbs_checked: boolean
@@ -32,10 +34,20 @@ interface CleanerData {
 
 interface CleanerStats {
   pendingApplications: number
-  acceptedApplications: number
-  declinedApplications: number
+  jobsWon: number
   chatsAccepted: number
   chatsDeclined: number
+  uniqueCustomers: number
+}
+
+interface NotificationItem {
+  id: string
+  type: string
+  title: string
+  body: string | null
+  link: string | null
+  read: boolean
+  created_at: string
 }
 
 const ZONE_LABELS: Record<string, string> = {
@@ -54,35 +66,43 @@ const ZONE_LABELS: Record<string, string> = {
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
 }
-
 function formatMonthYear(iso: string) {
   return new Date(iso).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
 }
-
 function formatExpiry(iso: string | null) {
   if (!iso) return null
   return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 }
-
 function isExpired(iso: string | null) {
   if (!iso) return false
   return new Date(iso) < new Date()
 }
-
-function getInitial(name: string) { return name.trim().charAt(0).toUpperCase() }
-
+function getInitial(name: string) {
+  return name.trim().charAt(0).toUpperCase()
+}
 function formatShortName(fullName: string) {
   const parts = fullName.trim().split(' ')
   return parts.length === 1 ? parts[0] : `${parts[0]} ${parts[parts.length - 1].charAt(0)}.`
+}
+function relativeTime(iso: string) {
+  const diff = Date.now() - new Date(iso).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  const days = Math.floor(hrs / 24)
+  if (days < 7) return `${days}d ago`
+  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
 }
 
 function StatusBadge({ status }: { status: ApplicationStatus }) {
   const map: Record<ApplicationStatus, { label: string; bg: string; color: string; dot: string }> = {
     submitted: { label: 'Under review', bg: '#fef9c3', color: '#854d0e', dot: '#eab308' },
-    pending:   { label: 'Pending',      bg: '#f1f5f9', color: '#475569', dot: '#94a3b8' },
-    approved:  { label: 'Active',       bg: '#dcfce7', color: '#15803d', dot: '#22c55e' },
-    rejected:  { label: 'Rejected',     bg: '#fee2e2', color: '#991b1b', dot: '#ef4444' },
-    suspended: { label: 'Suspended',    bg: '#fef3c7', color: '#92400e', dot: '#f59e0b' },
+    pending: { label: 'Pending', bg: '#f1f5f9', color: '#475569', dot: '#94a3b8' },
+    approved: { label: 'Active', bg: '#dcfce7', color: '#15803d', dot: '#22c55e' },
+    rejected: { label: 'Rejected', bg: '#fee2e2', color: '#991b1b', dot: '#ef4444' },
+    suspended: { label: 'Suspended', bg: '#fef3c7', color: '#92400e', dot: '#f59e0b' },
   }
   const s = map[status] ?? map.pending
   return (
@@ -112,9 +132,7 @@ function CredRow({ active, label, expiry }: { active: boolean; label: string; ex
   )
 }
 
-function StatCard({ value, label, sub, color = '#0f172a', bg = '#f8fafc', border = '#e2e8f0' }: {
-  value: number | string; label: string; sub?: string; color?: string; bg?: string; border?: string
-}) {
+function StatCard({ value, label, sub, color = '#0f172a', bg = '#f8fafc', border = '#e2e8f0' }: { value: number | string; label: string; sub?: string; color?: string; bg?: string; border?: string }) {
   return (
     <div style={{ background: bg, border: `1.5px solid ${border}`, borderRadius: '16px', padding: '20px 20px 16px', flex: 1, minWidth: 0 }}>
       <div style={{ fontSize: '32px', fontWeight: 800, color, lineHeight: 1, marginBottom: '6px' }}>{value}</div>
@@ -124,18 +142,98 @@ function StatCard({ value, label, sub, color = '#0f172a', bg = '#f8fafc', border
   )
 }
 
-// ─── APPROVED DASHBOARD ───────────────────────────────────────────────────────
+// ─── TOGGLE SWITCH ──────────────────────────────────────────────────────────
+function Toggle({ value, onChange, disabled }: { value: boolean; onChange: () => void; disabled?: boolean }) {
+  return (
+    <button
+      type="button"
+      onClick={onChange}
+      disabled={disabled}
+      aria-pressed={value}
+      style={{
+        width: '36px',
+        height: '22px',
+        borderRadius: '100px',
+        background: value ? '#16a34a' : '#cbd5e1',
+        border: 'none',
+        position: 'relative',
+        cursor: disabled ? 'wait' : 'pointer',
+        transition: 'background 0.15s ease',
+        padding: 0,
+        flexShrink: 0,
+        opacity: disabled ? 0.6 : 1,
+      }}
+    >
+      <span style={{
+        position: 'absolute',
+        top: '3px',
+        left: value ? '17px' : '3px',
+        width: '16px',
+        height: '16px',
+        borderRadius: '50%',
+        background: 'white',
+        transition: 'left 0.15s ease',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+      }} />
+    </button>
+  )
+}
 
-function ApprovedDashboard({ profile, cleaner, stats }: {
+// ─── NOTIFICATION ITEM ──────────────────────────────────────────────────────
+const NOTIFICATION_ICONS: Record<string, string> = {
+  chat_accepted: '💬',
+  chat_declined: '😔',
+  job_won: '🎉',
+  job_lost: '👋',
+  new_message: '✉️',
+  application_approved: '✅',
+  application_rejected: '❌',
+  account_suspended: '⚠️',
+  default: '🔔',
+}
+
+function NotificationRow({ item, onClick }: { item: NotificationItem; onClick: () => void }) {
+  const icon = NOTIFICATION_ICONS[item.type] ?? NOTIFICATION_ICONS.default
+  return (
+    <div
+      onClick={onClick}
+      style={{
+        display: 'flex',
+        gap: '12px',
+        padding: '12px 14px',
+        borderRadius: '12px',
+        background: item.read ? 'transparent' : '#eff6ff',
+        border: `1px solid ${item.read ? '#f1f5f9' : '#bfdbfe'}`,
+        cursor: 'pointer',
+        transition: 'background 0.15s ease',
+        alignItems: 'flex-start',
+      }}
+    >
+      <div style={{ fontSize: '18px', flexShrink: 0, lineHeight: 1, marginTop: '1px' }}>{icon}</div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px', marginBottom: '2px' }}>
+          <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a', lineHeight: 1.35 }}>{item.title}</div>
+          <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 500, flexShrink: 0, whiteSpace: 'nowrap' }}>{relativeTime(item.created_at)}</div>
+        </div>
+        {item.body && <div style={{ fontSize: '12px', color: '#64748b', lineHeight: 1.45 }}>{item.body}</div>}
+      </div>
+      {!item.read && <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#3b82f6', flexShrink: 0, marginTop: '6px' }} />}
+    </div>
+  )
+}
+
+// ─── APPROVED DASHBOARD ─────────────────────────────────────────────────────
+function ApprovedDashboard({ profile, cleaner, stats, notifications, onTogglePref, onNotificationClick }: {
   profile: CleanerProfile
   cleaner: CleanerData
   stats: CleanerStats
+  notifications: NotificationItem[]
+  onTogglePref: (field: 'job_notify' | 'cover_cleans_notify' | 'marketing_opt_in') => void
+  onNotificationClick: (n: NotificationItem) => void
 }) {
   const shortName = formatShortName(profile.full_name)
   const memberSince = formatMonthYear(cleaner.created_at)
   const cleans = cleaner.cleans_completed ?? 0
-
-  // Rough hours estimate: cleans × average 3hrs (placeholder until we store duration)
   const estHours = cleans * 3
 
   return (
@@ -144,10 +242,8 @@ function ApprovedDashboard({ profile, cleaner, stats }: {
       {/* ── LEFT COLUMN ── */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
-        {/* Profile card */}
+        {/* Profile card — footer removed */}
         <div style={{ background: 'white', borderRadius: '20px', border: '1.5px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 16px rgba(0,0,0,0.06)' }}>
-
-          {/* Card header */}
           <div style={{ padding: '24px 24px 20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
@@ -166,22 +262,18 @@ function ApprovedDashboard({ profile, cleaner, stats }: {
                   </div>
                 </div>
               </div>
-
-              {/* Cleans counter */}
               <div style={{ textAlign: 'center', background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '10px 14px', flexShrink: 0 }}>
                 <div style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a', lineHeight: 1 }}>{cleans}</div>
                 <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 700, marginTop: '2px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Cleans</div>
               </div>
             </div>
 
-            {/* Credentials */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '16px' }}>
               <CredRow active={cleaner.dbs_checked} label="DBS Certificate" expiry={cleaner.dbs_expiry} />
               <CredRow active={cleaner.has_insurance} label="Public Liability Insurance" expiry={cleaner.insurance_expiry} />
               <CredRow active={cleaner.right_to_work} label="Right to Work" />
             </div>
 
-            {/* Intro message */}
             <div style={{ background: '#f8fafc', borderRadius: '10px', padding: '12px 14px', borderLeft: '3px solid #3b82f6' }}>
               <div style={{ fontSize: '10px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>Your intro message</div>
               <p style={{ margin: 0, fontSize: '12px', color: '#94a3b8', lineHeight: 1.5, fontStyle: 'italic' }}>
@@ -189,31 +281,24 @@ function ApprovedDashboard({ profile, cleaner, stats }: {
               </p>
             </div>
           </div>
-
-          {/* Profile card footer label */}
-          <div style={{ background: '#f8fafc', borderTop: '1px solid #f1f5f9', padding: '10px 16px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ fontSize: '11px', color: '#94a3b8' }}>👆</span>
-            <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 500 }}>This is how customers see your profile</span>
-          </div>
+          {/* Footer removed — was "This is how customers see your profile" */}
         </div>
 
-        {/* Notifications */}
+        {/* Notification preferences — now interactive */}
         <div style={{ background: 'white', borderRadius: '20px', border: '1.5px solid #e2e8f0', padding: '20px 20px 16px', boxShadow: '0 2px 16px rgba(0,0,0,0.04)' }}>
           <div style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '14px' }}>Notification preferences</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {[
-              { label: 'Job alerts', value: cleaner.job_notify, icon: '🔔' },
-              { label: 'Cover clean alerts', value: cleaner.cover_cleans_notify, icon: '🔄' },
-              { label: 'Marketing & updates', value: cleaner.marketing_opt_in, icon: '📣' },
-            ].map(({ label, value, icon }) => (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            {([
+              { field: 'job_notify' as const, label: 'Job alerts', value: cleaner.job_notify, icon: '🔔' },
+              { field: 'cover_cleans_notify' as const, label: 'Cover clean alerts', value: cleaner.cover_cleans_notify, icon: '🔄' },
+              { field: 'marketing_opt_in' as const, label: 'Marketing & updates', value: cleaner.marketing_opt_in, icon: '📣' },
+            ]).map(({ field, label, value, icon }) => (
               <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #f8fafc' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{ fontSize: '14px' }}>{icon}</span>
                   <span style={{ fontSize: '13px', color: '#475569', fontWeight: 500 }}>{label}</span>
                 </div>
-                <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '100px', background: value ? '#dcfce7' : '#f1f5f9', color: value ? '#15803d' : '#94a3b8' }}>
-                  {value ? 'On' : 'Off'}
-                </span>
+                <Toggle value={value} onChange={() => onTogglePref(field)} />
               </div>
             ))}
           </div>
@@ -230,7 +315,6 @@ function ApprovedDashboard({ profile, cleaner, stats }: {
           </a>
         </div>
 
-        {/* Help */}
         <div style={{ background: '#f8faff', borderRadius: '14px', padding: '14px 18px', border: '1px solid #e0e7ff', textAlign: 'center' }}>
           <p style={{ fontSize: '13px', color: '#475569', margin: 0 }}>
             Need help?{' '}
@@ -254,36 +338,16 @@ function ApprovedDashboard({ profile, cleaner, stats }: {
           </a>
         </div>
 
-        {/* Job activity */}
+        {/* Job activity — with CORRECT stats */}
         <div style={{ background: 'white', borderRadius: '20px', border: '1.5px solid #e2e8f0', padding: '24px', boxShadow: '0 2px 16px rgba(0,0,0,0.04)' }}>
           <div style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '16px' }}>Job activity</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', marginBottom: '12px' }}>
-            <StatCard
-              value={stats.pendingApplications}
-              label="Pending applications"
-              sub="Jobs you've applied to awaiting response"
-              bg="#fffbeb" border="#fde68a" color="#92400e"
-            />
-            <StatCard
-              value={stats.acceptedApplications}
-              label="Jobs accepted"
-              sub="Customers who chose you"
-              bg="#f0fdf4" border="#86efac" color="#15803d"
-            />
+            <StatCard value={stats.pendingApplications} label="Pending applications" sub="Jobs you've applied to awaiting response" bg="#fffbeb" border="#fde68a" color="#92400e" />
+            <StatCard value={stats.jobsWon} label="Jobs won" sub="Customers who confirmed their start date" bg="#f0fdf4" border="#86efac" color="#15803d" />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
-            <StatCard
-              value={stats.chatsAccepted}
-              label="Chats accepted"
-              sub="Conversations opened with customers"
-              bg="#eff6ff" border="#bfdbfe" color="#1d4ed8"
-            />
-            <StatCard
-              value={stats.chatsDeclined}
-              label="Chats declined"
-              sub="Customer requests you passed on"
-              bg="#f8fafc" border="#e2e8f0" color="#64748b"
-            />
+            <StatCard value={stats.chatsAccepted} label="Chats accepted" sub="Customers who opened a conversation" bg="#eff6ff" border="#bfdbfe" color="#1d4ed8" />
+            <StatCard value={stats.chatsDeclined} label="Chats declined" sub="Customers who passed on your application" bg="#f8fafc" border="#e2e8f0" color="#64748b" />
           </div>
         </div>
 
@@ -291,34 +355,35 @@ function ApprovedDashboard({ profile, cleaner, stats }: {
         <div style={{ background: 'white', borderRadius: '20px', border: '1.5px solid #e2e8f0', padding: '24px', boxShadow: '0 2px 16px rgba(0,0,0,0.04)' }}>
           <div style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '16px' }}>Your Vouchee business</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
-            <StatCard
-              value={cleans}
-              label="Cleans completed"
-              sub="Total jobs completed through Vouchee"
-              bg="#f0fdf4" border="#86efac" color="#15803d"
-            />
-            <StatCard
-              value={estHours === 0 ? '—' : `${estHours}h`}
-              label="Est. hours worked"
-              sub="Based on completed cleans"
-              bg="#eff6ff" border="#bfdbfe" color="#1d4ed8"
-            />
-            <StatCard
-              value={stats.acceptedApplications}
-              label="Unique customers"
-              sub="Different households you've worked with"
-              bg="#fdf4ff" border="#e9d5ff" color="#7c3aed"
-            />
+            <StatCard value={cleans} label="Cleans completed" sub="Total jobs completed through Vouchee" bg="#f0fdf4" border="#86efac" color="#15803d" />
+            <StatCard value={estHours === 0 ? '—' : `${estHours}h`} label="Est. hours worked" sub="Based on completed cleans" bg="#eff6ff" border="#bfdbfe" color="#1d4ed8" />
+            <StatCard value={stats.uniqueCustomers} label="Unique customers" sub="Different households you've worked with" bg="#fdf4ff" border="#e9d5ff" color="#7c3aed" />
           </div>
         </div>
 
-        {/* Messages panel */}
-        <div style={{ background: '#f0fdf4', border: '1.5px solid #86efac', borderRadius: '16px', padding: '20px 24px', display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
-          <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>💬</div>
-          <div>
-            <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '4px' }}>Messages</div>
-            <div style={{ fontSize: '13px', color: '#475569', lineHeight: 1.5 }}>When a customer accepts your application, your conversation will appear here and in your notification emails.</div>
+        {/* NEW: Recent notifications (replaces Messages) */}
+        <div style={{ background: 'white', borderRadius: '20px', border: '1.5px solid #e2e8f0', padding: '24px', boxShadow: '0 2px 16px rgba(0,0,0,0.04)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+            <div style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Recent notifications</div>
+            {notifications.length > 0 && (
+              <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 600 }}>
+                {notifications.filter(n => !n.read).length} unread
+              </span>
+            )}
           </div>
+          {notifications.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '24px 16px', color: '#94a3b8' }}>
+              <div style={{ fontSize: '24px', marginBottom: '8px' }}>🔔</div>
+              <div style={{ fontSize: '13px', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>You're all caught up</div>
+              <div style={{ fontSize: '12px', lineHeight: 1.5 }}>When customers accept your chats or confirm jobs, you'll see updates here.</div>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {notifications.slice(0, 5).map(n => (
+                <NotificationRow key={n.id} item={n} onClick={() => onNotificationClick(n)} />
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Reviews coming soon */}
@@ -329,14 +394,12 @@ function ApprovedDashboard({ profile, cleaner, stats }: {
             <div style={{ fontSize: '13px', color: '#475569', lineHeight: 1.5 }}>Once you've completed cleans, your reviews will build here. Share your profile link with customers to collect them. Coming soon.</div>
           </div>
         </div>
-
       </div>
     </div>
   )
 }
 
-// ─── PENDING SCREEN ───────────────────────────────────────────────────────────
-
+// ─── PENDING SCREEN (unchanged) ─────────────────────────────────────────────
 function PendingScreen({ profile, cleaner, emailConfirmed }: { profile: CleanerProfile; cleaner: CleanerData; emailConfirmed: boolean }) {
   const firstName = profile.full_name.trim().split(' ')[0]
   const zones = (cleaner.zones ?? []).map(z => ZONE_LABELS[z] ?? z)
@@ -408,9 +471,7 @@ function PendingScreen({ profile, cleaner, emailConfirmed }: { profile: CleanerP
         <div style={{ padding: '12px 0' }}>
           <div style={{ fontSize: '13px', color: '#64748b', fontWeight: 500, marginBottom: '8px' }}>Areas you cover</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-            {zones.length > 0
-              ? zones.map(z => <span key={z} style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '4px 10px', fontSize: '12px', fontWeight: 600 }}>{z}</span>)
-              : <span style={{ fontSize: '13px', color: '#94a3b8' }}>None selected</span>}
+            {zones.length > 0 ? zones.map(z => <span key={z} style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '4px 10px', fontSize: '12px', fontWeight: 600 }}>{z}</span>) : <span style={{ fontSize: '13px', color: '#94a3b8' }}>None selected</span>}
           </div>
         </div>
       </div>
@@ -424,8 +485,7 @@ function PendingScreen({ profile, cleaner, emailConfirmed }: { profile: CleanerP
   )
 }
 
-// ─── BLOCKED SCREEN ───────────────────────────────────────────────────────────
-
+// ─── BLOCKED SCREEN (unchanged) ─────────────────────────────────────────────
 function BlockedScreen({ status }: { status: 'rejected' | 'suspended' }) {
   return (
     <div style={{ maxWidth: '480px', margin: '0 auto', padding: '0 24px 60px' }}>
@@ -447,13 +507,13 @@ function BlockedScreen({ status }: { status: 'rejected' | 'suspended' }) {
   )
 }
 
-// ─── MAIN PAGE ────────────────────────────────────────────────────────────────
-
+// ─── MAIN PAGE ──────────────────────────────────────────────────────────────
 export default function CleanerDashboardPage() {
   const router = useRouter()
   const [profile, setProfile] = useState<CleanerProfile | null>(null)
   const [cleaner, setCleaner] = useState<CleanerData | null>(null)
-  const [stats, setStats] = useState<CleanerStats>({ pendingApplications: 0, acceptedApplications: 0, declinedApplications: 0, chatsAccepted: 0, chatsDeclined: 0 })
+  const [stats, setStats] = useState<CleanerStats>({ pendingApplications: 0, jobsWon: 0, chatsAccepted: 0, chatsDeclined: 0, uniqueCustomers: 0 })
+  const [notifications, setNotifications] = useState<NotificationItem[]>([])
   const [emailConfirmed, setEmailConfirmed] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -464,35 +524,52 @@ export default function CleanerDashboardPage() {
         const supabase = createClient()
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) { router.replace('/login'); return }
+
         setEmailConfirmed(!!user.email_confirmed_at)
 
         const { data: profileData, error: profileError } = await supabase
           .from('profiles').select('full_name, email, phone').eq('id', user.id).single()
         if (profileError || !profileData) throw new Error('Could not load your profile.')
 
+        // NOTE: added `id` to select so applications query actually works
         const { data: cleanerData, error: cleanerError } = await supabase
           .from('cleaners')
-          .select('application_status, zones, dbs_checked, right_to_work, has_insurance, needs_credentials_help, cover_cleans_notify, job_notify, marketing_opt_in, own_supplies, created_at, dbs_expiry, insurance_expiry, cleans_completed')
+          .select('id, application_status, zones, dbs_checked, right_to_work, has_insurance, needs_credentials_help, cover_cleans_notify, job_notify, marketing_opt_in, own_supplies, created_at, dbs_expiry, insurance_expiry, cleans_completed')
           .eq('profile_id', user.id).single()
         if (cleanerError || !cleanerData) throw new Error('Could not load your cleaner profile.')
 
         setProfile(profileData)
         setCleaner(cleanerData as CleanerData)
 
-        // Fetch application stats
+        // Fetch applications + join clean_requests to know which ones became jobs
         const { data: appData } = await supabase
           .from('applications')
-          .select('status')
+          .select('id, status, request_id, clean_requests(status)')
           .eq('cleaner_id', (cleanerData as any).id)
 
         if (appData) {
-          const apps = appData as { status: string }[]
+          const apps = appData as Array<{ id: string; status: string; request_id: string; clean_requests: { status: string } | null }>
           const pending = apps.filter(a => a.status === 'pending').length
-          const accepted = apps.filter(a => a.status === 'accepted').length
-          const declined = apps.filter(a => a.status === 'declined').length
-          setStats({ pendingApplications: pending, acceptedApplications: accepted, declinedApplications: declined, chatsAccepted: accepted, chatsDeclined: declined })
+          const chatsAccepted = apps.filter(a => a.status === 'accepted').length
+          const chatsDeclined = apps.filter(a => a.status === 'rejected' || a.status === 'declined').length
+          const jobsWon = apps.filter(a => a.status === 'accepted' && a.clean_requests?.status === 'fulfilled').length
+          // Unique customers = distinct fulfilled requests where this cleaner won
+          const uniqueCustomers = new Set(apps.filter(a => a.status === 'accepted' && a.clean_requests?.status === 'fulfilled').map(a => a.request_id)).size
+
+          setStats({ pendingApplications: pending, jobsWon, chatsAccepted, chatsDeclined, uniqueCustomers })
         }
 
+        // Fetch notifications (table may not exist yet — handle gracefully)
+        const { data: notifData, error: notifError } = await supabase
+          .from('notifications')
+          .select('id, type, title, body, link, read, created_at')
+          .eq('cleaner_id', (cleanerData as any).id)
+          .order('created_at', { ascending: false })
+          .limit(10)
+
+        if (!notifError && notifData) {
+          setNotifications(notifData as NotificationItem[])
+        }
       } catch (err: any) {
         setError(err?.message ?? 'Something went wrong.')
       } finally {
@@ -501,6 +578,43 @@ export default function CleanerDashboardPage() {
     }
     init()
   }, [router])
+
+  // Toggle a notification preference — optimistic update with rollback on error
+  const togglePreference = async (field: 'job_notify' | 'cover_cleans_notify' | 'marketing_opt_in') => {
+    if (!cleaner) return
+    const previous = cleaner[field]
+    const next = !previous
+
+    setCleaner({ ...cleaner, [field]: next })
+
+    const supabase = createClient()
+    const { error } = await (supabase.from('cleaners') as any)
+      .update({ [field]: next })
+      .eq('id', (cleaner as any).id)
+
+    if (error) {
+      // Revert
+      setCleaner({ ...cleaner, [field]: previous })
+      console.error('Failed to update notification preference:', error)
+    }
+  }
+
+  const handleNotificationClick = async (n: NotificationItem) => {
+    if (!n.read) {
+      // Optimistic mark-as-read
+      setNotifications(prev => prev.map(item => item.id === n.id ? { ...item, read: true } : item))
+      try {
+        await fetch('/api/notifications/read', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids: [n.id] }),
+        })
+      } catch (e) {
+        console.error('Failed to mark notification read:', e)
+      }
+    }
+    if (n.link) router.push(n.link)
+  }
 
   const handleSignOut = async () => {
     const supabase = createClient()
@@ -538,7 +652,6 @@ export default function CleanerDashboardPage() {
   return (
     <div style={{ minHeight: '100vh', background: 'linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%)', fontFamily: "'DM Sans', sans-serif", display: 'flex', flexDirection: 'column' }}>
       <Header userRole="cleaner" />
-
       <main style={{ flex: 1 }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '40px 24px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
@@ -553,9 +666,18 @@ export default function CleanerDashboardPage() {
         {(status === 'submitted' || status === 'pending') && (
           <PendingScreen profile={profile} cleaner={cleaner} emailConfirmed={emailConfirmed} />
         )}
+
         {status === 'approved' && (
-          <ApprovedDashboard profile={profile} cleaner={cleaner} stats={stats} />
+          <ApprovedDashboard
+            profile={profile}
+            cleaner={cleaner}
+            stats={stats}
+            notifications={notifications}
+            onTogglePref={togglePreference}
+            onNotificationClick={handleNotificationClick}
+          />
         )}
+
         {(status === 'rejected' || status === 'suspended') && (
           <BlockedScreen status={status} />
         )}
@@ -569,7 +691,6 @@ export default function CleanerDashboardPage() {
           Sign out
         </button>
       </div>
-
       <Footer />
     </div>
   )

@@ -691,6 +691,15 @@ export async function GET(request: NextRequest) {
         content: `🎉 __system__ Direct Debit confirmed — start date ${formattedStartDate}. Your address has been shared with your cleaner.`,
       }),
 
+      // ── NEW: notify winning cleaner ────────────────────────────────────────
+      supabaseAdmin.from('notifications').insert({
+        cleaner_id: application.cleaner_id,
+        type: 'job_won',
+        title: `🎉 ${customerFirstName} confirmed you for the job`,
+        body: `First clean: ${formattedStartDate}. Check your email for the full job details.`,
+        link: '/cleaner/dashboard',
+      }),
+
       cleanerEmail
         ? resend.emails.send({
             from: 'Vouchee <hello@vouchee.co.uk>',
@@ -748,6 +757,18 @@ export async function GET(request: NextRequest) {
             .from('conversations').select('id')
             .eq('clean_request_id', requestId).eq('cleaner_id', rejApp.cleaner_id).single()
           const tasks = []
+
+          // ── NEW: notify passed-over cleaner ────────────────────────────────
+          tasks.push(
+            supabaseAdmin.from('notifications').insert({
+              cleaner_id: rejApp.cleaner_id,
+              type: 'job_lost',
+              title: 'Application update',
+              body: `${customerFirstName} chose another cleaner for this job. Don't be discouraged — new listings appear regularly.`,
+              link: '/jobs',
+            })
+          )
+
           if (conv?.id) {
             tasks.push(supabaseAdmin.from('messages').insert({
               conversation_id: conv.id,
