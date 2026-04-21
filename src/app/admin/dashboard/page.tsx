@@ -15,7 +15,7 @@ interface ApplicationRow { id: string; status: string; created_at: string; messa
 interface ConversationRow { id: string; created_at: string; cleaner_name: string; customer_name: string; zone: string; message_count: number; last_message: string; last_message_at: string | null }
 interface ViolationRow { id: string; created_at: string; conversation_id: string; message_content: string; triggered_keywords: string[]; sender_role: string; sender_name: string }
 
-type Tab = 'overview' | 'users' | 'listings' | 'applications' | 'conversations' | 'violations' | 'customer-view' | 'cleaner-view' | 'tests'
+type Tab = 'overview' | 'users' | 'cleaners' | 'listings' | 'applications' | 'conversations' | 'violations' | 'customer-view' | 'cleaner-view' | 'tests'
 
 const ZONE_LABELS: Record<string, string> = {
   central_south_east: 'Central / South East', north_west: 'North West',
@@ -160,6 +160,271 @@ function TestCard({ title, description, buttonLabel, buttonColor = '#2563eb', co
   )
 }
 
+// ═══════════════════════════════════════════════════════════════
+// CLEANER CRM
+// ═══════════════════════════════════════════════════════════════
+
+interface CleanerRow {
+  id: string
+  profile_id: string
+  full_name: string
+  email: string
+  application_status: 'submitted' | 'in_review' | 'approved' | 'rejected' | 'suspended' | 'pending' | null
+  created_at: string
+  dbs_checked: boolean
+  has_insurance: boolean
+  right_to_work: boolean
+  intro_message: string | null
+  interview_notes: string | null
+  interview_qualifying: Record<string, string> | null
+  interview_platform: Record<string, boolean> | null
+  approved_at: string | null
+  rejected_at: string | null
+  rejection_reason: string | null
+  cleans_completed: number | null
+}
+
+// DRAFT QUESTIONS — edit freely, stored in DB as JSONB keys so you can tweak copy without migration churn
+const QUALIFYING_QUESTIONS = [
+  { id: 'q1', label: 'Why do you want to join Vouchee?' },
+  { id: 'q2', label: 'How many years of professional cleaning experience do you have?' },
+  { id: 'q3', label: 'Do you have your own transport? (needed for Horsham patch)' },
+  { id: 'q4', label: 'What\'s your typical availability — weekdays, evenings, weekends?' },
+  { id: 'q5', label: 'Do you bring your own supplies, or expect customers to provide?' },
+]
+
+const PLATFORM_CHECKLIST = [
+  { id: 'p1', label: 'Explained: no off-platform contact before mandate confirmed' },
+  { id: 'p2', label: 'Explained: how payment works (customer Direct Debit → cleaner directly)' },
+  { id: 'p3', label: 'Explained: Vouchee\'s 10% fee structure' },
+  { id: 'p4', label: 'Explained: job application flow + customer expectations' },
+  { id: 'p5', label: 'Explained: what happens if a customer cancels' },
+]
+
+function PipelineCount({ label, count, color, active, onClick }: { label: string; count: number; color: string; active: boolean; onClick: () => void }) {
+  return (
+    <button onClick={onClick} style={{
+      flex: 1, minWidth: '140px',
+      background: active ? color : 'white',
+      color: active ? 'white' : '#0f172a',
+      border: `1.5px solid ${active ? color : '#e2e8f0'}`,
+      borderRadius: '12px',
+      padding: '14px 16px',
+      cursor: 'pointer',
+      fontFamily: "'DM Sans', sans-serif",
+      textAlign: 'left',
+      transition: 'all 0.15s'
+    }}>
+      <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', opacity: active ? 0.9 : 0.6, marginBottom: '4px' }}>{label}</div>
+      <div style={{ fontSize: '24px', fontWeight: 800, lineHeight: 1 }}>{count}</div>
+    </button>
+  )
+}
+
+function CleanerDrawer({ cleaner, onClose, onSaved }: { cleaner: CleanerRow; onClose: () => void; onSaved: () => void }) {
+  const [qualifying, setQualifying] = useState<Record<string, string>>(cleaner.interview_qualifying ?? {})
+  const [platform, setPlatform] = useState<Record<string, boolean>>(cleaner.interview_platform ?? {})
+  const [notes, setNotes] = useState<string>(cleaner.interview_notes ?? '')
+  const [saving, setSaving] = useState(false)
+  const [busy, setBusy] = useState<'idle' | 'approving' | 'rejecting'>('idle')
+  const [rejectPrompt, setRejectPrompt] = useState(false)
+  const [rejectReason, setRejectReason] = useState('')
+
+  const saveInterview = async () => {
+    setSaving(true)
+    const ok = await adminAction({
+      action: 'save_interview',
+      cleanerId: cleaner.id,
+      notes: notes.trim() || null,
+      qualifying: Object.keys(qualifying).length ? qualifying : null,
+      platform: Object.keys(platform).length ? platform : null,
+    })
+    setSaving(false)
+    if (ok) onSaved()
+  }
+
+  const approve = async () => {
+    setBusy('approving')
+    const ok = await adminAction({ action: 'approve_cleaner', cleanerId: cleaner.id })
+    setBusy('idle')
+    if (ok) { onSaved(); onClose() }
+  }
+
+  const reject = async () => {
+    setBusy('rejecting')
+    const ok = await adminAction({ action: 'reject_cleaner', cleanerId: cleaner.id, reason: rejectReason.trim() || null })
+    setBusy('idle')
+    if (ok) { onSaved(); onClose() }
+  }
+
+  const statusLabel = cleaner.application_status ?? 'submitted'
+  const statusColor =
+    statusLabel === 'approved' ? 'green' :
+    statusLabel === 'rejected' ? 'red' :
+    statusLabel === 'in_review' ? 'yellow' :
+    statusLabel === 'suspended' ? 'red' : 'blue'
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 500, display: 'flex', justifyContent: 'flex-end' }} onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} style={{ background: 'white', width: '100%', maxWidth: '640px', height: '100vh', overflowY: 'auto', boxShadow: '-8px 0 40px rgba(0,0,0,0.1)' }}>
+        <div style={{ padding: '24px 28px', borderBottom: '1px solid #f1f5f9', position: 'sticky', top: 0, background: 'white', zIndex: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px' }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <h2 style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a', margin: '0 0 4px' }}>{cleaner.full_name}</h2>
+              <div style={{ fontSize: '13px', color: '#64748b' }}>{cleaner.email}</div>
+              <div style={{ marginTop: '8px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                <Badge label={statusLabel} color={statusColor} />
+                {cleaner.dbs_checked && <Badge label="DBS ✓" color="green" />}
+                {cleaner.has_insurance && <Badge label="Insured ✓" color="green" />}
+                {cleaner.right_to_work && <Badge label="Right to work ✓" color="green" />}
+              </div>
+            </div>
+            <button onClick={onClose} style={{ background: '#f1f5f9', border: 'none', borderRadius: '50%', width: '32px', height: '32px', fontSize: '16px', cursor: 'pointer', color: '#64748b', flexShrink: 0 }}>✕</button>
+          </div>
+        </div>
+
+        <div style={{ padding: '24px 28px' }}>
+          {/* Intro message */}
+          {cleaner.intro_message && (
+            <div style={{ marginBottom: '24px' }}>
+              <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>Their intro message</div>
+              <div style={{ background: '#f8fafc', borderRadius: '12px', padding: '14px 16px', fontSize: '14px', color: '#0f172a', lineHeight: 1.55, fontStyle: 'italic' }}>"{cleaner.intro_message}"</div>
+            </div>
+          )}
+
+          {/* Qualifying questions */}
+          <div style={{ marginBottom: '28px' }}>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '12px' }}>Qualifying questions</div>
+            {QUALIFYING_QUESTIONS.map(q => (
+              <div key={q.id} style={{ marginBottom: '14px' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#0f172a', marginBottom: '6px' }}>{q.label}</label>
+                <textarea
+                  value={qualifying[q.id] ?? ''}
+                  onChange={e => setQualifying(prev => ({ ...prev, [q.id]: e.target.value }))}
+                  rows={2}
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1.5px solid #e2e8f0', fontSize: '13px', fontFamily: "'DM Sans', sans-serif", outline: 'none', resize: 'vertical', color: '#0f172a', boxSizing: 'border-box' }}
+                />
+              </div>
+            ))}
+          </div>
+
+          {/* Platform coverage checklist */}
+          <div style={{ marginBottom: '28px' }}>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '12px' }}>Platform coverage</div>
+            <div style={{ background: '#f8fafc', borderRadius: '12px', padding: '14px 16px' }}>
+              {PLATFORM_CHECKLIST.map(p => (
+                <label key={p.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '6px 0', cursor: 'pointer', fontSize: '13px', color: '#0f172a' }}>
+                  <input
+                    type="checkbox"
+                    checked={!!platform[p.id]}
+                    onChange={e => setPlatform(prev => ({ ...prev, [p.id]: e.target.checked }))}
+                    style={{ marginTop: '3px', cursor: 'pointer' }}
+                  />
+                  <span>{p.label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* Free-text notes */}
+          <div style={{ marginBottom: '28px' }}>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>Interview notes</div>
+            <textarea
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+              rows={5}
+              placeholder="General thoughts from the call…"
+              style={{ width: '100%', padding: '12px 14px', borderRadius: '12px', border: '1.5px solid #e2e8f0', fontSize: '14px', fontFamily: "'DM Sans', sans-serif", outline: 'none', resize: 'vertical', color: '#0f172a', boxSizing: 'border-box' }}
+            />
+          </div>
+
+          {/* Documents (placeholder — upload wiring in follow-up) */}
+          <div style={{ marginBottom: '28px' }}>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>Documents</div>
+            <div style={{ background: '#f8fafc', border: '1.5px dashed #cbd5e1', borderRadius: '12px', padding: '20px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>
+              📎 Document upload coming in next update.<br/>
+              For now, keep copies of DBS / insurance / right-to-work in your own files.
+            </div>
+          </div>
+
+          {/* Save interview progress */}
+          <button
+            onClick={saveInterview}
+            disabled={saving}
+            style={{ width: '100%', padding: '12px', background: saving ? '#94a3b8' : '#2563eb', color: 'white', border: 'none', borderRadius: '10px', fontSize: '14px', fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer', fontFamily: "'DM Sans', sans-serif", marginBottom: '24px' }}
+          >
+            {saving ? 'Saving…' : '💾 Save interview progress'}
+          </button>
+
+          {/* Decision buttons */}
+          <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '20px' }}>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '12px' }}>Decision</div>
+
+            {cleaner.application_status === 'approved' && (
+              <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', padding: '12px 14px', fontSize: '13px', color: '#15803d', marginBottom: '12px' }}>
+                ✅ Approved{cleaner.approved_at ? ` on ${fmt(cleaner.approved_at)}` : ''}
+              </div>
+            )}
+            {cleaner.application_status === 'rejected' && (
+              <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '10px', padding: '12px 14px', fontSize: '13px', color: '#dc2626', marginBottom: '12px' }}>
+                ❌ Rejected{cleaner.rejected_at ? ` on ${fmt(cleaner.rejected_at)}` : ''}
+                {cleaner.rejection_reason && <div style={{ marginTop: '4px', fontStyle: 'italic' }}>"{cleaner.rejection_reason}"</div>}
+              </div>
+            )}
+
+            {!rejectPrompt && (
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  onClick={approve}
+                  disabled={busy !== 'idle' || cleaner.application_status === 'approved'}
+                  style={{ flex: 1, padding: '12px', background: cleaner.application_status === 'approved' ? '#e2e8f0' : '#16a34a', color: cleaner.application_status === 'approved' ? '#94a3b8' : 'white', border: 'none', borderRadius: '10px', fontSize: '14px', fontWeight: 700, cursor: cleaner.application_status === 'approved' ? 'not-allowed' : 'pointer', fontFamily: "'DM Sans', sans-serif" }}
+                >
+                  {busy === 'approving' ? 'Approving…' : '✅ Approve'}
+                </button>
+                <button
+                  onClick={() => setRejectPrompt(true)}
+                  disabled={busy !== 'idle' || cleaner.application_status === 'rejected'}
+                  style={{ flex: 1, padding: '12px', background: cleaner.application_status === 'rejected' ? '#e2e8f0' : '#fef2f2', color: cleaner.application_status === 'rejected' ? '#94a3b8' : '#dc2626', border: cleaner.application_status === 'rejected' ? 'none' : '1px solid #fecaca', borderRadius: '10px', fontSize: '14px', fontWeight: 700, cursor: cleaner.application_status === 'rejected' ? 'not-allowed' : 'pointer', fontFamily: "'DM Sans', sans-serif" }}
+                >
+                  ❌ Reject
+                </button>
+              </div>
+            )}
+
+            {rejectPrompt && (
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#0f172a', marginBottom: '8px' }}>Why are you rejecting? (private, for your records)</label>
+                <textarea
+                  value={rejectReason}
+                  onChange={e => setRejectReason(e.target.value)}
+                  rows={3}
+                  placeholder="e.g. Didn't show up to interview"
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1.5px solid #fecaca', fontSize: '13px', fontFamily: "'DM Sans', sans-serif", outline: 'none', resize: 'vertical', color: '#0f172a', boxSizing: 'border-box', marginBottom: '10px' }}
+                />
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    onClick={() => { setRejectPrompt(false); setRejectReason('') }}
+                    style={{ flex: 1, padding: '10px', background: 'white', border: '1px solid #e2e8f0', borderRadius: '10px', fontSize: '13px', fontWeight: 600, color: '#64748b', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={reject}
+                    disabled={busy !== 'idle'}
+                    style={{ flex: 1, padding: '10px', background: '#dc2626', color: 'white', border: 'none', borderRadius: '10px', fontSize: '13px', fontWeight: 700, cursor: busy !== 'idle' ? 'not-allowed' : 'pointer', fontFamily: "'DM Sans', sans-serif" }}
+                  >
+                    {busy === 'rejecting' ? 'Rejecting…' : 'Confirm rejection'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function AdminDashboard() {
   const router = useRouter()
@@ -176,6 +441,9 @@ export default function AdminDashboard() {
   const [viewingConv, setViewingConv] = useState<ConversationRow | null>(null)
   const [confirmAction, setConfirmAction] = useState<{ message: string; onConfirm: () => void } | null>(null)
   const [listingFilter, setListingFilter] = useState<'all' | 'active' | 'hidden'>('all')
+  const [cleanersList, setCleanersList] = useState<CleanerRow[]>([])
+  const [cleanerFilter, setCleanerFilter] = useState<'all' | 'submitted' | 'in_review' | 'approved' | 'rejected'>('submitted')
+  const [viewingCleaner, setViewingCleaner] = useState<CleanerRow | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
@@ -184,7 +452,7 @@ export default function AdminDashboard() {
       if (!user) { router.replace('/login'); return }
       const { data: profile } = await (supabase as any).from('profiles').select('role').eq('id', user.id).single()
       if (!profile || profile.role !== 'admin') { router.replace('/login'); return }
-      await Promise.all([loadStats(), loadUsers(), loadListings(), loadApplications(), loadConversations(), loadViolations()])
+      await Promise.all([loadStats(), loadUsers(), loadCleaners(), loadListings(), loadApplications(), loadConversations(), loadViolations()])
       setLoading(false)
     }
     init()
@@ -206,6 +474,24 @@ export default function AdminDashboard() {
   const loadUsers = async () => {
     const { data } = await (supabase as any).from('profiles').select('id, full_name, email, role, created_at, suspended').in('role', ['customer', 'cleaner']).order('created_at', { ascending: false }).limit(200)
     setUsers(data ?? [])
+  }
+
+  const loadCleaners = async () => {
+    const { data: cleaners } = await (supabase as any)
+      .from('cleaners')
+      .select('id, profile_id, application_status, created_at, dbs_checked, has_insurance, right_to_work, intro_message, interview_notes, interview_qualifying, interview_platform, approved_at, rejected_at, rejection_reason, cleans_completed')
+      .order('created_at', { ascending: false })
+      .limit(200)
+    if (!cleaners) return
+    const enriched = await Promise.all((cleaners as any[]).map(async c => {
+      const { data: p } = await (supabase as any).from('profiles').select('full_name, email').eq('id', c.profile_id).single()
+      return {
+        ...c,
+        full_name: (p as any)?.full_name ?? '—',
+        email: (p as any)?.email ?? '—',
+      } as CleanerRow
+    }))
+    setCleanersList(enriched)
   }
 
   const loadListings = async () => {
@@ -287,6 +573,7 @@ export default function AdminDashboard() {
   const tabs: { id: Tab; label: string; icon: string }[] = [
     { id: 'overview', label: 'Overview', icon: '📊' },
     { id: 'users', label: 'Users', icon: '👥' },
+    { id: 'cleaners', label: 'Cleaners', icon: '🧹' },
     { id: 'listings', label: 'Listings', icon: '🏠' },
     { id: 'applications', label: 'Applications', icon: '📋' },
     { id: 'conversations', label: 'Conversations', icon: '💬' },
@@ -360,6 +647,62 @@ export default function AdminDashboard() {
                   {violations.length > 5 && <button onClick={() => setTab('violations')} style={{ marginTop: '12px', background: 'none', border: 'none', color: '#dc2626', fontSize: '12px', fontWeight: 700, cursor: 'pointer', padding: 0 }}>View all {violations.length} violations →</button>}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* ── Cleaners (approval CRM) ── */}
+          {tab === 'cleaners' && (
+            <div>
+              <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
+                <PipelineCount label="Submitted" count={cleanersList.filter(c => c.application_status === 'submitted').length} color="#2563eb" active={cleanerFilter === 'submitted'} onClick={() => setCleanerFilter('submitted')} />
+                <PipelineCount label="In review" count={cleanersList.filter(c => c.application_status === 'in_review').length} color="#f59e0b" active={cleanerFilter === 'in_review'} onClick={() => setCleanerFilter('in_review')} />
+                <PipelineCount label="Approved" count={cleanersList.filter(c => c.application_status === 'approved').length} color="#16a34a" active={cleanerFilter === 'approved'} onClick={() => setCleanerFilter('approved')} />
+                <PipelineCount label="Rejected" count={cleanersList.filter(c => c.application_status === 'rejected').length} color="#dc2626" active={cleanerFilter === 'rejected'} onClick={() => setCleanerFilter('rejected')} />
+                <PipelineCount label="All" count={cleanersList.length} color="#0f172a" active={cleanerFilter === 'all'} onClick={() => setCleanerFilter('all')} />
+              </div>
+
+              <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                  <thead><tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>{['Cleaner', 'Email', 'Checks', 'Signed up', 'Status', ''].map(h => <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>)}</tr></thead>
+                  <tbody>
+                    {cleanersList
+                      .filter(c => cleanerFilter === 'all' ? true : (c.application_status ?? 'submitted') === cleanerFilter)
+                      .map((c, i, arr) => (
+                        <tr key={c.id} style={{ borderBottom: i < arr.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
+                          <td style={{ padding: '12px 16px', fontWeight: 600, color: '#0f172a' }}>{c.full_name}</td>
+                          <td style={{ padding: '12px 16px', color: '#64748b' }}>{c.email}</td>
+                          <td style={{ padding: '12px 16px' }}>
+                            <div style={{ display: 'flex', gap: '4px' }}>
+                              <span title="DBS" style={{ fontSize: '11px', opacity: c.dbs_checked ? 1 : 0.25 }}>🛡️</span>
+                              <span title="Insurance" style={{ fontSize: '11px', opacity: c.has_insurance ? 1 : 0.25 }}>📋</span>
+                              <span title="Right to work" style={{ fontSize: '11px', opacity: c.right_to_work ? 1 : 0.25 }}>✅</span>
+                            </div>
+                          </td>
+                          <td style={{ padding: '12px 16px', color: '#94a3b8', whiteSpace: 'nowrap' }}>{ago(c.created_at)}</td>
+                          <td style={{ padding: '12px 16px' }}>
+                            <Badge
+                              label={c.application_status ?? 'submitted'}
+                              color={
+                                c.application_status === 'approved' ? 'green' :
+                                c.application_status === 'rejected' ? 'red' :
+                                c.application_status === 'in_review' ? 'yellow' :
+                                c.application_status === 'suspended' ? 'red' : 'blue'
+                              }
+                            />
+                          </td>
+                          <td style={{ padding: '12px 16px' }}>
+                            <button onClick={() => setViewingCleaner(c)} style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '4px 12px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
+                              Review →
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    {cleanersList.filter(c => cleanerFilter === 'all' ? true : (c.application_status ?? 'submitted') === cleanerFilter).length === 0 && (
+                      <tr><td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>No cleaners in this state</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 
@@ -576,6 +919,7 @@ export default function AdminDashboard() {
 
         </div>
 
+        {viewingCleaner && <CleanerDrawer cleaner={viewingCleaner} onClose={() => setViewingCleaner(null)} onSaved={loadCleaners} />}
         {viewingConv && <ConversationModal conversationId={viewingConv.id} cleanerName={viewingConv.cleaner_name} customerName={viewingConv.customer_name} onClose={() => setViewingConv(null)} />}
         {confirmAction && <ConfirmModal message={confirmAction.message} onConfirm={confirmAction.onConfirm} onCancel={() => setConfirmAction(null)} />}
       </div>
