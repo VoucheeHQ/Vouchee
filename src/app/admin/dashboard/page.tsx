@@ -174,7 +174,6 @@ interface CleanerRow {
   dbs_checked: boolean
   has_insurance: boolean
   right_to_work: boolean
-  intro_message: string | null
   interview_notes: string | null
   interview_qualifying: Record<string, string> | null
   interview_platform: Record<string, boolean> | null
@@ -284,14 +283,6 @@ function CleanerDrawer({ cleaner, onClose, onSaved }: { cleaner: CleanerRow; onC
         </div>
 
         <div style={{ padding: '24px 28px' }}>
-          {/* Intro message */}
-          {cleaner.intro_message && (
-            <div style={{ marginBottom: '24px' }}>
-              <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>Their intro message</div>
-              <div style={{ background: '#f8fafc', borderRadius: '12px', padding: '14px 16px', fontSize: '14px', color: '#0f172a', lineHeight: 1.55, fontStyle: 'italic' }}>"{cleaner.intro_message}"</div>
-            </div>
-          )}
-
           {/* Qualifying questions */}
           <div style={{ marginBottom: '28px' }}>
             <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '12px' }}>Qualifying questions</div>
@@ -479,7 +470,7 @@ export default function AdminDashboard() {
   const loadCleaners = async () => {
     const { data: cleaners } = await (supabase as any)
       .from('cleaners')
-      .select('id, profile_id, application_status, created_at, dbs_checked, has_insurance, right_to_work, intro_message, interview_notes, interview_qualifying, interview_platform, approved_at, rejected_at, rejection_reason, cleans_completed')
+      .select('id, profile_id, application_status, created_at, dbs_checked, has_insurance, right_to_work, interview_notes, interview_qualifying, interview_platform, approved_at, rejected_at, rejection_reason, cleans_completed')
       .order('created_at', { ascending: false })
       .limit(200)
     if (!cleaners) return
