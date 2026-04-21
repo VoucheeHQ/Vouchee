@@ -10,18 +10,16 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const { applicationId, requestId } = body
-
     if (!applicationId || !requestId) {
       return NextResponse.json({ error: 'Missing applicationId or requestId' }, { status: 400 })
     }
 
-    // 1. Get the application
+    // 1. Get the application (includes current status)
     const { data: application, error: appError } = await supabaseAdmin
       .from('applications')
       .select('id, cleaner_id, request_id, status, message')
       .eq('id', applicationId)
       .single()
-
     if (appError || !application) {
       console.error('Application lookup failed:', appError)
       return NextResponse.json({ error: 'Application not found' }, { status: 404 })
@@ -33,7 +31,6 @@ export async function POST(request: NextRequest) {
       .select('id, customer_id')
       .eq('id', requestId)
       .single()
-
     if (reqError || !cleanRequest) {
       console.error('Clean request lookup failed:', reqError)
       return NextResponse.json({ error: 'Clean request not found' }, { status: 404 })
@@ -45,13 +42,17 @@ export async function POST(request: NextRequest) {
       .select('profile_id')
       .eq('id', cleanRequest.customer_id)
       .single()
-
     if (customerError || !customerRecord) {
       console.error('Customer lookup failed:', customerError)
       return NextResponse.json({ error: 'Customer not found' }, { status: 404 })
     }
 
-    // 4. Check if a conversation already exists for this application
+    // 4. Determine if this is a *new* acceptance (status was pending) — used below
+    //    for deciding whether to send a notification. We compute this BEFORE the
+    //    status update so we know the previous state.
+    const wasPending = (application as any).status === 'pending'
+
+    // 5. Check if a conversation already exists for this application
     const { data: existingConv } = await supabaseAdmin
       .from('conversations')
       .select('id')
@@ -59,19 +60,21 @@ export async function POST(request: NextRequest) {
       .eq('cleaner_id', application.cleaner_id)
       .single() as { data: { id: string } | null }
 
+    // 6. ALWAYS mark the application accepted — idempotent, safe to re-run.
+    //    Previously this sat inside the "no existing conversation" branch, which
+    //    meant stale conversation rows could block status updates forever.
+    await supabaseAdmin
+      .from('applications')
+      .update({ status: 'accepted' } as any)
+      .eq('id', applicationId)
+
     let conversationId: string
 
     if (existingConv?.id) {
-      // Already accepted — just return the existing conversation
+      // Chat already exists — just return the existing conversation
       conversationId = existingConv.id
     } else {
-      // 5. Update application status to accepted
-      await supabaseAdmin
-        .from('applications')
-        .update({ status: 'accepted' })
-        .eq('id', applicationId)
-
-      // 6. Create a new conversation — customer_id must be profiles.id per FK constraint
+      // 7. Create a new conversation — customer_id must be profiles.id per FK constraint
       const { data: newConv, error: convError } = await supabaseAdmin
         .from('conversations')
         .insert({
@@ -79,7 +82,7 @@ export async function POST(request: NextRequest) {
           cleaner_id: application.cleaner_id,
           customer_id: customerRecord.profile_id,
           status: 'active',
-        })
+        } as any)
         .select('id')
         .single()
 
@@ -88,9 +91,9 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Failed to create conversation' }, { status: 500 })
       }
 
-      conversationId = newConv.id
+      conversationId = (newConv as any).id
 
-      // 7. Seed the cleaner's application message as the first message
+      // 8. Seed the cleaner's application message as the first message
       if (application.message?.trim()) {
         const { data: cleanerRecord } = await supabaseAdmin
           .from('cleaners')
@@ -104,8 +107,33 @@ export async function POST(request: NextRequest) {
             sender_id: cleanerRecord.profile_id,
             sender_role: 'cleaner',
             content: application.message.trim(),
-          })
+          } as any)
         }
+      }
+    }
+
+    // 9. Send a "chat accepted" notification to the cleaner — only if this was
+    //    genuinely a new acceptance (avoids spam on repeat clicks / retries).
+    if (wasPending) {
+      try {
+        const { data: customerProfile } = await supabaseAdmin
+          .from('profiles')
+          .select('full_name')
+          .eq('id', customerRecord.profile_id)
+          .single() as { data: { full_name: string | null } | null }
+
+        const customerFirstName = customerProfile?.full_name?.split(' ')[0] ?? 'A customer'
+
+        await supabaseAdmin.from('notifications').insert({
+          cleaner_id: application.cleaner_id,
+          type: 'chat_accepted',
+          title: `💬 ${customerFirstName} accepted your chat`,
+          body: 'You can now message them directly about the job.',
+          link: '/cleaner/dashboard',
+        } as any)
+      } catch (notifyErr) {
+        // Notifications are a nice-to-have — never block the core flow on them
+        console.error('Notification insert failed (non-fatal):', notifyErr)
       }
     }
 
