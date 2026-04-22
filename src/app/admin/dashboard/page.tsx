@@ -451,7 +451,22 @@ function DocumentUploadSlot({
   )
 }
 
-function CleanerDrawer({ cleaner, onClose, onSaved }: { cleaner: CleanerRow; onClose: () => void; onSaved: () => void }) {
+function CleanerDrawer({ cleaner: initialCleaner, onClose, onSaved }: { cleaner: CleanerRow; onClose: () => void; onSaved: () => void }) {
+  // Track the cleaner's state internally so we can refresh the drawer
+  // after an upload/verify without closing it
+  const [cleaner, setCleaner] = useState<CleanerRow>(initialCleaner)
+  const supabase = createClient()
+
+  const refreshCleaner = async () => {
+    const { data: c } = await (supabase as any)
+      .from('cleaners')
+      .select('id, profile_id, application_status, created_at, dbs_checked, has_insurance, right_to_work, interview_notes, interview_qualifying, interview_platform, approved_at, rejected_at, rejection_reason, cleans_completed, dbs_verified, dbs_file_url, dbs_expiry, dbs_uploaded_at, insurance_verified, insurance_file_url, insurance_expiry, insurance_uploaded_at, right_to_work_verified, right_to_work_file_url, right_to_work_expiry, right_to_work_uploaded_at, suspension_reason, suspended_at')
+      .eq('id', cleaner.id)
+      .single()
+    if (c) setCleaner({ ...cleaner, ...(c as any) })
+    onSaved() // refresh parent list too so pipeline counts stay correct
+  }
+
   const [qualifying, setQualifying] = useState<Record<string, string>>(cleaner.interview_qualifying ?? {})
   const [platform, setPlatform] = useState<Record<string, boolean>>(cleaner.interview_platform ?? {})
   const [notes, setNotes] = useState<string>(cleaner.interview_notes ?? '')
@@ -470,7 +485,7 @@ function CleanerDrawer({ cleaner, onClose, onSaved }: { cleaner: CleanerRow; onC
       platform: Object.keys(platform).length ? platform : null,
     })
     setSaving(false)
-    if (ok) onSaved()
+    if (ok) refreshCleaner()
   }
 
   const approve = async () => {
@@ -593,7 +608,7 @@ function CleanerDrawer({ cleaner, onClose, onSaved }: { cleaner: CleanerRow; onC
               verified={cleaner.dbs_verified}
               expiry={cleaner.dbs_expiry}
               uploadedAt={cleaner.dbs_uploaded_at}
-              onChange={onSaved}
+              onChange={refreshCleaner}
             />
             <DocumentUploadSlot
               cleanerId={cleaner.id}
@@ -603,7 +618,7 @@ function CleanerDrawer({ cleaner, onClose, onSaved }: { cleaner: CleanerRow; onC
               verified={cleaner.insurance_verified}
               expiry={cleaner.insurance_expiry}
               uploadedAt={cleaner.insurance_uploaded_at}
-              onChange={onSaved}
+              onChange={refreshCleaner}
             />
             <DocumentUploadSlot
               cleanerId={cleaner.id}
@@ -613,7 +628,7 @@ function CleanerDrawer({ cleaner, onClose, onSaved }: { cleaner: CleanerRow; onC
               verified={cleaner.right_to_work_verified}
               expiry={cleaner.right_to_work_expiry}
               uploadedAt={cleaner.right_to_work_uploaded_at}
-              onChange={onSaved}
+              onChange={refreshCleaner}
             />
           </div>
 
