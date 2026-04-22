@@ -2,6 +2,21 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
 
+const DOC_COLUMN_MAP: Record<string, { url: string; verified: string; expiry: string; uploaded_at: string }> = {
+  dbs: {
+    url: 'dbs_file_url', verified: 'dbs_verified',
+    expiry: 'dbs_expiry', uploaded_at: 'dbs_uploaded_at',
+  },
+  insurance: {
+    url: 'insurance_file_url', verified: 'insurance_verified',
+    expiry: 'insurance_expiry', uploaded_at: 'insurance_uploaded_at',
+  },
+  right_to_work: {
+    url: 'right_to_work_file_url', verified: 'right_to_work_verified',
+    expiry: 'right_to_work_expiry', uploaded_at: 'right_to_work_uploaded_at',
+  },
+}
+
 export async function POST(request: NextRequest) {
   // Verify caller is admin
   const supabaseUser = await createClient()
@@ -14,7 +29,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  // Use service role to bypass RLS for all admin writes
   const admin = createSupabaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -56,15 +70,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true })
   }
 
-  // ── Save cleaner interview (notes + qualifying + platform + status) ──────
-  // Moves cleaner into 'in_review' state if not already approved/rejected
+  // ── Save cleaner interview ────────────────────────────────────────────────
   if (action === 'save_interview') {
     const { cleanerId, notes, qualifying, platform } = body
-    if (!cleanerId) {
-      return NextResponse.json({ error: 'Missing cleanerId' }, { status: 400 })
-    }
+    if (!cleanerId) return NextResponse.json({ error: 'Missing cleanerId' }, { status: 400 })
 
-    // Only bump to in_review if currently submitted (don't override approved/rejected)
     const { data: current } = await admin
       .from('cleaners')
       .select('application_status')
@@ -91,13 +101,9 @@ export async function POST(request: NextRequest) {
   }
 
   // ── Approve cleaner ───────────────────────────────────────────────────────
-  // Sets application_status='approved', stamps approved_at/by, sends a
-  // cleaner-facing notification so they see the news on their dashboard.
   if (action === 'approve_cleaner') {
     const { cleanerId } = body
-    if (!cleanerId) {
-      return NextResponse.json({ error: 'Missing cleanerId' }, { status: 400 })
-    }
+    if (!cleanerId) return NextResponse.json({ error: 'Missing cleanerId' }, { status: 400 })
 
     const { error } = await admin
       .from('cleaners')
@@ -107,12 +113,13 @@ export async function POST(request: NextRequest) {
         approved_by: user.id,
         rejected_at: null,
         rejection_reason: null,
+        suspension_reason: null,
+        suspended_at: null,
       } as any)
       .eq('id', cleanerId)
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-    // Fire-and-forget in-app notification for the cleaner
     try {
       await admin.from('notifications').insert({
         cleaner_id: cleanerId,
@@ -121,21 +128,15 @@ export async function POST(request: NextRequest) {
         body: 'You can now apply to jobs. We\'ll email you details shortly.',
         link: '/cleaner/dashboard',
       } as any)
-    } catch (notifyErr) {
-      console.error('Approval notification insert failed (non-fatal):', notifyErr)
-    }
+    } catch (e) { console.error('Approval notif failed:', e) }
 
     return NextResponse.json({ success: true })
   }
 
   // ── Reject cleaner ────────────────────────────────────────────────────────
-  // Account stays, they can log in, but application_status='rejected' so the
-  // Apply button stays locked. (See jobs/page.tsx cleanerApproved check.)
   if (action === 'reject_cleaner') {
     const { cleanerId, reason } = body
-    if (!cleanerId) {
-      return NextResponse.json({ error: 'Missing cleanerId' }, { status: 400 })
-    }
+    if (!cleanerId) return NextResponse.json({ error: 'Missing cleanerId' }, { status: 400 })
 
     const { error } = await admin
       .from('cleaners')
@@ -158,9 +159,113 @@ export async function POST(request: NextRequest) {
         body: 'Unfortunately your application wasn\'t successful this time. Check your email for details.',
         link: '/cleaner/dashboard',
       } as any)
-    } catch (notifyErr) {
-      console.error('Rejection notification insert failed (non-fatal):', notifyErr)
+    } catch (e) { console.error('Rejection notif failed:', e) }
+
+    return NextResponse.json({ success: true })
+  }
+
+  // ── Update document expiry only (no file re-upload) ───────────────────────
+  if (action === 'update_doc_expiry') {
+    const { cleanerId, docType, expiry } = body
+    if (!cleanerId || !docType || !DOC_COLUMN_MAP[docType]) {
+      return NextResponse.json({ error: 'Missing/invalid cleanerId or docType' }, { status: 400 })
     }
+    const cols = DOC_COLUMN_MAP[docType]
+    const { error } = await admin
+      .from('cleaners')
+      .update({ [cols.expiry]: expiry && expiry.trim() ? expiry : null } as any)
+      .eq('id', cleanerId)
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ success: true })
+  }
+
+  // ── Remove a document (unverify, clear URL + expiry) ─────────────────────
+  // Deletes the Storage file too to avoid orphans.
+  if (action === 'remove_document') {
+    const { cleanerId, docType } = body
+    if (!cleanerId || !docType || !DOC_COLUMN_MAP[docType]) {
+      return NextResponse.json({ error: 'Missing/invalid cleanerId or docType' }, { status: 400 })
+    }
+    const cols = DOC_COLUMN_MAP[docType]
+
+    // Fetch current URL so we can delete the Storage object
+    const { data: row } = await admin
+      .from('cleaners')
+      .select(cols.url)
+      .eq('id', cleanerId)
+      .single() as { data: Record<string, any> | null }
+
+    const currentUrl = row?.[cols.url] as string | undefined
+    if (currentUrl) {
+      // Signed URLs contain the path after `/object/sign/cleaner-documents/`
+      // Extract path: split on that marker
+      try {
+        const marker = '/object/sign/cleaner-documents/'
+        const idx = currentUrl.indexOf(marker)
+        if (idx >= 0) {
+          const pathWithQuery = currentUrl.slice(idx + marker.length)
+          const path = pathWithQuery.split('?')[0]
+          await admin.storage.from('cleaner-documents').remove([decodeURIComponent(path)])
+        }
+      } catch (e) { console.warn('Could not parse storage path from URL, skipping delete:', e) }
+    }
+
+    const { error } = await admin
+      .from('cleaners')
+      .update({
+        [cols.url]: null,
+        [cols.verified]: false,
+        [cols.expiry]: null,
+        [cols.uploaded_at]: null,
+      } as any)
+      .eq('id', cleanerId)
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ success: true })
+  }
+
+  // ── Re-approve a suspended cleaner (after they've re-submitted docs) ─────
+  // Requires all 3 documents to be verified.
+  if (action === 'reapprove_cleaner') {
+    const { cleanerId } = body
+    if (!cleanerId) return NextResponse.json({ error: 'Missing cleanerId' }, { status: 400 })
+
+    const { data: c } = await admin
+      .from('cleaners')
+      .select('dbs_verified, insurance_verified, right_to_work_verified, application_status')
+      .eq('id', cleanerId)
+      .single() as { data: { dbs_verified: boolean; insurance_verified: boolean; right_to_work_verified: boolean; application_status: string } | null }
+
+    if (!c) return NextResponse.json({ error: 'Cleaner not found' }, { status: 404 })
+    if (!c.dbs_verified || !c.insurance_verified || !c.right_to_work_verified) {
+      return NextResponse.json({
+        error: 'All three documents (DBS, Insurance, Right to Work) must be verified before re-approving.',
+      }, { status: 400 })
+    }
+
+    const { error } = await admin
+      .from('cleaners')
+      .update({
+        application_status: 'approved',
+        approved_at: new Date().toISOString(),
+        approved_by: user.id,
+        suspension_reason: null,
+        suspended_at: null,
+      } as any)
+      .eq('id', cleanerId)
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+    try {
+      await admin.from('notifications').insert({
+        cleaner_id: cleanerId,
+        type: 'application_reapproved',
+        title: '✅ You\'re re-approved on Vouchee',
+        body: 'Thanks for resubmitting your documents. You can apply to jobs again.',
+        link: '/cleaner/dashboard',
+      } as any)
+    } catch (e) { console.error('Reapproval notif failed:', e) }
 
     return NextResponse.json({ success: true })
   }

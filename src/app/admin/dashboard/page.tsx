@@ -181,6 +181,21 @@ interface CleanerRow {
   rejected_at: string | null
   rejection_reason: string | null
   cleans_completed: number | null
+  // Document verification fields (added phase 2)
+  dbs_verified: boolean
+  dbs_file_url: string | null
+  dbs_expiry: string | null
+  dbs_uploaded_at: string | null
+  insurance_verified: boolean
+  insurance_file_url: string | null
+  insurance_expiry: string | null
+  insurance_uploaded_at: string | null
+  right_to_work_verified: boolean
+  right_to_work_file_url: string | null
+  right_to_work_expiry: string | null
+  right_to_work_uploaded_at: string | null
+  suspension_reason: string | null
+  suspended_at: string | null
 }
 
 // DRAFT QUESTIONS — edit freely, stored in DB as JSONB keys so you can tweak copy without migration churn
@@ -220,6 +235,222 @@ function PipelineCount({ label, count, color, active, onClick }: { label: string
   )
 }
 
+function DocumentUploadSlot({
+  cleanerId, docType, label, fileUrl, verified, expiry, uploadedAt, onChange,
+}: {
+  cleanerId: string
+  docType: 'dbs' | 'insurance' | 'right_to_work'
+  label: string
+  fileUrl: string | null
+  verified: boolean
+  expiry: string | null
+  uploadedAt: string | null
+  onChange: () => void
+}) {
+  const [uploading, setUploading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [pendingExpiry, setPendingExpiry] = useState(expiry ?? '')
+  const [pendingFile, setPendingFile] = useState<File | null>(null)
+  const [savingExpiry, setSavingExpiry] = useState(false)
+  const [removing, setRemoving] = useState(false)
+
+  // Expiry status calc
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const expiryDate = expiry ? new Date(expiry) : null
+  const daysUntilExpiry = expiryDate ? Math.floor((expiryDate.getTime() - today.getTime()) / 86400000) : null
+  const expiryState: 'none' | 'expired' | 'expiring_soon' | 'ok' =
+    !expiryDate ? 'none' :
+    daysUntilExpiry! < 0 ? 'expired' :
+    daysUntilExpiry! <= 30 ? 'expiring_soon' : 'ok'
+
+  const doUpload = async () => {
+    if (!pendingFile) return
+    setUploading(true); setError(null)
+    try {
+      const fd = new FormData()
+      fd.append('file', pendingFile)
+      fd.append('cleanerId', cleanerId)
+      fd.append('docType', docType)
+      if (pendingExpiry.trim()) fd.append('expiry', pendingExpiry)
+      const res = await fetch('/api/admin/upload-cleaner-doc', { method: 'POST', body: fd })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.error ?? 'Upload failed')
+      } else {
+        setPendingFile(null)
+        onChange()
+      }
+    } catch (e: any) {
+      setError(e.message ?? 'Upload failed')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const saveExpiryOnly = async () => {
+    setSavingExpiry(true); setError(null)
+    try {
+      const res = await fetch('/api/admin/actions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'update_doc_expiry', cleanerId, docType, expiry: pendingExpiry }),
+      })
+      if (!res.ok) {
+        const d = await res.json()
+        setError(d.error ?? 'Save failed')
+      } else {
+        onChange()
+      }
+    } catch (e: any) { setError(e.message ?? 'Save failed') }
+    finally { setSavingExpiry(false) }
+  }
+
+  const remove = async () => {
+    if (!confirm(`Remove the ${label} file? This marks it as not verified.`)) return
+    setRemoving(true); setError(null)
+    try {
+      const res = await fetch('/api/admin/actions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'remove_document', cleanerId, docType }),
+      })
+      if (!res.ok) {
+        const d = await res.json()
+        setError(d.error ?? 'Remove failed')
+      } else {
+        setPendingExpiry('')
+        onChange()
+      }
+    } catch (e: any) { setError(e.message ?? 'Remove failed') }
+    finally { setRemoving(false) }
+  }
+
+  const borderColor =
+    expiryState === 'expired' ? '#fecaca' :
+    expiryState === 'expiring_soon' ? '#fde68a' :
+    verified ? '#bbf7d0' : '#e2e8f0'
+  const bgColor =
+    expiryState === 'expired' ? '#fef2f2' :
+    expiryState === 'expiring_soon' ? '#fefce8' :
+    verified ? '#f0fdf4' : '#f8fafc'
+
+  return (
+    <div style={{ background: bgColor, border: `1.5px solid ${borderColor}`, borderRadius: '12px', padding: '14px 16px', marginBottom: '10px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px', gap: '10px' }}>
+        <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>{label}</div>
+        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+          {verified
+            ? <Badge label="✓ Verified" color="green" />
+            : <Badge label="Not verified" color="gray" />}
+          {expiryState === 'expired' && <Badge label="⚠ Expired" color="red" />}
+          {expiryState === 'expiring_soon' && <Badge label={`${daysUntilExpiry}d left`} color="yellow" />}
+        </div>
+      </div>
+
+      {verified && fileUrl ? (
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '10px' }}>
+            <a href={fileUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: '12px', fontWeight: 600, color: '#2563eb', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+              📄 View file
+            </a>
+            {uploadedAt && <span style={{ fontSize: '11px', color: '#94a3b8' }}>uploaded {fmt(uploadedAt)}</span>}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+            <label style={{ fontSize: '11px', fontWeight: 600, color: '#64748b', whiteSpace: 'nowrap' }}>Expiry:</label>
+            <input
+              type="date"
+              value={pendingExpiry}
+              onChange={e => setPendingExpiry(e.target.value)}
+              style={{ flex: 1, padding: '6px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '12px', fontFamily: "'DM Sans', sans-serif", color: '#0f172a', outline: 'none' }}
+            />
+            {pendingExpiry !== (expiry ?? '') && (
+              <button
+                onClick={saveExpiryOnly}
+                disabled={savingExpiry}
+                style={{ background: '#2563eb', color: 'white', border: 'none', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', fontWeight: 700, cursor: savingExpiry ? 'not-allowed' : 'pointer', fontFamily: "'DM Sans', sans-serif" }}
+              >
+                {savingExpiry ? '…' : 'Save'}
+              </button>
+            )}
+          </div>
+          {!pendingExpiry && (
+            <div style={{ fontSize: '11px', color: '#94a3b8', fontStyle: 'italic', marginBottom: '8px' }}>No expiry set (non-expiring document)</div>
+          )}
+          <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
+            <label style={{ display: 'inline-block', cursor: 'pointer' }}>
+              <input
+                type="file"
+                accept="application/pdf,image/jpeg,image/png"
+                onChange={e => setPendingFile(e.target.files?.[0] ?? null)}
+                style={{ display: 'none' }}
+              />
+              <span style={{ display: 'inline-block', background: 'white', color: '#64748b', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', fontWeight: 600, fontFamily: "'DM Sans', sans-serif" }}>
+                🔄 Replace file
+              </span>
+            </label>
+            {pendingFile && (
+              <>
+                <span style={{ fontSize: '11px', color: '#64748b', alignSelf: 'center' }}>{pendingFile.name}</span>
+                <button onClick={doUpload} disabled={uploading} style={{ background: '#16a34a', color: 'white', border: 'none', borderRadius: '6px', padding: '5px 12px', fontSize: '11px', fontWeight: 700, cursor: uploading ? 'not-allowed' : 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
+                  {uploading ? 'Uploading…' : 'Upload'}
+                </button>
+                <button onClick={() => setPendingFile(null)} style={{ background: 'none', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', fontWeight: 600, cursor: 'pointer', color: '#64748b', fontFamily: "'DM Sans', sans-serif" }}>
+                  Cancel
+                </button>
+              </>
+            )}
+            <button onClick={remove} disabled={removing} style={{ marginLeft: 'auto', background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', fontWeight: 600, cursor: removing ? 'not-allowed' : 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
+              {removing ? '…' : '🗑 Remove'}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div>
+          <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '10px' }}>No file uploaded yet.</div>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '8px' }}>
+            <label style={{ fontSize: '11px', fontWeight: 600, color: '#64748b', whiteSpace: 'nowrap' }}>Expiry (optional):</label>
+            <input
+              type="date"
+              value={pendingExpiry}
+              onChange={e => setPendingExpiry(e.target.value)}
+              style={{ flex: 1, padding: '6px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '12px', fontFamily: "'DM Sans', sans-serif", color: '#0f172a', outline: 'none' }}
+            />
+          </div>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <label style={{ display: 'inline-block', cursor: 'pointer' }}>
+              <input
+                type="file"
+                accept="application/pdf,image/jpeg,image/png"
+                onChange={e => setPendingFile(e.target.files?.[0] ?? null)}
+                style={{ display: 'none' }}
+              />
+              <span style={{ display: 'inline-block', background: '#2563eb', color: 'white', border: 'none', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', fontWeight: 700, fontFamily: "'DM Sans', sans-serif" }}>
+                📎 Choose file
+              </span>
+            </label>
+            {pendingFile && (
+              <>
+                <span style={{ fontSize: '12px', color: '#64748b' }}>{pendingFile.name}</span>
+                <button onClick={doUpload} disabled={uploading} style={{ background: '#16a34a', color: 'white', border: 'none', borderRadius: '6px', padding: '6px 14px', fontSize: '12px', fontWeight: 700, cursor: uploading ? 'not-allowed' : 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
+                  {uploading ? 'Uploading…' : 'Upload & verify'}
+                </button>
+              </>
+            )}
+          </div>
+          <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '6px' }}>PDF, JPG, or PNG — max 10 MB</div>
+        </div>
+      )}
+
+      {error && (
+        <div style={{ marginTop: '8px', padding: '6px 10px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', fontSize: '11px', color: '#dc2626' }}>
+          ⚠ {error}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function CleanerDrawer({ cleaner, onClose, onSaved }: { cleaner: CleanerRow; onClose: () => void; onSaved: () => void }) {
   const [qualifying, setQualifying] = useState<Record<string, string>>(cleaner.interview_qualifying ?? {})
   const [platform, setPlatform] = useState<Record<string, boolean>>(cleaner.interview_platform ?? {})
@@ -252,6 +483,18 @@ function CleanerDrawer({ cleaner, onClose, onSaved }: { cleaner: CleanerRow; onC
   const reject = async () => {
     setBusy('rejecting')
     const ok = await adminAction({ action: 'reject_cleaner', cleanerId: cleaner.id, reason: rejectReason.trim() || null })
+    setBusy('idle')
+    if (ok) { onSaved(); onClose() }
+  }
+
+  const reapprove = async () => {
+    const allVerified = cleaner.dbs_verified && cleaner.insurance_verified && cleaner.right_to_work_verified
+    if (!allVerified) {
+      alert('All three documents must be uploaded and verified before re-approving.')
+      return
+    }
+    setBusy('approving')
+    const ok = await adminAction({ action: 'reapprove_cleaner', cleanerId: cleaner.id })
     setBusy('idle')
     if (ok) { onSaved(); onClose() }
   }
@@ -329,13 +572,49 @@ function CleanerDrawer({ cleaner, onClose, onSaved }: { cleaner: CleanerRow; onC
             />
           </div>
 
-          {/* Documents (placeholder — upload wiring in follow-up) */}
+          {/* Documents — 3 upload slots */}
           <div style={{ marginBottom: '28px' }}>
-            <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>Documents</div>
-            <div style={{ background: '#f8fafc', border: '1.5px dashed #cbd5e1', borderRadius: '12px', padding: '20px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>
-              📎 Document upload coming in next update.<br/>
-              For now, keep copies of DBS / insurance / right-to-work in your own files.
+            <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px' }}>Documents</div>
+
+            {/* Claims vs Verified — show the delta */}
+            <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '10px', padding: '10px 12px', fontSize: '12px', color: '#1e40af', marginBottom: '12px', lineHeight: 1.5 }}>
+              💡 <strong>At signup, {cleaner.full_name.split(' ')[0]} claimed:</strong>{' '}
+              {cleaner.dbs_checked ? '✓ DBS' : '✗ DBS'},{' '}
+              {cleaner.has_insurance ? '✓ Insurance' : '✗ Insurance'},{' '}
+              {cleaner.right_to_work ? '✓ Right to Work' : '✗ Right to Work'}.
+              {' '}Upload files below to verify each.
             </div>
+
+            <DocumentUploadSlot
+              cleanerId={cleaner.id}
+              docType="dbs"
+              label="🛡️ DBS Certificate"
+              fileUrl={cleaner.dbs_file_url}
+              verified={cleaner.dbs_verified}
+              expiry={cleaner.dbs_expiry}
+              uploadedAt={cleaner.dbs_uploaded_at}
+              onChange={onSaved}
+            />
+            <DocumentUploadSlot
+              cleanerId={cleaner.id}
+              docType="insurance"
+              label="📋 Public Liability Insurance"
+              fileUrl={cleaner.insurance_file_url}
+              verified={cleaner.insurance_verified}
+              expiry={cleaner.insurance_expiry}
+              uploadedAt={cleaner.insurance_uploaded_at}
+              onChange={onSaved}
+            />
+            <DocumentUploadSlot
+              cleanerId={cleaner.id}
+              docType="right_to_work"
+              label="✅ Right to Work"
+              fileUrl={cleaner.right_to_work_file_url}
+              verified={cleaner.right_to_work_verified}
+              expiry={cleaner.right_to_work_expiry}
+              uploadedAt={cleaner.right_to_work_uploaded_at}
+              onChange={onSaved}
+            />
           </div>
 
           {/* Save interview progress */}
@@ -361,6 +640,33 @@ function CleanerDrawer({ cleaner, onClose, onSaved }: { cleaner: CleanerRow; onC
                 ❌ Rejected{cleaner.rejected_at ? ` on ${fmt(cleaner.rejected_at)}` : ''}
                 {cleaner.rejection_reason && <div style={{ marginTop: '4px', fontStyle: 'italic' }}>"{cleaner.rejection_reason}"</div>}
               </div>
+            )}
+            {cleaner.application_status === 'suspended' && (
+              <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: '10px', padding: '12px 14px', fontSize: '13px', color: '#c2410c', marginBottom: '12px' }}>
+                ⚠ Suspended{cleaner.suspended_at ? ` on ${fmt(cleaner.suspended_at)}` : ''}
+                {cleaner.suspension_reason && <div style={{ marginTop: '4px', fontStyle: 'italic' }}>"{cleaner.suspension_reason}"</div>}
+                <div style={{ marginTop: '8px', fontSize: '12px' }}>Upload replacement docs above, then click Re-approve.</div>
+              </div>
+            )}
+
+            {/* Re-approve button shown for suspended cleaners */}
+            {cleaner.application_status === 'suspended' && !rejectPrompt && (
+              <button
+                onClick={reapprove}
+                disabled={busy !== 'idle' || !cleaner.dbs_verified || !cleaner.insurance_verified || !cleaner.right_to_work_verified}
+                title={(!cleaner.dbs_verified || !cleaner.insurance_verified || !cleaner.right_to_work_verified) ? 'All three documents must be uploaded and verified first' : ''}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  background: (cleaner.dbs_verified && cleaner.insurance_verified && cleaner.right_to_work_verified) ? '#16a34a' : '#e2e8f0',
+                  color: (cleaner.dbs_verified && cleaner.insurance_verified && cleaner.right_to_work_verified) ? 'white' : '#94a3b8',
+                  border: 'none', borderRadius: '10px', fontSize: '14px', fontWeight: 700,
+                  cursor: (cleaner.dbs_verified && cleaner.insurance_verified && cleaner.right_to_work_verified) ? 'pointer' : 'not-allowed',
+                  fontFamily: "'DM Sans', sans-serif", marginBottom: '10px'
+                }}
+              >
+                {busy === 'approving' ? 'Re-approving…' : '🔓 Re-approve cleaner'}
+              </button>
             )}
 
             {!rejectPrompt && (
@@ -470,7 +776,7 @@ export default function AdminDashboard() {
   const loadCleaners = async () => {
     const { data: cleaners } = await (supabase as any)
       .from('cleaners')
-      .select('id, profile_id, application_status, created_at, dbs_checked, has_insurance, right_to_work, interview_notes, interview_qualifying, interview_platform, approved_at, rejected_at, rejection_reason, cleans_completed')
+      .select('id, profile_id, application_status, created_at, dbs_checked, has_insurance, right_to_work, interview_notes, interview_qualifying, interview_platform, approved_at, rejected_at, rejection_reason, cleans_completed, dbs_verified, dbs_file_url, dbs_expiry, dbs_uploaded_at, insurance_verified, insurance_file_url, insurance_expiry, insurance_uploaded_at, right_to_work_verified, right_to_work_file_url, right_to_work_expiry, right_to_work_uploaded_at, suspension_reason, suspended_at')
       .order('created_at', { ascending: false })
       .limit(200)
     if (!cleaners) return
