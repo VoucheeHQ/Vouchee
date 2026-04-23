@@ -9,6 +9,15 @@ import { createClient } from '@/lib/supabase/client'
 import VoucheeLogoText from '@/assets/vouchee-logo-text.svg'
 
 interface HeaderProps {
+  /**
+   * Optional explicit role override.
+   *
+   * - Pass a string ('admin' | 'cleaner' | 'customer') when you already know the
+   *   role and want to skip an auth round-trip (e.g. from a server component
+   *   or a page that already fetched the profile).
+   * - Pass `null` to force the logged-out state even if there's a session.
+   * - Pass `undefined` (or omit) to have the Header auto-detect auth itself.
+   */
   userRole?: string | null
 }
 
@@ -42,45 +51,104 @@ function UnreadBadge({ count }: { count: number }) {
   )
 }
 
-export function Header({ userRole }: HeaderProps) {
+export function Header({ userRole: explicitRole }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
+
+  // Auth auto-detection — only runs when explicitRole is undefined (not null, not a string)
+  // `null` is an explicit "force logged-out". A string is an explicit role.
+  const shouldAutoDetect = explicitRole === undefined
+  const [detectedRole, setDetectedRole] = useState<string | null | undefined>(
+    shouldAutoDetect ? undefined : null,
+  )
+  // Once detection runs, this is true — prevents flashing the logged-out
+  // header on pages that just haven't finished fetching yet.
+  const [detectionComplete, setDetectionComplete] = useState(!shouldAutoDetect)
+
+  // Resolved role — explicit wins, otherwise use what we detected
+  const effectiveRole: string | null = shouldAutoDetect
+    ? (detectedRole ?? null)
+    : (explicitRole ?? null)
+
   const pathname = usePathname()
 
-  const dashboardHref = userRole === 'admin' ? '/admin/dashboard' : userRole === 'cleaner' ? '/cleaner/dashboard' : '/customer/dashboard'
+  const dashboardHref =
+    effectiveRole === 'admin' ? '/admin/dashboard'
+    : effectiveRole === 'cleaner' ? '/cleaner/dashboard'
+    : '/customer/dashboard'
 
-  // Fetch unread notification count for cleaners
+  // ─── Auto-detect auth if no explicit role was passed ────────────────────
   useEffect(() => {
-    if (userRole !== 'cleaner') return
+    if (!shouldAutoDetect) return
+    let cancelled = false
+    const supabase = createClient()
 
+    const detect = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (cancelled) return
+        if (!user) {
+          setDetectedRole(null)
+          setDetectionComplete(true)
+          return
+        }
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single()
+        if (cancelled) return
+        setDetectedRole(((profile as any)?.role as string) ?? null)
+        setDetectionComplete(true)
+      } catch {
+        if (!cancelled) {
+          setDetectedRole(null)
+          setDetectionComplete(true)
+        }
+      }
+    }
+
+    detect()
+
+    // Re-detect on auth state changes (login/logout in another tab)
+    const { data: sub } = supabase.auth.onAuthStateChange(() => {
+      detect()
+    })
+
+    return () => {
+      cancelled = true
+      sub.subscription.unsubscribe()
+    }
+  }, [shouldAutoDetect, pathname])
+
+  // ─── Unread notifications for cleaners (unchanged) ──────────────────────
+  useEffect(() => {
+    if (effectiveRole !== 'cleaner') return
     let cancelled = false
     const supabase = createClient()
 
     const fetchCount = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
-
       const { data: cleaner } = await supabase
         .from('cleaners')
         .select('id')
         .eq('profile_id', user.id)
         .single()
       if (!cleaner || cancelled) return
-
       const { count } = await supabase
         .from('notifications')
         .select('id', { count: 'exact', head: true })
         .eq('cleaner_id', (cleaner as any).id)
         .eq('read', false)
-
       if (!cancelled && typeof count === 'number') setUnreadCount(count)
     }
 
     fetchCount()
-    // Refresh periodically in case something changes in another tab
     const interval = setInterval(fetchCount, 60000)
+
     return () => { cancelled = true; clearInterval(interval) }
-  }, [userRole, pathname])
+  }, [effectiveRole, pathname])
 
   const navigation = [
     { name: 'How it works', href: '/how-it-works' },
@@ -90,6 +158,12 @@ export function Header({ userRole }: HeaderProps) {
     { name: 'Blog', href: '/blog' },
     { name: 'Cleaning Supplies', href: '/cleaning-supplies' },
   ]
+
+  // While auto-detection is still running on a page that relies on it, render
+  // the nav without the auth buttons (rather than flashing the logged-out
+  // state and then swapping to logged-in). Pages passing explicit role skip
+  // this entirely — they render instantly.
+  const authSlotReady = detectionComplete
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-ink/5 bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/60">
@@ -114,7 +188,11 @@ export function Header({ userRole }: HeaderProps) {
         </div>
 
         <div className="hidden items-center gap-3 lg:flex flex-shrink-0">
-          {userRole ? (
+          {!authSlotReady ? (
+            // Auth is still being auto-detected — render a placeholder of the same
+            // width so layout doesn't shift when the real button appears
+            <div style={{ width: '150px', height: '44px' }} aria-hidden="true" />
+          ) : effectiveRole ? (
             <Link
               href={dashboardHref}
               className="relative text-base font-semibold bg-brand-600 text-white px-5 py-2.5 rounded-lg hover:bg-brand-700 transition-colors whitespace-nowrap"
@@ -141,7 +219,7 @@ export function Header({ userRole }: HeaderProps) {
           aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
         >
           {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-          {!mobileMenuOpen && userRole === 'cleaner' && <UnreadBadge count={unreadCount} />}
+          {!mobileMenuOpen && effectiveRole === 'cleaner' && <UnreadBadge count={unreadCount} />}
         </button>
       </nav>
 
@@ -163,14 +241,16 @@ export function Header({ userRole }: HeaderProps) {
             ))}
 
             <div className="mt-4 flex flex-col gap-2 border-t border-ink/5 pt-4">
-              {userRole ? (
+              {!authSlotReady ? (
+                <div style={{ height: '44px' }} aria-hidden="true" />
+              ) : effectiveRole ? (
                 <Link
                   href={dashboardHref}
                   className="relative block rounded-lg px-3 py-2.5 text-base font-semibold bg-brand-600 text-white text-center"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   My dashboard
-                  {userRole === 'cleaner' && unreadCount > 0 && (
+                  {effectiveRole === 'cleaner' && unreadCount > 0 && (
                     <span className="ml-2 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-xs font-bold">
                       {unreadCount > 9 ? '9+' : unreadCount}
                     </span>
