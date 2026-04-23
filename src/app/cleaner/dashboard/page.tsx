@@ -16,6 +16,7 @@ interface CleanerProfile {
 
 interface CleanerData {
   id: string
+  short_id: string | null
   application_status: ApplicationStatus
   zones: string[]
   dbs_checked: boolean
@@ -30,6 +31,8 @@ interface CleanerData {
   dbs_expiry: string | null
   insurance_expiry: string | null
   cleans_completed: number
+  rating_average: number | null
+  rating_count: number
 }
 
 interface CleanerStats {
@@ -51,39 +54,20 @@ interface NotificationItem {
 }
 
 const ZONE_LABELS: Record<string, string> = {
-  central_south_east: 'Central / South East',
-  north_west: 'North West',
-  north_east_roffey: 'North East / Roffey',
-  south_west: 'South West',
-  warnham_north: 'Warnham / Surrounding North',
-  broadbridge_heath: 'Broadbridge Heath',
-  mannings_heath: 'Mannings Heath',
-  faygate_kilnwood_vale: 'Faygate / Kilnwood Vale',
-  christs_hospital: 'Christs Hospital',
-  southwater: 'Southwater',
+  central_south_east: 'Central / South East', north_west: 'North West',
+  north_east_roffey: 'North East / Roffey', south_west: 'South West',
+  warnham_north: 'Warnham / Surrounding North', broadbridge_heath: 'Broadbridge Heath',
+  mannings_heath: 'Mannings Heath', faygate_kilnwood_vale: 'Faygate / Kilnwood Vale',
+  christs_hospital: 'Christs Hospital', southwater: 'Southwater',
 }
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
-}
-function formatMonthYear(iso: string) {
-  return new Date(iso).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
-}
-function formatExpiry(iso: string | null) {
-  if (!iso) return null
-  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
-}
-function isExpired(iso: string | null) {
-  if (!iso) return false
-  return new Date(iso) < new Date()
-}
-function getInitial(name: string) {
-  return name.trim().charAt(0).toUpperCase()
-}
-function formatShortName(fullName: string) {
-  const parts = fullName.trim().split(' ')
-  return parts.length === 1 ? parts[0] : `${parts[0]} ${parts[parts.length - 1].charAt(0)}.`
-}
+function formatDate(iso: string) { return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) }
+function formatMonthYear(iso: string) { return new Date(iso).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }) }
+function formatExpiry(iso: string | null) { if (!iso) return null; return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) }
+function isExpired(iso: string | null) { if (!iso) return false; return new Date(iso) < new Date() }
+function getInitial(name: string) { return name.trim().charAt(0).toUpperCase() }
+function formatShortName(fullName: string) { const parts = fullName.trim().split(' '); return parts.length === 1 ? parts[0] : `${parts[0]} ${parts[parts.length - 1].charAt(0)}.` }
+
 function relativeTime(iso: string) {
   const diff = Date.now() - new Date(iso).getTime()
   const mins = Math.floor(diff / 60000)
@@ -142,73 +126,26 @@ function StatCard({ value, label, sub, color = '#0f172a', bg = '#f8fafc', border
   )
 }
 
-// ─── TOGGLE SWITCH ──────────────────────────────────────────────────────────
 function Toggle({ value, onChange, disabled }: { value: boolean; onChange: () => void; disabled?: boolean }) {
   return (
-    <button
-      type="button"
-      onClick={onChange}
-      disabled={disabled}
-      aria-pressed={value}
-      style={{
-        width: '36px',
-        height: '22px',
-        borderRadius: '100px',
-        background: value ? '#16a34a' : '#cbd5e1',
-        border: 'none',
-        position: 'relative',
-        cursor: disabled ? 'wait' : 'pointer',
-        transition: 'background 0.15s ease',
-        padding: 0,
-        flexShrink: 0,
-        opacity: disabled ? 0.6 : 1,
-      }}
-    >
-      <span style={{
-        position: 'absolute',
-        top: '3px',
-        left: value ? '17px' : '3px',
-        width: '16px',
-        height: '16px',
-        borderRadius: '50%',
-        background: 'white',
-        transition: 'left 0.15s ease',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-      }} />
+    <button type="button" onClick={onChange} disabled={disabled} aria-pressed={value}
+      style={{ width: '36px', height: '22px', borderRadius: '100px', background: value ? '#16a34a' : '#cbd5e1', border: 'none', position: 'relative', cursor: disabled ? 'wait' : 'pointer', transition: 'background 0.15s ease', padding: 0, flexShrink: 0, opacity: disabled ? 0.6 : 1 }}>
+      <span style={{ position: 'absolute', top: '3px', left: value ? '17px' : '3px', width: '16px', height: '16px', borderRadius: '50%', background: 'white', transition: 'left 0.15s ease', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
     </button>
   )
 }
 
-// ─── NOTIFICATION ITEM ──────────────────────────────────────────────────────
 const NOTIFICATION_ICONS: Record<string, string> = {
-  chat_accepted: '💬',
-  chat_declined: '😔',
-  job_won: '🎉',
-  job_lost: '👋',
-  new_message: '✉️',
-  application_approved: '✅',
-  application_rejected: '❌',
-  account_suspended: '⚠️',
-  default: '🔔',
+  chat_accepted: '💬', chat_declined: '😔', job_won: '🎉', job_lost: '👋',
+  new_message: '✉️', application_approved: '✅', application_rejected: '❌',
+  account_suspended: '⚠️', review_received: '⭐', default: '🔔',
 }
 
 function NotificationRow({ item, onClick }: { item: NotificationItem; onClick: () => void }) {
   const icon = NOTIFICATION_ICONS[item.type] ?? NOTIFICATION_ICONS.default
   return (
-    <div
-      onClick={onClick}
-      style={{
-        display: 'flex',
-        gap: '12px',
-        padding: '12px 14px',
-        borderRadius: '12px',
-        background: item.read ? 'transparent' : '#eff6ff',
-        border: `1px solid ${item.read ? '#f1f5f9' : '#bfdbfe'}`,
-        cursor: 'pointer',
-        transition: 'background 0.15s ease',
-        alignItems: 'flex-start',
-      }}
-    >
+    <div onClick={onClick}
+      style={{ display: 'flex', gap: '12px', padding: '12px 14px', borderRadius: '12px', background: item.read ? 'transparent' : '#eff6ff', border: `1px solid ${item.read ? '#f1f5f9' : '#bfdbfe'}`, cursor: 'pointer', transition: 'background 0.15s ease', alignItems: 'flex-start' }}>
       <div style={{ fontSize: '18px', flexShrink: 0, lineHeight: 1, marginTop: '1px' }}>{icon}</div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px', marginBottom: '2px' }}>
@@ -218,6 +155,62 @@ function NotificationRow({ item, onClick }: { item: NotificationItem; onClick: (
         {item.body && <div style={{ fontSize: '12px', color: '#64748b', lineHeight: 1.45 }}>{item.body}</div>}
       </div>
       {!item.read && <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#3b82f6', flexShrink: 0, marginTop: '6px' }} />}
+    </div>
+  )
+}
+
+function ProfileLinkCard({ shortId, ratingAverage, ratingCount }: { shortId: string | null; ratingAverage: number | null; ratingCount: number }) {
+  const [copied, setCopied] = useState(false)
+  if (!shortId) return null
+  const url = typeof window !== 'undefined' ? `${window.location.origin}/c/${shortId}` : `/c/${shortId}`
+
+  const copyUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(url)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // Fallback if clipboard API blocked
+      const input = document.createElement('input')
+      input.value = url; document.body.appendChild(input); input.select()
+      try { document.execCommand('copy'); setCopied(true); setTimeout(() => setCopied(false), 2000) } catch {}
+      document.body.removeChild(input)
+    }
+  }
+
+  return (
+    <div style={{ background: 'white', borderRadius: '20px', border: '1.5px solid #e2e8f0', padding: '24px', boxShadow: '0 2px 16px rgba(0,0,0,0.04)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+        <div style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Reviews & profile link</div>
+        {ratingCount > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ color: '#f59e0b', fontSize: '14px' }}>★</span>
+            <span style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>{ratingAverage?.toFixed(1)}</span>
+            <span style={{ fontSize: '12px', color: '#64748b' }}>· {ratingCount} {ratingCount === 1 ? 'review' : 'reviews'}</span>
+          </div>
+        )}
+      </div>
+      <p style={{ fontSize: '13px', color: '#64748b', margin: '0 0 14px', lineHeight: 1.55 }}>
+        Share this link with past customers to collect reviews. Only Vouchee customers who've had a clean with you can leave one.
+      </p>
+      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '10px', padding: '8px 10px 8px 14px' }}>
+        <input
+          readOnly
+          value={url}
+          onClick={e => (e.target as HTMLInputElement).select()}
+          style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontSize: '13px', color: '#475569', fontFamily: "'DM Sans', sans-serif", minWidth: 0 }}
+        />
+        <button
+          onClick={copyUrl}
+          style={{ background: copied ? '#16a34a' : '#0f172a', color: 'white', border: 'none', borderRadius: '8px', padding: '6px 14px', fontSize: '12px', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", flexShrink: 0, transition: 'background 0.15s' }}>
+          {copied ? '✓ Copied' : 'Copy'}
+        </button>
+      </div>
+      <div style={{ marginTop: '10px', display: 'flex', gap: '8px' }}>
+        <a href={`/c/${shortId}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: '12px', fontWeight: 600, color: '#3b82f6', textDecoration: 'none' }}>
+          View profile →
+        </a>
+      </div>
     </div>
   )
 }
@@ -234,15 +227,11 @@ function ApprovedDashboard({ profile, cleaner, stats, notifications, onTogglePre
   const shortName = formatShortName(profile.full_name)
   const memberSince = formatMonthYear(cleaner.created_at)
   const cleans = cleaner.cleans_completed ?? 0
-  const estHours = cleans * 3
 
   return (
     <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '0 24px 60px', display: 'grid', gridTemplateColumns: '340px 1fr', gap: '24px', alignItems: 'start' }}>
-
       {/* ── LEFT COLUMN ── */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-
-        {/* Profile card — footer removed */}
         <div style={{ background: 'white', borderRadius: '20px', border: '1.5px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 16px rgba(0,0,0,0.06)' }}>
           <div style={{ padding: '24px 24px 20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
@@ -257,8 +246,22 @@ function ApprovedDashboard({ profile, cleaner, stats, notifications, onTogglePre
                   <div style={{ fontSize: '17px', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.2px' }}>{shortName}</div>
                   <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 500, margin: '2px 0 6px' }}>Member since {memberSince}</div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    {[1,2,3,4,5].map(s => <span key={s} style={{ fontSize: '12px', color: '#e2e8f0' }}>★</span>)}
-                    <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 600, marginLeft: '4px' }}>New cleaner</span>
+                    {cleaner.rating_count > 0 ? (
+                      <>
+                        {[1,2,3,4,5].map(s => {
+                          const filled = (cleaner.rating_average ?? 0) >= s
+                          return <span key={s} style={{ fontSize: '12px', color: filled ? '#f59e0b' : '#e2e8f0' }}>★</span>
+                        })}
+                        <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 600, marginLeft: '4px' }}>
+                          {cleaner.rating_average?.toFixed(1)} ({cleaner.rating_count})
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        {[1,2,3,4,5].map(s => <span key={s} style={{ fontSize: '12px', color: '#e2e8f0' }}>★</span>)}
+                        <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 600, marginLeft: '4px' }}>New cleaner</span>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -281,10 +284,8 @@ function ApprovedDashboard({ profile, cleaner, stats, notifications, onTogglePre
               </p>
             </div>
           </div>
-          {/* Footer removed — was "This is how customers see your profile" */}
         </div>
 
-        {/* Notification preferences — now interactive */}
         <div style={{ background: 'white', borderRadius: '20px', border: '1.5px solid #e2e8f0', padding: '20px 20px 16px', boxShadow: '0 2px 16px rgba(0,0,0,0.04)' }}>
           <div style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '14px' }}>Notification preferences</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -304,7 +305,6 @@ function ApprovedDashboard({ profile, cleaner, stats, notifications, onTogglePre
           </div>
         </div>
 
-        {/* Supplies */}
         <div style={{ background: 'linear-gradient(135deg, #fefce8, #fff7ed)', borderRadius: '16px', border: '1.5px solid #fde68a', padding: '18px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
             <div style={{ fontSize: '13px', fontWeight: 700, color: '#92400e', marginBottom: '2px' }}>Need supplies?</div>
@@ -325,8 +325,6 @@ function ApprovedDashboard({ profile, cleaner, stats, notifications, onTogglePre
 
       {/* ── RIGHT COLUMN ── */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-
-        {/* Welcome bar */}
         <div style={{ background: 'linear-gradient(135deg, #1d4ed8 0%, #2563eb 60%, #3b82f6 100%)', borderRadius: '20px', padding: '24px 28px', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 4px 20px rgba(37,99,235,0.25)' }}>
           <div>
             <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.75, marginBottom: '4px' }}>Welcome back</div>
@@ -338,7 +336,6 @@ function ApprovedDashboard({ profile, cleaner, stats, notifications, onTogglePre
           </a>
         </div>
 
-        {/* Job activity — with CORRECT stats */}
         <div style={{ background: 'white', borderRadius: '20px', border: '1.5px solid #e2e8f0', padding: '24px', boxShadow: '0 2px 16px rgba(0,0,0,0.04)' }}>
           <div style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '16px' }}>Job activity</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', marginBottom: '12px' }}>
@@ -351,17 +348,17 @@ function ApprovedDashboard({ profile, cleaner, stats, notifications, onTogglePre
           </div>
         </div>
 
-        {/* Business metrics */}
         <div style={{ background: 'white', borderRadius: '20px', border: '1.5px solid #e2e8f0', padding: '24px', boxShadow: '0 2px 16px rgba(0,0,0,0.04)' }}>
           <div style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '16px' }}>Your Vouchee business</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
             <StatCard value={cleans} label="Cleans completed" sub="Total jobs completed through Vouchee" bg="#f0fdf4" border="#86efac" color="#15803d" />
-            <StatCard value={estHours === 0 ? '—' : `${estHours}h`} label="Est. hours worked" sub="Based on completed cleans" bg="#eff6ff" border="#bfdbfe" color="#1d4ed8" />
             <StatCard value={stats.uniqueCustomers} label="Unique customers" sub="Different households you've worked with" bg="#fdf4ff" border="#e9d5ff" color="#7c3aed" />
           </div>
         </div>
 
-        {/* NEW: Recent notifications (replaces Messages) */}
+        {/* NEW: Reviews & profile link card */}
+        <ProfileLinkCard shortId={cleaner.short_id} ratingAverage={cleaner.rating_average} ratingCount={cleaner.rating_count} />
+
         <div style={{ background: 'white', borderRadius: '20px', border: '1.5px solid #e2e8f0', padding: '24px', boxShadow: '0 2px 16px rgba(0,0,0,0.04)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
             <div style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Recent notifications</div>
@@ -385,25 +382,14 @@ function ApprovedDashboard({ profile, cleaner, stats, notifications, onTogglePre
             </div>
           )}
         </div>
-
-        {/* Reviews coming soon */}
-        <div style={{ background: '#fefce8', border: '1.5px solid #fde68a', borderRadius: '16px', padding: '20px 24px', display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
-          <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: '#fef9c3', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>⭐</div>
-          <div>
-            <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '4px' }}>Reviews & profile link</div>
-            <div style={{ fontSize: '13px', color: '#475569', lineHeight: 1.5 }}>Once you've completed cleans, your reviews will build here. Share your profile link with customers to collect them. Coming soon.</div>
-          </div>
-        </div>
       </div>
     </div>
   )
 }
 
-// ─── PENDING SCREEN (unchanged) ─────────────────────────────────────────────
 function PendingScreen({ profile, cleaner, emailConfirmed }: { profile: CleanerProfile; cleaner: CleanerData; emailConfirmed: boolean }) {
   const firstName = profile.full_name.trim().split(' ')[0]
   const zones = (cleaner.zones ?? []).map(z => ZONE_LABELS[z] ?? z)
-
   const steps = [
     { icon: '✅', title: 'Application received', desc: `Submitted on ${formatDate(cleaner.created_at)}`, done: true },
     { icon: '📧', title: 'Email confirmed', desc: emailConfirmed ? 'Your email address has been verified' : 'Please check your inbox and click the confirmation link', done: emailConfirmed, active: !emailConfirmed },
@@ -411,7 +397,6 @@ function PendingScreen({ profile, cleaner, emailConfirmed }: { profile: CleanerP
     { icon: '📞', title: 'Get to know you', desc: "We'll reach out for a short call to get to know you and answer any questions.", done: false },
     { icon: '🎉', title: 'Account approved', desc: "You'll be notified by email once you're live on Vouchee", done: false },
   ]
-
   return (
     <div style={{ maxWidth: '640px', margin: '0 auto', padding: '0 24px 60px' }}>
       <div style={{ background: 'white', borderRadius: '20px', padding: '32px', border: '1.5px solid #e2e8f0', marginBottom: '20px', boxShadow: '0 2px 16px rgba(0,0,0,0.05)' }}>
@@ -428,7 +413,6 @@ function PendingScreen({ profile, cleaner, emailConfirmed }: { profile: CleanerP
           Thanks for applying to join Vouchee. We've received your application and will be in touch within <strong>1–3 working days</strong>.
         </p>
       </div>
-
       <div style={{ background: 'white', borderRadius: '20px', padding: '28px 32px', border: '1.5px solid #e2e8f0', marginBottom: '20px', boxShadow: '0 2px 16px rgba(0,0,0,0.05)' }}>
         <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 24px' }}>What happens next</h3>
         {steps.map((step, i) => (
@@ -446,7 +430,6 @@ function PendingScreen({ profile, cleaner, emailConfirmed }: { profile: CleanerP
           </div>
         ))}
       </div>
-
       <div style={{ background: 'white', borderRadius: '20px', padding: '28px 32px', border: '1.5px solid #e2e8f0', marginBottom: '20px', boxShadow: '0 2px 16px rgba(0,0,0,0.05)' }}>
         <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 12px' }}>Your application summary</h3>
         {[
@@ -475,7 +458,6 @@ function PendingScreen({ profile, cleaner, emailConfirmed }: { profile: CleanerP
           </div>
         </div>
       </div>
-
       <div style={{ background: '#f8faff', borderRadius: '16px', padding: '18px 24px', border: '1px solid #e0e7ff', textAlign: 'center' }}>
         <p style={{ fontSize: '14px', color: '#475569', margin: 0 }}>
           Questions? <a href="mailto:cleaners@vouchee.co.uk" style={{ color: '#3b82f6', fontWeight: 700, textDecoration: 'none' }}>cleaners@vouchee.co.uk</a>
@@ -485,7 +467,6 @@ function PendingScreen({ profile, cleaner, emailConfirmed }: { profile: CleanerP
   )
 }
 
-// ─── BLOCKED SCREEN (unchanged) ─────────────────────────────────────────────
 function BlockedScreen({ status }: { status: 'rejected' | 'suspended' }) {
   return (
     <div style={{ maxWidth: '480px', margin: '0 auto', padding: '0 24px 60px' }}>
@@ -495,9 +476,7 @@ function BlockedScreen({ status }: { status: 'rejected' | 'suspended' }) {
           {status === 'rejected' ? 'Application unsuccessful' : 'Account suspended'}
         </h2>
         <p style={{ fontSize: '14px', color: '#64748b', lineHeight: 1.7, margin: '0 0 24px' }}>
-          {status === 'rejected'
-            ? "Unfortunately we weren't able to approve your application at this time. Please get in touch if you have any questions."
-            : "Your account has been suspended. Please contact us to find out more."}
+          {status === 'rejected' ? "Unfortunately we weren't able to approve your application at this time. Please get in touch if you have any questions." : "Your account has been suspended. Please contact us to find out more."}
         </p>
         <a href="mailto:cleaners@vouchee.co.uk" style={{ display: 'inline-block', background: '#0f172a', color: 'white', padding: '12px 28px', borderRadius: '12px', fontSize: '14px', fontWeight: 700, textDecoration: 'none' }}>
           Contact us
@@ -507,7 +486,6 @@ function BlockedScreen({ status }: { status: 'rejected' | 'suspended' }) {
   )
 }
 
-// ─── MAIN PAGE ──────────────────────────────────────────────────────────────
 export default function CleanerDashboardPage() {
   const router = useRouter()
   const [profile, setProfile] = useState<CleanerProfile | null>(null)
@@ -524,49 +502,41 @@ export default function CleanerDashboardPage() {
         const supabase = createClient()
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) { router.replace('/login'); return }
-
         setEmailConfirmed(!!user.email_confirmed_at)
 
         const { data: profileData, error: profileError } = await supabase
           .from('profiles').select('full_name, email, phone').eq('id', user.id).single()
         if (profileError || !profileData) throw new Error('Could not load your profile.')
 
-        // NOTE: added `id` to select so applications query actually works
         const { data: cleanerData, error: cleanerError } = await supabase
           .from('cleaners')
-          .select('id, application_status, zones, dbs_checked, right_to_work, has_insurance, needs_credentials_help, cover_cleans_notify, job_notify, marketing_opt_in, own_supplies, created_at, dbs_expiry, insurance_expiry, cleans_completed')
+          .select('id, short_id, application_status, zones, dbs_checked, right_to_work, has_insurance, needs_credentials_help, cover_cleans_notify, job_notify, marketing_opt_in, own_supplies, created_at, dbs_expiry, insurance_expiry, cleans_completed, rating_average, rating_count')
           .eq('profile_id', user.id).single()
         if (cleanerError || !cleanerData) throw new Error('Could not load your cleaner profile.')
 
         setProfile(profileData)
         setCleaner(cleanerData as CleanerData)
 
-        // Fetch applications + join clean_requests to know which ones became jobs
         const { data: appData } = await supabase
           .from('applications')
           .select('id, status, request_id, clean_requests(status)')
           .eq('cleaner_id', (cleanerData as any).id)
-
         if (appData) {
           const apps = appData as Array<{ id: string; status: string; request_id: string; clean_requests: { status: string } | null }>
           const pending = apps.filter(a => a.status === 'pending').length
           const chatsAccepted = apps.filter(a => a.status === 'accepted').length
           const chatsDeclined = apps.filter(a => a.status === 'rejected' || a.status === 'declined').length
           const jobsWon = apps.filter(a => a.status === 'accepted' && a.clean_requests?.status === 'fulfilled').length
-          // Unique customers = distinct fulfilled requests where this cleaner won
           const uniqueCustomers = new Set(apps.filter(a => a.status === 'accepted' && a.clean_requests?.status === 'fulfilled').map(a => a.request_id)).size
-
           setStats({ pendingApplications: pending, jobsWon, chatsAccepted, chatsDeclined, uniqueCustomers })
         }
 
-        // Fetch notifications (table may not exist yet — handle gracefully)
         const { data: notifData, error: notifError } = await supabase
           .from('notifications')
           .select('id, type, title, body, link, read, created_at')
           .eq('cleaner_id', (cleanerData as any).id)
           .order('created_at', { ascending: false })
           .limit(10)
-
         if (!notifError && notifData) {
           setNotifications(notifData as NotificationItem[])
         }
@@ -579,21 +549,16 @@ export default function CleanerDashboardPage() {
     init()
   }, [router])
 
-  // Toggle a notification preference — optimistic update with rollback on error
   const togglePreference = async (field: 'job_notify' | 'cover_cleans_notify' | 'marketing_opt_in') => {
     if (!cleaner) return
     const previous = cleaner[field]
     const next = !previous
-
     setCleaner({ ...cleaner, [field]: next })
-
     const supabase = createClient()
     const { error } = await (supabase.from('cleaners') as any)
       .update({ [field]: next })
       .eq('id', (cleaner as any).id)
-
     if (error) {
-      // Revert
       setCleaner({ ...cleaner, [field]: previous })
       console.error('Failed to update notification preference:', error)
     }
@@ -601,17 +566,13 @@ export default function CleanerDashboardPage() {
 
   const handleNotificationClick = async (n: NotificationItem) => {
     if (!n.read) {
-      // Optimistic mark-as-read
       setNotifications(prev => prev.map(item => item.id === n.id ? { ...item, read: true } : item))
       try {
         await fetch('/api/notifications/read', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ids: [n.id] }),
         })
-      } catch (e) {
-        console.error('Failed to mark notification read:', e)
-      }
+      } catch (e) { console.error('Failed to mark notification read:', e) }
     }
     if (n.link) router.push(n.link)
   }
@@ -666,28 +627,16 @@ export default function CleanerDashboardPage() {
         {(status === 'submitted' || status === 'pending') && (
           <PendingScreen profile={profile} cleaner={cleaner} emailConfirmed={emailConfirmed} />
         )}
-
         {status === 'approved' && (
-          <ApprovedDashboard
-            profile={profile}
-            cleaner={cleaner}
-            stats={stats}
-            notifications={notifications}
-            onTogglePref={togglePreference}
-            onNotificationClick={handleNotificationClick}
-          />
+          <ApprovedDashboard profile={profile} cleaner={cleaner} stats={stats} notifications={notifications} onTogglePref={togglePreference} onNotificationClick={handleNotificationClick} />
         )}
-
         {(status === 'rejected' || status === 'suspended') && (
           <BlockedScreen status={status} />
         )}
       </main>
-
       <div style={{ borderTop: '1px solid #e2e8f0', padding: '24px', display: 'flex', justifyContent: 'center' }}>
-        <button
-          onClick={handleSignOut}
-          style={{ background: 'none', border: '1px solid #fecaca', borderRadius: '8px', padding: '8px 20px', fontSize: '13px', fontWeight: 600, color: '#ef4444', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
-        >
+        <button onClick={handleSignOut}
+          style={{ background: 'none', border: '1px solid #fecaca', borderRadius: '8px', padding: '8px 20px', fontSize: '13px', fontWeight: 600, color: '#ef4444', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
           Sign out
         </button>
       </div>
