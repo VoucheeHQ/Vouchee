@@ -455,7 +455,42 @@ function CleanerDrawer({ cleaner: initialCleaner, onClose, onSaved }: { cleaner:
   // Track the cleaner's state internally so we can refresh the drawer
   // after an upload/verify without closing it
   const [cleaner, setCleaner] = useState<CleanerRow>(initialCleaner)
+  const [cleanerConvos, setCleanerConvos] = useState<ConversationRow[]>([])
+  const [loadingConvos, setLoadingConvos] = useState(true)
+  const [viewingCleanerConv, setViewingCleanerConv] = useState<ConversationRow | null>(null)
   const supabase = createClient()
+
+  const loadCleanerConversations = async () => {
+    setLoadingConvos(true)
+    const { data: convs } = await (supabase as any)
+      .from('conversations')
+      .select('id, created_at, cleaner_id, customer_id, clean_request_id')
+      .eq('cleaner_id', cleaner.id)
+      .order('created_at', { ascending: false })
+    if (!convs) { setLoadingConvos(false); return }
+    const enriched = await Promise.all((convs as any[]).map(async (conv) => {
+      const { data: customer } = await (supabase as any).from('profiles').select('full_name').eq('id', conv.customer_id).single()
+      const { data: req } = await (supabase as any).from('clean_requests').select('zone').eq('id', conv.clean_request_id).single()
+      const { data: msgs, count } = await (supabase as any).from('messages').select('content, created_at', { count: 'exact' }).eq('conversation_id', conv.id).order('created_at', { ascending: false }).limit(1)
+      return {
+        id: conv.id,
+        created_at: conv.created_at,
+        cleaner_name: cleaner.full_name,
+        customer_name: (customer as any)?.full_name ?? 'Unknown',
+        zone: req?.zone ?? '—',
+        message_count: count ?? 0,
+        last_message: msgs?.[0]?.content ?? '',
+        last_message_at: msgs?.[0]?.created_at ?? null,
+      } as ConversationRow
+    }))
+    setCleanerConvos(enriched)
+    setLoadingConvos(false)
+  }
+
+  useEffect(() => {
+    loadCleanerConversations()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cleaner.id])
 
   const refreshCleaner = async () => {
     const { data: c } = await (supabase as any)
@@ -632,6 +667,66 @@ function CleanerDrawer({ cleaner: initialCleaner, onClose, onSaved }: { cleaner:
             />
           </div>
 
+          {/* Conversation history */}
+          <div style={{ marginBottom: '28px' }}>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span>Conversation history</span>
+              {!loadingConvos && <span style={{ fontSize: '11px', fontWeight: 600, color: '#94a3b8' }}>{cleanerConvos.length} {cleanerConvos.length === 1 ? 'conversation' : 'conversations'}</span>}
+            </div>
+            {loadingConvos ? (
+              <div style={{ background: '#f8fafc', borderRadius: '12px', padding: '20px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>
+                Loading conversations…
+              </div>
+            ) : cleanerConvos.length === 0 ? (
+              <div style={{ background: '#f8fafc', borderRadius: '12px', padding: '20px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>
+                💬 No conversations yet
+              </div>
+            ) : (
+              <div style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden' }}>
+                {cleanerConvos.map((conv, i) => (
+                  <button
+                    key={conv.id}
+                    onClick={() => setViewingCleanerConv(conv)}
+                    style={{
+                      width: '100%',
+                      textAlign: 'left',
+                      background: 'white',
+                      border: 'none',
+                      borderBottom: i < cleanerConvos.length - 1 ? '1px solid #f1f5f9' : 'none',
+                      padding: '12px 14px',
+                      cursor: 'pointer',
+                      fontFamily: "'DM Sans', sans-serif",
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '10px',
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.background = '#f8fafc')}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'white')}
+                  >
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
+                        <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>{conv.customer_name}</div>
+                        <span style={{ fontSize: '11px', color: '#94a3b8' }}>· {ZONE_LABELS[conv.zone] ?? conv.zone}</span>
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {conv.last_message || <span style={{ fontStyle: 'italic', color: '#94a3b8' }}>No messages</span>}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '3px', flexShrink: 0 }}>
+                      <span style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: '100px', padding: '1px 8px', fontSize: '10px', fontWeight: 700 }}>
+                        {conv.message_count} {conv.message_count === 1 ? 'msg' : 'msgs'}
+                      </span>
+                      <span style={{ fontSize: '10px', color: '#94a3b8' }}>
+                        {conv.last_message_at ? ago(conv.last_message_at) : ago(conv.created_at)}
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* Save interview progress */}
           <button
             onClick={saveInterview}
@@ -733,6 +828,14 @@ function CleanerDrawer({ cleaner: initialCleaner, onClose, onSaved }: { cleaner:
           </div>
         </div>
       </div>
+      {viewingCleanerConv && (
+        <ConversationModal
+          conversationId={viewingCleanerConv.id}
+          cleanerName={viewingCleanerConv.cleaner_name}
+          customerName={viewingCleanerConv.customer_name}
+          onClose={() => setViewingCleanerConv(null)}
+        />
+      )}
     </div>
   )
 }
