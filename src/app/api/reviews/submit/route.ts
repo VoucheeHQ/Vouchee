@@ -3,6 +3,8 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
 
 const REVIEW_GATE_MONTHS = 6
+const MIN_REVIEW_CHARS = 50
+const MAX_REVIEW_CHARS = 2000
 
 export async function POST(request: NextRequest) {
   // 1. Must be logged in
@@ -12,7 +14,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'You must be logged in to leave a review.' }, { status: 401 })
   }
 
-  // 2. Must be a customer (not cleaner, not admin leaving reviews as if they're a customer)
+  // 2. Must be a customer OR admin (admins allowed — sole admin is the business owner)
   const { data: profile } = await supabaseUser
     .from('profiles').select('role, full_name').eq('id', user.id).single()
   if (!profile || ((profile as any).role !== 'customer' && (profile as any).role !== 'admin')) {
@@ -33,14 +35,14 @@ export async function POST(request: NextRequest) {
   if (!Number.isInteger(stars) || stars < 1 || stars > 5) {
     return NextResponse.json({ error: 'Stars must be a whole number between 1 and 5' }, { status: 400 })
   }
-  if (typeof reviewText !== 'string' || reviewText.trim().length < 10) {
-    return NextResponse.json({ error: 'Please write at least 10 characters' }, { status: 400 })
+  if (typeof reviewText !== 'string' || reviewText.trim().length < MIN_REVIEW_CHARS) {
+    return NextResponse.json({ error: `Please write at least ${MIN_REVIEW_CHARS} characters` }, { status: 400 })
   }
-  if (reviewText.trim().length > 2000) {
-    return NextResponse.json({ error: 'Review is too long (max 2000 characters)' }, { status: 400 })
+  if (reviewText.trim().length > MAX_REVIEW_CHARS) {
+    return NextResponse.json({ error: `Review is too long (max ${MAX_REVIEW_CHARS} characters)` }, { status: 400 })
   }
 
-  // Use service role for write access
+  // Service role for write access
   const admin = createSupabaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -62,10 +64,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "You can't review yourself." }, { status: 403 })
   }
 
-  // 6. VERIFY: this customer actually had a fulfilled clean with this cleaner
-  //    Via the applications table: customer's clean_request had an application from this cleaner,
-  //    that application was accepted, and the clean_request is fulfilled.
-  // Admin bypasses this check (for moderation/testing)
+  // 6. VERIFY: customer has a FULFILLED clean_request with this cleaner
+  //    Admin bypasses this check (you explicitly allowed admin reviews)
   let verifiedCleanRequestId: string | null = null
   if (callerRole !== 'admin') {
     const { data: customerRow } = await admin
@@ -96,14 +96,13 @@ export async function POST(request: NextRequest) {
 
     if (!matching) {
       return NextResponse.json({
-        error: 'You must have a completed booking with this cleaner before reviewing.',
+        error: 'You can only review a cleaner after your Direct Debit has been confirmed and the arrangement has started.',
       }, { status: 403 })
     }
     verifiedCleanRequestId = matching.request_id
   }
 
-  // 7. Enforce 6-month gate — any existing review from this customer on this cleaner
-  //    within the last REVIEW_GATE_MONTHS months blocks a new one.
+  // 7. Enforce 6-month gate
   const cutoff = new Date()
   cutoff.setMonth(cutoff.getMonth() - REVIEW_GATE_MONTHS)
 
@@ -117,7 +116,7 @@ export async function POST(request: NextRequest) {
 
   if (recentReviews && recentReviews.length > 0) {
     return NextResponse.json({
-      error: `You've already reviewed this cleaner within the last ${REVIEW_GATE_MONTHS} months. You can leave another review after that period.`,
+      error: `You've already reviewed this cleaner in the last ${REVIEW_GATE_MONTHS} months. You can leave another review after that period.`,
     }, { status: 409 })
   }
 
