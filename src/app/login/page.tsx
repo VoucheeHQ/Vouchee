@@ -1,15 +1,38 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, Suspense, type CSSProperties } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Eye, EyeOff } from 'lucide-react'
 import VoucheeLogoText from '@/assets/vouchee-logo-text.svg'
 
 type Role = 'cleaner' | 'customer' | null
 
-export default function LoginPage() {
+/**
+ * Safe-redirect helper.
+ * Accepts only same-origin relative paths starting with a single "/".
+ * Rejects:
+ *   - absolute URLs (https://..., http://...)
+ *   - protocol-relative URLs (//evil.com — some browsers treat these as absolute)
+ *   - any path that doesn't start with "/"
+ *   - bare "/" or empty values (fall back to role default)
+ */
+function sanitiseRedirect(raw: string | null): string | null {
+  if (!raw) return null
+  const trimmed = raw.trim()
+  if (!trimmed.startsWith('/')) return null
+  if (trimmed.startsWith('//')) return null // protocol-relative
+  if (trimmed.length < 2) return null       // just "/" — not useful as a redirect
+  // Block anything containing a protocol, just in case
+  if (/^[a-z][a-z0-9+.-]*:/i.test(trimmed)) return null
+  return trimmed
+}
+
+function LoginPageInner() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const redirectTarget = sanitiseRedirect(searchParams?.get('redirect') ?? null)
+
   const [role, setRole] = useState<Role>(null)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -21,7 +44,6 @@ export default function LoginPage() {
     if (!email.trim() || !password) return
     setError(null)
     setLoading(true)
-
     try {
       const supabase = createClient()
       const { data, error: authError } = await supabase.auth.signInWithPassword({
@@ -61,15 +83,18 @@ export default function LoginPage() {
         }
       }
 
-      // Route by actual role
-      if (actualRole === 'admin') {
+      // Route priority:
+      //   1. ?redirect= param (if safe, relative) — wins for all roles
+      //   2. Role default (admin/cleaner/customer dashboard)
+      if (redirectTarget) {
+        router.push(redirectTarget)
+      } else if (actualRole === 'admin') {
         router.push('/admin/dashboard')
       } else if (actualRole === 'cleaner') {
         router.push('/cleaner/dashboard')
       } else {
         router.push('/customer/dashboard')
       }
-
     } catch (err: any) {
       setError(err?.message ?? 'Something went wrong. Please try again.')
     } finally {
@@ -77,7 +102,7 @@ export default function LoginPage() {
     }
   }
 
-  const inputStyle = (hasError?: boolean): React.CSSProperties => ({
+  const inputStyle = (hasError?: boolean): CSSProperties => ({
     width: '100%',
     background: hasError ? '#fff5f5' : 'white',
     border: `1.5px solid ${hasError ? '#fca5a5' : '#e2e8f0'}`,
@@ -94,26 +119,34 @@ export default function LoginPage() {
   return (
     <>
       <link rel="preconnect" href="https://fonts.googleapis.com" />
-      <link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;600;700&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+      <link
+        href="https://fonts.googleapis.com/css2?family=Lora:wght@400;600;700&family=DM+Sans:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet"
+      />
+
       <div style={{
         minHeight: '100vh',
         background: 'linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%)',
-        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-        padding: '24px', fontFamily: 'DM Sans, sans-serif',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '24px',
+        fontFamily: 'DM Sans, sans-serif',
       }}>
-        {/* Logo */}
         <a href="/" style={{ textDecoration: 'none', marginBottom: '40px' }}>
           <VoucheeLogoText width={140} height={36} />
         </a>
 
-        {/* Card */}
         <div style={{
-          background: 'white', borderRadius: '24px', padding: '40px',
-          width: '100%', maxWidth: '420px',
+          background: 'white',
+          borderRadius: '24px',
+          padding: '40px',
+          width: '100%',
+          maxWidth: '420px',
           boxShadow: '0 4px 32px rgba(0,0,0,0.07)',
           border: '1.5px solid rgba(255,255,255,0.9)',
         }}>
-
           {/* ── Step 1: role selector ── */}
           {!role && (
             <>
@@ -123,6 +156,13 @@ export default function LoginPage() {
               <p style={{ fontSize: '15px', color: '#64748b', margin: '0 0 32px', lineHeight: 1.6 }}>
                 How are you using Vouchee?
               </p>
+
+              {redirectTarget && (
+                <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '10px', padding: '10px 12px', marginBottom: '24px', fontSize: '12px', color: '#1e40af', lineHeight: 1.5 }}>
+                  💡 Log in to continue — we'll take you to where you were going.
+                </div>
+              )}
+
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <button
                   onClick={() => setRole('cleaner')}
@@ -241,14 +281,19 @@ export default function LoginPage() {
                   onClick={handleLogin}
                   disabled={loading || !email.trim() || !password}
                   style={{
-                    width: '100%', padding: '15px',
+                    width: '100%',
+                    padding: '15px',
                     background: loading || !email.trim() || !password ? '#e2e8f0' : role === 'cleaner' ? 'linear-gradient(135deg, #3b82f6, #6366f1)' : 'linear-gradient(135deg, #22c55e, #16a34a)',
                     color: loading || !email.trim() || !password ? '#94a3b8' : 'white',
-                    border: 'none', borderRadius: '14px', fontSize: '15px', fontWeight: 700,
+                    border: 'none',
+                    borderRadius: '14px',
+                    fontSize: '15px',
+                    fontWeight: 700,
                     cursor: loading || !email.trim() || !password ? 'not-allowed' : 'pointer',
                     transition: 'all 0.2s',
                     boxShadow: loading || !email.trim() || !password ? 'none' : role === 'cleaner' ? '0 4px 16px rgba(59,130,246,0.3)' : '0 4px 16px rgba(34,197,94,0.3)',
-                    fontFamily: 'DM Sans, sans-serif', marginTop: '4px',
+                    fontFamily: 'DM Sans, sans-serif',
+                    marginTop: '4px',
                   }}
                 >
                   {loading ? 'Logging in…' : `Log in as a ${role}`}
@@ -278,5 +323,18 @@ export default function LoginPage() {
         </p>
       </div>
     </>
+  )
+}
+
+// useSearchParams requires Suspense in Next.js 14 App Router
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'DM Sans, sans-serif' }}>
+        <p style={{ color: '#64748b' }}>Loading…</p>
+      </div>
+    }>
+      <LoginPageInner />
+    </Suspense>
   )
 }

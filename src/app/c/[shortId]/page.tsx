@@ -69,6 +69,8 @@ export default function CleanerReviewPage() {
   const [cleaner, setCleaner] = useState<CleanerInfo | null>(null)
   const [reviews, setReviews] = useState<Review[]>([])
   const [authed, setAuthed] = useState<boolean | null>(null) // null = still checking
+  const [viewerIsOwner, setViewerIsOwner] = useState(false)  // the cleaner viewing their own profile
+  const [viewerRole, setViewerRole] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
 
@@ -86,6 +88,15 @@ export default function CleanerReviewPage() {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       setAuthed(!!user)
+
+      // Fetch viewer's role if logged in — used to decide what to show
+      let currentViewerRole: string | null = null
+      if (user) {
+        const { data: viewerProfile } = await (supabase as any)
+          .from('profiles').select('role').eq('id', user.id).single()
+        currentViewerRole = (viewerProfile as any)?.role ?? null
+        setViewerRole(currentViewerRole)
+      }
 
       const { data: cleanerRow, error: cleanerErr } = await (supabase as any)
         .from('cleaners')
@@ -113,6 +124,11 @@ export default function CleanerReviewPage() {
         right_to_work_verified: (cleanerRow as any).right_to_work_verified,
         cleans_completed: (cleanerRow as any).cleans_completed,
       })
+
+      // Flag whether the logged-in user IS the cleaner being viewed
+      if (user && user.id === (cleanerRow as any).profile_id) {
+        setViewerIsOwner(true)
+      }
 
       const { data: reviewRows } = await (supabase as any)
         .from('reviews')
@@ -259,8 +275,32 @@ export default function CleanerReviewPage() {
           </div>
         </div>
 
-        {/* ── Review submission form ── */}
-        {!authed ? (
+        {/* ── Review submission form (branches by viewer) ── */}
+        {viewerIsOwner ? (
+          // This is the cleaner viewing their own profile
+          <div style={{ background: 'linear-gradient(135deg, #eff6ff, #f0fdf4)', borderRadius: '20px', border: '1.5px solid #bfdbfe', padding: '22px 24px', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+              <div style={{ fontSize: '22px', lineHeight: 1, flexShrink: 0 }}>👋</div>
+              <div style={{ flex: 1 }}>
+                <h2 style={{ fontSize: '15px', fontWeight: 800, color: '#0f172a', margin: '0 0 4px' }}>This is your public profile</h2>
+                <p style={{ fontSize: '13px', color: '#475569', margin: '0 0 10px', lineHeight: 1.55 }}>
+                  Customers who've booked you can use this link to leave a review. Share it with past customers from Vouchee — only those with a completed booking can review you.
+                </p>
+                <Link href="/cleaner/dashboard" style={{ fontSize: '12px', fontWeight: 700, color: '#1d4ed8', textDecoration: 'none' }}>
+                  ← Back to your dashboard
+                </Link>
+              </div>
+            </div>
+          </div>
+        ) : viewerRole === 'cleaner' ? (
+          // A different cleaner viewing another cleaner's profile — no review form
+          <div style={{ background: 'white', border: '1.5px solid #e2e8f0', borderRadius: '20px', padding: '22px 24px', marginBottom: '20px', textAlign: 'center' }}>
+            <div style={{ fontSize: '20px', marginBottom: '6px' }}>🧹</div>
+            <p style={{ fontSize: '13px', color: '#64748b', margin: 0, lineHeight: 1.5 }}>
+              Only customers can leave reviews. You're viewing <strong>{shortName}</strong>'s public profile.
+            </p>
+          </div>
+        ) : !authed ? (
           <div style={{ background: 'white', borderRadius: '20px', border: '1.5px solid #bfdbfe', padding: '28px', marginBottom: '20px', textAlign: 'center' }}>
             <div style={{ fontSize: '28px', marginBottom: '10px' }}>🔒</div>
             <h2 style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a', margin: '0 0 8px' }}>Log in to leave a review</h2>
