@@ -130,6 +130,24 @@ export async function POST(request: NextRequest) {
       } as any)
     } catch (e) { console.error('Approval notif failed:', e) }
 
+    // Fire approval email (non-fatal — CRM action still succeeds if email bombs)
+    try {
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.vouchee.co.uk'
+      const emailRes = await fetch(`${appUrl}/api/admin/send-cleaner-decision-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          // Forward the user's auth cookie so the email route's admin check passes
+          cookie: request.headers.get('cookie') ?? '',
+        },
+        body: JSON.stringify({ cleanerId, kind: 'approval' }),
+      })
+      if (!emailRes.ok) {
+        const errText = await emailRes.text()
+        console.error('Approval email send failed (non-fatal):', errText)
+      }
+    } catch (e) { console.error('Approval email error (non-fatal):', e) }
+
     return NextResponse.json({ success: true })
   }
 
@@ -160,6 +178,23 @@ export async function POST(request: NextRequest) {
         link: '/cleaner/dashboard',
       } as any)
     } catch (e) { console.error('Rejection notif failed:', e) }
+
+    // Fire rejection email (non-fatal)
+    try {
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.vouchee.co.uk'
+      const emailRes = await fetch(`${appUrl}/api/admin/send-cleaner-decision-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          cookie: request.headers.get('cookie') ?? '',
+        },
+        body: JSON.stringify({ cleanerId, kind: 'rejection', reason: reason ?? null }),
+      })
+      if (!emailRes.ok) {
+        const errText = await emailRes.text()
+        console.error('Rejection email send failed (non-fatal):', errText)
+      }
+    } catch (e) { console.error('Rejection email error (non-fatal):', e) }
 
     return NextResponse.json({ success: true })
   }
@@ -266,6 +301,23 @@ export async function POST(request: NextRequest) {
         link: '/cleaner/dashboard',
       } as any)
     } catch (e) { console.error('Reapproval notif failed:', e) }
+
+    // Fire approval email — reapproval uses the same email template as a fresh approval
+    try {
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.vouchee.co.uk'
+      const emailRes = await fetch(`${appUrl}/api/admin/send-cleaner-decision-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          cookie: request.headers.get('cookie') ?? '',
+        },
+        body: JSON.stringify({ cleanerId, kind: 'approval' }),
+      })
+      if (!emailRes.ok) {
+        const errText = await emailRes.text()
+        console.error('Re-approval email send failed (non-fatal):', errText)
+      }
+    } catch (e) { console.error('Re-approval email error (non-fatal):', e) }
 
     return NextResponse.json({ success: true })
   }

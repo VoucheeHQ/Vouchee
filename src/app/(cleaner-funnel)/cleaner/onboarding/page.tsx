@@ -8,16 +8,26 @@ import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch'
 import VoucheeLogoText from '@/assets/vouchee-logo-text.svg'
 
 const ALL_AREAS = [
-  'Central / South East', 'North West', 'North East / Roffey', 'South West',
-  'Warnham / Surrounding North', 'Broadbridge Heath', 'Mannings Heath',
-  'Faygate / Kilnwood Vale', 'Christs Hospital',
+  'Central / South East',
+  'North West',
+  'North East / Roffey',
+  'South West',
+  'Warnham / Surrounding North',
+  'Broadbridge Heath',
+  'Mannings Heath',
+  'Faygate / Kilnwood Vale',
+  'Christs Hospital',
 ]
 
 const AREA_TO_ID: Record<string, string> = {
-  'Central / South East': 'central_south_east', 'North West': 'north_west',
-  'North East / Roffey': 'north_east_roffey', 'South West': 'south_west',
-  'Warnham / Surrounding North': 'warnham_north', 'Broadbridge Heath': 'broadbridge_heath',
-  'Mannings Heath': 'mannings_heath', 'Faygate / Kilnwood Vale': 'faygate_kilnwood_vale',
+  'Central / South East': 'central_south_east',
+  'North West': 'north_west',
+  'North East / Roffey': 'north_east_roffey',
+  'South West': 'south_west',
+  'Warnham / Surrounding North': 'warnham_north',
+  'Broadbridge Heath': 'broadbridge_heath',
+  'Mannings Heath': 'mannings_heath',
+  'Faygate / Kilnwood Vale': 'faygate_kilnwood_vale',
   'Christs Hospital': 'christs_hospital',
 }
 
@@ -66,7 +76,10 @@ function ZoneSelector({ selectedAreas, onToggle, onToggleAll }: { selectedAreas:
         <p style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px' }}>Which areas are you happy to work in?</p>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
           <button type="button" onClick={onToggleAll} style={{ gridColumn: '1 / -1', borderRadius: '10px', padding: '9px 12px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', border: '1.5px solid', textAlign: 'left', transition: 'all 0.15s', fontFamily: 'inherit', background: allSelected ? 'rgba(59,130,246,0.06)' : 'rgba(255,255,255,0.7)', borderColor: allSelected ? '#3b82f6' : '#e2e8f0', color: allSelected ? '#1e40af' : '#475569' }}>{allSelected ? '✓ ' : ''}All areas</button>
-          {!allSelected && ALL_AREAS.map(area => { const sel = selectedAreas.includes(area); return <button key={area} type="button" onClick={() => onToggle(area)} style={{ borderRadius: '10px', padding: '9px 12px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', border: '1.5px solid', textAlign: 'left', transition: 'all 0.15s', fontFamily: 'inherit', background: sel ? 'rgba(59,130,246,0.06)' : 'rgba(255,255,255,0.7)', borderColor: sel ? '#3b82f6' : '#e2e8f0', color: sel ? '#1e40af' : '#475569' }}>{sel ? '✓ ' : ''}{area}</button> })}
+          {!allSelected && ALL_AREAS.map(area => {
+            const sel = selectedAreas.includes(area)
+            return <button key={area} type="button" onClick={() => onToggle(area)} style={{ borderRadius: '10px', padding: '9px 12px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', border: '1.5px solid', textAlign: 'left', transition: 'all 0.15s', fontFamily: 'inherit', background: sel ? 'rgba(59,130,246,0.06)' : 'rgba(255,255,255,0.7)', borderColor: sel ? '#3b82f6' : '#e2e8f0', color: sel ? '#1e40af' : '#475569' }}>{sel ? '✓ ' : ''}{area}</button>
+          })}
         </div>
       </div>
     </div>
@@ -177,11 +190,23 @@ export default function CleanerOnboarding() {
   const [showConfirm, setShowConfirm] = useState(false)
 
   const [form, setForm] = useState({
-    full_name: '', email: '', password: '', confirm_password: '', phone: '',
-    years_experience: '', experience_types: [] as string[], experience_other: '',
-    own_supplies: false, dbs_checked: false, right_to_work: false, has_insurance: false,
-    needs_credentials_help: false, selectedAreas: [] as string[],
-    cover_cleans_notify: true, job_notify: true, marketing_opt_in: false,
+    full_name: '',
+    email: '',
+    password: '',
+    confirm_password: '',
+    phone: '',
+    years_experience: '',
+    experience_types: [] as string[],
+    experience_other: '',
+    own_supplies: false,
+    dbs_checked: false,
+    right_to_work: false,
+    has_insurance: false,
+    needs_credentials_help: false,
+    selectedAreas: [] as string[],
+    cover_cleans_notify: true,
+    job_notify: true,
+    marketing_opt_in: false,
   })
 
   const set = (key: string, value: any) => {
@@ -206,9 +231,20 @@ export default function CleanerOnboarding() {
     }
   }
 
-  const toggleArr = (key: string, value: string) => { const arr = (form as any)[key] as string[]; set(key, arr.includes(value) ? arr.filter((v: string) => v !== value) : [...arr, value]) }
-  const handleToggleArea = (area: string) => { setForm(f => { const areas = f.selectedAreas.filter(a => a !== '__all__'); return { ...f, selectedAreas: areas.includes(area) ? areas.filter(a => a !== area) : [...areas, area] } }) }
-  const handleToggleAll = () => { setForm(f => ({ ...f, selectedAreas: f.selectedAreas.includes('__all__') ? [] : ['__all__'] })) }
+  const toggleArr = (key: string, value: string) => {
+    const arr = (form as any)[key] as string[]
+    set(key, arr.includes(value) ? arr.filter((v: string) => v !== value) : [...arr, value])
+  }
+
+  const handleToggleArea = (area: string) => {
+    setForm(f => {
+      const areas = f.selectedAreas.filter(a => a !== '__all__')
+      return { ...f, selectedAreas: areas.includes(area) ? areas.filter(a => a !== area) : [...areas, area] }
+    })
+  }
+  const handleToggleAll = () => {
+    setForm(f => ({ ...f, selectedAreas: f.selectedAreas.includes('__all__') ? [] : ['__all__'] }))
+  }
 
   const validate = () => {
     const e: Record<string, string> = {}
@@ -230,20 +266,77 @@ export default function CleanerOnboarding() {
   const handleSubmit = async () => {
     setSubmitError(null)
     const e = validate()
-    if (Object.keys(e).length > 0) { setErrors(e); const el = document.getElementById(`field-${Object.keys(e)[0]}`); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); return }
+    if (Object.keys(e).length > 0) {
+      setErrors(e)
+      const el = document.getElementById(`field-${Object.keys(e)[0]}`)
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      return
+    }
+
     setSubmitting(true)
     try {
       const supabase = createClient()
-      const { data: authData, error: authError } = await supabase.auth.signUp({ email: form.email.trim(), password: form.password, options: { data: { full_name: form.full_name.trim() } } })
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: form.email.trim(),
+        password: form.password,
+        options: { data: { full_name: form.full_name.trim() } },
+      })
       if (authError) throw new Error(authError.message)
       if (!authData.user) throw new Error('Account creation failed. Please try again.')
+
       const userId = authData.user.id
-      const { error: profileError } = await (supabase as any).from('profiles').upsert({ id: userId, email: form.email.trim(), full_name: form.full_name.trim(), phone: form.phone.trim(), role: 'cleaner' }, { onConflict: 'id' })
+
+      const { error: profileError } = await (supabase as any).from('profiles').upsert(
+        {
+          id: userId,
+          email: form.email.trim(),
+          full_name: form.full_name.trim(),
+          phone: form.phone.trim(),
+          role: 'cleaner',
+        },
+        { onConflict: 'id' }
+      )
       if (profileError) throw new Error(profileError.message)
-      const zones = form.selectedAreas.includes('__all__') ? Object.values(AREA_TO_ID) : form.selectedAreas.map(a => AREA_TO_ID[a]).filter(Boolean)
-      const experienceFull = [...form.experience_types, ...(form.experience_other.trim() ? [`other: ${form.experience_other.trim()}`] : [])]
-      const { error: cleanerError } = await (supabase as any).from('cleaners').insert({ profile_id: userId, application_status: 'submitted', years_experience: form.years_experience ? parseInt(form.years_experience) : null, bio: experienceFull.length > 0 ? experienceFull.join(', ') : null, own_supplies: form.own_supplies, dbs_checked: form.dbs_checked, right_to_work: form.right_to_work, has_insurance: form.has_insurance, needs_credentials_help: form.needs_credentials_help, zones, cover_cleans_notify: form.cover_cleans_notify, job_notify: form.job_notify, marketing_opt_in: form.marketing_opt_in, onboarding_completed_at: new Date().toISOString() })
+
+      const zones = form.selectedAreas.includes('__all__')
+        ? Object.values(AREA_TO_ID)
+        : form.selectedAreas.map(a => AREA_TO_ID[a]).filter(Boolean)
+
+      const experienceFull = [
+        ...form.experience_types,
+        ...(form.experience_other.trim() ? [`other: ${form.experience_other.trim()}`] : []),
+      ]
+
+      const { error: cleanerError } = await (supabase as any).from('cleaners').insert({
+        profile_id: userId,
+        application_status: 'submitted',
+        years_experience: form.years_experience ? parseInt(form.years_experience) : null,
+        bio: experienceFull.length > 0 ? experienceFull.join(', ') : null,
+        own_supplies: form.own_supplies,
+        dbs_checked: form.dbs_checked,
+        right_to_work: form.right_to_work,
+        has_insurance: form.has_insurance,
+        needs_credentials_help: form.needs_credentials_help,
+        zones,
+        cover_cleans_notify: form.cover_cleans_notify,
+        job_notify: form.job_notify,
+        marketing_opt_in: form.marketing_opt_in,
+        onboarding_completed_at: new Date().toISOString(),
+      })
       if (cleanerError) throw new Error(cleanerError.message)
+
+      // Fire welcome email to cleaner + admin alert. Non-fatal — the on-screen
+      // success state shows regardless, so a flaky email doesn't break signup.
+      try {
+        await fetch('/api/send-application-received', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ cleanerId: userId }),
+        })
+      } catch (emailErr) {
+        console.error('Welcome/alert emails failed (non-fatal):', emailErr)
+      }
+
       setSubmitted(true)
     } catch (err: any) {
       setSubmitError(err?.message ?? 'Something went wrong. Please try again.')
@@ -289,7 +382,6 @@ export default function CleanerOnboarding() {
 
       <div style={{ maxWidth: '680px', margin: '0 auto', padding: '0 20px 80px' }}>
         <div style={{ background: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(16px)', borderRadius: '24px', padding: '40px', boxShadow: '0 4px 24px rgba(0,0,0,0.06)', border: '1.5px solid rgba(255,255,255,0.9)' }}>
-
           <SectionHeader step={1} title="Personal details" subtitle="This is how we'll contact you. Your surname won't be shown publicly." />
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div id="field-full_name">
@@ -364,11 +456,7 @@ export default function CleanerOnboarding() {
             <CheckToggle label="I have public liability insurance" checked={form.has_insurance} onChange={v => set('has_insurance', v)} />
             {(!form.dbs_checked || !form.right_to_work || !form.has_insurance) && (
               <div style={{ marginTop: '4px' }}>
-                {/* ── Checkbox style matches the three above — amber when checked to distinguish it ── */}
-                <button
-                  onClick={() => { const opening = !missingCredentials; setMissingCredentials(opening); if (opening) set('needs_credentials_help', true) }}
-                  style={{ display: 'flex', alignItems: 'center', gap: '12px', background: missingCredentials ? '#fffbeb' : '#f8fafc', border: `1.5px solid ${missingCredentials ? '#fde68a' : '#e2e8f0'}`, borderRadius: '12px', padding: '14px 16px', cursor: 'pointer', fontSize: '14px', fontWeight: 600, color: missingCredentials ? '#92400e' : '#475569', width: '100%', textAlign: 'left', transition: 'all 0.15s', fontFamily: 'inherit' }}
-                >
+                <button onClick={() => { const opening = !missingCredentials; setMissingCredentials(opening); if (opening) set('needs_credentials_help', true) }} style={{ display: 'flex', alignItems: 'center', gap: '12px', background: missingCredentials ? '#fffbeb' : '#f8fafc', border: `1.5px solid ${missingCredentials ? '#fde68a' : '#e2e8f0'}`, borderRadius: '12px', padding: '14px 16px', cursor: 'pointer', fontSize: '14px', fontWeight: 600, color: missingCredentials ? '#92400e' : '#475569', width: '100%', textAlign: 'left', transition: 'all 0.15s', fontFamily: 'inherit' }}>
                   <div style={{ width: '20px', height: '20px', borderRadius: '6px', flexShrink: 0, background: missingCredentials ? '#d97706' : 'white', border: `2px solid ${missingCredentials ? '#d97706' : '#cbd5e1'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}>
                     {missingCredentials && <Check size={12} color="white" strokeWidth={3} />}
                   </div>
@@ -421,8 +509,8 @@ export default function CleanerOnboarding() {
                   {platformAgreement && <Check size={13} color="white" strokeWidth={3} />}
                 </button>
                 <div>
-                <p style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', margin: '0 0 8px', lineHeight: 1.55 }}>I have read and agree to the <a href="/legal/terms/cleaner" target="_blank" style={{ color: '#3b82f6', textDecoration: 'underline' }}>Cleaner Terms of Service</a>, including my responsibilities as a self-employed individual, my tax obligations, and the platform integrity clause. I understand that taking customers introduced through Vouchee off-platform may result in a formal warning, suspension, or permanent removal.</p>
-<p style={{ fontSize: '12px', color: '#94a3b8', margin: 0, lineHeight: 1.5 }}>Note: You are paid directly by the customer for your time — <strong style={{ color: '#64748b' }}>Vouchee does not take a cut of your hourly earnings.</strong> The full Terms of Service set out your rights and obligations as a Vouchee Cleaner.</p>
+                  <p style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', margin: '0 0 8px', lineHeight: 1.55 }}>I have read and agree to the <a href="/legal/terms/cleaner" target="_blank" style={{ color: '#3b82f6', textDecoration: 'underline' }}>Cleaner Terms of Service</a>, including my responsibilities as a self-employed individual, my tax obligations, and the platform integrity clause. I understand that taking customers introduced through Vouchee off-platform may result in a formal warning, suspension, or permanent removal.</p>
+                  <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0, lineHeight: 1.5 }}>Note: You are paid directly by the customer for your time — <strong style={{ color: '#64748b' }}>Vouchee does not take a cut of your hourly earnings.</strong> The full Terms of Service set out your rights and obligations as a Vouchee Cleaner.</p>
                 </div>
               </div>
             </div>
@@ -441,7 +529,6 @@ export default function CleanerOnboarding() {
             </button>
             <p style={{ fontSize: '12px', color: '#94a3b8', textAlign: 'center', marginTop: '12px' }}>Questions before applying?{' '}<a href="mailto:cleaners@vouchee.co.uk" style={{ color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>cleaners@vouchee.co.uk</a></p>
           </div>
-
         </div>
       </div>
     </div>
