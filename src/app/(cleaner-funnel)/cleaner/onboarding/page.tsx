@@ -357,9 +357,8 @@ export default function CleanerOnboarding() {
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '40px' }}><VoucheeLogoText width={140} height={36} /></div>
           <div style={{ background: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(16px)', borderRadius: '24px', padding: '48px 40px', boxShadow: '0 8px 40px rgba(0,0,0,0.08)', border: '1.5px solid rgba(255,255,255,0.9)' }}>
             <div style={{ fontSize: '56px', marginBottom: '16px' }}>🎉</div>
-            <h1 style={{ fontFamily: 'Lora, serif', fontSize: '24px', fontWeight: 800, color: '#0f172a', marginBottom: '12px' }}>Application submitted!</h1>
-            <p style={{ fontSize: '15px', color: '#64748b', lineHeight: 1.6, marginBottom: '8px' }}>Thanks for applying to join Vouchee. We'll review your application and be in touch within 3 working days to arrange a quick call.</p>
-            <p style={{ fontSize: '14px', color: '#94a3b8', lineHeight: 1.6, marginBottom: '32px' }}>Keep an eye on your inbox — we may follow up with a few questions beforehand.</p>
+            <h1 style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 'clamp(26px, 4vw, 34px)', fontWeight: 800, color: '#0f172a', margin: '0 0 16px', lineHeight: 1.15, letterSpacing: '-0.5px' }}>Application submitted!</h1>
+            <p style={{ fontSize: '15px', color: '#64748b', lineHeight: 1.65, marginBottom: '32px' }}>Thank you for applying to join Vouchee.<br /><br />We'll review your application and be in touch shortly to arrange a quick call where we can answer your questions and upload some of your documents for you.</p>
             <div style={{ background: '#f0fdf4', border: '1.5px solid #86efac', borderRadius: '14px', padding: '16px', marginBottom: '28px' }}>
               <div style={{ fontSize: '14px', fontWeight: 600, color: '#15803d', lineHeight: 1.5 }}>✅ Your account has been created. Once approved, you'll be able to log in and start applying for jobs.</div>
             </div>
