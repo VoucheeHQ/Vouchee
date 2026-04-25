@@ -10,9 +10,8 @@ const resend = new Resend(process.env.RESEND_API_KEY)
 // should import from there.
 const BRAND_BLUE = '#2563eb'
 
-function logoUrl(appUrl: string) {
-  return `${appUrl}/logo-email.png`
-}
+// Hosted logo PNG — same asset used everywhere in /public.
+const LOGO_URL = 'https://www.vouchee.co.uk/full-logo-black.png'
 
 function htmlEscape(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
@@ -31,15 +30,8 @@ function emailShell(appUrl: string, innerHtml: string, title: string) {
     <tr><td align="center">
       <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
         <tr>
-          <td style="padding:0 0 24px;">
-            <table cellpadding="0" cellspacing="0">
-              <tr>
-                <td style="vertical-align:middle;">
-                  <img src="${logoUrl(appUrl)}" alt="Vouchee" width="40" height="40" style="display:block;width:40px;height:40px;border:0;outline:none;text-decoration:none;" />
-                </td>
-                <td style="padding-left:10px;font-size:18px;font-weight:700;color:#0f172a;vertical-align:middle;">Vouchee</td>
-              </tr>
-            </table>
+          <td style="padding:0 0 24px;text-align:center;">
+            <img src="${LOGO_URL}" width="200" height="46" alt="Vouchee" style="display:block;margin:0 auto;max-width:100%;height:auto;border:0;outline:none;text-decoration:none;" />
           </td>
         </tr>
         <tr><td style="background:white;border-radius:20px;padding:36px;border:1px solid #e2e8f0;">${innerHtml}</td></tr>
