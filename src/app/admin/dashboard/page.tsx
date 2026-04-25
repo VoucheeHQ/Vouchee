@@ -1294,13 +1294,41 @@ export default function AdminDashboard() {
             <div>
               <div style={{ marginBottom: '24px' }}>
                 <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#0f172a', margin: '0 0 4px' }}>Email tests</h2>
-                <p style={{ fontSize: '13px', color: '#64748b', margin: 0 }}>All test emails send to <strong>adamjbell95@gmail.com</strong> using live test data.</p>
+                <p style={{ fontSize: '13px', color: '#64748b', margin: 0 }}>Preview platform emails without going through the full user flow. Each test card shows where the email will be sent.</p>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
+                {/* New: Application received emails — sends both at once to the logged-in admin */}
+                <TestCard
+                  title="📧 Application received emails (cleaner + admin alert)"
+                  description="Sends both emails fired when a cleaner submits their application: the 'Thanks for applying' email to the cleaner, plus the 'New application' alert to admin. Both go to your logged-in admin email so you can preview them side by side. Uses dummy applicant data."
+                  buttonLabel="Send test emails →"
+                  buttonColor="#2563eb"
+                  onRun={async () => {
+                    const res = await fetch('/api/admin/test-application-emails', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                    })
+                    const data = await res.json()
+                    if (!res.ok || !data.success) {
+                      return { success: false, message: data.error ?? 'Request failed' }
+                    }
+                    const cleanerOK = !data.cleaner?.error
+                    const adminOK = !data.admin?.error
+                    if (cleanerOK && adminOK) {
+                      return { success: true, message: `Both emails sent to ${data.sentTo}` }
+                    }
+                    // Partial success — surface which one failed so we can debug
+                    const failures: string[] = []
+                    if (!cleanerOK) failures.push(`cleaner: ${data.cleaner.error}`)
+                    if (!adminOK) failures.push(`admin: ${data.admin.error}`)
+                    return { success: false, message: failures.join(' | ') }
+                  }}
+                />
+
                 <TestCard
                   title="🧹 Cleaner acceptance email"
-                  description="Sends the 'You've been chosen' email that a cleaner receives when a customer selects them and confirms a start date via GoCardless. Uses Alison C. as the cleaner and Adam Bell as the customer."
+                  description="Sends the 'You've been chosen' email that a cleaner receives when a customer selects them and confirms a start date via GoCardless. Uses Alison C. as the cleaner and Adam Bell as the customer. Sends to adamjbell95@gmail.com."
                   buttonLabel="Send test email →"
                   buttonColor="#2563eb"
                   onRun={async () => {
@@ -1315,7 +1343,7 @@ export default function AdminDashboard() {
 
                 <TestCard
                   title="👤 Customer confirmation email"
-                  description="Sends the confirmation email that a customer receives after they've set up their Direct Debit and their cleaner has been assigned. Includes cleaner details, start date, tasks, and cleaning supplies link."
+                  description="Sends the confirmation email that a customer receives after they've set up their Direct Debit and their cleaner has been assigned. Includes cleaner details, start date, tasks, and cleaning supplies link. Sends to adamjbell95@gmail.com."
                   buttonLabel="Send test email →"
                   buttonColor="#16a34a"
                   onRun={async () => {
