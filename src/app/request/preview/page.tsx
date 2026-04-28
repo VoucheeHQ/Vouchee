@@ -179,12 +179,26 @@ async function publishRequest(data: RequestData, userId: string): Promise<string
     customerId = newCustomer.id
   }
 
-  // Role guard — double-check server side before inserting
+  // ── Role guard — block cleaners from posting listings ────────────────────
   const { data: { user: currentUser } } = await supabase.auth.getUser()
   if (currentUser) {
     const { data: roleCheck } = await (supabase as any)
       .from('profiles').select('role').eq('id', currentUser.id).single()
     if (roleCheck?.role === 'cleaner') throw new Error('Cleaners cannot post listings.')
+  }
+
+  // ── Active listing guard — one active or fulfilled listing at a time ──────
+  // Enforced server-side so it can't be bypassed by navigating directly to this page.
+  // Statuses that count as "blocking": active, pending, pending_review, fulfilled.
+  // paused and cancelled do NOT block — customer can post fresh while paused.
+  const { count: activeCount } = await (supabase as any)
+    .from('clean_requests')
+    .select('id', { count: 'exact', head: true })
+    .eq('customer_id', customerId)
+    .in('status', ['active', 'pending', 'pending_review', 'fulfilled'])
+
+  if (activeCount && activeCount > 0) {
+    throw new Error('You already have an active listing. Manage it from your dashboard before posting a new one.')
   }
 
   const zone = data.zone || (data.postcode ? getSectorFromPostcode(data.postcode) : null) || null
@@ -464,17 +478,13 @@ export default function ReviewPublishPage() {
 
   return (
     <>
-<style>{`* { box-sizing: border-box; } .go-live-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(22,163,74,0.4) !important; }`}</style>
-
+      <style>{`* { box-sizing: border-box; } .go-live-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(22,163,74,0.4) !important; }`}</style>
       <OnboardingShell
         step={4}
         title="Here's your listing"
         subtitle="This is what cleaners will see. Happy with it? Go live."
         onBack={() => router.back()}
       >
-
-
-
           {!userId && (
             <div style={{ background: "#fffbeb", border: "1.5px solid #fcd34d", borderRadius: "16px", padding: "14px 18px", marginBottom: "16px", display: "flex", gap: "10px", alignItems: "flex-start" }}>
               <span style={{ fontSize: "16px", flexShrink: 0 }}>⚠️</span>
@@ -488,7 +498,6 @@ export default function ReviewPublishPage() {
           )}
 
           <div style={{ background: "white", borderRadius: "20px", border: "1.5px solid #e2e8f0", boxShadow: "0 4px 24px rgba(0,0,0,0.07)", overflow: "hidden", marginBottom: "14px" }}>
-
             <div style={{ background: "linear-gradient(135deg, #1e40af, #3b82f6)", padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                 <div style={{ fontSize: "10px", fontWeight: 700, color: "rgba(255,255,255,0.65)", textTransform: "uppercase", letterSpacing: "0.08em", background: "rgba(255,255,255,0.12)", borderRadius: "100px", padding: "3px 10px", whiteSpace: "nowrap" }}>Live preview</div>

@@ -2,6 +2,7 @@
 
 import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
+import { ChatWidget } from '@/components/chat-widget'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -170,7 +171,6 @@ function ProfileLinkCard({ shortId, ratingAverage, ratingCount }: { shortId: str
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch {
-      // Fallback if clipboard API blocked
       const input = document.createElement('input')
       input.value = url; document.body.appendChild(input); input.select()
       try { document.execCommand('copy'); setCopied(true); setTimeout(() => setCopied(false), 2000) } catch {}
@@ -195,18 +195,14 @@ function ProfileLinkCard({ shortId, ratingAverage, ratingCount }: { shortId: str
       </p>
       <div style={{ display: 'flex', gap: '8px', alignItems: 'center', background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '10px', padding: '8px 10px 8px 14px' }}>
         <input
-          readOnly
-          value={url}
-          onClick={e => (e.target as HTMLInputElement).select()}
+          readOnly value={url} onClick={e => (e.target as HTMLInputElement).select()}
           style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontSize: '13px', color: '#475569', fontFamily: "'DM Sans', sans-serif", minWidth: 0 }}
         />
-        <button
-          onClick={copyUrl}
-          style={{ background: copied ? '#16a34a' : '#0f172a', color: 'white', border: 'none', borderRadius: '8px', padding: '6px 14px', fontSize: '12px', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", flexShrink: 0, transition: 'background 0.15s' }}>
+        <button onClick={copyUrl} style={{ background: copied ? '#16a34a' : '#0f172a', color: 'white', border: 'none', borderRadius: '8px', padding: '6px 14px', fontSize: '12px', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", flexShrink: 0, transition: 'background 0.15s' }}>
           {copied ? '✓ Copied' : 'Copy'}
         </button>
       </div>
-      <div style={{ marginTop: '10px', display: 'flex', gap: '8px' }}>
+      <div style={{ marginTop: '10px' }}>
         <a href={`/c/${shortId}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: '12px', fontWeight: 600, color: '#3b82f6', textDecoration: 'none' }}>
           View profile →
         </a>
@@ -217,9 +213,7 @@ function ProfileLinkCard({ shortId, ratingAverage, ratingCount }: { shortId: str
 
 // ─── APPROVED DASHBOARD ─────────────────────────────────────────────────────
 function ApprovedDashboard({ profile, cleaner, stats, notifications, onTogglePref, onNotificationClick }: {
-  profile: CleanerProfile
-  cleaner: CleanerData
-  stats: CleanerStats
+  profile: CleanerProfile; cleaner: CleanerData; stats: CleanerStats
   notifications: NotificationItem[]
   onTogglePref: (field: 'job_notify' | 'cover_cleans_notify' | 'marketing_opt_in') => void
   onNotificationClick: (n: NotificationItem) => void
@@ -248,13 +242,8 @@ function ApprovedDashboard({ profile, cleaner, stats, notifications, onTogglePre
                   <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                     {cleaner.rating_count > 0 ? (
                       <>
-                        {[1,2,3,4,5].map(s => {
-                          const filled = (cleaner.rating_average ?? 0) >= s
-                          return <span key={s} style={{ fontSize: '12px', color: filled ? '#f59e0b' : '#e2e8f0' }}>★</span>
-                        })}
-                        <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 600, marginLeft: '4px' }}>
-                          {cleaner.rating_average?.toFixed(1)} ({cleaner.rating_count})
-                        </span>
+                        {[1,2,3,4,5].map(s => <span key={s} style={{ fontSize: '12px', color: (cleaner.rating_average ?? 0) >= s ? '#f59e0b' : '#e2e8f0' }}>★</span>)}
+                        <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 600, marginLeft: '4px' }}>{cleaner.rating_average?.toFixed(1)} ({cleaner.rating_count})</span>
                       </>
                     ) : (
                       <>
@@ -270,18 +259,14 @@ function ApprovedDashboard({ profile, cleaner, stats, notifications, onTogglePre
                 <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 700, marginTop: '2px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Cleans</div>
               </div>
             </div>
-
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '16px' }}>
               <CredRow active={cleaner.dbs_checked} label="DBS Certificate" expiry={cleaner.dbs_expiry} />
               <CredRow active={cleaner.has_insurance} label="Public Liability Insurance" expiry={cleaner.insurance_expiry} />
               <CredRow active={cleaner.right_to_work} label="Right to Work" />
             </div>
-
             <div style={{ background: '#f8fafc', borderRadius: '10px', padding: '12px 14px', borderLeft: '3px solid #3b82f6' }}>
               <div style={{ fontSize: '10px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>Your intro message</div>
-              <p style={{ margin: 0, fontSize: '12px', color: '#94a3b8', lineHeight: 1.5, fontStyle: 'italic' }}>
-                This is where your message appears when you apply to a customer's listing.
-              </p>
+              <p style={{ margin: 0, fontSize: '12px', color: '#94a3b8', lineHeight: 1.5, fontStyle: 'italic' }}>This is where your message appears when you apply to a customer's listing.</p>
             </div>
           </div>
         </div>
@@ -310,9 +295,7 @@ function ApprovedDashboard({ profile, cleaner, stats, notifications, onTogglePre
             <div style={{ fontSize: '13px', fontWeight: 700, color: '#92400e', marginBottom: '2px' }}>Need supplies?</div>
             <div style={{ fontSize: '12px', color: '#b45309' }}>Recommended products for professionals</div>
           </div>
-          <a href="/cleaning-supplies" style={{ background: '#f59e0b', color: 'white', borderRadius: '10px', padding: '8px 16px', fontSize: '12px', fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' }}>
-            Browse →
-          </a>
+          <a href="/cleaning-supplies" style={{ background: '#f59e0b', color: 'white', borderRadius: '10px', padding: '8px 16px', fontSize: '12px', fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' }}>Browse →</a>
         </div>
 
         <div style={{ background: '#f8faff', borderRadius: '14px', padding: '14px 18px', border: '1px solid #e0e7ff', textAlign: 'center' }}>
@@ -331,9 +314,7 @@ function ApprovedDashboard({ profile, cleaner, stats, notifications, onTogglePre
             <div style={{ fontSize: '22px', fontWeight: 800, letterSpacing: '-0.3px' }}>Hi, {profile.full_name.trim().split(' ')[0]}! 👋</div>
             <div style={{ fontSize: '13px', opacity: 0.8, marginTop: '4px' }}>Here's how your Vouchee business is doing.</div>
           </div>
-          <a href="/jobs" style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', color: 'white', borderRadius: '12px', padding: '10px 20px', fontSize: '13px', fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' }}>
-            Browse jobs →
-          </a>
+          <a href="/jobs" style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', color: 'white', borderRadius: '12px', padding: '10px 20px', fontSize: '13px', fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' }}>Browse jobs →</a>
         </div>
 
         <div style={{ background: 'white', borderRadius: '20px', border: '1.5px solid #e2e8f0', padding: '24px', boxShadow: '0 2px 16px rgba(0,0,0,0.04)' }}>
@@ -356,17 +337,12 @@ function ApprovedDashboard({ profile, cleaner, stats, notifications, onTogglePre
           </div>
         </div>
 
-        {/* NEW: Reviews & profile link card */}
         <ProfileLinkCard shortId={cleaner.short_id} ratingAverage={cleaner.rating_average} ratingCount={cleaner.rating_count} />
 
         <div style={{ background: 'white', borderRadius: '20px', border: '1.5px solid #e2e8f0', padding: '24px', boxShadow: '0 2px 16px rgba(0,0,0,0.04)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
             <div style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Recent notifications</div>
-            {notifications.length > 0 && (
-              <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 600 }}>
-                {notifications.filter(n => !n.read).length} unread
-              </span>
-            )}
+            {notifications.length > 0 && <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 600 }}>{notifications.filter(n => !n.read).length} unread</span>}
           </div>
           {notifications.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '24px 16px', color: '#94a3b8' }}>
@@ -376,9 +352,7 @@ function ApprovedDashboard({ profile, cleaner, stats, notifications, onTogglePre
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {notifications.slice(0, 5).map(n => (
-                <NotificationRow key={n.id} item={n} onClick={() => onNotificationClick(n)} />
-              ))}
+              {notifications.slice(0, 5).map(n => <NotificationRow key={n.id} item={n} onClick={() => onNotificationClick(n)} />)}
             </div>
           )}
         </div>
@@ -401,25 +375,19 @@ function PendingScreen({ profile, cleaner, emailConfirmed }: { profile: CleanerP
     <div style={{ maxWidth: '640px', margin: '0 auto', padding: '0 24px 60px' }}>
       <div style={{ background: 'white', borderRadius: '20px', padding: '32px', border: '1.5px solid #e2e8f0', marginBottom: '20px', boxShadow: '0 2px 16px rgba(0,0,0,0.05)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
-          <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'linear-gradient(135deg, #3b82f6, #6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', fontWeight: 800, color: 'white', flexShrink: 0 }}>
-            {getInitial(profile.full_name)}
-          </div>
+          <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'linear-gradient(135deg, #3b82f6, #6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', fontWeight: 800, color: 'white', flexShrink: 0 }}>{getInitial(profile.full_name)}</div>
           <div>
             <h2 style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a', margin: '0 0 4px' }}>Hi {firstName}!</h2>
             <StatusBadge status={cleaner.application_status} />
           </div>
         </div>
-        <p style={{ fontSize: '15px', color: '#475569', lineHeight: 1.7, margin: 0 }}>
-          Thanks for applying to join Vouchee. We've received your application and will be in touch within <strong>1–3 working days</strong>.
-        </p>
+        <p style={{ fontSize: '15px', color: '#475569', lineHeight: 1.7, margin: 0 }}>Thanks for applying to join Vouchee. We've received your application and will be in touch within <strong>1–3 working days</strong>.</p>
       </div>
       <div style={{ background: 'white', borderRadius: '20px', padding: '28px 32px', border: '1.5px solid #e2e8f0', marginBottom: '20px', boxShadow: '0 2px 16px rgba(0,0,0,0.05)' }}>
         <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 24px' }}>What happens next</h3>
         {steps.map((step, i) => (
           <div key={i} style={{ display: 'flex', gap: '16px', position: 'relative' }}>
-            {i < steps.length - 1 && (
-              <div style={{ position: 'absolute', left: '19px', top: '40px', width: '2px', height: 'calc(100% - 8px)', background: step.done ? '#86efac' : '#e2e8f0' }} />
-            )}
+            {i < steps.length - 1 && <div style={{ position: 'absolute', left: '19px', top: '40px', width: '2px', height: 'calc(100% - 8px)', background: step.done ? '#86efac' : '#e2e8f0' }} />}
             <div style={{ width: '40px', height: '40px', borderRadius: '50%', flexShrink: 0, background: step.done ? '#dcfce7' : (step as any).active ? '#eff6ff' : '#f8fafc', border: `2px solid ${step.done ? '#86efac' : (step as any).active ? '#93c5fd' : '#e2e8f0'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', zIndex: 1 }}>
               {step.done ? '✓' : step.icon}
             </div>
@@ -459,9 +427,7 @@ function PendingScreen({ profile, cleaner, emailConfirmed }: { profile: CleanerP
         </div>
       </div>
       <div style={{ background: '#f8faff', borderRadius: '16px', padding: '18px 24px', border: '1px solid #e0e7ff', textAlign: 'center' }}>
-        <p style={{ fontSize: '14px', color: '#475569', margin: 0 }}>
-          Questions? <a href="mailto:cleaners@vouchee.co.uk" style={{ color: '#3b82f6', fontWeight: 700, textDecoration: 'none' }}>cleaners@vouchee.co.uk</a>
-        </p>
+        <p style={{ fontSize: '14px', color: '#475569', margin: 0 }}>Questions? <a href="mailto:cleaners@vouchee.co.uk" style={{ color: '#3b82f6', fontWeight: 700, textDecoration: 'none' }}>cleaners@vouchee.co.uk</a></p>
       </div>
     </div>
   )
@@ -472,15 +438,11 @@ function BlockedScreen({ status }: { status: 'rejected' | 'suspended' }) {
     <div style={{ maxWidth: '480px', margin: '0 auto', padding: '0 24px 60px' }}>
       <div style={{ background: 'white', borderRadius: '20px', padding: '40px', border: '1.5px solid #fecaca', textAlign: 'center', boxShadow: '0 2px 16px rgba(0,0,0,0.05)' }}>
         <div style={{ fontSize: '48px', marginBottom: '16px' }}>{status === 'rejected' ? '😔' : '⚠️'}</div>
-        <h2 style={{ fontSize: '22px', fontWeight: 700, color: '#0f172a', margin: '0 0 12px' }}>
-          {status === 'rejected' ? 'Application unsuccessful' : 'Account suspended'}
-        </h2>
+        <h2 style={{ fontSize: '22px', fontWeight: 700, color: '#0f172a', margin: '0 0 12px' }}>{status === 'rejected' ? 'Application unsuccessful' : 'Account suspended'}</h2>
         <p style={{ fontSize: '14px', color: '#64748b', lineHeight: 1.7, margin: '0 0 24px' }}>
           {status === 'rejected' ? "Unfortunately we weren't able to approve your application at this time. Please get in touch if you have any questions." : "Your account has been suspended. Please contact us to find out more."}
         </p>
-        <a href="mailto:cleaners@vouchee.co.uk" style={{ display: 'inline-block', background: '#0f172a', color: 'white', padding: '12px 28px', borderRadius: '12px', fontSize: '14px', fontWeight: 700, textDecoration: 'none' }}>
-          Contact us
-        </a>
+        <a href="mailto:cleaners@vouchee.co.uk" style={{ display: 'inline-block', background: '#0f172a', color: 'white', padding: '12px 28px', borderRadius: '12px', fontSize: '14px', fontWeight: 700, textDecoration: 'none' }}>Contact us</a>
       </div>
     </div>
   )
@@ -537,9 +499,7 @@ export default function CleanerDashboardPage() {
           .eq('cleaner_id', (cleanerData as any).id)
           .order('created_at', { ascending: false })
           .limit(10)
-        if (!notifError && notifData) {
-          setNotifications(notifData as NotificationItem[])
-        }
+        if (!notifError && notifData) setNotifications(notifData as NotificationItem[])
       } catch (err: any) {
         setError(err?.message ?? 'Something went wrong.')
       } finally {
@@ -555,41 +515,25 @@ export default function CleanerDashboardPage() {
     const next = !previous
     setCleaner({ ...cleaner, [field]: next })
     const supabase = createClient()
-    const { error } = await (supabase.from('cleaners') as any)
-      .update({ [field]: next })
-      .eq('id', (cleaner as any).id)
-    if (error) {
-      setCleaner({ ...cleaner, [field]: previous })
-      console.error('Failed to update notification preference:', error)
-    }
+    const { error } = await (supabase.from('cleaners') as any).update({ [field]: next }).eq('id', (cleaner as any).id)
+    if (error) { setCleaner({ ...cleaner, [field]: previous }); console.error('Failed to update preference:', error) }
   }
 
   const handleNotificationClick = async (n: NotificationItem) => {
     if (!n.read) {
       setNotifications(prev => prev.map(item => item.id === n.id ? { ...item, read: true } : item))
-      try {
-        await fetch('/api/notifications/read', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ids: [n.id] }),
-        })
-      } catch (e) { console.error('Failed to mark notification read:', e) }
+      try { await fetch('/api/notifications/read', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: [n.id] }) }) }
+      catch (e) { console.error('Failed to mark notification read:', e) }
     }
     if (n.link) router.push(n.link)
   }
 
-  const handleSignOut = async () => {
-    const supabase = createClient()
-    await supabase.auth.signOut()
-    router.push('/')
-  }
+  const handleSignOut = async () => { const supabase = createClient(); await supabase.auth.signOut(); router.push('/') }
 
   if (loading) {
     return (
       <div style={{ minHeight: '100vh', background: 'linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans', sans-serif" }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '32px', marginBottom: '12px' }}>🧹</div>
-          <p style={{ fontSize: '14px', color: '#64748b' }}>Loading your dashboard…</p>
-        </div>
+        <div style={{ textAlign: 'center' }}><div style={{ fontSize: '32px', marginBottom: '12px' }}>🧹</div><p style={{ fontSize: '14px', color: '#64748b' }}>Loading your dashboard…</p></div>
       </div>
     )
   }
@@ -600,9 +544,7 @@ export default function CleanerDashboardPage() {
         <div style={{ background: 'white', borderRadius: '20px', padding: '40px', maxWidth: '400px', textAlign: 'center', border: '1.5px solid #fecaca' }}>
           <div style={{ fontSize: '32px', marginBottom: '12px' }}>⚠️</div>
           <p style={{ fontSize: '14px', color: '#dc2626', margin: '0 0 16px' }}>{error ?? 'Could not load your dashboard.'}</p>
-          <button onClick={() => router.push('/login')} style={{ background: '#0f172a', color: 'white', border: 'none', borderRadius: '10px', padding: '10px 24px', fontSize: '14px', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
-            Back to login
-          </button>
+          <button onClick={() => router.push('/login')} style={{ background: '#0f172a', color: 'white', border: 'none', borderRadius: '10px', padding: '10px 24px', fontSize: '14px', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>Back to login</button>
         </div>
       </div>
     )
@@ -624,23 +566,21 @@ export default function CleanerDashboardPage() {
           {status === 'approved' && <StatusBadge status={status} />}
         </div>
 
-        {(status === 'submitted' || status === 'pending') && (
-          <PendingScreen profile={profile} cleaner={cleaner} emailConfirmed={emailConfirmed} />
-        )}
-        {status === 'approved' && (
-          <ApprovedDashboard profile={profile} cleaner={cleaner} stats={stats} notifications={notifications} onTogglePref={togglePreference} onNotificationClick={handleNotificationClick} />
-        )}
-        {(status === 'rejected' || status === 'suspended') && (
-          <BlockedScreen status={status} />
-        )}
+        {(status === 'submitted' || status === 'pending') && <PendingScreen profile={profile} cleaner={cleaner} emailConfirmed={emailConfirmed} />}
+        {status === 'approved' && <ApprovedDashboard profile={profile} cleaner={cleaner} stats={stats} notifications={notifications} onTogglePref={togglePreference} onNotificationClick={handleNotificationClick} />}
+        {(status === 'rejected' || status === 'suspended') && <BlockedScreen status={status} />}
       </main>
+
       <div style={{ borderTop: '1px solid #e2e8f0', padding: '24px', display: 'flex', justifyContent: 'center' }}>
-        <button onClick={handleSignOut}
-          style={{ background: 'none', border: '1px solid #fecaca', borderRadius: '8px', padding: '8px 20px', fontSize: '13px', fontWeight: 600, color: '#ef4444', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
-          Sign out
-        </button>
+        <button onClick={handleSignOut} style={{ background: 'none', border: '1px solid #fecaca', borderRadius: '8px', padding: '8px 20px', fontSize: '13px', fontWeight: 600, color: '#ef4444', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>Sign out</button>
       </div>
       <Footer />
+
+      {/* Persistent chat widget — always mounted for approved cleaners.
+          ChatWidget auto-detects role via profile lookup and loads all
+          conversations where cleaner_id matches this user's cleaner record.
+          Shows count=0 tray when no conversations exist yet. */}
+      <ChatWidget />
     </div>
   )
 }

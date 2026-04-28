@@ -34,6 +34,7 @@ interface CleaningRequest {
   zone: string | null
   preferred_days: string[] | null
   time_of_day: string | null
+  start_date: string | null
 }
 
 interface EditDraft {
@@ -134,80 +135,48 @@ function daysSince(iso: string) {
   return Math.floor((Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60 * 24))
 }
 
+function checkIsBeforeStartDate(startDate: string | null): boolean {
+  if (!startDate) return true
+  return new Date() < new Date(startDate)
+}
+
 function calculateBilling(frequency: Frequency, startDate: string): {
-  firstChargePence: number
-  monthlyPence: number
-  firstChargeLabel: string
-  monthlyLabel: string
-  isFullMonth: boolean
+  firstChargePence: number; monthlyPence: number
+  firstChargeLabel: string; monthlyLabel: string; isFullMonth: boolean
 } {
   const monthly = MONTHLY_FEES[frequency]
   const start = new Date(startDate)
-
   if (frequency === 'monthly') {
-    return {
-      firstChargePence: monthly, monthlyPence: monthly,
-      firstChargeLabel: `£${(monthly / 100).toFixed(2)}`,
-      monthlyLabel: `£${(monthly / 100).toFixed(2)}/month`,
-      isFullMonth: true,
-    }
+    return { firstChargePence: monthly, monthlyPence: monthly, firstChargeLabel: `£${(monthly / 100).toFixed(2)}`, monthlyLabel: `£${(monthly / 100).toFixed(2)}/month`, isFullMonth: true }
   }
-
   const intervalDays = frequency === 'weekly' ? 7 : 14
   const perCleanPence = PER_CLEAN_PENCE[frequency]
   const endOfMonth = new Date(start.getFullYear(), start.getMonth() + 1, 0)
-
-  let cleans = 0
-  const cleanDate = new Date(start)
-  while (cleanDate <= endOfMonth) {
-    cleans++
-    cleanDate.setDate(cleanDate.getDate() + intervalDays)
-  }
-
+  let cleans = 0; const cleanDate = new Date(start)
+  while (cleanDate <= endOfMonth) { cleans++; cleanDate.setDate(cleanDate.getDate() + intervalDays) }
   const proRata = cleans * perCleanPence
-  const isFullMonth = proRata >= monthly
-
-  return {
-    firstChargePence: proRata, monthlyPence: monthly,
-    firstChargeLabel: `£${(proRata / 100).toFixed(2)}`,
-    monthlyLabel: `£${(monthly / 100).toFixed(2)}/month`,
-    isFullMonth,
-  }
+  return { firstChargePence: proRata, monthlyPence: monthly, firstChargeLabel: `£${(proRata / 100).toFixed(2)}`, monthlyLabel: `£${(monthly / 100).toFixed(2)}/month`, isFullMonth: proRata >= monthly }
 }
 
 function getMinDate(): string {
-  const d = new Date()
-  d.setDate(d.getDate() + 1)
-  return d.toISOString().split('T')[0]
+  const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0]
 }
 
 // ─── Small components ─────────────────────────────────────────────────────────
 
 function Chip({ children }: { children: React.ReactNode }) {
-  return (
-    <span style={{ background: '#f1f5f9', borderRadius: '100px', padding: '4px 12px', fontSize: '12px', fontWeight: 600, color: '#475569' }}>
-      {children}
-    </span>
-  )
+  return <span style={{ background: '#f1f5f9', borderRadius: '100px', padding: '4px 12px', fontSize: '12px', fontWeight: 600, color: '#475569' }}>{children}</span>
 }
 
 function ActionBtn({ children, onClick, danger, primary, disabled }: {
   children: React.ReactNode; onClick: () => void; danger?: boolean; primary?: boolean; disabled?: boolean
 }) {
   return (
-    <button onClick={onClick} disabled={disabled} style={{
-      background: primary ? '#3b82f6' : 'none',
-      border: `1px solid ${danger ? '#fecaca' : primary ? '#3b82f6' : '#e2e8f0'}`,
-      borderRadius: '8px', padding: '6px 14px', fontSize: '13px', fontWeight: 600,
-      color: disabled ? '#cbd5e1' : danger ? '#ef4444' : primary ? 'white' : '#64748b',
-      cursor: disabled ? 'not-allowed' : 'pointer', fontFamily: "'DM Sans', sans-serif", opacity: disabled ? 0.6 : 1,
-    }}>
+    <button onClick={onClick} disabled={disabled} style={{ background: primary ? '#3b82f6' : 'none', border: `1px solid ${danger ? '#fecaca' : primary ? '#3b82f6' : '#e2e8f0'}`, borderRadius: '8px', padding: '6px 14px', fontSize: '13px', fontWeight: 600, color: disabled ? '#cbd5e1' : danger ? '#ef4444' : primary ? 'white' : '#64748b', cursor: disabled ? 'not-allowed' : 'pointer', fontFamily: "'DM Sans', sans-serif", opacity: disabled ? 0.6 : 1 }}>
       {children}
     </button>
   )
 }
-
-// ─── Stepper ──────────────────────────────────────────────────────────────────
 
 function Stepper({ label, value, onDown, onUp, min, max, prefix = '', suffix = '' }: {
   label: string; value: number; onDown: () => void; onUp: () => void; min: number; max: number; prefix?: string; suffix?: string
@@ -219,6 +188,65 @@ function Stepper({ label, value, onDown, onUp, min, max, prefix = '', suffix = '
         <button onClick={onDown} disabled={value <= min} style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1.5px solid #e2e8f0', background: value <= min ? '#f8fafc' : 'white', fontSize: '18px', fontWeight: 700, color: value <= min ? '#cbd5e1' : '#0f172a', cursor: value <= min ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>−</button>
         <span style={{ fontSize: '16px', fontWeight: 800, color: '#0f172a', minWidth: '48px', textAlign: 'center' }}>{prefix}{typeof value === 'number' && !Number.isInteger(value) ? value.toFixed(1) : value}{suffix}</span>
         <button onClick={onUp} disabled={value >= max} style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1.5px solid #e2e8f0', background: value >= max ? '#f8fafc' : 'white', fontSize: '18px', fontWeight: 700, color: value >= max ? '#cbd5e1' : '#0f172a', cursor: value >= max ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
+      </div>
+    </div>
+  )
+}
+
+// ─── Switch Cleaner Modal ─────────────────────────────────────────────────────
+
+function SwitchCleanerModal({ requestId, isBeforeStart, onCancel, onSuccess }: {
+  requestId: string; isBeforeStart: boolean; onCancel: () => void; onSuccess: () => void
+}) {
+  const [reason, setReason] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+
+  const title = isBeforeStart ? 'Something went wrong?' : 'Switch your cleaner?'
+  const body = isBeforeStart
+    ? "If your cleaner has cancelled or isn't showing up, we'll find you a new one. Your Direct Debit subscription will be cancelled and a fresh listing goes live straight away."
+    : "If you're unhappy with your current cleaner, we can help you find a new one. Your current subscription will be cancelled and your listing goes live again for new cleaners to apply."
+
+  const handleSubmit = async () => {
+    setLoading(true); setErr(null)
+    try {
+      const res = await fetch('/api/switch-cleaner', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ requestId, reason: reason.trim() || null }) })
+      const data = await res.json()
+      if (!res.ok) { setErr(data.error ?? 'Something went wrong — please try again'); setLoading(false); return }
+      onSuccess()
+    } catch { setErr('Something went wrong — please try again'); setLoading(false) }
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500, padding: '24px' }}>
+      <div style={{ background: 'white', borderRadius: '24px', padding: '36px', maxWidth: '480px', width: '100%', boxShadow: '0 32px 80px rgba(0,0,0,0.22)' }}>
+        <h3 style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '22px', fontWeight: 800, color: '#0f172a', margin: '0 0 12px' }}>{title}</h3>
+        <p style={{ fontSize: '14px', color: '#64748b', lineHeight: 1.6, margin: '0 0 20px' }}>{body}</p>
+        <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '12px', padding: '14px 16px', marginBottom: '20px' }}>
+          <p style={{ margin: '0 0 6px', fontSize: '13px', fontWeight: 700, color: '#15803d' }}>✅ What happens:</p>
+          <ul style={{ margin: 0, padding: '0 0 0 18px', fontSize: '13px', color: '#166534', lineHeight: 1.7 }}>
+            <li>Your subscription is cancelled immediately</li>
+            <li>Your previous cleaner can't apply to your listings again</li>
+            <li>A fresh listing goes live for new applicants</li>
+            <li>Your first clean with a new cleaner is discounted automatically</li>
+          </ul>
+        </div>
+        <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '10px', padding: '12px 14px', marginBottom: '20px' }}>
+          <p style={{ margin: 0, fontSize: '13px', color: '#1e40af', lineHeight: 1.5 }}>
+            💡 <strong>No new Direct Debit needed.</strong> When you confirm a new cleaner, your existing bank authorisation is reused automatically.
+          </p>
+        </div>
+        <div style={{ marginBottom: '20px' }}>
+          <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '8px' }}>What happened? (optional)</label>
+          <textarea value={reason} onChange={e => setReason(e.target.value)} placeholder={isBeforeStart ? 'e.g. Cleaner cancelled on me…' : 'e.g. Not happy with the quality…'} rows={3} style={{ width: '100%', padding: '12px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', fontFamily: "'DM Sans', sans-serif", resize: 'vertical', outline: 'none', color: '#0f172a', boxSizing: 'border-box', lineHeight: 1.5 }} />
+        </div>
+        {err && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '10px 14px', marginBottom: '16px', fontSize: '13px', color: '#dc2626' }}>⚠️ {err}</div>}
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <button onClick={onCancel} disabled={loading} style={{ flex: 1, background: 'white', border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '13px', fontSize: '14px', fontWeight: 600, color: '#64748b', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>Cancel</button>
+          <button onClick={handleSubmit} disabled={loading} style={{ flex: 2, background: loading ? '#94a3b8' : '#ef4444', border: 'none', borderRadius: '12px', padding: '13px', fontSize: '14px', fontWeight: 700, color: 'white', cursor: loading ? 'not-allowed' : 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
+            {loading ? 'Processing…' : isBeforeStart ? '⚠️ Request a switch' : '🔄 Switch cleaner'}
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -236,33 +264,25 @@ function StartDateModal({ cleanerName, frequency, applicationId, requestId, conv
   const billing = calculateBilling(frequency, startDate)
   const day = new Date(startDate).getDate()
   const showLateMonthWarning = day > 24
-  const nextMonth = new Date(startDate)
-  nextMonth.setMonth(nextMonth.getMonth() + 1)
-  nextMonth.setDate(1)
+  const nextMonth = new Date(startDate); nextMonth.setMonth(nextMonth.getMonth() + 1); nextMonth.setDate(1)
   const nextMonthName = nextMonth.toLocaleDateString('en-GB', { month: 'long' })
   const currentMonthName = new Date(startDate).toLocaleDateString('en-GB', { month: 'long' })
   const freqLabel = FREQUENCY_LABEL[frequency] ?? frequency
-
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500, padding: '24px' }}>
       <div style={{ background: 'white', borderRadius: '24px', padding: '44px 48px', maxWidth: '540px', width: '100%', boxShadow: '0 32px 80px rgba(0,0,0,0.22)', maxHeight: '92vh', overflowY: 'auto' }}>
-        <h3 style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '26px', fontWeight: 800, color: '#0f172a', textAlign: 'center', margin: '0 0 32px', letterSpacing: '-0.3px' }}>
-          When would you like {firstName} to start?
-        </h3>
+        <h3 style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '26px', fontWeight: 800, color: '#0f172a', textAlign: 'center', margin: '0 0 32px', letterSpacing: '-0.3px' }}>When would you like {firstName} to start?</h3>
         <div style={{ marginBottom: '28px' }}>
           <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '10px' }}>Start date</label>
           <div onClick={() => { const input = document.getElementById('start-date-input') as HTMLInputElement | null; input?.showPicker?.() }} style={{ position: 'relative', cursor: 'pointer' }}>
-            <input id="start-date-input" type="date" value={startDate} min={minDate} onChange={e => setStartDate(e.target.value)}
-              style={{ width: '100%', padding: '14px 16px', border: '1.5px solid #e2e8f0', borderRadius: '12px', fontSize: '17px', fontWeight: 600, color: '#0f172a', fontFamily: "'DM Sans', sans-serif", outline: 'none', boxSizing: 'border-box', cursor: 'pointer', pointerEvents: 'none' }} />
+            <input id="start-date-input" type="date" value={startDate} min={minDate} onChange={e => setStartDate(e.target.value)} style={{ width: '100%', padding: '14px 16px', border: '1.5px solid #e2e8f0', borderRadius: '12px', fontSize: '17px', fontWeight: 600, color: '#0f172a', fontFamily: "'DM Sans', sans-serif", outline: 'none', boxSizing: 'border-box', cursor: 'pointer', pointerEvents: 'none' }} />
           </div>
         </div>
         <div style={{ background: '#f8fafc', borderRadius: '14px', padding: '20px', marginBottom: '12px', border: '1px solid #e2e8f0' }}>
           <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '16px' }}>Vouchee service fee · {freqLabel}</div>
           <div style={{ marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid #e2e8f0' }}>
             <div style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a', marginBottom: '4px' }}>{billing.firstChargeLabel} today</div>
-            <div style={{ fontSize: '13px', color: '#94a3b8' }}>
-              {billing.isFullMonth || frequency === 'monthly' ? 'Taken within 3 working days' : `Pro-rata for ${currentMonthName} · within 3 working days`}
-            </div>
+            <div style={{ fontSize: '13px', color: '#94a3b8' }}>{billing.isFullMonth || frequency === 'monthly' ? 'Taken within 3 working days' : `Pro-rata for ${currentMonthName} · within 3 working days`}</div>
           </div>
           <div>
             <div style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a', marginBottom: '4px' }}>Then {billing.monthlyLabel} from 1st {nextMonthName}</div>
@@ -270,23 +290,14 @@ function StartDateModal({ cleanerName, frequency, applicationId, requestId, conv
           </div>
         </div>
         <div style={{ fontSize: '13px', color: '#64748b', textAlign: 'center', margin: '0 0 12px' }}>Cancel anytime with 30 days' notice.</div>
-        {showLateMonthWarning && (
-          <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '10px', padding: '14px 16px', marginBottom: '14px', fontSize: '14px', color: '#92400e', lineHeight: 1.6 }}>
-            ⚠️ Your first payment is taken now, then monthly on the 1st. You may see two payments close together.
-          </div>
-        )}
+        {showLateMonthWarning && <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '10px', padding: '14px 16px', marginBottom: '14px', fontSize: '14px', color: '#92400e', lineHeight: 1.6 }}>⚠️ Your first payment is taken now, then monthly on the 1st. You may see two payments close together.</div>}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '12px 16px', marginBottom: '28px' }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M12 1L3 5V11C3 16.55 6.84 21.74 12 23C17.16 21.74 21 16.55 21 11V5L12 1Z" fill="#16a34a" opacity="0.15" stroke="#16a34a" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            <path d="M9 12L11 14L15 10" stroke="#16a34a" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 1L3 5V11C3 16.55 6.84 21.74 12 23C17.16 21.74 21 16.55 21 11V5L12 1Z" fill="#16a34a" opacity="0.15" stroke="#16a34a" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M9 12L11 14L15 10" stroke="#16a34a" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
           <span style={{ fontSize: '13px', fontWeight: 600, color: '#475569' }}>Secure Direct Debit via GoCardless · Protected by the Direct Debit Guarantee</span>
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
           <button onClick={onCancel} disabled={loading} style={{ flex: 1, background: 'white', border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '15px', fontSize: '15px', fontWeight: 600, color: '#64748b', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>Cancel</button>
-          <button onClick={() => onConfirm(startDate)} disabled={loading || !startDate} style={{ flex: 2, background: '#16a34a', border: 'none', borderRadius: '12px', padding: '15px', fontSize: '15px', fontWeight: 700, color: 'white', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, fontFamily: "'DM Sans', sans-serif" }}>
-            {loading ? 'Setting up…' : 'Secure your cleaner →'}
-          </button>
+          <button onClick={() => onConfirm(startDate)} disabled={loading || !startDate} style={{ flex: 2, background: '#16a34a', border: 'none', borderRadius: '12px', padding: '15px', fontSize: '15px', fontWeight: 700, color: 'white', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, fontFamily: "'DM Sans', sans-serif" }}>{loading ? 'Setting up…' : 'Secure your cleaner →'}</button>
         </div>
       </div>
     </div>
@@ -298,13 +309,7 @@ function StartDateModal({ cleanerName, frequency, applicationId, requestId, conv
 function SuccessBanner({ onClose }: { onClose: () => void }) {
   return (
     <>
-      <style>{`
-        @keyframes successSlideUp { from { opacity: 0; transform: translateX(-50%) translateY(20px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
-        @keyframes popIn { 0% { transform: scale(0.5); } 70% { transform: scale(1.2); } 100% { transform: scale(1); } }
-        @keyframes confetti1 { 0% { transform: translateY(0) rotate(0deg); opacity: 1; } 100% { transform: translateY(-60px) rotate(180deg); opacity: 0; } }
-        @keyframes confetti2 { 0% { transform: translateY(0) rotate(0deg); opacity: 1; } 100% { transform: translateY(-80px) translateX(20px) rotate(-120deg); opacity: 0; } }
-        @keyframes confetti3 { 0% { transform: translateY(0) rotate(0deg); opacity: 1; } 100% { transform: translateY(-70px) translateX(-15px) rotate(240deg); opacity: 0; } }
-      `}</style>
+      <style>{`@keyframes successSlideUp{from{opacity:0;transform:translateX(-50%) translateY(20px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}@keyframes popIn{0%{transform:scale(.5)}70%{transform:scale(1.2)}100%{transform:scale(1)}}@keyframes confetti1{0%{transform:translateY(0) rotate(0);opacity:1}100%{transform:translateY(-60px) rotate(180deg);opacity:0}}@keyframes confetti2{0%{transform:translateY(0) rotate(0);opacity:1}100%{transform:translateY(-80px) translateX(20px) rotate(-120deg);opacity:0}}@keyframes confetti3{0%{transform:translateY(0) rotate(0);opacity:1}100%{transform:translateY(-70px) translateX(-15px) rotate(240deg);opacity:0}}`}</style>
       <div style={{ position: 'fixed', bottom: '24px', left: '50%', transform: 'translateX(-50%)', zIndex: 400, animation: 'successSlideUp 0.4s ease forwards', maxWidth: '500px', width: 'calc(100vw - 48px)' }}>
         <div style={{ background: 'linear-gradient(135deg, #16a34a, #15803d)', color: 'white', borderRadius: '16px', padding: '20px 24px', boxShadow: '0 16px 48px rgba(22,163,74,0.45)', display: 'flex', alignItems: 'flex-start', gap: '14px', position: 'relative', overflow: 'hidden' }}>
           <span style={{ position: 'absolute', top: '12px', right: '60px', width: '8px', height: '8px', borderRadius: '50%', background: '#fef08a', animation: 'confetti1 1s ease forwards 0.2s', opacity: 0 }} />
@@ -353,8 +358,9 @@ function ComingSoonBanner({ message, onClose }: { message: string; onClose: () =
 
 // ─── Active Request Card ──────────────────────────────────────────────────────
 
-function ActiveRequestCard({ request, onPause, onRepublish, onDelete, onEdit }: {
-  request: CleaningRequest; onPause: () => void; onRepublish: () => void; onDelete: () => void; onEdit: () => void
+function ActiveRequestCard({ request, onPause, onRepublish, onDelete, onEdit, onSwitch }: {
+  request: CleaningRequest; onPause: () => void; onRepublish: () => void
+  onDelete: () => void; onEdit: () => void; onSwitch?: () => void
 }) {
   const hours = request.hours_per_session ?? 0
   const rate = request.hourly_rate ?? 0
@@ -367,6 +373,7 @@ function ActiveRequestCard({ request, onPause, onRepublish, onDelete, onEdit }: 
   const visibleTasks = (request.tasks ?? []).slice(0, 6)
   const extraTasks = (request.tasks ?? []).length - 6
   const isFulfilled = request.status === 'fulfilled'
+  const beforeStart = isFulfilled ? checkIsBeforeStartDate(request.start_date) : false
 
   const statusConfig: Record<string, { label: string; dot: string; border: string; headerBg: string; textColor: string }> = {
     active:         { label: 'Live — accepting applications', dot: '#22c55e', border: '#bbf7d0', headerBg: '#f0fdf4', textColor: '#15803d' },
@@ -434,6 +441,12 @@ function ActiveRequestCard({ request, onPause, onRepublish, onDelete, onEdit }: 
           <ActionBtn onClick={onEdit} primary>Edit listing</ActionBtn>
           {request.status === 'active' && pausesLeft > 0 && <ActionBtn onClick={onPause}>Pause listing</ActionBtn>}
           {request.status === 'paused' && (!isRelocked ? <ActionBtn onClick={onRepublish}>Republish</ActionBtn> : <span style={{ fontSize: '12px', color: '#94a3b8', alignSelf: 'center' }}>Available to republish in 24h</span>)}
+          {/* Switch cleaner button — only on fulfilled listings */}
+          {isFulfilled && onSwitch && (
+            <ActionBtn onClick={onSwitch}>
+              {beforeStart ? '⚠️ Problem with my cleaner' : '🔄 Switch cleaner'}
+            </ActionBtn>
+          )}
           <ActionBtn onClick={onDelete} danger>
             {isFulfilled ? 'Cancel subscription' : 'Remove listing'}
           </ActionBtn>
@@ -553,12 +566,8 @@ function ApplicationCard({ app, onAccept, onDecline, onOpenChat, accepting, decl
             <button onClick={onDecline} disabled={declining} style={{ flex: 1, background: 'white', color: '#ef4444', border: '1.5px solid #fecaca', borderRadius: '10px', padding: '14px 0', fontSize: '14px', fontWeight: 700, cursor: declining ? 'not-allowed' : 'pointer', fontFamily: "'DM Sans', sans-serif", opacity: declining ? 0.7 : 1 }}>{declining ? 'Declining…' : '✕ Decline'}</button>
           </>
         )}
-        {app.status === 'accepted' && (
-          <button onClick={onOpenChat} style={{ flex: 1, background: '#2563eb', color: 'white', border: 'none', borderRadius: '10px', padding: '14px 0', fontSize: '14px', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>💬 Open chat</button>
-        )}
-        {app.status === 'rejected' && (
-          <div style={{ flex: 1, textAlign: 'center', fontSize: '13px', color: '#94a3b8', padding: '14px 0', fontStyle: 'italic' }}>Application declined</div>
-        )}
+        {app.status === 'accepted' && <button onClick={onOpenChat} style={{ flex: 1, background: '#2563eb', color: 'white', border: 'none', borderRadius: '10px', padding: '14px 0', fontSize: '14px', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>💬 Open chat</button>}
+        {app.status === 'rejected' && <div style={{ flex: 1, textAlign: 'center', fontSize: '13px', color: '#94a3b8', padding: '14px 0', fontStyle: 'italic' }}>Application declined</div>}
       </div>
     </div>
   )
@@ -590,8 +599,7 @@ function ApplicationsSection({ requestIds, requests, onAccept, onOpenChat }: {
           return { ...app, cleaner_name: fullName ? formatFirstLastInitial(fullName) : 'Cleaner', cleaner_initial: fullName ? fullName[0]?.toUpperCase() : 'C', cleaner_member_since: memberSince }
         })
       )
-      setApplications(enriched)
-      setLoading(false)
+      setApplications(enriched); setLoading(false)
     }
     fetchApplications()
   }, [requestIds.join(',')])
@@ -599,10 +607,8 @@ function ApplicationsSection({ requestIds, requests, onAccept, onOpenChat }: {
   const handleAccept = async (app: Application) => {
     setAccepting(app.id)
     const req = requests.find(r => r.id === app.request_id)
-    const frequency = req?.frequency ?? 'monthly'
-    await onAccept(app.id, app.request_id, app.cleaner_name ?? 'Cleaner', frequency)
-    setApplications(prev => prev.filter(a => a.id !== app.id))
-    setAccepting(null)
+    await onAccept(app.id, app.request_id, app.cleaner_name ?? 'Cleaner', req?.frequency ?? 'monthly')
+    setApplications(prev => prev.filter(a => a.id !== app.id)); setAccepting(null)
   }
 
   const handleDecline = async (app: Application) => {
@@ -626,9 +632,7 @@ function ApplicationsSection({ requestIds, requests, onAccept, onOpenChat }: {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {applications.map(app => (
-            <ApplicationCard key={app.id} app={app} onAccept={() => handleAccept(app)} onDecline={() => handleDecline(app)} onOpenChat={() => onOpenChat(app.id, app.request_id)} accepting={accepting === app.id} declining={declining === app.id} />
-          ))}
+          {applications.map(app => <ApplicationCard key={app.id} app={app} onAccept={() => handleAccept(app)} onDecline={() => handleDecline(app)} onOpenChat={() => onOpenChat(app.id, app.request_id)} accepting={accepting === app.id} declining={declining === app.id} />)}
         </div>
       )}
     </div>
@@ -651,6 +655,7 @@ function CustomerDashboardContent() {
   const [showSuccessBanner, setShowSuccessBanner] = useState(false)
   const [startDateModal, setStartDateModal] = useState<{ applicationId: string; requestId: string; conversationId: string; cleanerName: string; frequency: Frequency } | null>(null)
   const [startDateLoading, setStartDateLoading] = useState(false)
+  const [switchModal, setSwitchModal] = useState<{ requestId: string; isBeforeStart: boolean } | null>(null)
   const systemMessageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const timerFiredRef = useRef(false)
 
@@ -669,19 +674,13 @@ function CustomerDashboardContent() {
           ? await (supabase as any).from('clean_requests').select('*').eq('customer_id', customerId).order('created_at', { ascending: false })
           : { data: [], error: null }
         if (requestError) throw new Error(requestError.message)
-        setProfile(profileData)
-        setRequests(requestData ?? [])
+        setProfile(profileData); setRequests(requestData ?? [])
         if (searchParams.get('gc_success') === '1') setShowSuccessBanner(true)
-        const acceptAppId = searchParams.get('accept')
-        const acceptReqId = searchParams.get('request')
+        const acceptAppId = searchParams.get('accept'); const acceptReqId = searchParams.get('request')
         if (acceptAppId && acceptReqId) { handleAcceptApplication(acceptAppId, acceptReqId); router.replace('/customer/dashboard') }
         const chatId = searchParams.get('chat')
         if (chatId) setTimeout(() => window.dispatchEvent(new CustomEvent('vouchee:open-chat', { detail: { conversationId: chatId } })), 800)
-      } catch (err: any) {
-        setError(err?.message ?? 'Something went wrong.')
-      } finally {
-        setLoading(false)
-      }
+      } catch (err: any) { setError(err?.message ?? 'Something went wrong.') } finally { setLoading(false) }
     }
     init()
   }, [router])
@@ -692,36 +691,29 @@ function CustomerDashboardContent() {
       const data = await res.json()
       if (!res.ok || !data.conversationId) { showToast('Could not open chat — please try again'); return }
       window.dispatchEvent(new CustomEvent('vouchee:open-chat', { detail: { conversationId: data.conversationId } }))
-    } catch (err) { showToast('Something went wrong — please try again') }
+    } catch { showToast('Something went wrong — please try again') }
   }
 
   const handleOpenStartDateModal = (detail: { applicationId: string; requestId: string; conversationId: string; cleanerName: string; frequency: Frequency }) => {
-    setStartDateModal(detail)
-    timerFiredRef.current = false
+    setStartDateModal(detail); timerFiredRef.current = false
     if (systemMessageTimerRef.current) clearTimeout(systemMessageTimerRef.current)
     systemMessageTimerRef.current = setTimeout(async () => {
-      timerFiredRef.current = true
-      systemMessageTimerRef.current = null
+      timerFiredRef.current = true; systemMessageTimerRef.current = null
       try {
-        const supabase = createClient()
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
+        const supabase = createClient(); const { data: { user } } = await supabase.auth.getUser(); if (!user) return
         await (supabase as any).from('messages').insert({ conversation_id: detail.conversationId, sender_id: user.id, sender_role: 'customer', content: '🗓️ __system__ Customer is selecting a start date…' })
-      } catch (e) {}
+      } catch {}
     }, 60000)
   }
 
   const handleCancelStartDate = async () => {
     if (systemMessageTimerRef.current) { clearTimeout(systemMessageTimerRef.current); systemMessageTimerRef.current = null }
-    const m = startDateModal
-    setStartDateModal(null)
+    const m = startDateModal; setStartDateModal(null)
     if (timerFiredRef.current && m) {
       try {
-        const supabase = createClient()
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
+        const supabase = createClient(); const { data: { user } } = await supabase.auth.getUser(); if (!user) return
         await (supabase as any).from('messages').insert({ conversation_id: m.conversationId, sender_id: user.id, sender_role: 'customer', content: '__system__ Customer did not complete set-up.' })
-      } catch (e) {}
+      } catch {}
     }
     timerFiredRef.current = false
   }
@@ -732,11 +724,58 @@ function CustomerDashboardContent() {
     timerFiredRef.current = false
     setStartDateLoading(true)
     try {
-      const res = await fetch('/api/gocardless/create-flow', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ applicationId: startDateModal.applicationId, requestId: startDateModal.requestId, conversationId: startDateModal.conversationId, startDate }) })
+      const res = await fetch('/api/gocardless/create-flow', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ applicationId: startDateModal.applicationId, requestId: startDateModal.requestId, conversationId: startDateModal.conversationId, startDate }),
+      })
       const data = await res.json()
-      if (!res.ok || !data.authorisationUrl) { showToast('Could not set up Direct Debit — please try again'); setStartDateLoading(false); return }
+      if (!res.ok) { showToast('Could not set up Direct Debit — please try again'); setStartDateLoading(false); return }
+
+      // ── Switch path: existing mandate detected, skip GC hosted page ──────────
+      // create-flow returns type='existing_mandate' when customers.gocardless_mandate_id
+      // is already set (i.e. customer is switching cleaners). We call confirm-switch
+      // directly with the mandateId — no bank details needed again.
+      if (data.type === 'existing_mandate') {
+        const confirmRes = await fetch('/api/gocardless/confirm-switch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            requestId: startDateModal.requestId,
+            applicationId: startDateModal.applicationId,
+            conversationId: startDateModal.conversationId,
+            startDate,
+            mandateId: data.mandateId,
+          }),
+        })
+        const confirmData = await confirmRes.json()
+        if (!confirmRes.ok || !confirmData.redirectUrl) {
+          showToast('Could not confirm — please contact support@vouchee.co.uk')
+          setStartDateLoading(false)
+          return
+        }
+        window.location.href = confirmData.redirectUrl
+        return
+      }
+
+      // ── Normal path: redirect to GoCardless hosted billing page ─────────────
+      if (!data.authorisationUrl) { showToast('Could not set up Direct Debit — please try again'); setStartDateLoading(false); return }
       window.location.href = data.authorisationUrl
-    } catch (err) { showToast('Something went wrong — please try again'); setStartDateLoading(false) }
+    } catch { showToast('Something went wrong — please try again'); setStartDateLoading(false) }
+  }
+
+  const handleSwitchSuccess = async () => {
+    setSwitchModal(null)
+    showToast('Switch request sent — your listing is live again')
+    // Re-fetch requests so dashboard reflects the new active listing immediately
+    try {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser(); if (!user) return
+      const { data: customerRecord } = await (supabase as any).from('customers').select('id').eq('profile_id', user.id).single()
+      if (!customerRecord) return
+      const { data: requestData } = await (supabase as any).from('clean_requests').select('*').eq('customer_id', customerRecord.id).order('created_at', { ascending: false })
+      if (requestData) setRequests(requestData)
+    } catch {}
   }
 
   useEffect(() => {
@@ -756,10 +795,10 @@ function CustomerDashboardContent() {
       const { data: conv } = await (supabase as any).from('conversations').select('id').eq('cleaner_id', app.cleaner_id).eq('clean_request_id', requestId).single()
       if (conv) window.dispatchEvent(new CustomEvent('vouchee:open-chat', { detail: { conversationId: conv.id } }))
       else await handleAcceptApplication(applicationId, requestId)
-    } catch (err) { showToast('Could not open chat — please try again') }
+    } catch { showToast('Could not open chat — please try again') }
   }
 
-  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3500) }
+  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 4000) }
   const handleSignOut = async () => { const supabase = createClient(); await supabase.auth.signOut(); router.push('/') }
 
   const handlePause = async (id: string) => {
@@ -770,8 +809,7 @@ function CustomerDashboardContent() {
   }
 
   const handleRepublish = async (id: string) => {
-    const req = requests.find(r => r.id === id)
-    if (!req) return
+    const req = requests.find(r => r.id === id); if (!req) return
     const supabase = createClient()
     await (supabase as any).from('clean_requests').update({ status: 'active', paused_at: new Date().toISOString(), republish_count: req.republish_count + 1 }).eq('id', id)
     setRequests(r => r.map(req => req.id === id ? { ...req, status: 'active' as RequestStatus, republish_count: req.republish_count + 1 } : req))
@@ -780,10 +818,7 @@ function CustomerDashboardContent() {
 
   const handleDelete = async (id: string) => {
     const req = requests.find(r => r.id === id)
-    if (req?.status === 'fulfilled') {
-      router.push(`/cancel/${id}`)
-      return
-    }
+    if (req?.status === 'fulfilled') { router.push(`/cancel/${id}`); return }
     const supabase = createClient()
     await (supabase as any).from('clean_requests').update({ status: 'deleted' }).eq('id', id)
     setRequests(r => r.map(req => req.id === id ? { ...req, status: 'deleted' as RequestStatus } : req))
@@ -796,14 +831,11 @@ function CustomerDashboardContent() {
       const supabase = createClient()
       const { error } = await (supabase as any).from('clean_requests').update({ bedrooms: draft.bedrooms, bathrooms: draft.bathrooms, hours_per_session: draft.hours_per_session, hourly_rate: draft.hourly_rate, preferred_days: draft.preferred_days, time_of_day: draft.time_of_day, tasks: draft.tasks }).eq('id', id)
       if (error) throw error
-      setRequests(r => r.map(req => req.id === id ? { ...req, ...draft } : req))
-      setEditingRequest(null)
-      showToast('Listing updated successfully')
-    } catch (err: any) { showToast('Failed to save — please try again') } finally { setSaving(false) }
+      setRequests(r => r.map(req => req.id === id ? { ...req, ...draft } : req)); setEditingRequest(null); showToast('Listing updated successfully')
+    } catch { showToast('Failed to save — please try again') } finally { setSaving(false) }
   }
 
   if (loading) return <div style={{ minHeight: '100vh', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans', sans-serif" }}><div style={{ textAlign: 'center' }}><div style={{ fontSize: '32px', marginBottom: '12px' }}>🧹</div><p style={{ fontSize: '14px', color: '#64748b' }}>Loading your dashboard…</p></div></div>
-
   if (error || !profile) return (
     <div style={{ minHeight: '100vh', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans', sans-serif", padding: '24px' }}>
       <div style={{ background: 'white', borderRadius: '20px', padding: '40px', maxWidth: '400px', textAlign: 'center', border: '1.5px solid #fecaca' }}>
@@ -880,12 +912,25 @@ function CustomerDashboardContent() {
               </div>
             )}
             {activeRequestIds.length > 0 && <ApplicationsSection requestIds={activeRequestIds} requests={activeRequests} onAccept={handleAcceptApplication} onOpenChat={handleOpenChat} />}
+
+            {/* Fulfilled listings with switch cleaner support */}
             {fulfilledRequests.length > 0 && (
               <div style={{ marginBottom: '36px' }}>
                 <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '14px' }}>Confirmed cleaners</div>
-                {fulfilledRequests.map(req => <ActiveRequestCard key={req.id} request={req} onPause={() => {}} onRepublish={() => {}} onDelete={() => handleDelete(req.id)} onEdit={() => setEditingRequest(req)} />)}
+                {fulfilledRequests.map(req => (
+                  <ActiveRequestCard
+                    key={req.id}
+                    request={req}
+                    onPause={() => {}}
+                    onRepublish={() => {}}
+                    onDelete={() => handleDelete(req.id)}
+                    onEdit={() => setEditingRequest(req)}
+                    onSwitch={() => setSwitchModal({ requestId: req.id, isBeforeStart: checkIsBeforeStartDate(req.start_date) })}
+                  />
+                ))}
               </div>
             )}
+
             {pastRequests.filter(r => r.status !== 'paused' && r.status !== 'fulfilled').length > 0 && (
               <div>
                 <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '14px' }}>Past listings</div>
@@ -904,11 +949,11 @@ function CustomerDashboardContent() {
         {modal?.type === 'pause' && <ConfirmModal message="Pause your request?" subMessage="It won't be visible to cleaners until you republish." onConfirm={() => handlePause(modal.id)} onCancel={() => setModal(null)} confirmLabel="Pause" />}
         {modal?.type === 'republish' && <ConfirmModal message="Republish your request?" subMessage="It will be visible to cleaners again." onConfirm={() => handleRepublish(modal.id)} onCancel={() => setModal(null)} confirmLabel="Republish" danger={false} />}
         {modal?.type === 'delete' && <ConfirmModal message="Remove this listing?" subMessage="This cannot be undone." onConfirm={() => handleDelete(modal.id)} onCancel={() => setModal(null)} confirmLabel="Remove listing" />}
-
         {editingRequest && <EditModal request={editingRequest} onSave={handleSaveEdit} onClose={() => setEditingRequest(null)} saving={saving} />}
         {toast && <ComingSoonBanner message={toast} onClose={() => setToast(null)} />}
         {showSuccessBanner && <SuccessBanner onClose={() => setShowSuccessBanner(false)} />}
         {startDateModal && <StartDateModal cleanerName={startDateModal.cleanerName} frequency={startDateModal.frequency} applicationId={startDateModal.applicationId} requestId={startDateModal.requestId} conversationId={startDateModal.conversationId} onCancel={handleCancelStartDate} onConfirm={handleConfirmStartDate} loading={startDateLoading} />}
+        {switchModal && <SwitchCleanerModal requestId={switchModal.requestId} isBeforeStart={switchModal.isBeforeStart} onCancel={() => setSwitchModal(null)} onSuccess={handleSwitchSuccess} />}
       </div>
     </>
   )
@@ -940,14 +985,8 @@ function EditModal({ request, onSave, onClose, saving }: {
         </div>
         <div style={{ padding: '24px' }}>
           <div style={{ background: '#fefce8', border: '1px solid #fef08a', borderRadius: '12px', padding: '14px 16px', marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <div style={{ fontSize: '10px', fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '2px' }}>Offered rate</div>
-              <div style={{ fontSize: '22px', fontWeight: 800, color: '#78350f' }}>£{draft.hourly_rate.toFixed(2)}<span style={{ fontSize: '13px', fontWeight: 500 }}>/hr</span></div>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: '10px', fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '2px' }}>Est. per session</div>
-              <div style={{ fontSize: '18px', fontWeight: 700, color: '#92400e' }}>~£{estPerSession}</div>
-            </div>
+            <div><div style={{ fontSize: '10px', fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '2px' }}>Offered rate</div><div style={{ fontSize: '22px', fontWeight: 800, color: '#78350f' }}>£{draft.hourly_rate.toFixed(2)}<span style={{ fontSize: '13px', fontWeight: 500 }}>/hr</span></div></div>
+            <div style={{ textAlign: 'right' }}><div style={{ fontSize: '10px', fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '2px' }}>Est. per session</div><div style={{ fontSize: '18px', fontWeight: 700, color: '#92400e' }}>~£{estPerSession}</div></div>
           </div>
           <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '10px' }}>Property & time</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '24px' }}>

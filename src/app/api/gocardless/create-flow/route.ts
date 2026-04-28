@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     // 2. Get the customer profile and address
     const { data: customerRecord, error: customerError } = await supabaseAdmin
       .from('customers')
-      .select('profile_id, address_line1, address_line2, city, postcode')
+      .select('id, profile_id, address_line1, address_line2, city, postcode, gocardless_mandate_id')
       .eq('id', cleanRequest.customer_id)
       .single()
 
@@ -39,6 +39,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Customer not found' }, { status: 404 })
     }
 
+    // ── Switch path: customer already has an active mandate ─────────────────
+    // This happens when the customer is finding a replacement cleaner after a
+    // switch. We skip the GoCardless hosted billing page entirely and let
+    // confirm-switch create the subscription on the existing mandate.
+    if (customerRecord.gocardless_mandate_id) {
+      console.log('Existing mandate detected — returning direct confirm path:', customerRecord.gocardless_mandate_id)
+      return NextResponse.json({
+        type: 'existing_mandate',
+        mandateId: customerRecord.gocardless_mandate_id,
+      })
+    }
+
+    // ── Normal path: new customer, no mandate yet ────────────────────────────
     const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
       .select('full_name, email')
@@ -92,8 +105,6 @@ export async function POST(request: NextRequest) {
     console.log('GC billing request created:', billingRequestId)
 
     // 4. Create billing request flow (hosted page)
-    // We explicitly pass billingRequestId in the redirect URL — do NOT rely on
-    // GoCardless appending it, as this is inconsistent in sandbox.
     const redirectUri = `${appUrl}/api/gocardless/confirm?requestId=${requestId}&applicationId=${applicationId}&conversationId=${conversationId}&startDate=${encodeURIComponent(startDate)}&billingRequestId=${billingRequestId}`
 
     const flowRes = await fetch(`${gcBaseUrl}/billing_request_flows`, {
@@ -141,7 +152,7 @@ export async function POST(request: NextRequest) {
         .eq('id', requestId),
     ])
 
-    return NextResponse.json({ authorisationUrl })
+    return NextResponse.json({ type: 'new_flow', authorisationUrl })
   } catch (err: any) {
     console.error('GoCardless create-flow error:', err)
     return NextResponse.json({ error: err.message ?? 'Internal server error' }, { status: 500 })

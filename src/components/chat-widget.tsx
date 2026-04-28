@@ -357,7 +357,6 @@ function ChatWindow({ conversation, currentUserId, currentRole, onClose }: {
     setSending(false)
   }
 
-  // Approve button fires a custom event — the dashboard handles the modal
   const handleApprove = () => {
     if (!applicationId) return
     window.dispatchEvent(new CustomEvent('vouchee:approve-cleaner', {
@@ -634,6 +633,10 @@ function MessagingTray({ conversations, openIds, onOpen, onClose, totalUnread }:
               <Avatar name={conv.displayName} color={conv.avatarColor} size={26} />
             </div>
           ))}
+          {/* Show a placeholder icon when no conversations yet */}
+          {conversations.length === 0 && (
+            <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#334155', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13 }}>💬</div>
+          )}
         </div>
         <span style={{ fontSize: '13px', fontWeight: 700, flex: 1 }}>Messages</span>
         {totalUnread > 0 && (
@@ -883,8 +886,12 @@ export function ChatWidget() {
     }
   }, [initialized])
 
+  // Don't render until we know who the user is
   if (!initialized || !currentUserId || !currentRole) return null
-  if (conversations.length === 0) return null
+
+  // ↑ Removed the `if (conversations.length === 0) return null` that was here.
+  // The tray now always renders once the user is identified, showing an empty
+  // state ("No conversations yet") until a chat is opened or received.
 
   const totalUnread = conversations.reduce((sum, c) => sum + (c.unread ?? 0), 0)
   const openExpanded = conversations.filter(c => openIds.has(c.id))

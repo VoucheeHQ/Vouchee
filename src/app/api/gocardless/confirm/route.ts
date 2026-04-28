@@ -679,6 +679,14 @@ export async function GET(request: NextRequest) {
         ...(mandateId ? { gocardless_mandate_id: mandateId } as any : {}),
       }).eq('id', requestId),
 
+      // ── Write mandate to customer record for switch flow reuse ─────────────
+      // This is the key addition that enables Approach 1 switching. When this
+      // customer later needs to switch cleaners, create-flow detects this mandate
+      // and confirm-switch reuses it — no re-authorisation needed.
+      mandateId
+        ? supabaseAdmin.from('customers').update({ gocardless_mandate_id: mandateId } as any).eq('id', customerRecord.id)
+        : Promise.resolve(null),
+
       supabaseAdmin.from('applications').update({ status: 'accepted' }).eq('id', applicationId),
 
       supabaseAdmin.from('applications').update({ status: 'rejected' })
@@ -691,7 +699,6 @@ export async function GET(request: NextRequest) {
         content: `🎉 __system__ Direct Debit confirmed — start date ${formattedStartDate}. Your address has been shared with your cleaner.`,
       }),
 
-      // ── NEW: notify winning cleaner ────────────────────────────────────────
       supabaseAdmin.from('notifications').insert({
         cleaner_id: application.cleaner_id,
         type: 'job_won',
@@ -758,7 +765,6 @@ export async function GET(request: NextRequest) {
             .eq('clean_request_id', requestId).eq('cleaner_id', rejApp.cleaner_id).single()
           const tasks = []
 
-          // ── NEW: notify passed-over cleaner ────────────────────────────────
           tasks.push(
             supabaseAdmin.from('notifications').insert({
               cleaner_id: rejApp.cleaner_id,
