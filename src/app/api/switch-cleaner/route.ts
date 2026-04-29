@@ -30,15 +30,17 @@ function emailShell(appUrl: string, innerHtml: string, title: string) {
 </html>`
 }
 
-function buildSupportAlertHtml(opts: {
+// ─── Support alert (cancel now) ───────────────────────────────────────────────
+
+function buildSupportAlertCancelHtml(opts: {
   customerName: string; customerEmail: string; oldCleanerName: string
   oldRequestId: string; newRequestId: string; reason: string
   isBeforeStartDate: boolean; appUrl: string
 }) {
   const { customerName, customerEmail, oldCleanerName, oldRequestId, newRequestId, reason, isBeforeStartDate, appUrl } = opts
   const inner = `
-    <p style="margin:0 0 6px;font-size:20px;font-weight:800;color:#0f172a;">⚠️ Switch cleaner request</p>
-    <p style="margin:0 0 24px;font-size:14px;color:#64748b;line-height:1.6;">A customer has requested a cleaner switch. ${isBeforeStartDate ? 'This is <strong>before their first clean</strong>.' : 'This is <strong>after at least one clean</strong>.'}</p>
+    <p style="margin:0 0 6px;font-size:20px;font-weight:800;color:#0f172a;">⚠️ Switch cleaner request — immediate cancellation</p>
+    <p style="margin:0 0 24px;font-size:14px;color:#64748b;line-height:1.6;">A customer has ended their cleaner arrangement immediately. ${isBeforeStartDate ? 'This is <strong>before their first clean</strong>.' : 'This is <strong>after at least one clean</strong>.'}</p>
     <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border-radius:12px;padding:18px 20px;margin-bottom:20px;">
       <tr><td>
         <p style="margin:0 0 6px;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.08em;">Customer</p>
@@ -71,10 +73,57 @@ function buildSupportAlertHtml(opts: {
     </div>
     <a href="${appUrl}/admin/dashboard" style="display:block;background:${BRAND_BLUE};color:#ffffff;font-size:14px;font-weight:700;padding:14px 0;border-radius:10px;text-decoration:none;text-align:center;">View in admin dashboard →</a>
   `
-  return emailShell(appUrl, inner, 'Switch cleaner request')
+  return emailShell(appUrl, inner, 'Switch cleaner — immediate')
 }
 
-function buildCustomerSwitchConfirmHtml(opts: {
+// ─── Support alert (find replacement first) ───────────────────────────────────
+
+function buildSupportAlertPendingHtml(opts: {
+  customerName: string; customerEmail: string; oldCleanerName: string
+  oldRequestId: string; newRequestId: string; reason: string; appUrl: string
+}) {
+  const { customerName, customerEmail, oldCleanerName, oldRequestId, newRequestId, reason, appUrl } = opts
+  const inner = `
+    <p style="margin:0 0 6px;font-size:20px;font-weight:800;color:#0f172a;">🔄 Replacement cleaner requested</p>
+    <p style="margin:0 0 24px;font-size:14px;color:#64748b;line-height:1.6;">A customer is looking for a replacement cleaner. <strong>The current cleaner continues until a replacement is confirmed.</strong> The GC subscription has NOT been cancelled.</p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border-radius:12px;padding:18px 20px;margin-bottom:20px;">
+      <tr><td>
+        <p style="margin:0 0 6px;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.08em;">Customer</p>
+        <p style="margin:0 0 2px;font-size:15px;font-weight:700;color:#0f172a;">${customerName}</p>
+        <p style="margin:0;font-size:13px;color:#475569;"><a href="mailto:${customerEmail}" style="color:${BRAND_BLUE};">${customerEmail}</a></p>
+      </td></tr>
+    </table>
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;">
+      <tr><td style="padding:10px 0;border-bottom:1px solid #f1f5f9;">
+        <span style="font-size:12px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.06em;">Current cleaner (continuing)</span>
+        <span style="float:right;font-size:14px;color:#0f172a;font-weight:600;">${oldCleanerName}</span>
+      </td></tr>
+      <tr><td style="padding:10px 0;border-bottom:1px solid #f1f5f9;">
+        <span style="font-size:12px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.06em;">Old request ID</span>
+        <span style="float:right;font-size:12px;color:#64748b;font-family:monospace;">${oldRequestId}</span>
+      </td></tr>
+      <tr><td style="padding:10px 0;">
+        <span style="font-size:12px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.06em;">New listing ID</span>
+        <span style="float:right;font-size:12px;color:#64748b;font-family:monospace;">${newRequestId}</span>
+      </td></tr>
+    </table>
+    <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:16px 18px;margin-bottom:20px;">
+      <p style="margin:0 0 6px;font-size:12px;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:0.06em;">Reason given</p>
+      <p style="margin:0;font-size:14px;color:#0f172a;line-height:1.6;font-style:italic;">"${reason}"</p>
+    </div>
+    <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px 16px;margin-bottom:24px;">
+      <p style="margin:0;font-size:13px;color:#1e40af;line-height:1.6;">
+        The current cleaner's subscription will be cancelled and a farewell email sent automatically when the customer confirms their new cleaner's start date.
+      </p>
+    </div>
+    <a href="${appUrl}/admin/dashboard" style="display:block;background:${BRAND_BLUE};color:#ffffff;font-size:14px;font-weight:700;padding:14px 0;border-radius:10px;text-decoration:none;text-align:center;">View in admin dashboard →</a>
+  `
+  return emailShell(appUrl, inner, 'Switch cleaner — replacement requested')
+}
+
+// ─── Customer email (cancel now) ──────────────────────────────────────────────
+
+function buildCustomerCancelNowHtml(opts: {
   customerFirstName: string; isBeforeStartDate: boolean; appUrl: string
 }) {
   const { customerFirstName, isBeforeStartDate, appUrl } = opts
@@ -91,14 +140,14 @@ function buildCustomerSwitchConfirmHtml(opts: {
       <p style="margin:0 0 10px;font-size:13px;font-weight:700;color:#15803d;">✅ What's happened:</p>
       <table width="100%" cellpadding="0" cellspacing="0">
         <tr><td style="padding:4px 0;font-size:13px;color:#166534;">✓ Your Direct Debit subscription has been cancelled</td></tr>
-        <tr><td style="padding:4px 0;font-size:13px;color:#166534;">✓ Your previous cleaner has been blocked from your listing</td></tr>
+        <tr><td style="padding:4px 0;font-size:13px;color:#166534;">✓ Your previous cleaner has been blocked from your listings</td></tr>
         <tr><td style="padding:4px 0;font-size:13px;color:#166534;">✓ A fresh listing is now live for new applicants</td></tr>
         <tr><td style="padding:4px 0;font-size:13px;color:#166534;">✓ Your first clean with a new cleaner will be discounted automatically</td></tr>
       </table>
     </div>
     <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:16px 18px;margin-bottom:24px;">
       <p style="margin:0;font-size:13px;color:#1e40af;line-height:1.6;">
-        💡 <strong>No new Direct Debit needed.</strong> When you confirm a new cleaner, your existing mandate is reused automatically — no bank details to re-enter.
+        💡 <strong>No new Direct Debit needed.</strong> When you confirm a new cleaner, your existing mandate is reused automatically.
       </p>
     </div>
     <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;">
@@ -111,6 +160,43 @@ function buildCustomerSwitchConfirmHtml(opts: {
     </p>
   `
   return emailShell(appUrl, inner, 'Cleaner switch confirmed')
+}
+
+// ─── Customer email (find replacement first) ──────────────────────────────────
+
+function buildCustomerPendingHtml(opts: {
+  customerFirstName: string; appUrl: string
+}) {
+  const { customerFirstName, appUrl } = opts
+  const inner = `
+    <p style="margin:0 0 6px;font-size:22px;font-weight:800;color:#0f172a;">Finding your replacement, ${customerFirstName}!</p>
+    <p style="margin:0 0 24px;font-size:14px;color:#64748b;line-height:1.6;">
+      Your current cleaner will continue until your new cleaner's first clean. We've posted a fresh listing so applicants can apply straight away.
+    </p>
+    <div style="background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:12px;padding:20px 24px;margin-bottom:24px;">
+      <p style="margin:0 0 10px;font-size:13px;font-weight:700;color:#15803d;">✅ What's happened:</p>
+      <table width="100%" cellpadding="0" cellspacing="0">
+        <tr><td style="padding:4px 0;font-size:13px;color:#166534;">✓ A fresh listing is live for new applicants</td></tr>
+        <tr><td style="padding:4px 0;font-size:13px;color:#166534;">✓ Your current cleaner continues until your new one starts</td></tr>
+        <tr><td style="padding:4px 0;font-size:13px;color:#166534;">✓ Your current Direct Debit continues as normal</td></tr>
+        <tr><td style="padding:4px 0;font-size:13px;color:#166534;">✓ Your previous cleaner won't see or be able to apply to the new listing</td></tr>
+      </table>
+    </div>
+    <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:16px 18px;margin-bottom:24px;">
+      <p style="margin:0;font-size:13px;color:#1e40af;line-height:1.6;">
+        💡 When you confirm a new cleaner and pick a start date, your current cleaner will automatically receive a farewell notice and your subscription will switch over.
+      </p>
+    </div>
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;">
+      <tr><td align="center">
+        <a href="${appUrl}/customer/dashboard" style="display:inline-block;background:${BRAND_BLUE};color:#ffffff;font-size:14px;font-weight:700;padding:13px 28px;border-radius:10px;text-decoration:none;">View your dashboard →</a>
+      </td></tr>
+    </table>
+    <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.5;text-align:center;">
+      Questions? <a href="mailto:support@vouchee.co.uk" style="color:${BRAND_BLUE};">support@vouchee.co.uk</a>
+    </p>
+  `
+  return emailShell(appUrl, inner, 'Finding your replacement cleaner')
 }
 
 export async function POST(request: NextRequest) {
@@ -141,7 +227,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
-  const { requestId, reason } = body
+  const { requestId, reason, keepCurrent } = body
   if (!requestId || typeof requestId !== 'string') {
     return NextResponse.json({ error: 'Missing requestId' }, { status: 400 })
   }
@@ -167,53 +253,56 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  // ─── 3. Cancel GoCardless subscription ───────────────────────────────────
-  const subscriptionId = cleanRequest.gocardless_subscription_id
-  if (subscriptionId) {
-    const gcEnvironment = process.env.GOCARDLESS_ENVIRONMENT ?? 'sandbox'
-    const gcBaseUrl = gcEnvironment === 'live'
-      ? 'https://api.gocardless.com'
-      : 'https://api-sandbox.gocardless.com'
-
-    const cancelRes = await fetch(`${gcBaseUrl}/subscriptions/${subscriptionId}/actions/cancel`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.GOCARDLESS_ACCESS_TOKEN!}`,
-        'GoCardless-Version': '2015-07-06',
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: JSON.stringify({ data: {} }),
-    })
-    if (!cancelRes.ok) {
-      // Non-fatal — log and continue. Subscription may already be inactive.
-      console.error('GC subscription cancel failed:', await cancelRes.text())
-    } else {
-      console.log('GC subscription cancelled:', subscriptionId)
-    }
-  }
-
-  // ─── 4. Build updated blocked cleaner list ───────────────────────────────
+  // ─── 3. Block old cleaner ─────────────────────────────────────────────────
   const oldCleanerId = cleanRequest.assigned_cleaner_id
   const existingBlocked: string[] = customerRecord.blocked_cleaner_ids ?? []
   const newBlocked = oldCleanerId && !existingBlocked.includes(oldCleanerId)
     ? [...existingBlocked, oldCleanerId]
     : existingBlocked
 
-  // ─── 5. Archive old request + update blocked list ────────────────────────
-  await Promise.all([
-    admin.from('clean_requests').update({
+  // ─── 4. Handle subscription (only cancel if not keepCurrent) ─────────────
+  if (!keepCurrent) {
+    const subscriptionId = cleanRequest.gocardless_subscription_id
+    if (subscriptionId) {
+      const gcEnvironment = process.env.GOCARDLESS_ENVIRONMENT ?? 'sandbox'
+      const gcBaseUrl = gcEnvironment === 'live' ? 'https://api.gocardless.com' : 'https://api-sandbox.gocardless.com'
+      const cancelRes = await fetch(`${gcBaseUrl}/subscriptions/${subscriptionId}/actions/cancel`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.GOCARDLESS_ACCESS_TOKEN!}`,
+          'GoCardless-Version': '2015-07-06',
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({ data: {} }),
+      })
+      if (!cancelRes.ok) console.error('GC subscription cancel failed:', await cancelRes.text())
+      else console.log('GC subscription cancelled:', subscriptionId)
+    }
+  }
+
+  // ─── 5. Update old request ────────────────────────────────────────────────
+  if (keepCurrent) {
+    // Leave fulfilled, flag as pending switch so confirm-switch knows to fire farewell
+    await admin.from('clean_requests').update({
+      switch_pending: true,
+      switch_requested_at: new Date().toISOString(),
+      switch_reason: reason?.trim() || null,
+    } as any).eq('id', requestId)
+  } else {
+    await admin.from('clean_requests').update({
       status: 'cancelled',
       switch_requested_at: new Date().toISOString(),
       switch_reason: reason?.trim() || null,
-    } as any).eq('id', requestId),
+    } as any).eq('id', requestId)
+  }
 
-    admin.from('customers').update({
-      blocked_cleaner_ids: newBlocked,
-    } as any).eq('id', customerRecord.id),
-  ])
+  // ─── 6. Update blocked list ───────────────────────────────────────────────
+  await admin.from('customers').update({
+    blocked_cleaner_ids: newBlocked,
+  } as any).eq('id', customerRecord.id)
 
-  // ─── 6. Create fresh listing (copy of old, with switch flags) ────────────
+  // ─── 7. Create fresh listing ──────────────────────────────────────────────
   const { data: newRequest, error: insertErr } = await admin
     .from('clean_requests')
     .insert({
@@ -243,7 +332,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to create new listing' }, { status: 500 })
   }
 
-  // ─── 7. Emails ────────────────────────────────────────────────────────────
+  // ─── 8. Load names for emails ─────────────────────────────────────────────
   const { data: customerProfile } = await admin
     .from('profiles').select('full_name, email').eq('id', user.id).single() as { data: { full_name: string | null; email: string | null } | null }
 
@@ -257,38 +346,50 @@ export async function POST(request: NextRequest) {
   }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.vouchee.co.uk'
-  const isBeforeStartDate = cleanRequest.start_date
-    ? new Date() < new Date(cleanRequest.start_date)
-    : true
+  const isBeforeStartDate = cleanRequest.start_date ? new Date() < new Date(cleanRequest.start_date) : true
+  const customerFirstName = customerProfile?.full_name?.split(' ')[0] ?? 'there'
 
+  // ─── 9. Send emails ───────────────────────────────────────────────────────
   await Promise.allSettled([
     resend.emails.send({
       from: 'Vouchee Alerts <cleaners@vouchee.co.uk>',
       to: 'support@vouchee.co.uk',
-      subject: `⚠️ Switch cleaner request — ${customerProfile?.full_name ?? 'Customer'}`,
-      html: buildSupportAlertHtml({
-        customerName: customerProfile?.full_name ?? 'Unknown',
-        customerEmail: customerProfile?.email ?? '',
-        oldCleanerName,
-        oldRequestId: requestId,
-        newRequestId: newRequest.id,
-        reason: reason?.trim() || 'No reason provided',
-        isBeforeStartDate,
-        appUrl,
-      }),
+      subject: keepCurrent
+        ? `🔄 Replacement cleaner requested — ${customerProfile?.full_name ?? 'Customer'}`
+        : `⚠️ Switch cleaner request — ${customerProfile?.full_name ?? 'Customer'}`,
+      html: keepCurrent
+        ? buildSupportAlertPendingHtml({
+            customerName: customerProfile?.full_name ?? 'Unknown',
+            customerEmail: customerProfile?.email ?? '',
+            oldCleanerName,
+            oldRequestId: requestId,
+            newRequestId: newRequest.id,
+            reason: reason?.trim() || 'No reason provided',
+            appUrl,
+          })
+        : buildSupportAlertCancelHtml({
+            customerName: customerProfile?.full_name ?? 'Unknown',
+            customerEmail: customerProfile?.email ?? '',
+            oldCleanerName,
+            oldRequestId: requestId,
+            newRequestId: newRequest.id,
+            reason: reason?.trim() || 'No reason provided',
+            isBeforeStartDate,
+            appUrl,
+          }),
     }),
     customerProfile?.email
       ? resend.emails.send({
           from: 'Vouchee <hello@vouchee.co.uk>',
           to: customerProfile.email,
-          subject: isBeforeStartDate
-            ? "✅ We're on it — finding you a new cleaner"
-            : '✅ Switch request received — your listing is live again',
-          html: buildCustomerSwitchConfirmHtml({
-            customerFirstName: customerProfile.full_name?.split(' ')[0] ?? 'there',
-            isBeforeStartDate,
-            appUrl,
-          }),
+          subject: keepCurrent
+            ? '✅ Finding your replacement — your current cleaner continues for now'
+            : isBeforeStartDate
+              ? "✅ We're on it — finding you a new cleaner"
+              : '✅ Switch request received — your listing is live again',
+          html: keepCurrent
+            ? buildCustomerPendingHtml({ customerFirstName, appUrl })
+            : buildCustomerCancelNowHtml({ customerFirstName, isBeforeStartDate, appUrl }),
         })
       : Promise.resolve(null),
   ])

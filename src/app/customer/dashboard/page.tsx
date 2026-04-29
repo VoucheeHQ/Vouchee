@@ -198,38 +198,66 @@ function Stepper({ label, value, onDown, onUp, min, max, prefix = '', suffix = '
 function SwitchCleanerModal({ requestId, isBeforeStart, onCancel, onSuccess }: {
   requestId: string; isBeforeStart: boolean; onCancel: () => void; onSuccess: () => void
 }) {
+  const [keepCurrent, setKeepCurrent] = useState<boolean | null>(null)
   const [reason, setReason] = useState('')
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
   const title = isBeforeStart ? 'Something went wrong?' : 'Switch your cleaner?'
-  const body = isBeforeStart
-    ? "If your cleaner has cancelled or isn't showing up, we'll find you a new one. Your Direct Debit subscription will be cancelled and a fresh listing goes live straight away."
-    : "If you're unhappy with your current cleaner, we can help you find a new one. Your current subscription will be cancelled and your listing goes live again for new cleaners to apply."
 
   const handleSubmit = async () => {
+    if (keepCurrent === null) { setErr('Please choose an option above'); return }
     setLoading(true); setErr(null)
     try {
-      const res = await fetch('/api/switch-cleaner', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ requestId, reason: reason.trim() || null }) })
+      const res = await fetch('/api/switch-cleaner', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId, reason: reason.trim() || null, keepCurrent }),
+      })
       const data = await res.json()
       if (!res.ok) { setErr(data.error ?? 'Something went wrong — please try again'); setLoading(false); return }
       onSuccess()
     } catch { setErr('Something went wrong — please try again'); setLoading(false) }
   }
 
+  const optionCard = (value: boolean, label: string, description: string, icon: string) => {
+    const selected = keepCurrent === value
+    return (
+      <button
+        type="button"
+        onClick={() => { setKeepCurrent(value); setErr(null) }}
+        style={{
+          width: '100%', textAlign: 'left', padding: '14px 16px', borderRadius: '12px', cursor: 'pointer',
+          border: `2px solid ${selected ? '#2563eb' : '#e2e8f0'}`,
+          background: selected ? '#eff6ff' : 'white',
+          fontFamily: "'DM Sans', sans-serif", marginBottom: '10px', transition: 'border-color 0.15s ease',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
+          <span style={{ fontSize: '18px' }}>{icon}</span>
+          <span style={{ fontSize: '14px', fontWeight: 700, color: selected ? '#1d4ed8' : '#0f172a' }}>{label}</span>
+          <span style={{ marginLeft: 'auto', width: '16px', height: '16px', borderRadius: '50%', border: `2px solid ${selected ? '#2563eb' : '#cbd5e1'}`, background: selected ? '#2563eb' : 'white', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {selected && <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'white', display: 'block' }} />}
+          </span>
+        </div>
+        <p style={{ margin: '0 0 0 28px', fontSize: '12px', color: selected ? '#3b82f6' : '#64748b', lineHeight: 1.5 }}>{description}</p>
+      </button>
+    )
+  }
+
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500, padding: '24px' }}>
-      <div style={{ background: 'white', borderRadius: '24px', padding: '36px', maxWidth: '480px', width: '100%', boxShadow: '0 32px 80px rgba(0,0,0,0.22)' }}>
-        <h3 style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '22px', fontWeight: 800, color: '#0f172a', margin: '0 0 12px' }}>{title}</h3>
-        <p style={{ fontSize: '14px', color: '#64748b', lineHeight: 1.6, margin: '0 0 20px' }}>{body}</p>
-        <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '12px', padding: '14px 16px', marginBottom: '20px' }}>
-          <p style={{ margin: '0 0 6px', fontSize: '13px', fontWeight: 700, color: '#15803d' }}>✅ What happens:</p>
-          <ul style={{ margin: 0, padding: '0 0 0 18px', fontSize: '13px', color: '#166534', lineHeight: 1.7 }}>
-            <li>Your subscription is cancelled immediately</li>
-            <li>Your previous cleaner can't apply to your listings again</li>
-            <li>A fresh listing goes live for new applicants</li>
-            <li>Your first clean with a new cleaner is discounted automatically</li>
-          </ul>
+      <div style={{ background: 'white', borderRadius: '24px', padding: '36px', maxWidth: '480px', width: '100%', boxShadow: '0 32px 80px rgba(0,0,0,0.22)', maxHeight: '90vh', overflowY: 'auto' }}>
+        <h3 style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '22px', fontWeight: 800, color: '#0f172a', margin: '0 0 6px' }}>{title}</h3>
+        <p style={{ fontSize: '14px', color: '#64748b', lineHeight: 1.6, margin: '0 0 20px' }}>
+          {isBeforeStart
+            ? "If your cleaner has cancelled or isn't showing up, we'll find you a new one."
+            : "If you're unhappy with your current cleaner, we can help you find a new one."}
+        </p>
+        <div style={{ marginBottom: '20px' }}>
+          <div style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '10px' }}>How would you like to proceed?</div>
+          {optionCard(true, 'Find a replacement first', "Your current cleaner continues until your new one is confirmed. We'll automatically notify your current cleaner and switch over when you pick a start date.", '🔄')}
+          {optionCard(false, 'End the arrangement now', "Your subscription is cancelled immediately and a fresh listing goes live. Your current cleaner will be notified by Vouchee.", '⛔')}
         </div>
         <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '10px', padding: '12px 14px', marginBottom: '20px' }}>
           <p style={{ margin: 0, fontSize: '13px', color: '#1e40af', lineHeight: 1.5 }}>
@@ -243,8 +271,8 @@ function SwitchCleanerModal({ requestId, isBeforeStart, onCancel, onSuccess }: {
         {err && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '10px 14px', marginBottom: '16px', fontSize: '13px', color: '#dc2626' }}>⚠️ {err}</div>}
         <div style={{ display: 'flex', gap: '12px' }}>
           <button onClick={onCancel} disabled={loading} style={{ flex: 1, background: 'white', border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '13px', fontSize: '14px', fontWeight: 600, color: '#64748b', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>Cancel</button>
-          <button onClick={handleSubmit} disabled={loading} style={{ flex: 2, background: loading ? '#94a3b8' : '#ef4444', border: 'none', borderRadius: '12px', padding: '13px', fontSize: '14px', fontWeight: 700, color: 'white', cursor: loading ? 'not-allowed' : 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
-            {loading ? 'Processing…' : isBeforeStart ? '⚠️ Request a switch' : '🔄 Switch cleaner'}
+          <button onClick={handleSubmit} disabled={loading || keepCurrent === null} style={{ flex: 2, background: loading || keepCurrent === null ? '#94a3b8' : '#ef4444', border: 'none', borderRadius: '12px', padding: '13px', fontSize: '14px', fontWeight: 700, color: 'white', cursor: loading || keepCurrent === null ? 'not-allowed' : 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
+            {loading ? 'Processing…' : keepCurrent === true ? '🔄 Find my replacement' : keepCurrent === false ? '⛔ End now & find new cleaner' : 'Continue →'}
           </button>
         </div>
       </div>
@@ -441,7 +469,6 @@ function ActiveRequestCard({ request, onPause, onRepublish, onDelete, onEdit, on
           <ActionBtn onClick={onEdit} primary>Edit listing</ActionBtn>
           {request.status === 'active' && pausesLeft > 0 && <ActionBtn onClick={onPause}>Pause listing</ActionBtn>}
           {request.status === 'paused' && (!isRelocked ? <ActionBtn onClick={onRepublish}>Republish</ActionBtn> : <span style={{ fontSize: '12px', color: '#94a3b8', alignSelf: 'center' }}>Available to republish in 24h</span>)}
-          {/* Switch cleaner button — only on fulfilled listings */}
           {isFulfilled && onSwitch && (
             <ActionBtn onClick={onSwitch}>
               {beforeStart ? '⚠️ Problem with my cleaner' : '🔄 Switch cleaner'}
@@ -732,10 +759,6 @@ function CustomerDashboardContent() {
       const data = await res.json()
       if (!res.ok) { showToast('Could not set up Direct Debit — please try again'); setStartDateLoading(false); return }
 
-      // ── Switch path: existing mandate detected, skip GC hosted page ──────────
-      // create-flow returns type='existing_mandate' when customers.gocardless_mandate_id
-      // is already set (i.e. customer is switching cleaners). We call confirm-switch
-      // directly with the mandateId — no bank details needed again.
       if (data.type === 'existing_mandate') {
         const confirmRes = await fetch('/api/gocardless/confirm-switch', {
           method: 'POST',
@@ -758,7 +781,6 @@ function CustomerDashboardContent() {
         return
       }
 
-      // ── Normal path: redirect to GoCardless hosted billing page ─────────────
       if (!data.authorisationUrl) { showToast('Could not set up Direct Debit — please try again'); setStartDateLoading(false); return }
       window.location.href = data.authorisationUrl
     } catch { showToast('Something went wrong — please try again'); setStartDateLoading(false) }
@@ -767,7 +789,6 @@ function CustomerDashboardContent() {
   const handleSwitchSuccess = async () => {
     setSwitchModal(null)
     showToast('Switch request sent — your listing is live again')
-    // Re-fetch requests so dashboard reflects the new active listing immediately
     try {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser(); if (!user) return
@@ -913,7 +934,6 @@ function CustomerDashboardContent() {
             )}
             {activeRequestIds.length > 0 && <ApplicationsSection requestIds={activeRequestIds} requests={activeRequests} onAccept={handleAcceptApplication} onOpenChat={handleOpenChat} />}
 
-            {/* Fulfilled listings with switch cleaner support */}
             {fulfilledRequests.length > 0 && (
               <div style={{ marginBottom: '36px' }}>
                 <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '14px' }}>Confirmed cleaners</div>
