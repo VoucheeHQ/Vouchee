@@ -3,6 +3,10 @@
       {
         "path": "/api/cron/auto-close-chats",
         "schedule": "0 3 * * *"
+      },
+      {
+        "path": "/api/cron/check-payment-grace",
+        "schedule": "0 4 * * *"
       }
     ]
   }
