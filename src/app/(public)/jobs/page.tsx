@@ -98,6 +98,18 @@ function timeAgo(dateStr: string) {
   return 'Just now'
 }
 
+// Apply the same filter as the initial fetch — used both for first load and for
+// incoming realtime rows so we don't show old/cancelled stuff that's outside
+// the 10-day window.
+function passesJobFilter(row: any): boolean {
+  if (row.hidden) return false
+  if (row.status === 'pending') return true
+  if (row.status === 'pending_review') return true
+  if (row.status === 'active') return true
+  const updatedAt = new Date(row.updated_at).getTime()
+  return updatedAt > Date.now() - 10 * 24 * 60 * 60 * 1000
+}
+
 // ─── Your Listing Banner ──────────────────────────────
 
 function YourListingBanner({ job, onEdit }: { job: Job; onEdit: () => void }) {
@@ -292,13 +304,12 @@ function ApplyModal({ job, cleanerProfile, onClose, onSubmit, submitting }: {
       <div style={{ background: 'white', borderRadius: '24px', width: '100%', maxWidth: '580px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
         <div style={{ position: 'sticky', top: 0, background: 'white', borderBottom: '1px solid #f1f5f9', padding: '18px 24px', zIndex: 10, borderRadius: '24px 24px 0 0' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <h2 style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a', margin: 0 }}>Apply for this job</h2>
+            <h2 style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a', margin: 0 }}>You are applying for</h2>
             <button onClick={onClose} style={{ background: '#f1f5f9', border: 'none', borderRadius: '50%', width: '32px', height: '32px', fontSize: '16px', cursor: 'pointer', color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
           </div>
         </div>
         <div style={{ padding: '24px' }}>
           <div style={{ background: '#f8fafc', borderRadius: '14px', padding: '16px', marginBottom: '20px' }}>
-            <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px' }}>You are applying for</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
               <span>📍</span>
               <span style={{ fontSize: '17px', fontWeight: 800, color: '#0f172a' }}>{zone}</span>
@@ -363,7 +374,7 @@ function ApplyModal({ job, cleanerProfile, onClose, onSubmit, submitting }: {
             <div style={{ fontSize: '12px', color: message.length >= 450 ? '#f59e0b' : '#94a3b8', marginTop: '4px', textAlign: 'right' }}>{message.length}/500</div>
           </div>
 
-          <button onClick={() => onSubmit(message)} disabled={submitting} style={{ width: '100%', padding: '14px', background: submitting ? '#94a3b8' : '#0f172a', color: 'white', border: 'none', borderRadius: '12px', fontSize: '15px', fontWeight: 700, cursor: submitting ? 'not-allowed' : 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
+          <button onClick={() => onSubmit(message)} disabled={submitting} style={{ width: '100%', padding: '14px', background: submitting ? '#94a3b8' : '#2563eb', color: 'white', border: 'none', borderRadius: '12px', fontSize: '15px', fontWeight: 700, cursor: submitting ? 'not-allowed' : 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
             {submitting ? 'Submitting…' : 'Submit application →'}
           </button>
         </div>
@@ -394,9 +405,11 @@ export default function JobsPage() {
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
+    let cancelled = false
+    const authClient = createClient()
+
     async function init() {
       setLoading(true)
-      const authClient = createClient()
       const { data: { user } } = await authClient.auth.getUser()
 
       if (user) {
@@ -407,6 +420,7 @@ export default function JobsPage() {
           .single<{ role: string; full_name: string }>()
 
         const role = profile?.role ?? null
+        if (cancelled) return
         setUserRole(role)
         setProfileData(profile)
 
@@ -418,7 +432,7 @@ export default function JobsPage() {
             .in('status', ['pending', 'pending_review', 'active'])
             .order('created_at', { ascending: false })
             .limit(1)
-          if (myJobs?.length) setMyJobId((myJobs as any[])[0].id)
+          if (myJobs?.length && !cancelled) setMyJobId((myJobs as any[])[0].id)
         }
 
         if (role === 'cleaner') {
@@ -428,14 +442,14 @@ export default function JobsPage() {
             .eq('profile_id', user.id)
             .single<{ id: string; dbs_checked: boolean; has_insurance: boolean; right_to_work: boolean; created_at: string; application_status: string }>()
 
-          if (cleanerRecord) {
+          if (cleanerRecord && !cancelled) {
             setCleanerData(cleanerRecord)
             setCleanerApproved(cleanerRecord.application_status === 'approved')
             const { data: existingApps } = await authClient
               .from('applications')
               .select('request_id')
               .eq('cleaner_id', cleanerRecord.id)
-            if (existingApps) setAppliedJobIds(new Set((existingApps as any[]).map(a => a.request_id)))
+            if (existingApps && !cancelled) setAppliedJobIds(new Set((existingApps as any[]).map(a => a.request_id)))
           }
         }
       }
@@ -449,19 +463,50 @@ export default function JobsPage() {
 
       if (error) console.error('Supabase error:', error)
 
-      if (!error && data) {
-        const filtered = (data as any[]).filter(row => {
-          if (row.status === 'pending') return true
-          if (row.status === 'pending_review') return true
-          if (row.status === 'active') return true
-          const updatedAt = new Date(row.updated_at).getTime()
-          return updatedAt > Date.now() - 10 * 24 * 60 * 60 * 1000
-        })
-        setJobs(filtered as Job[])
+      if (!error && data && !cancelled) {
+        setJobs((data as any[]).filter(passesJobFilter) as Job[])
       }
-      setLoading(false)
+      if (!cancelled) setLoading(false)
     }
     init()
+
+    // ─── Realtime subscription ──────────────────────────────────────────────
+    // Listens for INSERT/UPDATE/DELETE on clean_requests so the live list
+    // updates without a refresh. Filters with passesJobFilter on each event
+    // to match the same rules as the initial fetch.
+    const channel = authClient
+      .channel('jobs-feed')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'clean_requests' }, payload => {
+        const row = payload.new as any
+        if (cancelled || !passesJobFilter(row)) return
+        setJobs(prev => prev.find(j => j.id === row.id) ? prev : [row as Job, ...prev])
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'clean_requests' }, payload => {
+        const row = payload.new as any
+        if (cancelled) return
+        setJobs(prev => {
+          const exists = prev.find(j => j.id === row.id)
+          if (!passesJobFilter(row)) {
+            // Row no longer qualifies — remove from list
+            return exists ? prev.filter(j => j.id !== row.id) : prev
+          }
+          if (exists) {
+            return prev.map(j => j.id === row.id ? { ...j, ...row } : j)
+          }
+          return [row as Job, ...prev]
+        })
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'clean_requests' }, payload => {
+        const row = payload.old as any
+        if (cancelled) return
+        setJobs(prev => prev.filter(j => j.id !== row.id))
+      })
+      .subscribe()
+
+    return () => {
+      cancelled = true
+      authClient.removeChannel(channel)
+    }
   }, [])
 
   const handleApply = async (message: string) => {
@@ -551,6 +596,18 @@ export default function JobsPage() {
     return 0
   })
 
+  // Role-aware top CTAs:
+  //  - Logged out: "Become a cleaner" + "Post a request"
+  //  - Cleaner:    nothing (they already are one — and irrelevant on this page)
+  //  - Customer:   "Post a request" only (no need to apply to be a cleaner)
+  //  - Admin:      both (admin sees everything)
+  const showBecomeCleanerCta = !userRole || userRole === 'admin'
+  const showPostRequestCta = !userRole || userRole === 'customer' || userRole === 'admin'
+  const showAnyTopCta = showBecomeCleanerCta || showPostRequestCta
+
+  // Bottom "Apply to become a cleaner" section — same logic as top CTA
+  const showBottomCleanerCta = !userRole || userRole === 'admin'
+
   return (
     <main className="min-h-screen bg-gray-50">
       <section className="bg-white border-b border-gray-100 py-10">
@@ -561,10 +618,16 @@ export default function JobsPage() {
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Active cleaning requests</h1>
           <p className="text-gray-500 max-w-lg mb-6">Browse open jobs from homeowners in Horsham. See what customers are paying and apply to become a Vouchee cleaner.</p>
-          <div className="flex gap-3 flex-wrap">
-            <Link href="/cleaner/apply" className="inline-flex items-center gap-2 bg-gray-900 text-white rounded-full px-5 py-2.5 text-sm font-semibold hover:bg-gray-700 transition-colors">Become a cleaner →</Link>
-            <Link href="/request/property" className="inline-flex items-center gap-2 bg-white border border-gray-200 text-gray-700 rounded-full px-5 py-2.5 text-sm font-semibold hover:bg-gray-50 transition-colors">Post a request</Link>
-          </div>
+          {showAnyTopCta && (
+            <div className="flex gap-3 flex-wrap">
+              {showBecomeCleanerCta && (
+                <Link href="/cleaner/apply" className="inline-flex items-center gap-2 bg-gray-900 text-white rounded-full px-5 py-2.5 text-sm font-semibold hover:bg-gray-700 transition-colors">Become a cleaner →</Link>
+              )}
+              {showPostRequestCta && (
+                <Link href="/request/property" className="inline-flex items-center gap-2 bg-white border border-gray-200 text-gray-700 rounded-full px-5 py-2.5 text-sm font-semibold hover:bg-gray-50 transition-colors">Post a request</Link>
+              )}
+            </div>
+          )}
         </div>
       </section>
 
@@ -636,13 +699,15 @@ export default function JobsPage() {
         />
       )}
 
-      <section className="bg-white border-t border-gray-100 py-12 mt-8">
-        <div className="container max-w-5xl mx-auto px-4 text-center">
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Want to pick up cleaning work in Horsham?</h2>
-          <p className="text-gray-500 mb-5 max-w-md mx-auto text-sm">Join Vouchee as a vetted cleaner and apply for open requests directly.</p>
-          <Link href="/cleaner/apply" className="inline-flex items-center gap-2 bg-gray-900 text-white rounded-full px-6 py-3 text-sm font-semibold hover:bg-gray-700 transition-colors">Apply to become a cleaner →</Link>
-        </div>
-      </section>
+      {showBottomCleanerCta && (
+        <section className="bg-white border-t border-gray-100 py-12 mt-8">
+          <div className="container max-w-5xl mx-auto px-4 text-center">
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Want to pick up cleaning work in Horsham?</h2>
+            <p className="text-gray-500 mb-5 max-w-md mx-auto text-sm">Join Vouchee as a vetted cleaner and apply for open requests directly.</p>
+            <Link href="/cleaner/apply" className="inline-flex items-center gap-2 bg-gray-900 text-white rounded-full px-6 py-3 text-sm font-semibold hover:bg-gray-700 transition-colors">Apply to become a cleaner →</Link>
+          </div>
+        </section>
+      )}
     </main>
   )
 }

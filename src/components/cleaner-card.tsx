@@ -4,10 +4,9 @@
 // <CleanerCard /> — single source of truth for rendering a cleaner.
 //
 // Variants:
-//   "full"    — used in the customer dashboard application card (avatar, name,
-//                badges, stats row, reviews preview)
-//   "compact" — used in the chat widget header (avatar + name + zone)
-//   "public"  — used on /c/[shortId] (everything, expanded)
+//   "full"    — used in the customer dashboard application card
+//   "compact" — used in the chat widget header
+//   "public"  — used on /c/[shortId]
 //
 // Always consume CleanerCardData from /lib/cleaner-card. Never compute name
 // formatting inline — use the helpers there.
@@ -38,10 +37,12 @@ const ZONE_LABELS: Record<string, string> = {
   southwater: 'Southwater',
 }
 
+// 5-star row that always shows 5 stars — empty by default, filled up to `rating`.
+// When rating === 0, all 5 stars are rendered as empty/grey for the "New cleaner" look.
 function StarRow({ rating, size = 12 }: { rating: number; size?: number }) {
   return (
     <span style={{ display: 'inline-flex', gap: '1px' }}>
-      {[1,2,3,4,5].map(s => (
+      {[1, 2, 3, 4, 5].map(s => (
         <span key={s} style={{ fontSize: `${size}px`, color: rating >= s ? '#f59e0b' : '#e2e8f0' }}>★</span>
       ))}
     </span>
@@ -56,10 +57,12 @@ function CredentialBadge({ label }: { label: string }) {
   )
 }
 
-function Avatar({ label, color = '#2563eb', size = 52 }: { label: string; color?: string; size?: number }) {
+function Avatar({ label, color = '#3b82f6', size = 52 }: { label: string; color?: string; size?: number }) {
+  // Match the cleaner dashboard avatar — gradient blue-to-indigo, white text
   return (
     <div style={{
-      width: `${size}px`, height: `${size}px`, borderRadius: '50%', background: color,
+      width: `${size}px`, height: `${size}px`, borderRadius: '50%',
+      background: 'linear-gradient(135deg, #3b82f6, #6366f1)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       fontSize: `${size * 0.42}px`, fontWeight: 800, color: 'white', flexShrink: 0,
     }}>
@@ -70,6 +73,10 @@ function Avatar({ label, color = '#2563eb', size = 52 }: { label: string; color?
 
 export function CleanerCard({ data, variant = 'full', avatarOverride }: Props) {
   const { name_short, initial, member_since, credentials, stats, reviews } = data
+  const ratingAvg = stats.rating_average ?? 0
+  const hasRating = stats.rating_count > 0
+  const showRealReviews = reviews.length > 0
+  const cleansCompleted = stats.cleans_completed
 
   // ─── Compact variant (chat widget header) ──────────────────────────────────
   if (variant === 'compact') {
@@ -92,66 +99,50 @@ export function CleanerCard({ data, variant = 'full', avatarOverride }: Props) {
     )
   }
 
-  const showStats = stats.cleans_completed > 0 || stats.rating_count > 0
-  const showRealReviews = reviews.length > 0
-  const ratingAvg = stats.rating_average
-
-  // ─── Shared header (used by full + public) ─────────────────────────────────
+  // ─── Header (matches cleaner dashboard layout: avatar + name + stars on left, CLEANS box on right) ──────
   const Header = (
-    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', minWidth: 0 }}>
-        <Avatar label={initial} size={52} />
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px', gap: '12px' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', minWidth: 0 }}>
+        <Avatar label={initial} size={56} />
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: '17px', fontWeight: 800, color: '#0f172a', lineHeight: 1.2 }}>
+          <div style={{ fontSize: '17px', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.2px' }}>
             {name_short}
           </div>
-          <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '3px' }}>
+          <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 500, margin: '2px 0 6px' }}>
             Member since {member_since}
           </div>
-          {ratingAvg !== null && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
-              <StarRow rating={Math.round(ratingAvg)} size={12} />
-              <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 600 }}>
-                {ratingAvg.toFixed(1)} ({stats.rating_count})
-              </span>
-            </div>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <StarRow rating={hasRating ? Math.round(ratingAvg) : 0} size={12} />
+            <span style={{ fontSize: '11px', color: hasRating ? '#64748b' : '#94a3b8', fontWeight: 600, marginLeft: '4px' }}>
+              {hasRating
+                ? `${ratingAvg.toFixed(1)} (${stats.rating_count})`
+                : 'New cleaner'}
+            </span>
+          </div>
         </div>
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end', flexShrink: 0 }}>
-        {credentials.dbs_checked && <CredentialBadge label="DBS checked" />}
-        {credentials.right_to_work && <CredentialBadge label="Right to work" />}
-        {credentials.has_insurance && <CredentialBadge label="Insured" />}
+      {/* CLEANS box — always shown */}
+      <div style={{ textAlign: 'center', background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '10px 14px', flexShrink: 0 }}>
+        <div style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a', lineHeight: 1 }}>{cleansCompleted}</div>
+        <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 700, marginTop: '2px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Cleans</div>
       </div>
     </div>
   )
 
-  // ─── Stats strip (full + public, only if cleaner has any history) ──────────
-  const StatsStrip = showStats ? (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginTop: '14px' }}>
-      <div style={{ background: '#f8fafc', borderRadius: '10px', padding: '10px', textAlign: 'center' }}>
-        <div style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>{stats.cleans_completed}</div>
-        <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '2px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Cleans</div>
-      </div>
-      <div style={{ background: '#f8fafc', borderRadius: '10px', padding: '10px', textAlign: 'center' }}>
-        <div style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>{stats.unique_customers}</div>
-        <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '2px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Customers</div>
-      </div>
-      <div style={{ background: '#f8fafc', borderRadius: '10px', padding: '10px', textAlign: 'center' }}>
-        <div style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>
-          {ratingAvg !== null ? ratingAvg.toFixed(1) : '—'}
-          {ratingAvg !== null && <span style={{ fontSize: '12px', color: '#f59e0b', marginLeft: '2px' }}>★</span>}
-        </div>
-        <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '2px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Rating</div>
-      </div>
+  // ─── Credential badges (under the header, full-width row) ──────────────────
+  const CredentialBadges = (
+    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '14px' }}>
+      {credentials.dbs_checked && <CredentialBadge label="DBS checked" />}
+      {credentials.right_to_work && <CredentialBadge label="Right to work" />}
+      {credentials.has_insurance && <CredentialBadge label="Insured" />}
     </div>
-  ) : null
+  )
 
   // ─── Reviews block ─────────────────────────────────────────────────────────
-  // - Real reviews if any exist (blurred for "full" variant until accepted, fully visible for "public")
-  // - Otherwise: trust panel explaining new-cleaner status
+  // - Real reviews if any exist (blurred until accept on "full")
+  // - Otherwise: trust panel with new copy
   const ReviewsBlock = (
-    <div style={{ marginTop: '14px' }}>
+    <div>
       <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>
         Reviews
       </div>
@@ -174,11 +165,11 @@ export function CleanerCard({ data, variant = 'full', avatarOverride }: Props) {
         </>
       ) : (
         <div style={{ background: '#f8faff', border: '1px solid #e0e7ff', borderRadius: '10px', padding: '14px 16px' }}>
-          <div style={{ fontSize: '13px', fontWeight: 700, color: '#1e40af', marginBottom: '4px' }}>
+          <div style={{ fontSize: '13px', fontWeight: 700, color: '#1e40af', marginBottom: '6px' }}>
             ✨ New to Vouchee
           </div>
-          <div style={{ fontSize: '12px', color: '#475569', lineHeight: 1.5 }}>
-            This cleaner is new to Vouchee but don't worry — every cleaner is interviewed and verified before joining the platform, including their credentials.
+          <div style={{ fontSize: '12px', color: '#475569', lineHeight: 1.55 }}>
+            This cleaner is new to Vouchee. But rest assured, every cleaner is interviewed and vetted before joining the platform, including all of their required documents. Feel free to ask them any questions — they don't bite!
           </div>
         </div>
       )}
@@ -190,20 +181,19 @@ export function CleanerCard({ data, variant = 'full', avatarOverride }: Props) {
     return (
       <div>
         {Header}
-        {StatsStrip}
+        {CredentialBadges}
         {ReviewsBlock}
       </div>
     )
   }
 
   // ─── Public variant (/c/[shortId]) ──────────────────────────────────────────
-  // Same as full but reviews are unblurred and zones are shown
   return (
     <div>
       {Header}
-      {StatsStrip}
+      {CredentialBadges}
       {data.zones.length > 0 && (
-        <div style={{ marginTop: '14px' }}>
+        <div style={{ marginBottom: '14px' }}>
           <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>
             Areas covered
           </div>

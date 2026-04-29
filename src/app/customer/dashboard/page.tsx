@@ -553,7 +553,7 @@ function ApplicationCard({ app, onAccept, onDecline, onOpenChat, accepting, decl
 
       {app.message && (
         <div style={{ padding: '0 20px 16px', borderTop: '1px solid #f1f5f9' }}>
-          <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px', marginTop: '16px' }}>{displayName}'s message</div>
+          <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px', marginTop: '16px' }}>{displayName.replace(/\.$/, '')}'s message</div>
           <div style={{ background: '#eff6ff', borderRadius: '12px', padding: '14px 16px', borderLeft: '3px solid #2563eb' }}>
             <p style={{ margin: 0, fontSize: '14px', color: '#1e40af', lineHeight: 1.6 }}>{app.message}</p>
           </div>
