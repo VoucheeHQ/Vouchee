@@ -26,24 +26,38 @@ export async function POST(request: NextRequest) {
     let customerFullName: string | null = null
     let customersTableId: string | null = null
 
-    // Primary path: use requestId to join clean_requests -> customers -> profiles
-    // This avoids RLS issues since service role can read clean_requests
+    // Primary path: three sequential lookups using service role
+    // (avoids any nested-join shape ambiguity that was returning null)
     if (requestId) {
       const { data: reqData } = await supabaseAdmin
         .from('clean_requests')
-        .select('customer_id, customers(id, profile_id, profiles(email, full_name))')
+        .select('customer_id')
         .eq('id', requestId)
-        .single() as { data: any }
+        .single() as { data: { customer_id: string } | null }
 
-      const profile = reqData?.customers?.profiles
-      if (profile?.email) {
-        customerEmail = profile.email
-        customerFullName = profile.full_name
+      if (reqData?.customer_id) {
+        customersTableId = reqData.customer_id
+
+        const { data: custData } = await supabaseAdmin
+          .from('customers')
+          .select('profile_id')
+          .eq('id', reqData.customer_id)
+          .single() as { data: { profile_id: string } | null }
+
+        if (custData?.profile_id) {
+          const { data: profileData } = await supabaseAdmin
+            .from('profiles')
+            .select('email, full_name')
+            .eq('id', custData.profile_id)
+            .single() as { data: { email: string | null; full_name: string | null } | null }
+
+          customerEmail = profileData?.email ?? null
+          customerFullName = profileData?.full_name ?? null
+        }
       }
-      customersTableId = reqData?.customers?.id ?? reqData?.customer_id ?? null
     }
 
-    // Fallback: customerId as direct profiles UUID (legacy)
+    // Fallback: customerId as direct profiles UUID (legacy callers)
     if (!customerEmail && customerId) {
       const { data: directProfile } = await supabaseAdmin
         .from('profiles')
