@@ -501,7 +501,11 @@ export default function JobsPage() {
         if (cancelled) return
         setJobs(prev => prev.filter(j => j.id !== row.id))
       })
-      .subscribe()
+      .subscribe(status => {
+        // Visible in browser DevTools console — confirms whether realtime
+        // actually subscribed. Should read SUBSCRIBED on success.
+        console.log('[jobs realtime] channel status:', status)
+      })
 
     return () => {
       cancelled = true

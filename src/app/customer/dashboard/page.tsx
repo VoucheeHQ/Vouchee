@@ -59,6 +59,16 @@ interface Application {
   cleaner: CleanerCardData
 }
 
+interface NotificationItem {
+  id: string
+  type: string
+  title: string
+  body: string | null
+  link: string | null
+  read: boolean
+  created_at: string
+}
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const TASK_LABELS: Record<string, string> = {
@@ -529,6 +539,101 @@ function PastListingRow({ request }: { request: CleaningRequest }) {
   )
 }
 
+// ─── Notifications Panel ─────────────────────────────────────────────────────
+//
+// Customer-side notifications card. Mirrors the cleaner dashboard's panel
+// style: title row + unread count, latest 5 (with internal scroll if more),
+// click-to-read, ✕ to dismiss, "Mark all" link.
+//
+// Empty state: collapsed-feeling card with "You're all caught up" 🔔 icon.
+
+const NOTIFICATION_ICONS: Record<string, string> = {
+  new_application: '👋', chat_accepted: '💬', chat_declined: '😔',
+  job_won: '🎉', job_lost: '👋', new_message: '✉️',
+  application_approved: '✅', application_rejected: '❌',
+  account_suspended: '⚠️', review_received: '⭐', default: '🔔',
+}
+
+function notifRelativeTime(iso: string) {
+  const diff = Date.now() - new Date(iso).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  const days = Math.floor(hrs / 24)
+  if (days < 7) return `${days}d ago`
+  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+}
+
+function NotificationsPanel({ notifications, onClick, onDismiss, onMarkAllRead }: {
+  notifications: NotificationItem[]
+  onClick: (n: NotificationItem) => void
+  onDismiss: (id: string, e: React.MouseEvent) => void
+  onMarkAllRead: () => void
+}) {
+  const unreadCount = notifications.filter(n => !n.read).length
+  const isEmpty = notifications.length === 0
+
+  return (
+    <div style={{ background: 'white', borderRadius: '20px', border: '1.5px solid #e2e8f0', padding: '20px 22px', boxShadow: '0 2px 16px rgba(0,0,0,0.04)', marginBottom: '36px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+        <div style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Recent notifications</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {unreadCount > 0 && <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 600 }}>{unreadCount} unread</span>}
+          {unreadCount > 0 && (
+            <button onClick={onMarkAllRead} style={{ background: 'none', border: 'none', fontSize: '11px', fontWeight: 600, color: '#3b82f6', cursor: 'pointer', padding: 0, fontFamily: "'DM Sans', sans-serif" }}>
+              Mark all read
+            </button>
+          )}
+        </div>
+      </div>
+      {isEmpty ? (
+        <div style={{ textAlign: 'center', padding: '24px 16px', color: '#94a3b8' }}>
+          <div style={{ fontSize: '24px', marginBottom: '8px' }}>🔔</div>
+          <div style={{ fontSize: '13px', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>You're all caught up</div>
+          <div style={{ fontSize: '12px', lineHeight: 1.5 }}>Updates about your cleaning request will appear here.</div>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '380px', overflowY: 'auto', paddingRight: '4px' }}>
+          {notifications.map(n => {
+            const icon = NOTIFICATION_ICONS[n.type] ?? NOTIFICATION_ICONS.default
+            return (
+              <div
+                key={n.id}
+                onClick={() => onClick(n)}
+                style={{
+                  display: 'flex', gap: '12px', padding: '12px 14px', borderRadius: '12px',
+                  background: n.read ? 'transparent' : '#eff6ff',
+                  border: `1px solid ${n.read ? '#f1f5f9' : '#bfdbfe'}`,
+                  cursor: 'pointer', transition: 'background 0.15s ease', alignItems: 'flex-start',
+                }}
+              >
+                <div style={{ fontSize: '18px', flexShrink: 0, lineHeight: 1, marginTop: '1px' }}>{icon}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px', marginBottom: '2px' }}>
+                    <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a', lineHeight: 1.35 }}>{n.title}</div>
+                    <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 500, flexShrink: 0, whiteSpace: 'nowrap' }}>{notifRelativeTime(n.created_at)}</div>
+                  </div>
+                  {n.body && <div style={{ fontSize: '12px', color: '#64748b', lineHeight: 1.45 }}>{n.body}</div>}
+                </div>
+                {!n.read && <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#3b82f6', flexShrink: 0, marginTop: '6px' }} />}
+                <button
+                  onClick={e => onDismiss(n.id, e)}
+                  aria-label="Dismiss"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#cbd5e1', fontSize: '14px', padding: '2px 4px', flexShrink: 0, lineHeight: 1, marginTop: '2px' }}
+                >
+                  ✕
+                </button>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Application Card ─────────────────────────────────────────────────────────
 
 function ApplicationCard({ app, onAccept, onDecline, onOpenChat, accepting, declining }: {
@@ -677,10 +782,15 @@ function CustomerDashboardContent() {
   const [startDateModal, setStartDateModal] = useState<{ applicationId: string; requestId: string; conversationId: string; cleanerName: string; frequency: Frequency } | null>(null)
   const [startDateLoading, setStartDateLoading] = useState(false)
   const [switchModal, setSwitchModal] = useState<{ requestId: string; isBeforeStart: boolean } | null>(null)
+  const [notifications, setNotifications] = useState<NotificationItem[]>([])
+  const [customerId, setCustomerId] = useState<string | null>(null)
   const systemMessageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const timerFiredRef = useRef(false)
 
   useEffect(() => {
+    let realtimeChannel: any = null
+    let cancelled = false
+
     const init = async () => {
       try {
         const supabase = createClient()
@@ -690,20 +800,61 @@ function CustomerDashboardContent() {
         if (profileError || !profileData) throw new Error('Could not load your profile.')
         if (profileData.role !== 'customer' && profileData.role !== 'admin') { router.replace('/cleaner/dashboard'); return }
         const { data: customerRecord } = await (supabase as any).from('customers').select('id').eq('profile_id', user.id).single()
-        const customerId = customerRecord?.id ?? null
-        const { data: requestData, error: requestError } = customerId
-          ? await (supabase as any).from('clean_requests').select('*').eq('customer_id', customerId).order('created_at', { ascending: false })
+        const cid = customerRecord?.id ?? null
+        if (cid && !cancelled) setCustomerId(cid)
+        const { data: requestData, error: requestError } = cid
+          ? await (supabase as any).from('clean_requests').select('*').eq('customer_id', cid).order('created_at', { ascending: false })
           : { data: [], error: null }
         if (requestError) throw new Error(requestError.message)
-        setProfile(profileData); setRequests(requestData ?? [])
+
+        // Load notifications for this customer
+        if (cid) {
+          const { data: notifData } = await (supabase as any)
+            .from('notifications')
+            .select('id, type, title, body, link, read, created_at')
+            .eq('customer_id', cid)
+            .order('created_at', { ascending: false })
+            .limit(20)
+          if (!cancelled && notifData) setNotifications(notifData as NotificationItem[])
+
+          // Realtime: insert/update/delete on customer's notifications.
+          // Insert prepends; update reflects mark-as-read; delete removes.
+          realtimeChannel = supabase
+            .channel(`customer-notifications-${cid}`)
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `customer_id=eq.${cid}` }, payload => {
+              const n = payload.new as NotificationItem
+              setNotifications(prev => prev.find(x => x.id === n.id) ? prev : [n, ...prev])
+            })
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'notifications', filter: `customer_id=eq.${cid}` }, payload => {
+              const n = payload.new as NotificationItem
+              setNotifications(prev => prev.map(x => x.id === n.id ? { ...x, ...n } : x))
+            })
+            .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'notifications', filter: `customer_id=eq.${cid}` }, payload => {
+              const oldRow = payload.old as { id: string }
+              setNotifications(prev => prev.filter(x => x.id !== oldRow.id))
+            })
+            .subscribe()
+        }
+
+        if (!cancelled) {
+          setProfile(profileData); setRequests(requestData ?? [])
+        }
         if (searchParams.get('gc_success') === '1') setShowSuccessBanner(true)
         const acceptAppId = searchParams.get('accept'); const acceptReqId = searchParams.get('request')
         if (acceptAppId && acceptReqId) { handleAcceptApplication(acceptAppId, acceptReqId); router.replace('/customer/dashboard') }
         const chatId = searchParams.get('chat')
         if (chatId) setTimeout(() => window.dispatchEvent(new CustomEvent('vouchee:open-chat', { detail: { conversationId: chatId } })), 800)
-      } catch (err: any) { setError(err?.message ?? 'Something went wrong.') } finally { setLoading(false) }
+      } catch (err: any) { setError(err?.message ?? 'Something went wrong.') } finally { if (!cancelled) setLoading(false) }
     }
     init()
+
+    return () => {
+      cancelled = true
+      if (realtimeChannel) {
+        const supabase = createClient()
+        supabase.removeChannel(realtimeChannel)
+      }
+    }
   }, [router])
 
   const handleAcceptApplication = async (applicationId: string, requestId: string) => {
@@ -814,6 +965,44 @@ function CustomerDashboardContent() {
   }
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 4000) }
+
+  // ─── Notification handlers ───────────────────────────────────────────────
+  // - Click: mark single as read (optimistic), then navigate if there's a link
+  // - Dismiss: delete the row (optimistic), call API to persist
+  // - Mark all: bulk mark unread → read, clears the My Dashboard badge
+  const handleNotificationClick = async (n: NotificationItem) => {
+    if (!n.read) {
+      setNotifications(prev => prev.map(x => x.id === n.id ? { ...x, read: true } : x))
+      try { await fetch('/api/notifications/read', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: [n.id] }) }) }
+      catch (e) { console.error('Mark read failed:', e) }
+    }
+    if (!n.link) return
+    // If link includes ?chat=<id>, open the chat widget directly instead of navigating
+    try {
+      const linkUrl = new URL(n.link, window.location.origin)
+      const chatId = linkUrl.searchParams.get('chat')
+      if (chatId && linkUrl.pathname === '/customer/dashboard') {
+        window.dispatchEvent(new CustomEvent('vouchee:open-chat', { detail: { conversationId: chatId } }))
+        return
+      }
+    } catch {}
+    router.push(n.link)
+  }
+
+  const handleDismissNotification = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation() // don't trigger row click
+    setNotifications(prev => prev.filter(x => x.id !== id))
+    try { await fetch('/api/notifications/dismiss', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) }) }
+    catch (err) { console.error('Dismiss failed:', err) }
+  }
+
+  const handleMarkAllRead = async () => {
+    if (notifications.every(n => n.read)) return
+    setNotifications(prev => prev.map(x => ({ ...x, read: true })))
+    try { await fetch('/api/notifications/read', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ all: true }) }) }
+    catch (err) { console.error('Mark all read failed:', err) }
+  }
+
   const handleSignOut = async () => { const supabase = createClient(); await supabase.auth.signOut(); router.push('/') }
 
   const handlePause = async (id: string) => {
@@ -926,6 +1115,12 @@ function CustomerDashboardContent() {
                 {pausedRequests.map(req => <ActiveRequestCard key={req.id} request={req} onPause={() => setModal({ type: 'pause', id: req.id })} onRepublish={() => setModal({ type: 'republish', id: req.id })} onDelete={() => handleDelete(req.id)} onEdit={() => setEditingRequest(req)} />)}
               </div>
             )}
+            <NotificationsPanel
+              notifications={notifications}
+              onClick={handleNotificationClick}
+              onDismiss={handleDismissNotification}
+              onMarkAllRead={handleMarkAllRead}
+            />
             {activeRequestIds.length > 0 && <ApplicationsSection requestIds={activeRequestIds} requests={activeRequests} onAccept={handleAcceptApplication} onOpenChat={handleOpenChat} />}
 
             {fulfilledRequests.length > 0 && (

@@ -2,15 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
 // ─────────────────────────────────────────────────────────────────────────────
-// POST /api/notifications/read
+// POST /api/notifications/dismiss
 //
-// Marks notifications as read for the current user. Handles both cleaners and
-// customers — looks up whichever role record belongs to the auth user, then
-// scopes the update by cleaner_id or customer_id accordingly.
+// Deletes a single notification owned by the current user. Used by the ✕
+// button on each notification row in the dashboards.
 //
-// Body:
-//   { ids: string[] }   → mark these specific notifications as read
-//   { all: true }       → mark all unread notifications for this user as read
+// Body: { id: string }
+//
+// We scope by cleaner_id or customer_id (whichever owns this user) so a
+// malicious caller can't delete someone else's notification by guessing IDs.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
@@ -18,16 +18,16 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  let body: { ids?: string[]; all?: boolean }
+  let body: { id?: string }
   try {
     body = await request.json()
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
-  // ─── Resolve the user's role record (cleaner OR customer) ───────────────
-  // Try cleaner first, then customer. Whichever has a row for this profile_id
-  // owns the notifications we'll scope to.
+  if (!body.id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
+
+  // Resolve the user's role record (cleaner or customer)
   const { data: cleaner } = await supabase
     .from('cleaners')
     .select('id')
@@ -51,23 +51,14 @@ export async function POST(request: NextRequest) {
     scopeId = (customer as any).id
   }
 
-  // ─── Build the update ───────────────────────────────────────────────────
-  let query = (supabase.from('notifications') as any)
-    .update({ read: true })
+  const { error } = await (supabase.from('notifications') as any)
+    .delete()
+    .eq('id', body.id)
     .eq(scopeColumn, scopeId)
 
-  if (body.all) {
-    query = query.eq('read', false)
-  } else if (Array.isArray(body.ids) && body.ids.length > 0) {
-    query = query.in('id', body.ids)
-  } else {
-    return NextResponse.json({ error: 'Provide ids[] or all=true' }, { status: 400 })
-  }
-
-  const { error } = await query
   if (error) {
-    console.error('Mark notifications read failed:', error)
-    return NextResponse.json({ error: 'Update failed' }, { status: 500 })
+    console.error('Dismiss notification failed:', error)
+    return NextResponse.json({ error: 'Dismiss failed' }, { status: 500 })
   }
 
   return NextResponse.json({ ok: true })
