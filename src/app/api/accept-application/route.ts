@@ -127,9 +127,9 @@ export async function POST(request: NextRequest) {
         await supabaseAdmin.from('notifications').insert({
           cleaner_id: application.cleaner_id,
           type: 'chat_accepted',
-          title: `💬 ${customerFirstName} accepted your chat`,
+          title: `${customerFirstName} accepted your chat`,
           body: 'You can now message them directly about the job.',
-          link: '/cleaner/dashboard',
+          link: `/cleaner/dashboard?chat=${conversationId}`,
         } as any)
       } catch (notifyErr) {
         // Notifications are a nice-to-have — never block the core flow

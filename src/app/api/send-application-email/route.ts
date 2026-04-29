@@ -24,13 +24,14 @@ export async function POST(request: NextRequest) {
     // Try profiles first, then fall back to looking up via customers table
     let customerEmail: string | null = null
     let customerFullName: string | null = null
+    let customersTableId: string | null = null
 
     // Primary path: use requestId to join clean_requests -> customers -> profiles
     // This avoids RLS issues since service role can read clean_requests
     if (requestId) {
       const { data: reqData } = await supabaseAdmin
         .from('clean_requests')
-        .select('customers(profile_id, profiles(email, full_name))')
+        .select('customer_id, customers(id, profile_id, profiles(email, full_name))')
         .eq('id', requestId)
         .single() as { data: any }
 
@@ -39,6 +40,7 @@ export async function POST(request: NextRequest) {
         customerEmail = profile.email
         customerFullName = profile.full_name
       }
+      customersTableId = reqData?.customers?.id ?? reqData?.customer_id ?? null
     }
 
     // Fallback: customerId as direct profiles UUID (legacy)
@@ -66,6 +68,25 @@ export async function POST(request: NextRequest) {
     const hasReviews = cleanerReviews && cleanerReviews.length > 0
     const jobsCompleted = cleanerJobsCompleted ?? 0
     const rating = cleanerRating ?? 0
+
+    // ─── In-platform notification for the customer ─────────────────────────
+    // Fires alongside the email so the customer sees the application live in
+    // their dashboard (with a header badge) without needing to refresh.
+    if (customersTableId) {
+      try {
+        await supabaseAdmin.from('notifications').insert({
+          customer_id: customersTableId,
+          type: 'new_application',
+          title: `New application from ${cleanerName}`,
+          body: message?.trim()
+            ? `"${(message as string).slice(0, 80)}${(message as string).length > 80 ? '…' : ''}"`
+            : 'A cleaner has applied to your job. Tap to review.',
+          link: '/customer/dashboard',
+        } as any)
+      } catch (e) {
+        console.error('Customer notification insert failed (non-fatal):', e)
+      }
+    }
 
     const reviewsSection = hasReviews ? `
       <div style="-webkit-filter:blur(4px);filter:blur(4px);">

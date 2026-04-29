@@ -612,23 +612,44 @@ function ApplicationsSection({ requestIds, requests, onAccept, onOpenChat }: {
   const [accepting, setAccepting] = useState<string | null>(null)
   const [declining, setDeclining] = useState<string | null>(null)
 
+  // ─── Initial fetch + realtime subscription ──────────────────────────────
+  // Uses /api/get-customer-applications (service role) to bypass the RLS
+  // that was stripping cleaner names off the nested profiles join.
+  // Subscribes to applications INSERT for this customer's request_ids so
+  // new applications appear in real-time without a refresh.
   useEffect(() => {
     if (!requestIds.length) { setLoading(false); return }
+    let cancelled = false
+
     const fetchApplications = async () => {
-      const supabase = createClient()
-      const { data: appData, error } = await (supabase as any).from('applications').select('*').in('request_id', requestIds).order('created_at', { ascending: false })
-      if (error || !appData) { setLoading(false); return }
-      const enriched: Application[] = await Promise.all(
-        appData.map(async (app: any) => {
-          const { data: cleaner } = await (supabase as any).from('cleaners').select('profile_id, created_at, profiles(full_name)').eq('id', app.cleaner_id).single()
-          const fullName = cleaner?.profiles?.full_name ?? ''
-          const memberSince = cleaner?.created_at ? new Date(cleaner.created_at).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }) : 'Recently'
-          return { ...app, cleaner_name: fullName ? formatFirstLastInitial(fullName) : 'Cleaner', cleaner_initial: fullName ? fullName[0]?.toUpperCase() : 'C', cleaner_member_since: memberSince }
-        })
-      )
-      setApplications(enriched); setLoading(false)
+      try {
+        const res = await fetch(`/api/get-customer-applications?requestIds=${encodeURIComponent(requestIds.join(','))}`)
+        const data = await res.json()
+        if (!cancelled && res.ok) setApplications(data.applications ?? [])
+      } catch (err) {
+        console.error('Failed to load applications:', err)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
     }
     fetchApplications()
+
+    // Realtime: refetch on new application insert for any of our requests
+    const supabase = createClient()
+    const channel = supabase
+      .channel(`customer-applications-${requestIds.join(',')}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'applications',
+        filter: `request_id=in.(${requestIds.join(',')})`,
+      }, () => { fetchApplications() })
+      .subscribe()
+
+    return () => {
+      cancelled = true
+      supabase.removeChannel(channel)
+    }
   }, [requestIds.join(',')])
 
   const handleAccept = async (app: Application) => {

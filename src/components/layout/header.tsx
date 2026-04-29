@@ -121,26 +121,47 @@ export function Header({ userRole: explicitRole }: HeaderProps) {
     }
   }, [shouldAutoDetect, pathname])
 
-  // ─── Unread notifications for cleaners (unchanged) ──────────────────────
+  // ─── Unread notifications (cleaner + customer) ─────────────────────────
+  // Both roles get badged. The notifications table has cleaner_id OR
+  // customer_id set (never both); we look up the right ID and filter
+  // accordingly.
   useEffect(() => {
-    if (effectiveRole !== 'cleaner') return
+    if (effectiveRole !== 'cleaner' && effectiveRole !== 'customer') return
     let cancelled = false
     const supabase = createClient()
 
     const fetchCount = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
-      const { data: cleaner } = await supabase
-        .from('cleaners')
-        .select('id')
-        .eq('profile_id', user.id)
-        .single()
-      if (!cleaner || cancelled) return
-      const { count } = await supabase
-        .from('notifications')
-        .select('id', { count: 'exact', head: true })
-        .eq('cleaner_id', (cleaner as any).id)
-        .eq('read', false)
+
+      let query
+      if (effectiveRole === 'cleaner') {
+        const { data: cleaner } = await supabase
+          .from('cleaners')
+          .select('id')
+          .eq('profile_id', user.id)
+          .single()
+        if (!cleaner || cancelled) return
+        query = supabase
+          .from('notifications')
+          .select('id', { count: 'exact', head: true })
+          .eq('cleaner_id', (cleaner as any).id)
+          .eq('read', false)
+      } else {
+        const { data: customer } = await supabase
+          .from('customers')
+          .select('id')
+          .eq('profile_id', user.id)
+          .single()
+        if (!customer || cancelled) return
+        query = supabase
+          .from('notifications')
+          .select('id', { count: 'exact', head: true })
+          .eq('customer_id', (customer as any).id)
+          .eq('read', false)
+      }
+
+      const { count } = await query
       if (!cancelled && typeof count === 'number') setUnreadCount(count)
     }
 
@@ -219,7 +240,7 @@ export function Header({ userRole: explicitRole }: HeaderProps) {
           aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
         >
           {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-          {!mobileMenuOpen && effectiveRole === 'cleaner' && <UnreadBadge count={unreadCount} />}
+          {!mobileMenuOpen && (effectiveRole === 'cleaner' || effectiveRole === 'customer') && <UnreadBadge count={unreadCount} />}
         </button>
       </nav>
 
@@ -250,7 +271,7 @@ export function Header({ userRole: explicitRole }: HeaderProps) {
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   My dashboard
-                  {effectiveRole === 'cleaner' && unreadCount > 0 && (
+                  {(effectiveRole === 'cleaner' || effectiveRole === 'customer') && unreadCount > 0 && (
                     <span className="ml-2 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-xs font-bold">
                       {unreadCount > 9 ? '9+' : unreadCount}
                     </span>

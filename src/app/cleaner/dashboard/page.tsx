@@ -525,7 +525,21 @@ export default function CleanerDashboardPage() {
       try { await fetch('/api/notifications/read', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: [n.id] }) }) }
       catch (e) { console.error('Failed to mark notification read:', e) }
     }
-    if (n.link) router.push(n.link)
+    if (!n.link) return
+
+    // If the link points at this same dashboard with a ?chat=<id> param, the
+    // chat widget won't auto-open from a router.push (no remount). Dispatch
+    // the open-chat event directly instead so the conversation opens inline.
+    try {
+      const linkUrl = new URL(n.link, window.location.origin)
+      const chatId = linkUrl.searchParams.get('chat')
+      if (chatId && linkUrl.pathname === '/cleaner/dashboard') {
+        window.dispatchEvent(new CustomEvent('vouchee:open-chat', { detail: { conversationId: chatId } }))
+        return
+      }
+    } catch {}
+
+    router.push(n.link)
   }
 
   const handleSignOut = async () => { const supabase = createClient(); await supabase.auth.signOut(); router.push('/') }

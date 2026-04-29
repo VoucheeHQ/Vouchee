@@ -782,7 +782,7 @@ export function ChatWidget() {
   }, [])
 
   useEffect(() => {
-    if (!initialized || conversationsRef.current.length === 0) return
+    if (!initialized) return
 
     const channel = supabase
       .channel('global-messages-tray')
@@ -820,6 +820,26 @@ export function ChatWidget() {
         const conv = payload.new as Conversation
         if (conv.cleaner_id !== cleanerId) return
         const enriched = await enrichOne(supabase, conv, 'cleaner')
+        setConversations(prev => prev.find(c => c.id === conv.id) ? prev : [...prev, enriched])
+        playNotificationSound()
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [currentRole])
+
+  // Customer-side equivalent — fires when a customer accepts an application
+  // and a conversation is newly created against their profile_id.
+  useEffect(() => {
+    if (currentRole !== 'customer' || !currentUserIdRef.current) return
+    const customerProfileId = currentUserIdRef.current
+
+    const channel = supabase
+      .channel('new-conversations-customer')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'conversations' }, async payload => {
+        const conv = payload.new as Conversation
+        if (conv.customer_id !== customerProfileId) return
+        const enriched = await enrichOne(supabase, conv, 'customer')
         setConversations(prev => prev.find(c => c.id === conv.id) ? prev : [...prev, enriched])
         playNotificationSound()
       })
