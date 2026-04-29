@@ -14,7 +14,9 @@ interface Conversation {
 }
 
 interface EnrichedConversation extends Conversation {
-  displayName: string
+  displayName: string         // header line 1: "Alison C." (customer) or "Faygate / Kilnwood Vale" (cleaner)
+  avatarLabel: string         // big letter/number in the avatar bubble — "A" for customer, "1" / "2" for cleaner
+  subtitle: string            // header line 2: zone name (cleaner) or zone (customer)
   zone: string
   lastMessage: string
   lastMessageTime: string | null
@@ -172,14 +174,14 @@ function TypingDots() {
 
 // ─── Avatar ───────────────────────────────────────────────────────────────────
 
-function Avatar({ name, color, size = 36 }: { name: string; color: string; size?: number }) {
+function Avatar({ label, color, size = 36 }: { label: string; color: string; size?: number }) {
   return (
     <div style={{
       width: size, height: size, borderRadius: '50%', background: color, flexShrink: 0,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: size * 0.38, fontWeight: 800, color: 'white',
+      fontSize: size * 0.42, fontWeight: 800, color: 'white',
     }}>
-      {name[0]?.toUpperCase() ?? '?'}
+      {label}
     </div>
   )
 }
@@ -409,13 +411,13 @@ function ChatWindow({ conversation, currentUserId, currentRole, onClose }: {
     }}>
       {/* Header */}
       <div style={{ padding: '10px 12px', background: '#1e293b', color: 'white', display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
-        <Avatar name={conversation.displayName} color={conversation.avatarColor} size={32} />
+        <Avatar label={conversation.avatarLabel} color={conversation.avatarColor} size={32} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: '13px', fontWeight: 700, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {conversation.displayName}
           </div>
           <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', lineHeight: 1.2 }}>
-            {otherIsTyping ? `${conversation.displayName.split(' ')[0]} is typing…` : conversation.zone}
+            {otherIsTyping ? `${conversation.displayName.split(' ')[0]} is typing…` : conversation.subtitle}
           </div>
         </div>
         <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.7)', cursor: 'pointer', fontSize: '16px', padding: '0 4px', lineHeight: 1 }}>✕</button>
@@ -597,7 +599,7 @@ function MessagingTray({ conversations, openIds, onOpen, onClose, totalUnread }:
                   onClick={() => { onOpen(conv.id); setExpanded(false) }}
                 >
                   <div style={{ position: 'relative', flexShrink: 0 }}>
-                    <Avatar name={conv.displayName} color={conv.avatarColor} size={40} />
+                    <Avatar label={conv.avatarLabel} color={conv.avatarColor} size={40} />
                     {conv.unread > 0 && (
                       <span style={{ position: 'absolute', top: -2, right: -2, width: '16px', height: '16px', borderRadius: '50%', background: '#ef4444', color: 'white', fontSize: '10px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid white' }}>{conv.unread}</span>
                     )}
@@ -630,7 +632,7 @@ function MessagingTray({ conversations, openIds, onOpen, onClose, totalUnread }:
         <div style={{ display: 'flex' }}>
           {conversations.slice(0, 3).map((conv, i) => (
             <div key={conv.id} style={{ marginLeft: i > 0 ? '-8px' : 0, zIndex: 3 - i }}>
-              <Avatar name={conv.displayName} color={conv.avatarColor} size={26} />
+              <Avatar label={conv.avatarLabel} color={conv.avatarColor} size={26} />
             </div>
           ))}
           {/* Show a placeholder icon when no conversations yet */}
@@ -652,19 +654,47 @@ function MessagingTray({ conversations, openIds, onOpen, onClose, totalUnread }:
 
 async function enrichOne(supabase: any, conv: Conversation, role: 'customer' | 'cleaner'): Promise<EnrichedConversation> {
   let displayName = 'Chat'
+  let avatarLabel = '?'
+  let subtitle = ''
   let zone = 'Horsham'
 
   if (role === 'customer') {
-    const { data: cleaner } = await (supabase as any)
-      .from('cleaners').select('profile_id, profiles(full_name), zones').eq('id', conv.cleaner_id).single()
-    if (cleaner?.profiles?.full_name) displayName = formatFirstLastInitial(cleaner.profiles.full_name)
-    zone = cleaner?.zones?.[0] ? (ZONE_LABELS[cleaner.zones[0]] ?? cleaner.zones[0]) : 'Horsham'
+    // Customer side: header shows cleaner's "Alison C." + zone underneath.
+    // Avatar shows cleaner's first initial (A).
+    // Use the canonical /api/cleaners/[id]/card endpoint so RLS can't strip
+    // the join (this was a known problem with the previous client-side join).
+    try {
+      const res = await fetch(`/api/cleaners/${conv.cleaner_id}/card`)
+      if (res.ok) {
+        const { cleaner } = await res.json()
+        displayName = cleaner.name_short || 'Cleaner'
+        avatarLabel = cleaner.initial || 'C'
+        zone = cleaner.zones?.[0] ? (ZONE_LABELS[cleaner.zones[0]] ?? cleaner.zones[0]) : 'Horsham'
+        subtitle = zone
+      }
+    } catch (e) { console.warn('Card fetch failed, falling back:', e) }
+
+    // Belt-and-braces fallback if the API errored — keeps the widget usable
+    if (avatarLabel === '?') {
+      const { data: cleaner } = await (supabase as any)
+        .from('cleaners').select('profile_id, profiles(full_name), zones').eq('id', conv.cleaner_id).single()
+      if (cleaner?.profiles?.full_name) {
+        displayName = formatFirstLastInitial(cleaner.profiles.full_name)
+        avatarLabel = (cleaner.profiles.full_name.trim()[0] ?? 'C').toUpperCase()
+      }
+      zone = cleaner?.zones?.[0] ? (ZONE_LABELS[cleaner.zones[0]] ?? cleaner.zones[0]) : 'Horsham'
+      subtitle = zone
+    }
   } else {
+    // Cleaner side: header shows zone, avatar shows the chat number (set later
+    // in enrichConversations when we know the index across all chats).
     const { data: req } = await (supabase as any)
       .from('clean_requests').select('zone').eq('id', conv.clean_request_id).single()
     const zoneKey = req?.zone ?? 'central_south_east'
     zone = ZONE_LABELS[zoneKey] ?? zoneKey
     displayName = zone
+    subtitle = zone
+    avatarLabel = '?' // placeholder — replaced below in enrichConversations
   }
 
   const { data: reqData } = await (supabase as any)
@@ -677,6 +707,8 @@ async function enrichOne(supabase: any, conv: Conversation, role: 'customer' | '
   return {
     ...conv,
     displayName,
+    avatarLabel,
+    subtitle,
     zone,
     lastMessage: lastMsg?.content ?? '',
     lastMessageTime: lastMsg?.created_at ?? null,
@@ -695,15 +727,15 @@ async function enrichConversations(supabase: any, convos: Conversation[], role: 
     })
   )
   if (role === 'cleaner') {
-    const zoneCounts: Record<string, number> = {}
-    enriched.forEach(c => { zoneCounts[c.zone] = (zoneCounts[c.zone] ?? 0) + 1 })
-    const zoneIndexes: Record<string, number> = {}
-    enriched.forEach(c => {
-      if (zoneCounts[c.zone] > 1) {
-        zoneIndexes[c.zone] = (zoneIndexes[c.zone] ?? 0) + 1
-        c.conversationIndex = zoneIndexes[c.zone]
-        c.displayName = `${c.zone} ${c.conversationIndex}`
-      }
+    // Cleaner-side numbering: each conversation gets a sequential number 1..N
+    // shown in the avatar bubble. Numbering is global (not per zone) — the
+    // cleaner sees "Chat 1, Chat 2, Chat 3" regardless of where each is.
+    // Sort by the conversation's id (uuid) for stability across loads —
+    // ideally we'd sort by created_at but that's not on the conversation row.
+    const sorted = [...enriched].sort((a, b) => a.id.localeCompare(b.id))
+    sorted.forEach((c, i) => {
+      c.avatarLabel = String(i + 1)
+      c.conversationIndex = i + 1
     })
   }
   return enriched

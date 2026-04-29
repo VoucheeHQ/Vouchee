@@ -6,6 +6,8 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
+import { CleanerCard } from '@/components/cleaner-card'
+import { CleanerCardData } from '@/lib/cleaner-card'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -54,9 +56,7 @@ interface Application {
   status: string
   created_at: string
   message?: string
-  cleaner_name?: string
-  cleaner_initial?: string
-  cleaner_member_since?: string
+  cleaner: CleanerCardData
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -534,50 +534,23 @@ function PastListingRow({ request }: { request: CleaningRequest }) {
 function ApplicationCard({ app, onAccept, onDecline, onOpenChat, accepting, declining }: {
   app: Application; onAccept: () => void; onDecline: () => void; onOpenChat: () => void; accepting: boolean; declining: boolean
 }) {
-  const displayName = app.cleaner_name || 'Cleaner'
-  const initial = displayName[0]?.toUpperCase() || 'C'
-  const memberSince = app.cleaner_member_since || 'recently'
+  const displayName = app.cleaner.name_short
   const appliedLabel = daysSince(app.created_at) === 0 ? 'Applied today' : `Applied ${daysSince(app.created_at)}d ago`
   return (
     <div style={{ background: 'white', borderRadius: '16px', border: '1.5px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
-      <div style={{ padding: '20px 20px 16px' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-            <div style={{ width: '52px', height: '52px', borderRadius: '50%', background: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', fontWeight: 800, color: 'white', flexShrink: 0 }}>{initial}</div>
-            <div>
-              <div style={{ fontSize: '17px', fontWeight: 800, color: '#0f172a', lineHeight: 1.2 }}>{displayName}</div>
-              <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '3px' }}>Member since {memberSince}</div>
-            </div>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end', flexShrink: 0 }}>
-            {['DBS checked', 'Right to work', 'Insured'].map(badge => (
-              <span key={badge} style={{ display: 'flex', alignItems: 'center', gap: '3px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '100px', padding: '3px 8px', fontSize: '10px', fontWeight: 700, color: '#15803d', whiteSpace: 'nowrap' }}>✓ {badge}</span>
-            ))}
-          </div>
+      <div style={{ padding: '20px' }}>
+        {/* Status pill + applied date */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
+          <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '100px', background: app.status === 'pending' ? '#f1f5f9' : app.status === 'accepted' ? '#f0fdf4' : '#fef2f2', color: app.status === 'pending' ? '#64748b' : app.status === 'accepted' ? '#15803d' : '#dc2626' }}>
+            {app.status === 'pending' ? 'New' : app.status === 'accepted' ? 'Chatting' : 'Declined'}
+          </span>
+          <span style={{ fontSize: '12px', color: '#94a3b8' }}>{appliedLabel}</span>
         </div>
+
+        {/* Shared CleanerCard — single source of truth for cleaner display */}
+        <CleanerCard data={app.cleaner} variant="full" />
       </div>
-      <div style={{ padding: '0 20px 16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '100px', background: app.status === 'pending' ? '#f1f5f9' : app.status === 'accepted' ? '#f0fdf4' : '#fef2f2', color: app.status === 'pending' ? '#64748b' : app.status === 'accepted' ? '#15803d' : '#dc2626' }}>
-          {app.status === 'pending' ? 'New' : app.status === 'accepted' ? 'Chatting' : 'Declined'}
-        </span>
-        <span style={{ fontSize: '12px', color: '#94a3b8' }}>{appliedLabel}</span>
-      </div>
-      <div style={{ padding: '0 20px 16px' }}>
-        <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>Reviews</div>
-        <div style={{ filter: 'blur(4px)', pointerEvents: 'none' }}>
-          <div style={{ padding: '10px 12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '6px' }}>
-            <span style={{ color: '#f59e0b', fontSize: '12px' }}>★★★★★</span>
-            <div style={{ fontSize: '13px', color: '#475569', marginTop: '3px', lineHeight: 1.4 }}>Absolutely brilliant — left the house spotless. Would highly recommend.</div>
-            <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '3px' }}>— Sarah T.</div>
-          </div>
-          <div style={{ padding: '10px 12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-            <span style={{ color: '#f59e0b', fontSize: '12px' }}>★★★★★</span>
-            <div style={{ fontSize: '13px', color: '#475569', marginTop: '3px', lineHeight: 1.4 }}>Very professional and thorough. Always on time and easy to communicate with.</div>
-            <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '3px' }}>— James H.</div>
-          </div>
-        </div>
-        <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '10px', textAlign: 'center', fontStyle: 'italic' }}>🔒 Accept this application to unlock their full reviews</div>
-      </div>
+
       {app.message && (
         <div style={{ padding: '0 20px 16px', borderTop: '1px solid #f1f5f9' }}>
           <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px', marginTop: '16px' }}>{displayName}'s message</div>
@@ -655,7 +628,7 @@ function ApplicationsSection({ requestIds, requests, onAccept, onOpenChat }: {
   const handleAccept = async (app: Application) => {
     setAccepting(app.id)
     const req = requests.find(r => r.id === app.request_id)
-    await onAccept(app.id, app.request_id, app.cleaner_name ?? 'Cleaner', req?.frequency ?? 'monthly')
+    await onAccept(app.id, app.request_id, app.cleaner.name_short, req?.frequency ?? 'monthly')
     setApplications(prev => prev.filter(a => a.id !== app.id)); setAccepting(null)
   }
 

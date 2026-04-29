@@ -168,7 +168,43 @@ export function Header({ userRole: explicitRole }: HeaderProps) {
     fetchCount()
     const interval = setInterval(fetchCount, 60000)
 
-    return () => { cancelled = true; clearInterval(interval) }
+    // Realtime subscription — bumps the badge instantly when a new notification
+    // INSERT arrives for this user. Refetches the actual count rather than
+    // incrementing a local counter so we stay accurate even if many fire at once.
+    let channel: any = null
+    ;(async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user || cancelled) return
+
+      let filter: string
+      if (effectiveRole === 'cleaner') {
+        const { data: cleaner } = await supabase
+          .from('cleaners').select('id').eq('profile_id', user.id).single() as { data: { id: string } | null }
+        if (!cleaner || cancelled) return
+        filter = `cleaner_id=eq.${cleaner.id}`
+      } else {
+        const { data: customer } = await supabase
+          .from('customers').select('id').eq('profile_id', user.id).single() as { data: { id: string } | null }
+        if (!customer || cancelled) return
+        filter = `customer_id=eq.${customer.id}`
+      }
+
+      channel = supabase
+        .channel(`header-notifications-${effectiveRole}`)
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter }, () => {
+          fetchCount()
+        })
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'notifications', filter }, () => {
+          fetchCount() // marks-as-read are UPDATEs; refetch to drop the count
+        })
+        .subscribe()
+    })()
+
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+      if (channel) supabase.removeChannel(channel)
+    }
   }, [effectiveRole, pathname])
 
   const navigation = [
