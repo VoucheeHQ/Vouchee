@@ -72,20 +72,32 @@ export async function POST(request: NextRequest) {
     // ─── In-platform notification for the customer ─────────────────────────
     // Fires alongside the email so the customer sees the application live in
     // their dashboard (with a header badge) without needing to refresh.
+    console.log('[notify-customer] customersTableId:', customersTableId, 'requestId:', requestId)
     if (customersTableId) {
       try {
-        await supabaseAdmin.from('notifications').insert({
-          customer_id: customersTableId,
-          type: 'new_application',
-          title: `New application from ${cleanerName}`,
-          body: message?.trim()
-            ? `"${(message as string).slice(0, 80)}${(message as string).length > 80 ? '…' : ''}"`
-            : 'A cleaner has applied to your job. Tap to review.',
-          link: '/customer/dashboard',
-        } as any)
-      } catch (e) {
-        console.error('Customer notification insert failed (non-fatal):', e)
+        const { data: notifData, error: notifErr } = await supabaseAdmin
+          .from('notifications')
+          .insert({
+            customer_id: customersTableId,
+            type: 'new_application',
+            title: `New application from ${cleanerName}`,
+            body: message?.trim()
+              ? `"${(message as string).slice(0, 80)}${(message as string).length > 80 ? '…' : ''}"`
+              : 'A cleaner has applied to your job. Tap to review.',
+            link: '/customer/dashboard',
+          } as any)
+          .select('id')
+          .single()
+        if (notifErr) {
+          console.error('[notify-customer] insert error:', JSON.stringify(notifErr))
+        } else {
+          console.log('[notify-customer] inserted id:', (notifData as any)?.id)
+        }
+      } catch (e: any) {
+        console.error('[notify-customer] threw:', e?.message ?? e)
       }
+    } else {
+      console.warn('[notify-customer] SKIPPED — customersTableId is null/undefined')
     }
 
     const reviewsSection = hasReviews ? `
