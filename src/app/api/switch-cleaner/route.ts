@@ -162,6 +162,37 @@ function buildCustomerCancelNowHtml(opts: {
   return emailShell(appUrl, inner, 'Cleaner switch confirmed')
 }
 
+// ─── Cleaner email (cancel now) ───────────────────────────────────────────────
+
+function buildCleanerEndedHtml(opts: {
+  cleanerFirstName: string; customerFirstName: string; appUrl: string
+}) {
+  const { cleanerFirstName, customerFirstName, appUrl } = opts
+  const inner = `
+    <p style="margin:0 0 6px;font-size:22px;font-weight:800;color:#0f172a;">An update about ${customerFirstName}</p>
+    <p style="margin:0 0 24px;font-size:14px;color:#64748b;line-height:1.6;">
+      Hi ${cleanerFirstName}, we wanted to let you know that ${customerFirstName} has decided to end their cleaning arrangement with you on Vouchee. Their subscription has been cancelled with immediate effect.
+    </p>
+    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 22px;margin-bottom:24px;">
+      <p style="margin:0;font-size:13px;color:#475569;line-height:1.7;">
+        We understand this isn't easy to hear. Things don't always work out, and that's okay — there's no fault assigned. You're free to keep applying to other jobs as usual.
+      </p>
+    </div>
+    <p style="margin:0 0 24px;font-size:14px;color:#64748b;line-height:1.6;">
+      New listings appear regularly in your area. Keep an eye on your job alerts and dashboard.
+    </p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+      <tr><td align="center">
+        <a href="${appUrl}/jobs" style="display:inline-block;background:${BRAND_BLUE};color:#ffffff;font-size:14px;font-weight:700;padding:13px 28px;border-radius:10px;text-decoration:none;">Browse new jobs →</a>
+      </td></tr>
+    </table>
+    <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.5;text-align:center;">
+      Questions? <a href="mailto:cleaners@vouchee.co.uk" style="color:${BRAND_BLUE};">cleaners@vouchee.co.uk</a>
+    </p>
+  `
+  return emailShell(appUrl, inner, 'An update about your Vouchee customer')
+}
+
 // ─── Customer email (find replacement first) ──────────────────────────────────
 
 function buildCustomerPendingHtml(opts: {
@@ -337,11 +368,15 @@ export async function POST(request: NextRequest) {
     .from('profiles').select('full_name, email').eq('id', user.id).single() as { data: { full_name: string | null; email: string | null } | null }
 
   let oldCleanerName = 'Unknown'
+  let oldCleanerEmail: string | null = null
+  let oldCleanerFirstName = 'there'
   if (oldCleanerId) {
     const { data: cr } = await admin.from('cleaners').select('profile_id').eq('id', oldCleanerId).single() as { data: { profile_id: string } | null }
     if (cr) {
-      const { data: cp } = await admin.from('profiles').select('full_name').eq('id', cr.profile_id).single() as { data: { full_name: string | null } | null }
+      const { data: cp } = await admin.from('profiles').select('full_name, email').eq('id', cr.profile_id).single() as { data: { full_name: string | null; email: string | null } | null }
       oldCleanerName = cp?.full_name ?? 'Unknown'
+      oldCleanerEmail = cp?.email ?? null
+      oldCleanerFirstName = cp?.full_name?.split(' ')[0] ?? 'there'
     }
   }
 
@@ -391,6 +426,30 @@ export async function POST(request: NextRequest) {
             ? buildCustomerPendingHtml({ customerFirstName, appUrl })
             : buildCustomerCancelNowHtml({ customerFirstName, isBeforeStartDate, appUrl }),
         })
+      : Promise.resolve(null),
+    // ─── Notify the old cleaner (cancel-now path only) ──────────────────────
+    // For keepCurrent=true, the farewell email fires later from confirm-switch
+    // when the customer locks in their replacement and a last-clean date exists.
+    !keepCurrent && oldCleanerEmail
+      ? resend.emails.send({
+          from: 'Vouchee <hello@vouchee.co.uk>',
+          to: oldCleanerEmail,
+          subject: `An update about your Vouchee customer`,
+          html: buildCleanerEndedHtml({
+            cleanerFirstName: oldCleanerFirstName,
+            customerFirstName,
+            appUrl,
+          }),
+        })
+      : Promise.resolve(null),
+    !keepCurrent && oldCleanerId
+      ? admin.from('notifications').insert({
+          cleaner_id: oldCleanerId,
+          type: 'job_lost',
+          title: `${customerFirstName} has ended your cleaning arrangement`,
+          body: `Your subscription with ${customerFirstName} has been cancelled. New listings appear regularly — keep an eye on your alerts.`,
+          link: '/jobs',
+        } as any)
       : Promise.resolve(null),
   ])
 
