@@ -189,11 +189,12 @@ function Avatar({ label, color, size = 36 }: { label: string; color: string; siz
 
 // ─── Chat Window ──────────────────────────────────────────────────────────────
 
-function ChatWindow({ conversation, currentUserId, currentRole, onClose }: {
+function ChatWindow({ conversation, currentUserId, currentRole, onClose, onDismiss }: {
   conversation: EnrichedConversation
   currentUserId: string
   currentRole: 'customer' | 'cleaner'
-  onClose: () => void
+  onClose: () => void   // closes the floating window (chat stays in tray)
+  onDismiss: () => void // removes the conversation from the tray entirely
 }) {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
@@ -399,7 +400,11 @@ function ChatWindow({ conversation, currentUserId, currentRole, onClose }: {
 
   const showSuggestions = currentRole === 'customer' && !customerHasSent && !loading
   const isFulfilled = conversation.requestStatus === 'fulfilled'
-  const showApproveButton = currentRole === 'customer' && !isFulfilled && applicationId
+  // The chat is "closed" when the customer has removed/cancelled their listing.
+  // When this is true, the input is disabled and we show a banner with a
+  // dismiss button so the cleaner can clear the chat from their tray.
+  const isClosed = conversation.requestStatus === 'deleted' || conversation.requestStatus === 'cancelled'
+  const showApproveButton = currentRole === 'customer' && !isFulfilled && !isClosed && applicationId
 
   return (
     <div style={{
@@ -542,26 +547,44 @@ function ChatWindow({ conversation, currentUserId, currentRole, onClose }: {
         </div>
       )}
 
-      {isFulfilled && (
+      {isFulfilled && !isClosed && (
         <div style={{ padding: '8px 12px', background: '#f0fdf4', borderTop: '1px solid #bbf7d0', flexShrink: 0, textAlign: 'center' }}>
           <span style={{ fontSize: '12px', fontWeight: 600, color: '#15803d' }}>✓ Job confirmed — chat stays open</span>
         </div>
       )}
 
-      <div style={{ padding: '8px 12px', borderTop: '1px solid #f1f5f9', display: 'flex', gap: '6px', flexShrink: 0 }}>
+      {/* Closed banner — customer removed/cancelled their listing. The cleaner
+          can no longer send messages but can still read history. They can
+          press "Dismiss" to remove the chat from their tray entirely. */}
+      {isClosed && (
+        <div style={{ padding: '10px 12px', background: '#f8fafc', borderTop: '1px solid #e2e8f0', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+          <span style={{ fontSize: '12px', color: '#64748b', flex: 1 }}>
+            🔒 This chat is closed — the customer's listing was removed
+          </span>
+          <button
+            onClick={onDismiss}
+            style={{ background: '#0f172a', border: 'none', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', fontWeight: 700, color: 'white', cursor: 'pointer', fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)", flexShrink: 0 }}
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      <div style={{ padding: '8px 12px', borderTop: '1px solid #f1f5f9', display: 'flex', gap: '6px', flexShrink: 0, opacity: isClosed ? 0.5 : 1, pointerEvents: isClosed ? 'none' : 'auto' }}>
         <input
           value={input}
           onChange={e => handleInputChange(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
-          placeholder="Write a message…"
+          placeholder={isClosed ? 'Chat closed' : 'Write a message…'}
+          disabled={isClosed}
           style={{ flex: 1, padding: '8px 12px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px', fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)", outline: 'none', color: '#0f172a' }}
         />
-        <button onClick={() => handleSend()} disabled={!input.trim() || sending} style={{
+        <button onClick={() => handleSend()} disabled={!input.trim() || sending || isClosed} style={{
           padding: '8px 14px', borderRadius: '8px', border: 'none',
-          background: input.trim() ? '#2563eb' : '#e2e8f0',
-          color: input.trim() ? 'white' : '#94a3b8',
+          background: input.trim() && !isClosed ? '#2563eb' : '#e2e8f0',
+          color: input.trim() && !isClosed ? 'white' : '#94a3b8',
           fontWeight: 700, fontSize: '13px',
-          cursor: input.trim() ? 'pointer' : 'not-allowed',
+          cursor: input.trim() && !isClosed ? 'pointer' : 'not-allowed',
           fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)",
         }}>Send</button>
       </div>
@@ -592,7 +615,15 @@ function MessagingTray({ conversations, openIds, onOpen, onClose, totalUnread }:
             {conversations.length === 0 ? (
               <div style={{ padding: '24px 16px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>No conversations yet</div>
             ) : (
-              conversations.map(conv => (
+              [...conversations]
+                .sort((a, b) => {
+                  // Newest activity first. Conversations with no messages yet
+                  // sort to the bottom (treated as oldest).
+                  const ta = a.lastMessageTime ? new Date(a.lastMessageTime).getTime() : 0
+                  const tb = b.lastMessageTime ? new Date(b.lastMessageTime).getTime() : 0
+                  return tb - ta
+                })
+                .map(conv => (
                 <div key={conv.id}
                   style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 16px', cursor: 'pointer', background: openIds.has(conv.id) ? '#f8fafc' : 'white', borderBottom: '1px solid #f8fafc' }}
                   onMouseEnter={e => (e.currentTarget.style.background = '#f1f5f9')}
@@ -715,7 +746,11 @@ async function enrichOne(supabase: any, conv: Conversation, role: 'customer' | '
     lastMessage: lastMsg?.content ?? '',
     lastMessageTime: lastMsg?.created_at ?? null,
     unread: 0,
-    avatarColor: getAvatarColor(conv.cleaner_id),
+    // Avatar color: use clean_request_id for cleaner-side (each chat gets its
+    // own stable color, helps distinguish numbered bubbles), and cleaner_id
+    // for customer-side (each cleaner gets a stable color across their chats).
+    // Same AVATAR_COLORS palette either way for consistent visual language.
+    avatarColor: getAvatarColor(role === 'cleaner' ? conv.clean_request_id : conv.cleaner_id),
     requestStatus: reqData?.status ?? undefined,
     requestFrequency: reqData?.frequency ?? 'monthly',
   }
@@ -873,6 +908,27 @@ export function ChatWidget() {
     return () => { supabase.removeChannel(channel) }
   }, [currentRole])
 
+  // ─── Listen for clean_request status changes ───────────────────────────────
+  // When a customer removes/cancels their listing, every conversation tied to
+  // that request must update so the cleaner sees the closed-chat banner. We
+  // subscribe globally to clean_requests UPDATEs and patch any matching convs.
+  useEffect(() => {
+    if (!initialized) return
+    const channel = supabase
+      .channel('clean-requests-status')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'clean_requests' }, payload => {
+        const row = payload.new as { id: string; status: string; frequency: string | null }
+        setConversations(prev => prev.map(c =>
+          c.clean_request_id === row.id
+            ? { ...c, requestStatus: row.status, requestFrequency: row.frequency ?? c.requestFrequency }
+            : c
+        ))
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [initialized])
+
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_OUT') {
@@ -950,6 +1006,7 @@ export function ChatWidget() {
           currentUserId={currentUserId}
           currentRole={currentRole}
           onClose={() => closeWindow(conv.id)}
+          onDismiss={() => removeFromTray(conv.id)}
         />
       ))}
       <MessagingTray
