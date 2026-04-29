@@ -5,38 +5,40 @@ import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Header } from '@/components/layout/header'
+import { CleanerCard } from '@/components/cleaner-card'
+import { CleanerCardData } from '@/lib/cleaner-card'
 
-interface CleanerInfo {
-  id: string
-  short_id: string
-  profile_id: string
-  full_name: string
-  created_at: string
-  rating_average: number | null
-  rating_count: number
-  dbs_verified: boolean
-  insurance_verified: boolean
-  right_to_work_verified: boolean
-  cleans_completed: number | null
-}
+// ─────────────────────────────────────────────────────────────────────────────
+// /c/[shortId] — public cleaner profile + review submission page.
+//
+// Layout:
+//   1. <CleanerCard variant="public" /> — same canonical card customers see
+//      when a cleaner applies, but with reviews unblurred + zones shown
+//   2. Review submission form (or login prompt / owner banner / cleaner-viewing
+//      message depending on viewer)
+//   3. Existing reviews list
+//
+// Data source: /api/cleaners/[id]/card returns the canonical CleanerCardData.
+// We do one short_id → uuid lookup, then fetch the full card via service role
+// (bypasses RLS so credentials, stats, reviews all populate reliably).
+// ─────────────────────────────────────────────────────────────────────────────
 
-interface Review {
+interface ReviewListItem {
   id: string
   stars: number
   body: string
   created_at: string
-  customer_name: string | null
+  customer_name: string
 }
 
 const MIN_REVIEW_CHARS = 50
 const MAX_REVIEW_CHARS = 2000
 
 function formatShortName(fullName: string) {
-  const parts = fullName.trim().split(' ')
+  const parts = (fullName ?? '').trim().split(' ')
+  if (!parts[0]) return 'Customer'
   return parts.length === 1 ? parts[0] : `${parts[0]} ${parts[parts.length - 1].charAt(0)}.`
 }
-function formatMonthYear(iso: string) { return new Date(iso).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }) }
-function getInitial(name: string) { return name.trim().charAt(0).toUpperCase() }
 
 function relativeDate(iso: string) {
   const diff = Date.now() - new Date(iso).getTime()
@@ -53,7 +55,7 @@ function relativeDate(iso: string) {
 function Stars({ value, size = 14 }: { value: number; size?: number }) {
   return (
     <span style={{ display: 'inline-flex', gap: '2px', alignItems: 'center' }}>
-      {[1,2,3,4,5].map(i => (
+      {[1, 2, 3, 4, 5].map(i => (
         <span key={i} style={{ fontSize: `${size}px`, color: i <= value ? '#f59e0b' : '#e2e8f0', lineHeight: 1 }}>
           {i <= value ? '★' : '☆'}
         </span>
@@ -66,10 +68,10 @@ export default function CleanerReviewPage() {
   const params = useParams<{ shortId: string }>()
   const shortId = params?.shortId
 
-  const [cleaner, setCleaner] = useState<CleanerInfo | null>(null)
-  const [reviews, setReviews] = useState<Review[]>([])
-  const [authed, setAuthed] = useState<boolean | null>(null) // null = still checking
-  const [viewerIsOwner, setViewerIsOwner] = useState(false)  // the cleaner viewing their own profile
+  const [cardData, setCardData] = useState<CleanerCardData | null>(null)
+  const [reviews, setReviews] = useState<ReviewListItem[]>([])
+  const [authed, setAuthed] = useState<boolean | null>(null)
+  const [viewerIsOwner, setViewerIsOwner] = useState(false)
   const [viewerRole, setViewerRole] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
@@ -82,74 +84,93 @@ export default function CleanerReviewPage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
 
-  useEffect(() => {
+  // ─── Fetch all the page data ──────────────────────────────────────────────
+  // 1. Look up cleaner UUID + profile_id from short_id
+  // 2. Fetch the full CleanerCardData from /api/cleaners/[id]/card (service role)
+  // 3. Fetch the public reviews list (with customer first names)
+  // 4. Detect viewer role to branch the review form / owner banner
+  const loadPage = async () => {
     if (!shortId) return
-    const load = async () => {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      setAuthed(!!user)
+    const supabase = createClient()
 
-      // Fetch viewer's role if logged in — used to decide what to show
-      let currentViewerRole: string | null = null
-      if (user) {
-        const { data: viewerProfile } = await (supabase as any)
-          .from('profiles').select('role').eq('id', user.id).single()
-        currentViewerRole = (viewerProfile as any)?.role ?? null
-        setViewerRole(currentViewerRole)
-      }
+    const { data: { user } } = await supabase.auth.getUser()
+    setAuthed(!!user)
 
-      const { data: cleanerRow, error: cleanerErr } = await (supabase as any)
-        .from('cleaners')
-        .select('id, short_id, profile_id, created_at, rating_average, rating_count, dbs_verified, insurance_verified, right_to_work_verified, cleans_completed')
-        .eq('short_id', shortId)
-        .single()
-
-      if (cleanerErr || !cleanerRow) {
-        setNotFound(true); setLoading(false); return
-      }
-
-      const { data: p } = await (supabase as any)
-        .from('profiles').select('full_name').eq('id', (cleanerRow as any).profile_id).single()
-
-      setCleaner({
-        id: (cleanerRow as any).id,
-        short_id: (cleanerRow as any).short_id,
-        profile_id: (cleanerRow as any).profile_id,
-        full_name: (p as any)?.full_name ?? 'Cleaner',
-        created_at: (cleanerRow as any).created_at,
-        rating_average: (cleanerRow as any).rating_average,
-        rating_count: (cleanerRow as any).rating_count,
-        dbs_verified: (cleanerRow as any).dbs_verified,
-        insurance_verified: (cleanerRow as any).insurance_verified,
-        right_to_work_verified: (cleanerRow as any).right_to_work_verified,
-        cleans_completed: (cleanerRow as any).cleans_completed,
-      })
-
-      // Flag whether the logged-in user IS the cleaner being viewed
-      if (user && user.id === (cleanerRow as any).profile_id) {
-        setViewerIsOwner(true)
-      }
-
-      const { data: reviewRows } = await (supabase as any)
-        .from('reviews')
-        .select('id, stars, body, created_at, customer_profile_id')
-        .eq('cleaner_id', (cleanerRow as any).id)
-        .eq('hidden', false)
-        .order('created_at', { ascending: false })
-
-      if (reviewRows) {
-        const enriched = await Promise.all((reviewRows as any[]).map(async (r) => {
-          const { data: cp } = await (supabase as any).from('profiles').select('full_name').eq('id', r.customer_profile_id).single()
-          const full = (cp as any)?.full_name ?? null
-          const display = full ? formatShortName(full) : 'Customer'
-          return { id: r.id, stars: r.stars, body: r.body, created_at: r.created_at, customer_name: display } as Review
-        }))
-        setReviews(enriched)
-      }
-      setLoading(false)
+    let currentViewerRole: string | null = null
+    if (user) {
+      const { data: viewerProfile } = await (supabase as any)
+        .from('profiles').select('role').eq('id', user.id).single()
+      currentViewerRole = (viewerProfile as any)?.role ?? null
+      setViewerRole(currentViewerRole)
     }
-    load()
-  }, [shortId])
+
+    // short_id → cleaner uuid + profile_id (we need profile_id to detect owner)
+    const { data: cleanerLookup, error: lookupErr } = await (supabase as any)
+      .from('cleaners')
+      .select('id, profile_id')
+      .eq('short_id', shortId)
+      .single()
+
+    if (lookupErr || !cleanerLookup) {
+      setNotFound(true)
+      setLoading(false)
+      return
+    }
+
+    const cleanerUuid = (cleanerLookup as any).id as string
+    const cleanerProfileId = (cleanerLookup as any).profile_id as string
+
+    if (user && user.id === cleanerProfileId) setViewerIsOwner(true)
+
+    // Fetch the canonical CleanerCardData via service role
+    try {
+      const res = await fetch(`/api/cleaners/${cleanerUuid}/card`)
+      if (res.ok) {
+        const { cleaner } = await res.json()
+        setCardData(cleaner as CleanerCardData)
+      } else {
+        // 401/404 — show not-found state rather than a broken page
+        setNotFound(true)
+        setLoading(false)
+        return
+      }
+    } catch (e) {
+      console.error('Card fetch failed:', e)
+      setNotFound(true)
+      setLoading(false)
+      return
+    }
+
+    // Fetch the visible reviews with customer first names so we can render
+    // the list below the card (CleanerCardData includes only top 3 — we
+    // want all of them on the public profile)
+    const { data: reviewRows } = await (supabase as any)
+      .from('reviews')
+      .select('id, stars, body, created_at, customer_profile_id')
+      .eq('cleaner_id', cleanerUuid)
+      .eq('hidden', false)
+      .order('created_at', { ascending: false })
+
+    if (reviewRows && reviewRows.length > 0) {
+      const enriched = await Promise.all((reviewRows as any[]).map(async (r) => {
+        const { data: cp } = await (supabase as any)
+          .from('profiles').select('full_name').eq('id', r.customer_profile_id).single()
+        const fullName = (cp as any)?.full_name ?? null
+        return {
+          id: r.id,
+          stars: r.stars,
+          body: r.body,
+          created_at: r.created_at,
+          customer_name: fullName ? formatShortName(fullName) : 'Customer',
+        } as ReviewListItem
+      }))
+      setReviews(enriched)
+    }
+
+    setLoading(false)
+  }
+
+  useEffect(() => { loadPage() }, [shortId])
 
   const handleSubmit = async () => {
     if (submitting) return
@@ -173,29 +194,9 @@ export default function CleanerReviewPage() {
         setError(data.error ?? 'Something went wrong. Please try again.')
       } else {
         setSuccess(true)
-        // Reload reviews so the new one shows immediately
-        const supabase = createClient()
-        if (cleaner) {
-          const { data: reviewRows } = await (supabase as any)
-            .from('reviews')
-            .select('id, stars, body, created_at, customer_profile_id')
-            .eq('cleaner_id', cleaner.id)
-            .eq('hidden', false)
-            .order('created_at', { ascending: false })
-          if (reviewRows) {
-            const enriched = await Promise.all((reviewRows as any[]).map(async (r) => {
-              const { data: cp } = await (supabase as any).from('profiles').select('full_name').eq('id', r.customer_profile_id).single()
-              const full = (cp as any)?.full_name ?? null
-              const display = full ? formatShortName(full) : 'Customer'
-              return { id: r.id, stars: r.stars, body: r.body, created_at: r.created_at, customer_name: display } as Review
-            }))
-            setReviews(enriched)
-          }
-          // Refresh cleaner aggregates
-          const { data: c } = await (supabase as any)
-            .from('cleaners').select('rating_average, rating_count').eq('id', cleaner.id).single()
-          if (c) setCleaner({ ...cleaner, rating_average: (c as any).rating_average, rating_count: (c as any).rating_count })
-        }
+        // Reload the whole page state — the trigger will have updated
+        // rating_average + rating_count, so the card recomputes too
+        await loadPage()
       }
     } catch (e: any) {
       setError(e.message ?? 'Network error. Please try again.')
@@ -212,7 +213,7 @@ export default function CleanerReviewPage() {
     )
   }
 
-  if (notFound || !cleaner) {
+  if (notFound || !cardData) {
     return (
       <div style={{ minHeight: '100vh', background: '#f8fafc', fontFamily: "'DM Sans', sans-serif" }}>
         <Header />
@@ -226,58 +227,20 @@ export default function CleanerReviewPage() {
     )
   }
 
-  const shortName = formatShortName(cleaner.full_name)
-  const memberSince = formatMonthYear(cleaner.created_at)
-  const hasReviews = cleaner.rating_count > 0
+  const shortName = cardData.name_short
 
   return (
     <div style={{ minHeight: '100vh', background: '#f8fafc', fontFamily: "'DM Sans', sans-serif" }}>
       <Header />
       <div style={{ maxWidth: '640px', margin: '0 auto', padding: '32px 24px 60px' }}>
 
-        {/* ── Cleaner card (matches job-card visual vocabulary) ── */}
+        {/* ── Cleaner card — shared CleanerCard component, public variant ── */}
         <div style={{ background: 'white', borderRadius: '20px', border: '1.5px solid #e2e8f0', padding: '24px', marginBottom: '20px', boxShadow: '0 2px 16px rgba(0,0,0,0.04)' }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', marginBottom: '16px' }}>
-            <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'linear-gradient(135deg, #3b82f6, #6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', fontWeight: 800, color: 'white', flexShrink: 0 }}>
-              {getInitial(cleaner.full_name)}
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.2px' }}>{shortName}</div>
-              <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 500, margin: '2px 0 6px' }}>Member since {memberSince}</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                {hasReviews ? (
-                  <>
-                    <Stars value={cleaner.rating_average ?? 0} size={14} />
-                    <span style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>{cleaner.rating_average?.toFixed(1)}</span>
-                    <span style={{ fontSize: '12px', color: '#64748b' }}>· {cleaner.rating_count} {cleaner.rating_count === 1 ? 'review' : 'reviews'}</span>
-                  </>
-                ) : (
-                  <>
-                    {[1,2,3,4,5].map(s => <span key={s} style={{ fontSize: '12px', color: '#e2e8f0' }}>★</span>)}
-                    <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 600, marginLeft: '4px' }}>New cleaner</span>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Trust badges — using VERIFIED status, not claims */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', paddingTop: '12px', borderTop: '1px solid #f1f5f9' }}>
-            {cleaner.dbs_verified && <TrustBadge label="✓ DBS" />}
-            {cleaner.insurance_verified && <TrustBadge label="✓ Insured" />}
-            {cleaner.right_to_work_verified && <TrustBadge label="✓ Right to work" />}
-            {cleaner.cleans_completed != null && cleaner.cleans_completed > 0 && (
-              <TrustBadge label={`${cleaner.cleans_completed} ${cleaner.cleans_completed === 1 ? 'clean' : 'cleans'}`} color="blue" />
-            )}
-            {!cleaner.dbs_verified && !cleaner.insurance_verified && !cleaner.right_to_work_verified && (!cleaner.cleans_completed || cleaner.cleans_completed === 0) && (
-              <span style={{ fontSize: '12px', color: '#94a3b8', fontStyle: 'italic' }}>No verified credentials yet</span>
-            )}
-          </div>
+          <CleanerCard data={cardData} variant="public" />
         </div>
 
         {/* ── Review submission form (branches by viewer) ── */}
         {viewerIsOwner ? (
-          // This is the cleaner viewing their own profile
           <div style={{ background: 'linear-gradient(135deg, #eff6ff, #f0fdf4)', borderRadius: '20px', border: '1.5px solid #bfdbfe', padding: '22px 24px', marginBottom: '20px' }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
               <div style={{ fontSize: '22px', lineHeight: 1, flexShrink: 0 }}>👋</div>
@@ -293,7 +256,6 @@ export default function CleanerReviewPage() {
             </div>
           </div>
         ) : viewerRole === 'cleaner' ? (
-          // A different cleaner viewing another cleaner's profile — no review form
           <div style={{ background: 'white', border: '1.5px solid #e2e8f0', borderRadius: '20px', padding: '22px 24px', marginBottom: '20px', textAlign: 'center' }}>
             <div style={{ fontSize: '20px', marginBottom: '6px' }}>🧹</div>
             <p style={{ fontSize: '13px', color: '#64748b', margin: 0, lineHeight: 1.5 }}>
@@ -307,7 +269,7 @@ export default function CleanerReviewPage() {
             <p style={{ fontSize: '13px', color: '#64748b', margin: '0 0 18px', lineHeight: 1.55 }}>
               We verify reviews to make sure they're from real customers. Log in with the account you used to book <strong>{shortName}</strong>.
             </p>
-            <Link href={`/login?redirect=${encodeURIComponent(`/c/${cleaner.short_id}`)}`}
+            <Link href={`/login?redirect=${encodeURIComponent(`/c/${cardData.short_id}`)}`}
               style={{ display: 'inline-block', background: '#0f172a', color: 'white', borderRadius: '10px', padding: '10px 24px', fontSize: '13px', fontWeight: 700, textDecoration: 'none' }}>
               Log in
             </Link>
@@ -327,7 +289,7 @@ export default function CleanerReviewPage() {
             <div style={{ marginBottom: '18px' }}>
               <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#475569', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Rating</label>
               <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                {[1,2,3,4,5].map(n => {
+                {[1, 2, 3, 4, 5].map(n => {
                   const active = n <= (hoverStars || stars)
                   return (
                     <button
@@ -371,7 +333,6 @@ export default function CleanerReviewPage() {
               </div>
             </div>
 
-            {/* Notice */}
             <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '10px', padding: '10px 12px', fontSize: '12px', color: '#1e40af', marginBottom: '16px', lineHeight: 1.5 }}>
               💡 Your first name and last initial will be shown publicly. Reviews are permanent — please be honest and fair.
             </div>
@@ -403,10 +364,10 @@ export default function CleanerReviewPage() {
           </div>
         )}
 
-        {/* ── Existing reviews ── */}
+        {/* ── All visible reviews (full list — CleanerCard only shows top 3) ── */}
         <div style={{ background: 'white', borderRadius: '20px', border: '1.5px solid #e2e8f0', padding: '24px', boxShadow: '0 2px 16px rgba(0,0,0,0.04)' }}>
           <div style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '16px' }}>
-            Reviews ({cleaner.rating_count})
+            Reviews ({cardData.stats.rating_count})
           </div>
           {reviews.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '28px 16px', color: '#94a3b8' }}>
@@ -433,16 +394,5 @@ export default function CleanerReviewPage() {
         </div>
       </div>
     </div>
-  )
-}
-
-function TrustBadge({ label, color = 'green' }: { label: string; color?: 'green' | 'blue' }) {
-  const cfg = color === 'blue'
-    ? { bg: '#eff6ff', text: '#1d4ed8', border: '#bfdbfe' }
-    : { bg: '#f0fdf4', text: '#15803d', border: '#bbf7d0' }
-  return (
-    <span style={{ background: cfg.bg, color: cfg.text, border: `1px solid ${cfg.border}`, borderRadius: '100px', padding: '3px 10px', fontSize: '11px', fontWeight: 700 }}>
-      {label}
-    </span>
   )
 }

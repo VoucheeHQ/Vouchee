@@ -99,35 +99,31 @@ export async function GET(request: NextRequest) {
 
   // Reviews — top 3 per cleaner. We grab all reviews for these cleaners then
   // group, since per-cleaner queries would be N+1.
+  // Schema: reviews uses `stars` and `customer_profile_id` (FK to profiles.id).
   const reviewsByCleaner = new Map<string, CleanerCardData['reviews']>()
   try {
     const { data: revRows } = await admin
       .from('reviews')
-      .select('id, rating, body, created_at, customer_id, cleaner_id, hidden')
+      .select('id, stars, body, created_at, customer_profile_id, cleaner_id, hidden')
       .in('cleaner_id', cleanerIds)
       .eq('hidden', false)
       .order('created_at', { ascending: false }) as { data: Array<any> | null }
 
     if (revRows && revRows.length > 0) {
-      const revCustomerIds = Array.from(new Set(revRows.map(r => r.customer_id)))
-      const { data: revCustRows } = await admin
-        .from('customers').select('id, profile_id').in('id', revCustomerIds) as { data: Array<{ id: string; profile_id: string }> | null }
-      const revProfileIds = (revCustRows ?? []).map(c => c.profile_id)
+      const revProfileIds = Array.from(new Set(revRows.map(r => r.customer_profile_id)))
       const { data: revProfileRows } = revProfileIds.length > 0
         ? await admin.from('profiles').select('id, full_name').in('id', revProfileIds) as { data: Array<{ id: string; full_name: string | null }> | null }
         : { data: [] as Array<{ id: string; full_name: string | null }> }
 
-      const customerToProfile = new Map((revCustRows ?? []).map(c => [c.id, c.profile_id]))
       const profileMap = new Map((revProfileRows ?? []).map(p => [p.id, p.full_name]))
 
       for (const r of revRows) {
         const list = reviewsByCleaner.get(r.cleaner_id) ?? []
         if (list.length >= 3) continue
-        const profileId = customerToProfile.get(r.customer_id)
-        const customerName = profileId ? profileMap.get(profileId) : null
+        const customerName = profileMap.get(r.customer_profile_id)
         list.push({
           id: r.id,
-          rating: r.rating,
+          rating: r.stars,
           body: r.body ?? '',
           customer_first_name: formatFirstName(customerName),
           created_at: r.created_at,

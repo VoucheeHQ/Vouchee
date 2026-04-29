@@ -68,37 +68,30 @@ export async function GET(
   const fullName = profile?.full_name ?? ''
 
   // ─── 3. Real reviews (top 3, most recent first) ──────────────────────────
-  // The reviews table stores customer_id → profiles.id (per the schema seen
-  // earlier in dev). We fetch up to 3 with the customer's first name.
+  // The reviews table stores customer_profile_id → profiles.id directly,
+  // and uses `stars` for the rating value.
   const reviews: CleanerCardData['reviews'] = []
   try {
     const { data: revRows } = await admin
       .from('reviews')
-      .select('id, rating, body, created_at, customer_id, hidden')
+      .select('id, stars, body, created_at, customer_profile_id, hidden')
       .eq('cleaner_id', cleanerId)
       .eq('hidden', false)
       .order('created_at', { ascending: false })
-      .limit(3) as { data: Array<{ id: string; rating: number; body: string | null; created_at: string; customer_id: string; hidden: boolean }> | null }
+      .limit(3) as { data: Array<{ id: string; stars: number; body: string | null; created_at: string; customer_profile_id: string; hidden: boolean }> | null }
 
     if (revRows && revRows.length > 0) {
-      // Resolve each customer_id → profile.full_name → first name
-      const customerIds = Array.from(new Set(revRows.map(r => r.customer_id)))
-      const { data: customerRows } = await admin
-        .from('customers').select('id, profile_id').in('id', customerIds) as { data: Array<{ id: string; profile_id: string }> | null }
-      const profileIds = (customerRows ?? []).map(c => c.profile_id)
-      const { data: profileRows } = profileIds.length > 0
-        ? await admin.from('profiles').select('id, full_name').in('id', profileIds) as { data: Array<{ id: string; full_name: string | null }> | null }
-        : { data: [] as Array<{ id: string; full_name: string | null }> }
-
-      const customerToProfile = new Map((customerRows ?? []).map(c => [c.id, c.profile_id]))
+      // customer_profile_id is already profiles.id, look up full names directly
+      const profileIds = Array.from(new Set(revRows.map(r => r.customer_profile_id)))
+      const { data: profileRows } = await admin
+        .from('profiles').select('id, full_name').in('id', profileIds) as { data: Array<{ id: string; full_name: string | null }> | null }
       const profileMap = new Map((profileRows ?? []).map(p => [p.id, p.full_name]))
 
       for (const r of revRows) {
-        const profileId = customerToProfile.get(r.customer_id)
-        const customerName = profileId ? profileMap.get(profileId) : null
+        const customerName = profileMap.get(r.customer_profile_id)
         reviews.push({
           id: r.id,
-          rating: r.rating,
+          rating: r.stars,
           body: r.body ?? '',
           customer_first_name: formatFirstName(customerName),
           created_at: r.created_at,
