@@ -602,6 +602,25 @@ function MessagingTray({ conversations, openIds, onOpen, onClose, totalUnread }:
   totalUnread: number
 }) {
   const [expanded, setExpanded] = useState(false)
+  // Confirm prompt before removing a non-closed chat from the tray. Closed
+  // chats (customer's listing was deleted/cancelled) skip the prompt because
+  // the cleaner already pressed Dismiss explicitly inside the chat window.
+  const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null)
+
+  const handleRemoveClick = (conv: EnrichedConversation, e: React.MouseEvent) => {
+    e.stopPropagation()
+    const isClosed = conv.requestStatus === 'deleted' || conv.requestStatus === 'cancelled'
+    if (isClosed) {
+      onClose(conv.id) // already-closed chats skip the prompt
+    } else {
+      setConfirmRemoveId(conv.id)
+    }
+  }
+
+  const confirmAndRemove = () => {
+    if (confirmRemoveId) onClose(confirmRemoveId)
+    setConfirmRemoveId(null)
+  }
 
   return (
     <div style={{ position: 'relative', fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)" }}>
@@ -649,7 +668,7 @@ function MessagingTray({ conversations, openIds, onOpen, onClose, totalUnread }:
                       {conv.lastMessage || 'No messages yet'}
                     </div>
                   </div>
-                  <button onClick={e => { e.stopPropagation(); onClose(conv.id) }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#cbd5e1', fontSize: '14px', padding: '2px 4px', flexShrink: 0, lineHeight: 1 }}>✕</button>
+                  <button onClick={e => handleRemoveClick(conv, e)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#cbd5e1', fontSize: '14px', padding: '2px 4px', flexShrink: 0, lineHeight: 1 }}>✕</button>
                 </div>
               ))
             )}
@@ -678,6 +697,27 @@ function MessagingTray({ conversations, openIds, onOpen, onClose, totalUnread }:
         )}
         <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginLeft: '4px' }}>{expanded ? '▼' : '▲'}</span>
       </button>
+
+      {/* Confirm prompt for removing a non-closed chat from the tray.
+          Plain Yes/No (green/red) — same pattern as the customer dashboard's
+          remove-listing prompt. No emoji, deliberately minimal. */}
+      {confirmRemoveId && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 600, padding: '24px' }}>
+          <div style={{ background: 'white', borderRadius: '20px', padding: '32px', maxWidth: '420px', width: '100%', textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+            <p style={{ fontSize: '16px', color: '#0f172a', margin: '0 0 28px', lineHeight: 1.6, fontWeight: 600 }}>
+              Are you sure you want to remove this chat?
+            </p>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+              <button onClick={confirmAndRemove} style={{ background: '#16a34a', color: 'white', border: 'none', borderRadius: '8px', padding: '10px 32px', fontSize: '14px', fontWeight: 700, cursor: 'pointer', fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)" }}>
+                Yes
+              </button>
+              <button onClick={() => setConfirmRemoveId(null)} style={{ background: '#ef4444', color: 'white', border: 'none', borderRadius: '8px', padding: '10px 32px', fontSize: '14px', fontWeight: 700, cursor: 'pointer', fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)" }}>
+                No
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

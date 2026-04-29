@@ -385,6 +385,28 @@ function ConfirmModal({ message, subMessage, onConfirm, onCancel, confirmLabel =
   )
 }
 
+// Dedicated remove-listing confirmation. Yes (green) commits, No (red) cancels.
+// Plain text — no emoji or icons — to feel deliberately small and clear.
+function RemoveListingConfirm({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) {
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: '24px' }}>
+      <div style={{ background: 'white', borderRadius: '20px', padding: '32px', maxWidth: '420px', width: '100%', textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+        <p style={{ fontSize: '16px', color: '#0f172a', margin: '0 0 28px', lineHeight: 1.6, fontWeight: 600 }}>
+          Are you sure you want to remove your listing?
+        </p>
+        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+          <button onClick={onConfirm} style={{ background: '#16a34a', color: 'white', border: 'none', borderRadius: '8px', padding: '10px 32px', fontSize: '14px', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
+            Yes
+          </button>
+          <button onClick={onCancel} style={{ background: '#ef4444', color: 'white', border: 'none', borderRadius: '8px', padding: '10px 32px', fontSize: '14px', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
+            No
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function ComingSoonBanner({ message, onClose }: { message: string; onClose: () => void }) {
   return (
     <div style={{ position: 'fixed', bottom: '24px', left: '50%', transform: 'translateX(-50%)', background: '#0f172a', color: 'white', borderRadius: '12px', padding: '12px 20px', fontSize: '14px', fontWeight: 600, boxShadow: '0 8px 32px rgba(0,0,0,0.2)', zIndex: 300, display: 'flex', alignItems: 'center', gap: '12px', whiteSpace: 'nowrap' }}>
@@ -1106,13 +1128,13 @@ function CustomerDashboardContent() {
             {activeRequests.length > 0 && (
               <div style={{ marginBottom: '36px' }}>
                 <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '14px' }}>Your listing</div>
-                {activeRequests.map(req => <ActiveRequestCard key={req.id} request={req} onPause={() => setModal({ type: 'pause', id: req.id })} onRepublish={() => setModal({ type: 'republish', id: req.id })} onDelete={() => handleDelete(req.id)} onEdit={() => setEditingRequest(req)} />)}
+                {activeRequests.map(req => <ActiveRequestCard key={req.id} request={req} onPause={() => setModal({ type: 'pause', id: req.id })} onRepublish={() => setModal({ type: 'republish', id: req.id })} onDelete={() => setModal({ type: 'delete', id: req.id })} onEdit={() => setEditingRequest(req)} />)}
               </div>
             )}
             {!hasActive && pausedRequests.length > 0 && (
               <div style={{ marginBottom: '36px' }}>
                 <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '14px' }}>Paused listing</div>
-                {pausedRequests.map(req => <ActiveRequestCard key={req.id} request={req} onPause={() => setModal({ type: 'pause', id: req.id })} onRepublish={() => setModal({ type: 'republish', id: req.id })} onDelete={() => handleDelete(req.id)} onEdit={() => setEditingRequest(req)} />)}
+                {pausedRequests.map(req => <ActiveRequestCard key={req.id} request={req} onPause={() => setModal({ type: 'pause', id: req.id })} onRepublish={() => setModal({ type: 'republish', id: req.id })} onDelete={() => setModal({ type: 'delete', id: req.id })} onEdit={() => setEditingRequest(req)} />)}
               </div>
             )}
             <NotificationsPanel
@@ -1157,7 +1179,7 @@ function CustomerDashboardContent() {
         {modal?.type === 'signout' && <ConfirmModal message="Are you sure you want to sign out?" onConfirm={handleSignOut} onCancel={() => setModal(null)} confirmLabel="Sign out" />}
         {modal?.type === 'pause' && <ConfirmModal message="Pause your request?" subMessage="It won't be visible to cleaners until you republish." onConfirm={() => handlePause(modal.id)} onCancel={() => setModal(null)} confirmLabel="Pause" />}
         {modal?.type === 'republish' && <ConfirmModal message="Republish your request?" subMessage="It will be visible to cleaners again." onConfirm={() => handleRepublish(modal.id)} onCancel={() => setModal(null)} confirmLabel="Republish" danger={false} />}
-        {modal?.type === 'delete' && <ConfirmModal message="Remove this listing?" subMessage="This cannot be undone." onConfirm={() => handleDelete(modal.id)} onCancel={() => setModal(null)} confirmLabel="Remove listing" />}
+        {modal?.type === 'delete' && <RemoveListingConfirm onConfirm={() => handleDelete(modal.id)} onCancel={() => setModal(null)} />}
         {editingRequest && <EditModal request={editingRequest} onSave={handleSaveEdit} onClose={() => setEditingRequest(null)} saving={saving} />}
         {toast && <ComingSoonBanner message={toast} onClose={() => setToast(null)} />}
         {showSuccessBanner && <SuccessBanner onClose={() => setShowSuccessBanner(false)} />}

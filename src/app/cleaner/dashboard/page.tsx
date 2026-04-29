@@ -142,7 +142,7 @@ const NOTIFICATION_ICONS: Record<string, string> = {
   account_suspended: '⚠️', review_received: '⭐', default: '🔔',
 }
 
-function NotificationRow({ item, onClick }: { item: NotificationItem; onClick: () => void }) {
+function NotificationRow({ item, onClick, onDismiss }: { item: NotificationItem; onClick: () => void; onDismiss: (e: React.MouseEvent) => void }) {
   const icon = NOTIFICATION_ICONS[item.type] ?? NOTIFICATION_ICONS.default
   return (
     <div onClick={onClick}
@@ -156,6 +156,13 @@ function NotificationRow({ item, onClick }: { item: NotificationItem; onClick: (
         {item.body && <div style={{ fontSize: '12px', color: '#64748b', lineHeight: 1.45 }}>{item.body}</div>}
       </div>
       {!item.read && <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#3b82f6', flexShrink: 0, marginTop: '6px' }} />}
+      <button
+        onClick={onDismiss}
+        aria-label="Dismiss"
+        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#cbd5e1', fontSize: '14px', padding: '2px 4px', flexShrink: 0, lineHeight: 1, marginTop: '2px' }}
+      >
+        ✕
+      </button>
     </div>
   )
 }
@@ -212,11 +219,13 @@ function ProfileLinkCard({ shortId, ratingAverage, ratingCount }: { shortId: str
 }
 
 // ─── APPROVED DASHBOARD ─────────────────────────────────────────────────────
-function ApprovedDashboard({ profile, cleaner, stats, notifications, onTogglePref, onNotificationClick }: {
+function ApprovedDashboard({ profile, cleaner, stats, notifications, onTogglePref, onNotificationClick, onDismissNotification, onMarkAllRead }: {
   profile: CleanerProfile; cleaner: CleanerData; stats: CleanerStats
   notifications: NotificationItem[]
   onTogglePref: (field: 'job_notify' | 'cover_cleans_notify' | 'marketing_opt_in') => void
   onNotificationClick: (n: NotificationItem) => void
+  onDismissNotification: (id: string, e: React.MouseEvent) => void
+  onMarkAllRead: () => void
 }) {
   const shortName = formatShortName(profile.full_name)
   const memberSince = formatMonthYear(cleaner.created_at)
@@ -342,7 +351,14 @@ function ApprovedDashboard({ profile, cleaner, stats, notifications, onTogglePre
         <div style={{ background: 'white', borderRadius: '20px', border: '1.5px solid #e2e8f0', padding: '24px', boxShadow: '0 2px 16px rgba(0,0,0,0.04)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
             <div style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Recent notifications</div>
-            {notifications.length > 0 && <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 600 }}>{notifications.filter(n => !n.read).length} unread</span>}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              {notifications.length > 0 && <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 600 }}>{notifications.filter(n => !n.read).length} unread</span>}
+              {notifications.some(n => !n.read) && (
+                <button onClick={onMarkAllRead} style={{ background: 'none', border: 'none', fontSize: '11px', fontWeight: 600, color: '#3b82f6', cursor: 'pointer', padding: 0, fontFamily: "'DM Sans', sans-serif" }}>
+                  Mark all read
+                </button>
+              )}
+            </div>
           </div>
           {notifications.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '24px 16px', color: '#94a3b8' }}>
@@ -351,8 +367,15 @@ function ApprovedDashboard({ profile, cleaner, stats, notifications, onTogglePre
               <div style={{ fontSize: '12px', lineHeight: 1.5 }}>When customers accept your chats or confirm jobs, you'll see updates here.</div>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {notifications.slice(0, 5).map(n => <NotificationRow key={n.id} item={n} onClick={() => onNotificationClick(n)} />)}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '380px', overflowY: 'auto', paddingRight: '4px' }}>
+              {notifications.map(n => (
+                <NotificationRow
+                  key={n.id}
+                  item={n}
+                  onClick={() => onNotificationClick(n)}
+                  onDismiss={e => onDismissNotification(n.id, e)}
+                />
+              ))}
             </div>
           )}
         </div>
@@ -542,6 +565,20 @@ export default function CleanerDashboardPage() {
     router.push(n.link)
   }
 
+  const handleDismissNotification = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setNotifications(prev => prev.filter(n => n.id !== id))
+    try { await fetch('/api/notifications/dismiss', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) }) }
+    catch (err) { console.error('Dismiss failed:', err) }
+  }
+
+  const handleMarkAllRead = async () => {
+    if (notifications.every(n => n.read)) return
+    setNotifications(prev => prev.map(x => ({ ...x, read: true })))
+    try { await fetch('/api/notifications/read', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ all: true }) }) }
+    catch (err) { console.error('Mark all read failed:', err) }
+  }
+
   const handleSignOut = async () => { const supabase = createClient(); await supabase.auth.signOut(); router.push('/') }
 
   if (loading) {
@@ -581,7 +618,7 @@ export default function CleanerDashboardPage() {
         </div>
 
         {(status === 'submitted' || status === 'pending') && <PendingScreen profile={profile} cleaner={cleaner} emailConfirmed={emailConfirmed} />}
-        {status === 'approved' && <ApprovedDashboard profile={profile} cleaner={cleaner} stats={stats} notifications={notifications} onTogglePref={togglePreference} onNotificationClick={handleNotificationClick} />}
+        {status === 'approved' && <ApprovedDashboard profile={profile} cleaner={cleaner} stats={stats} notifications={notifications} onTogglePref={togglePreference} onNotificationClick={handleNotificationClick} onDismissNotification={handleDismissNotification} onMarkAllRead={handleMarkAllRead} />}
         {(status === 'rejected' || status === 'suspended') && <BlockedScreen status={status} />}
       </main>
 
