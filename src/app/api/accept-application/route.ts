@@ -74,7 +74,46 @@ export async function POST(request: NextRequest) {
       // Chat already exists — just return the existing conversation
       conversationId = existingConv.id
     } else {
-      // 6. Create a new conversation — customer_id must be profiles.id per FK constraint
+      // ─── Compute the cleaner's next chat number (1..99, stable forever) ───
+      // Look at all this cleaner's existing conversations and assign the next
+      // available number. If they have <99, just take max+1. Past 99, reuse
+      // the lowest gap. The number is set ONCE here and never changes — closing
+      // a chat doesn't renumber others.
+      let cleanerChatIndex = 1
+      try {
+        const { data: existingConvs } = await supabaseAdmin
+          .from('conversations')
+          .select('cleaner_chat_index')
+          .eq('cleaner_id', application.cleaner_id) as { data: Array<{ cleaner_chat_index: number | null }> | null }
+
+        const taken = new Set(
+          (existingConvs ?? [])
+            .map(c => c.cleaner_chat_index)
+            .filter((n): n is number => typeof n === 'number')
+        )
+
+        if (taken.size === 0) {
+          cleanerChatIndex = 1
+        } else {
+          const max = Math.max(...Array.from(taken))
+          if (max < 99) {
+            cleanerChatIndex = max + 1
+          } else {
+            // Wrap-around: find the lowest unused number 1..99
+            for (let n = 1; n <= 99; n++) {
+              if (!taken.has(n)) { cleanerChatIndex = n; break }
+            }
+            // If all 1..99 are taken (would require 99 active+archived chats
+            // for the same cleaner), default to 99 — they'll see duplicates,
+            // which is recoverable and far better than failing the chat creation.
+          }
+        }
+      } catch (e) {
+        console.warn('cleaner_chat_index computation failed (non-fatal):', e)
+        // Continue with 1 — better to create the chat than block on numbering.
+      }
+
+      // Create a new conversation — customer_id must be profiles.id per FK constraint
       const { data: newConv, error: convError } = await supabaseAdmin
         .from('conversations')
         .insert({
@@ -82,6 +121,7 @@ export async function POST(request: NextRequest) {
           cleaner_id: application.cleaner_id,
           customer_id: customerRecord.profile_id,
           status: 'active',
+          cleaner_chat_index: cleanerChatIndex,
         } as any)
         .select('id')
         .single()

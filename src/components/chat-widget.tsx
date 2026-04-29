@@ -11,6 +11,7 @@ interface Conversation {
   customer_id: string
   clean_request_id: string
   status: string
+  cleaner_chat_index: number | null  // persistent chat number 1..99 (cleaner-side avatar)
 }
 
 interface EnrichedConversation extends Conversation {
@@ -686,15 +687,16 @@ async function enrichOne(supabase: any, conv: Conversation, role: 'customer' | '
       subtitle = zone
     }
   } else {
-    // Cleaner side: header shows zone, avatar shows the chat number (set later
-    // in enrichConversations when we know the index across all chats).
+    // Cleaner side: header shows zone, avatar shows the persistent chat
+    // number stored on the conversation row. Numbers are assigned once at
+    // creation time and never change, so closing chat #2 doesn't renumber #3.
     const { data: req } = await (supabase as any)
       .from('clean_requests').select('zone').eq('id', conv.clean_request_id).single()
     const zoneKey = req?.zone ?? 'central_south_east'
     zone = ZONE_LABELS[zoneKey] ?? zoneKey
     displayName = zone
     subtitle = zone
-    avatarLabel = '?' // placeholder — replaced below in enrichConversations
+    avatarLabel = conv.cleaner_chat_index != null ? String(conv.cleaner_chat_index) : '?'
   }
 
   const { data: reqData } = await (supabase as any)
@@ -726,18 +728,9 @@ async function enrichConversations(supabase: any, convos: Conversation[], role: 
       return found ? Promise.resolve(found) : enrichOne(supabase, conv, role)
     })
   )
-  if (role === 'cleaner') {
-    // Cleaner-side numbering: each conversation gets a sequential number 1..N
-    // shown in the avatar bubble. Numbering is global (not per zone) — the
-    // cleaner sees "Chat 1, Chat 2, Chat 3" regardless of where each is.
-    // Sort by the conversation's id (uuid) for stability across loads —
-    // ideally we'd sort by created_at but that's not on the conversation row.
-    const sorted = [...enriched].sort((a, b) => a.id.localeCompare(b.id))
-    sorted.forEach((c, i) => {
-      c.avatarLabel = String(i + 1)
-      c.conversationIndex = i + 1
-    })
-  }
+  // Cleaner-side numbering is now persisted on the conversation row
+  // (cleaner_chat_index, set once at creation in /api/accept-application).
+  // We just read it directly in enrichOne — no sort/renumber loop needed.
   return enriched
 }
 
