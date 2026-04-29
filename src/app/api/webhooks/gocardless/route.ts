@@ -162,7 +162,7 @@ export async function POST(request: NextRequest) {
 
 // ─── Event router ─────────────────────────────────────────────────────────────
 
-async function processEvent(admin: ReturnType<typeof createClient>, ev: any) {
+async function processEvent(admin: any, ev: any) {
   const key = `${ev.resource_type}.${ev.action}`
   switch (key) {
     case 'payments.failed':            return handlePaymentFailed(admin, ev)
@@ -183,7 +183,7 @@ async function processEvent(admin: ReturnType<typeof createClient>, ev: any) {
 // Most events reference a mandate or subscription. We look up the linked
 // clean_request, then derive the customer + cleaner profiles for emails.
 
-async function findRequestContext(admin: ReturnType<typeof createClient>, opts: {
+async function findRequestContext(admin: any, opts: {
   mandateId?: string
   subscriptionId?: string
 }): Promise<{
@@ -255,7 +255,7 @@ async function findRequestContext(admin: ReturnType<typeof createClient>, opts: 
 }
 
 // ─── payments.failed — 7-day grace, email customer + admin ────────────────────
-async function handlePaymentFailed(admin: ReturnType<typeof createClient>, ev: any) {
+async function handlePaymentFailed(admin: any, ev: any) {
   const ctx = await findRequestContext(admin, {
     mandateId: ev.links?.mandate,
     subscriptionId: ev.links?.subscription,
@@ -322,14 +322,14 @@ async function handlePaymentFailed(admin: ReturnType<typeof createClient>, ev: a
 }
 
 // ─── payments.paid_out — informational, log only ──────────────────────────────
-async function handlePaymentPaidOut(admin: ReturnType<typeof createClient>, ev: any) {
+async function handlePaymentPaidOut(admin: any, ev: any) {
   // Could be expanded later for accounting integrations. For now, the
   // webhook event row itself is the audit trail.
   console.log(`[gc-webhook] payment paid out: ${ev.links?.payment}`)
 }
 
 // ─── payments.cancelled — admin only ──────────────────────────────────────────
-async function handlePaymentCancelled(admin: ReturnType<typeof createClient>, ev: any) {
+async function handlePaymentCancelled(admin: any, ev: any) {
   const ctx = await findRequestContext(admin, {
     mandateId: ev.links?.mandate,
     subscriptionId: ev.links?.subscription,
@@ -345,7 +345,7 @@ async function handlePaymentCancelled(admin: ReturnType<typeof createClient>, ev
 }
 
 // ─── mandates.cancelled — customer revoked DD, kill the subscription ──────────
-async function handleMandateCancelled(admin: ReturnType<typeof createClient>, ev: any) {
+async function handleMandateCancelled(admin: any, ev: any) {
   const ctx = await findRequestContext(admin, { mandateId: ev.links?.mandate })
   if (!ctx) return
   const { request, customerEmail, customerName, cleanerEmail, cleanerName } = ctx
@@ -407,7 +407,7 @@ async function handleMandateCancelled(admin: ReturnType<typeof createClient>, ev
 }
 
 // ─── mandates.expired — 13-month dormancy ─────────────────────────────────────
-async function handleMandateExpired(admin: ReturnType<typeof createClient>, ev: any) {
+async function handleMandateExpired(admin: any, ev: any) {
   const ctx = await findRequestContext(admin, { mandateId: ev.links?.mandate })
   if (!ctx) return
   const { request, customerEmail, customerName } = ctx
@@ -433,7 +433,7 @@ async function handleMandateExpired(admin: ReturnType<typeof createClient>, ev: 
 }
 
 // ─── mandates.failed — initial DD setup rejected ──────────────────────────────
-async function handleMandateFailed(admin: ReturnType<typeof createClient>, ev: any) {
+async function handleMandateFailed(admin: any, ev: any) {
   const ctx = await findRequestContext(admin, { mandateId: ev.links?.mandate })
   if (!ctx) return
   const { customerEmail, customerName } = ctx
@@ -458,7 +458,7 @@ async function handleMandateFailed(admin: ReturnType<typeof createClient>, ev: a
 }
 
 // ─── subscriptions.cancelled — usually our own action, but log + verify ───────
-async function handleSubscriptionCancelled(admin: ReturnType<typeof createClient>, ev: any) {
+async function handleSubscriptionCancelled(admin: any, ev: any) {
   const ctx = await findRequestContext(admin, { subscriptionId: ev.links?.subscription })
   if (!ctx) return
   const { request, customerName } = ctx
