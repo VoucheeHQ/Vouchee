@@ -263,6 +263,7 @@ function buildCustomerConfirmEmail({
   hours_per_session,
   tasks,
   zone,
+  coolingOffUntilDate,
 }: {
   customerFirstName: string
   cleanerFullName: string
@@ -276,6 +277,7 @@ function buildCustomerConfirmEmail({
   hours_per_session: number
   tasks: string[]
   zone: string
+  coolingOffUntilDate: string
 }): string {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.vouchee.co.uk'
   const freqLabel = getFreqLabel(frequency)
@@ -386,10 +388,24 @@ function buildCustomerConfirmEmail({
       </div>
 
       <!-- Dashboard CTA -->
-      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:24px 28px;margin-bottom:28px;text-align:center;">
+      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:24px 28px;margin-bottom:16px;text-align:center;">
         <div style="font-size:15px;font-weight:700;color:#1e40af;margin-bottom:8px;">💬 Chat with ${cleanerFirstName}</div>
         <div style="font-size:13px;color:#3b82f6;line-height:1.6;margin-bottom:18px;">You can message ${cleanerFirstName} directly through your dashboard to confirm any details before the first clean.</div>
         <a href="${appUrl}/customer/dashboard" style="display:inline-block;background:#2563eb;color:white;font-size:13px;font-weight:700;padding:11px 28px;border-radius:8px;text-decoration:none;">Open your dashboard →</a>
+      </div>
+
+      <!-- Right to cancel — UK CCR 2013 durable-medium disclosure -->
+      <div style="background:#f8fafc;border:1.5px solid #cbd5e1;border-radius:12px;padding:22px 28px;margin-bottom:24px;">
+        <div style="font-size:13px;font-weight:800;color:#0f172a;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;">🛡️ Your right to cancel within 14 days</div>
+        <p style="margin:0 0 12px;font-size:13px;color:#475569;line-height:1.65;">
+          As a consumer, you have the right to cancel this subscription at any time before <strong>${formatDate(coolingOffUntilDate)}</strong>, without giving a reason.
+        </p>
+        <p style="margin:0 0 12px;font-size:13px;color:#475569;line-height:1.65;">
+          To cancel, visit the <strong>Cancel Subscription</strong> page in your account or email us at <a href="mailto:legal@vouchee.co.uk" style="color:#475569;">legal@vouchee.co.uk</a>. If your cleaner has not yet started, you'll receive a full refund within 14 days. If your cleaner has started with your express consent, we'll refund the unused portion. After 14 days, the standard 30-day notice in clause 11.3 of our terms applies.
+        </p>
+        <p style="margin:0;font-size:12px;color:#94a3b8;line-height:1.6;">
+          Full details: <a href="${appUrl}/legal/terms/customer" style="color:#94a3b8;">Customer Terms, clause 11.2</a>.
+        </p>
       </div>
 
       <!-- What happens next -->
@@ -472,6 +488,14 @@ export async function GET(request: NextRequest) {
   const conversationId = searchParams.get('conversationId')
   const startDate      = searchParams.get('startDate') ?? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
   const billingRequestId = searchParams.get('billingRequestId') ?? searchParams.get('billing_request')
+
+  // ── Cooling-off consent flag ─────────────────────────────────────────────
+  // Forwarded from create-flow via the GoCardless redirect URL. URL encoding
+  // is "1" or "0"; default to "0" (no consent) if missing for back-compat
+  // with any in-flight legacy URLs.
+  const coolingOffConsentParam = searchParams.get('coolingOffConsent') ?? '0'
+  const coolingOffConsentGiven = coolingOffConsentParam === '1'
+
   const appUrl         = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.vouchee.co.uk'
 
   const gcEnvironment = process.env.GOCARDLESS_ENVIRONMENT ?? 'sandbox'
@@ -485,7 +509,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    console.log('GC confirm: requestId', requestId, 'applicationId', applicationId, 'startDate', startDate, 'billingRequestId', billingRequestId)
+    console.log('GC confirm: requestId', requestId, 'applicationId', applicationId, 'startDate', startDate, 'billingRequestId', billingRequestId, 'coolingOffConsent', coolingOffConsentGiven)
 
     // ── 1. Verify mandate completed with GoCardless ──────────────────────────
     let mandateId: string | null = null
@@ -580,6 +604,21 @@ export async function GET(request: NextRequest) {
 
     const formattedStartDate = formatDate(startDate)
 
+    // ── Cooling-off anchor ──────────────────────────────────────────────────
+    // The contract is treated as concluded at the moment the customer's
+    // mandate is confirmed (right now). The 14-day right-to-cancel period
+    // runs from this point. We capture three values:
+    //   fulfilledAt        — the contract-formation timestamp (also stamps
+    //                        clean_requests.fulfilled_at and replaces the
+    //                        ad-hoc reliance on updated_at).
+    //   coolingOffUntil    — fulfilledAt + 14 days.
+    //   consent flag       — already on coolingOffConsentGiven from the URL.
+    // Stored in ISO-8601 with timezone for safe comparison in cancel logic.
+    const fulfilledAt        = new Date()
+    const coolingOffUntil    = new Date(fulfilledAt.getTime() + 14 * 24 * 60 * 60 * 1000)
+    const fulfilledAtIso     = fulfilledAt.toISOString()
+    const coolingOffUntilIso = coolingOffUntil.toISOString()
+
     // ── 3. Create GoCardless subscription ────────────────────────────────────
     if (mandateId) {
       const frequency = cleanRequest.frequency ?? 'fortnightly'
@@ -672,17 +711,21 @@ export async function GET(request: NextRequest) {
     console.log('Firing all post-confirmation actions. cleanerEmail:', cleanerEmail)
 
     await Promise.all([
+      // The fulfilled update now also stamps the cooling-off anchor fields.
+      // fulfilled_at is set once and never updated; cooling_off_until is
+      // computed from it; cooling_off_consent_given comes from the modal
+      // checkbox (forwarded through create-flow → GC redirect → here).
       supabaseAdmin.from('clean_requests').update({
         status: 'fulfilled',
         start_date: startDate,
         assigned_cleaner_id: application.cleaner_id,
+        fulfilled_at: fulfilledAtIso,
+        cooling_off_until: coolingOffUntilIso,
+        cooling_off_consent_given: coolingOffConsentGiven,
         ...(mandateId ? { gocardless_mandate_id: mandateId } as any : {}),
-      }).eq('id', requestId),
+      } as any).eq('id', requestId),
 
-      // ── Write mandate to customer record for switch flow reuse ─────────────
-      // This is the key addition that enables Approach 1 switching. When this
-      // customer later needs to switch cleaners, create-flow detects this mandate
-      // and confirm-switch reuses it — no re-authorisation needed.
+      // Write mandate to customer record for switch flow reuse
       mandateId
         ? supabaseAdmin.from('customers').update({ gocardless_mandate_id: mandateId } as any).eq('id', customerRecord.id)
         : Promise.resolve(null),
@@ -741,6 +784,7 @@ export async function GET(request: NextRequest) {
               hours_per_session: cleanRequest.hours_per_session,
               tasks: cleanRequest.tasks ?? [],
               zone: cleanRequest.zone ?? '',
+              coolingOffUntilDate: coolingOffUntilIso,
             }),
           })
         : Promise.resolve(null),

@@ -9,10 +9,32 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json()
-    const { applicationId, requestId, conversationId, startDate } = body
+    const { applicationId, requestId, conversationId, startDate, coolingOffConsent } = body
 
     if (!applicationId || !requestId || !conversationId || !startDate) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    }
+
+    // ── Cooling-off guard ────────────────────────────────────────────────────
+    // UK CCR 2013 requires express consent before cleaning service can begin
+    // within the 14-day right-to-cancel period. The StartDateModal enforces
+    // this client-side via a checkbox; this is the matching server-side
+    // guard so the API can't be bypassed by a direct call.
+    //
+    // Threshold: if start_date is on or before (now + 14 days), the first
+    // clean falls inside the cooling-off window and consent is required.
+    // Day 14 IS still inside the window (cooling-off begins day-after-contract
+    // and runs 14 full days), so we use <= rather than <.
+    const startDateMs           = new Date(startDate).getTime()
+    const fourteenDaysFromNowMs = Date.now() + 14 * 24 * 60 * 60 * 1000
+    const startsInsideCoolingOff = startDateMs <= fourteenDaysFromNowMs
+
+    if (startsInsideCoolingOff && !coolingOffConsent) {
+      console.warn('Cooling-off guard: rejecting create-flow without consent', { requestId, startDate })
+      return NextResponse.json(
+        { error: 'Express consent is required for cleaning to begin within the 14-day cancellation period.' },
+        { status: 400 }
+      )
     }
 
     // 1. Get the clean request
@@ -43,6 +65,11 @@ export async function POST(request: NextRequest) {
     // This happens when the customer is finding a replacement cleaner after a
     // switch. We skip the GoCardless hosted billing page entirely and let
     // confirm-switch create the subscription on the existing mandate.
+    //
+    // Note on cooling-off: a switch is the same contract continuing on the
+    // same mandate, so cooling-off does not reset. The guard above still
+    // catches the rare case of a switch with a near start_date inside the
+    // *original* cooling-off window where consent wasn't recaptured.
     if (customerRecord.gocardless_mandate_id) {
       console.log('Existing mandate detected — returning direct confirm path:', customerRecord.gocardless_mandate_id)
       return NextResponse.json({
@@ -105,7 +132,12 @@ export async function POST(request: NextRequest) {
     console.log('GC billing request created:', billingRequestId)
 
     // 4. Create billing request flow (hosted page)
-    const redirectUri = `${appUrl}/api/gocardless/confirm?requestId=${requestId}&applicationId=${applicationId}&conversationId=${conversationId}&startDate=${encodeURIComponent(startDate)}&billingRequestId=${billingRequestId}`
+    //
+    // The redirect URL carries cooling-off state through the GoCardless
+    // round trip back to confirm/route.ts. The 1/0 encoding is for URL
+    // robustness — confirm/route.ts reads it as a string and parses.
+    const consentParam = coolingOffConsent ? '1' : '0'
+    const redirectUri = `${appUrl}/api/gocardless/confirm?requestId=${requestId}&applicationId=${applicationId}&conversationId=${conversationId}&startDate=${encodeURIComponent(startDate)}&billingRequestId=${billingRequestId}&coolingOffConsent=${consentParam}`
 
     const flowRes = await fetch(`${gcBaseUrl}/billing_request_flows`, {
       method: 'POST',

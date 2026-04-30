@@ -14,11 +14,7 @@ import { CleanerCardData } from '@/lib/cleaner-card'
 type RequestStatus = 'active' | 'paused' | 'deleted' | 'pending_review' | 'pending' | 'completed' | 'cancelled' | 'fulfilled'
 type Frequency = 'weekly' | 'fortnightly' | 'monthly'
 
-interface CustomerProfile {
-  full_name: string
-  email: string
-  role: string
-}
+interface CustomerProfile { full_name: string; email: string; role: string }
 
 interface CleaningRequest {
   id: string
@@ -40,33 +36,18 @@ interface CleaningRequest {
 }
 
 interface EditDraft {
-  bedrooms: number
-  bathrooms: number
-  hours_per_session: number
-  hourly_rate: number
-  preferred_days: string[]
-  time_of_day: string
-  tasks: string[]
+  bedrooms: number; bathrooms: number; hours_per_session: number; hourly_rate: number
+  preferred_days: string[]; time_of_day: string; tasks: string[]
 }
 
 interface Application {
-  id: string
-  cleaner_id: string
-  request_id: string
-  status: string
-  created_at: string
-  message?: string
-  cleaner: CleanerCardData
+  id: string; cleaner_id: string; request_id: string; status: string
+  created_at: string; message?: string; cleaner: CleanerCardData
 }
 
 interface NotificationItem {
-  id: string
-  type: string
-  title: string
-  body: string | null
-  link: string | null
-  read: boolean
-  created_at: string
+  id: string; type: string; title: string; body: string | null
+  link: string | null; read: boolean; created_at: string
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -83,67 +64,37 @@ const TASK_LABELS: Record<string, string> = {
   garage: 'Garage / utility',
 }
 
-const ALL_TASKS = [
-  'general_cleaning', 'hoovering', 'mopping', 'bathroom', 'kitchen',
-  'windows_interior', 'fridge', 'blinds', 'mold', 'ironing', 'laundry',
-  'changing_beds', 'garage',
-]
+const ALL_TASKS = ['general_cleaning', 'hoovering', 'mopping', 'bathroom', 'kitchen', 'windows_interior', 'fridge', 'blinds', 'mold', 'ironing', 'laundry', 'changing_beds', 'garage']
 
 const ZONE_LABELS: Record<string, string> = {
-  central_south_east: 'Central / South East',
-  north_west: 'North West',
-  north_east_roffey: 'North East / Roffey',
-  south_west: 'South West',
-  warnham_north: 'Warnham / North',
-  broadbridge_heath: 'Broadbridge Heath',
-  mannings_heath: 'Mannings Heath',
-  faygate_kilnwood_vale: 'Faygate / Kilnwood Vale',
-  christs_hospital: "Christ's Hospital",
-  southwater: 'Southwater',
+  central_south_east: 'Central / South East', north_west: 'North West',
+  north_east_roffey: 'North East / Roffey', south_west: 'South West',
+  warnham_north: 'Warnham / North', broadbridge_heath: 'Broadbridge Heath',
+  mannings_heath: 'Mannings Heath', faygate_kilnwood_vale: 'Faygate / Kilnwood Vale',
+  christs_hospital: "Christ's Hospital", southwater: 'Southwater',
 }
 
-const FREQUENCY_LABEL: Record<Frequency, string> = {
-  weekly: 'Weekly', fortnightly: 'Fortnightly', monthly: 'Monthly',
-}
-
-const MONTHLY_FEES: Record<Frequency, number> = {
-  weekly: 4333, fortnightly: 3248, monthly: 2499,
-}
-
-const PER_CLEAN_PENCE: Record<Frequency, number> = {
-  weekly: 999, fortnightly: 1499, monthly: 2499,
-}
+const FREQUENCY_LABEL: Record<Frequency, string> = { weekly: 'Weekly', fortnightly: 'Fortnightly', monthly: 'Monthly' }
+const MONTHLY_FEES: Record<Frequency, number> = { weekly: 4333, fortnightly: 3248, monthly: 2499 }
+const PER_CLEAN_PENCE: Record<Frequency, number> = { weekly: 999, fortnightly: 1499, monthly: 2499 }
 
 const TIME_SLOTS = ['Morning (8am - 12pm)', 'During the day (8am - 5pm)', 'Afternoon (12pm - 5pm)', 'Evening (5pm - 8pm)', 'Flexible']
 const ALL_DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
-const DAY_SHORT: Record<string, string> = {
-  monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed',
-  thursday: 'Thu', friday: 'Fri', saturday: 'Sat', sunday: 'Sun',
-}
+const DAY_SHORT: Record<string, string> = { monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed', thursday: 'Thu', friday: 'Fri', saturday: 'Sat', sunday: 'Sun' }
 
 const ACTIVE_STATUSES: RequestStatus[] = ['active', 'pending_review', 'pending']
 const PAST_STATUSES: RequestStatus[] = ['deleted', 'paused', 'completed', 'cancelled', 'fulfilled']
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function getFirstName(name: string) {
-  return name?.trim()?.split(' ')?.[0] ?? 'there'
-}
-
-function formatFirstLastInitial(name: string): string {
-  const parts = (name ?? '').trim().split(' ')
-  if (parts.length > 1) return `${parts[0]} ${parts[parts.length - 1][0]}.`
-  return parts[0] || 'Cleaner'
-}
+function getFirstName(name: string) { return name?.trim()?.split(' ')?.[0] ?? 'there' }
 
 function formatDays(days: string[] | null) {
   if (!days || days.length === 0) return null
   return days.map(d => DAY_SHORT[d.toLowerCase()] ?? d).join(' · ')
 }
 
-function daysSince(iso: string) {
-  return Math.floor((Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60 * 24))
-}
+function daysSince(iso: string) { return Math.floor((Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60 * 24)) }
 
 function checkIsBeforeStartDate(startDate: string | null): boolean {
   if (!startDate) return true
@@ -168,9 +119,7 @@ function calculateBilling(frequency: Frequency, startDate: string): {
   return { firstChargePence: proRata, monthlyPence: monthly, firstChargeLabel: `£${(proRata / 100).toFixed(2)}`, monthlyLabel: `£${(monthly / 100).toFixed(2)}/month`, isFullMonth: proRata >= monthly }
 }
 
-function getMinDate(): string {
-  const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0]
-}
+function getMinDate(): string { const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0] }
 
 // ─── Small components ─────────────────────────────────────────────────────────
 
@@ -233,16 +182,8 @@ function SwitchCleanerModal({ requestId, isBeforeStart, onCancel, onSuccess }: {
   const optionCard = (value: boolean, label: string, description: string, icon: string) => {
     const selected = keepCurrent === value
     return (
-      <button
-        type="button"
-        onClick={() => { setKeepCurrent(value); setErr(null) }}
-        style={{
-          width: '100%', textAlign: 'left', padding: '14px 16px', borderRadius: '12px', cursor: 'pointer',
-          border: `2px solid ${selected ? '#2563eb' : '#e2e8f0'}`,
-          background: selected ? '#eff6ff' : 'white',
-          fontFamily: "'DM Sans', sans-serif", marginBottom: '10px', transition: 'border-color 0.15s ease',
-        }}
-      >
+      <button type="button" onClick={() => { setKeepCurrent(value); setErr(null) }}
+        style={{ width: '100%', textAlign: 'left', padding: '14px 16px', borderRadius: '12px', cursor: 'pointer', border: `2px solid ${selected ? '#2563eb' : '#e2e8f0'}`, background: selected ? '#eff6ff' : 'white', fontFamily: "'DM Sans', sans-serif", marginBottom: '10px', transition: 'border-color 0.15s ease' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
           <span style={{ fontSize: '18px' }}>{icon}</span>
           <span style={{ fontSize: '14px', fontWeight: 700, color: selected ? '#1d4ed8' : '#0f172a' }}>{label}</span>
@@ -260,9 +201,7 @@ function SwitchCleanerModal({ requestId, isBeforeStart, onCancel, onSuccess }: {
       <div style={{ background: 'white', borderRadius: '24px', padding: '36px', maxWidth: '480px', width: '100%', boxShadow: '0 32px 80px rgba(0,0,0,0.22)', maxHeight: '90vh', overflowY: 'auto' }}>
         <h3 style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '22px', fontWeight: 800, color: '#0f172a', margin: '0 0 6px' }}>{title}</h3>
         <p style={{ fontSize: '14px', color: '#64748b', lineHeight: 1.6, margin: '0 0 20px' }}>
-          {isBeforeStart
-            ? "If your cleaner has cancelled or isn't showing up, we'll find you a new one."
-            : "If you're unhappy with your current cleaner, we can help you find a new one."}
+          {isBeforeStart ? "If your cleaner has cancelled or isn't showing up, we'll find you a new one." : "If you're unhappy with your current cleaner, we can help you find a new one."}
         </p>
         <div style={{ marginBottom: '20px' }}>
           <div style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '10px' }}>How would you like to proceed?</div>
@@ -270,9 +209,7 @@ function SwitchCleanerModal({ requestId, isBeforeStart, onCancel, onSuccess }: {
           {optionCard(false, 'End the arrangement now', "Your subscription is cancelled immediately and a fresh listing goes live. Your current cleaner will be notified by Vouchee.", '⛔')}
         </div>
         <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '10px', padding: '12px 14px', marginBottom: '20px' }}>
-          <p style={{ margin: 0, fontSize: '13px', color: '#1e40af', lineHeight: 1.5 }}>
-            💡 <strong>No new Direct Debit needed.</strong> When you confirm a new cleaner, your existing bank authorisation is reused automatically.
-          </p>
+          <p style={{ margin: 0, fontSize: '13px', color: '#1e40af', lineHeight: 1.5 }}>💡 <strong>No new Direct Debit needed.</strong> When you confirm a new cleaner, your existing bank authorisation is reused automatically.</p>
         </div>
         <div style={{ marginBottom: '20px' }}>
           <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '8px' }}>What happened? (optional)</label>
@@ -291,13 +228,21 @@ function SwitchCleanerModal({ requestId, isBeforeStart, onCancel, onSuccess }: {
 }
 
 // ─── Start Date Modal ─────────────────────────────────────────────────────────
+//
+// Captures start date + (when relevant) express consent for cleaning to begin
+// inside the 14-day cooling-off window per UK CCR 2013 / customer terms 11.2.5.
+// Disclosure block is shown unconditionally; checkbox appears only when the
+// chosen start date falls on or before today + 14 days.
 
 function StartDateModal({ cleanerName, frequency, applicationId, requestId, conversationId, onCancel, onConfirm, loading }: {
   cleanerName: string; frequency: Frequency; applicationId: string; requestId: string
-  conversationId: string; onCancel: () => void; onConfirm: (startDate: string) => void; loading: boolean
+  conversationId: string; onCancel: () => void
+  onConfirm: (startDate: string, coolingOffConsent: boolean) => void
+  loading: boolean
 }) {
   const minDate = getMinDate()
   const [startDate, setStartDate] = useState(minDate)
+  const [coolingOffConsent, setCoolingOffConsent] = useState(false)
   const firstName = cleanerName.split(' ')[0]
   const billing = calculateBilling(frequency, startDate)
   const day = new Date(startDate).getDate()
@@ -306,6 +251,13 @@ function StartDateModal({ cleanerName, frequency, applicationId, requestId, conv
   const nextMonthName = nextMonth.toLocaleDateString('en-GB', { month: 'long' })
   const currentMonthName = new Date(startDate).toLocaleDateString('en-GB', { month: 'long' })
   const freqLabel = FREQUENCY_LABEL[frequency] ?? frequency
+
+  const startDateMs = new Date(startDate).getTime()
+  const fourteenDaysFromNowMs = Date.now() + 14 * 24 * 60 * 60 * 1000
+  const startsInsideCoolingOff = startDateMs <= fourteenDaysFromNowMs
+
+  const buttonDisabled = loading || !startDate || (startsInsideCoolingOff && !coolingOffConsent)
+
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500, padding: '24px' }}>
       <div style={{ background: 'white', borderRadius: '24px', padding: '44px 48px', maxWidth: '540px', width: '100%', boxShadow: '0 32px 80px rgba(0,0,0,0.22)', maxHeight: '92vh', overflowY: 'auto' }}>
@@ -316,7 +268,7 @@ function StartDateModal({ cleanerName, frequency, applicationId, requestId, conv
             <input id="start-date-input" type="date" value={startDate} min={minDate} onChange={e => setStartDate(e.target.value)} style={{ width: '100%', padding: '14px 16px', border: '1.5px solid #e2e8f0', borderRadius: '12px', fontSize: '17px', fontWeight: 600, color: '#0f172a', fontFamily: "'DM Sans', sans-serif", outline: 'none', boxSizing: 'border-box', cursor: 'pointer', pointerEvents: 'none' }} />
           </div>
         </div>
-        <div style={{ background: '#f8fafc', borderRadius: '14px', padding: '20px', marginBottom: '12px', border: '1px solid #e2e8f0' }}>
+        <div style={{ background: '#f8fafc', borderRadius: '14px', padding: '20px', marginBottom: '14px', border: '1px solid #e2e8f0' }}>
           <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '16px' }}>Vouchee service fee · {freqLabel}</div>
           <div style={{ marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid #e2e8f0' }}>
             <div style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a', marginBottom: '4px' }}>{billing.firstChargeLabel} today</div>
@@ -327,7 +279,27 @@ function StartDateModal({ cleanerName, frequency, applicationId, requestId, conv
             <div style={{ fontSize: '13px', color: '#94a3b8' }}>Billed on the 1st of each month</div>
           </div>
         </div>
-        <div style={{ fontSize: '13px', color: '#64748b', textAlign: 'center', margin: '0 0 12px' }}>Cancel anytime with 30 days' notice.</div>
+
+        {/* Cooling-off disclosure (always shown) */}
+        <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '14px 16px', marginBottom: '12px' }}>
+          <div style={{ fontSize: '11px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '6px' }}>🛡️ Your right to cancel</div>
+          <p style={{ margin: 0, fontSize: '12px', color: '#64748b', lineHeight: 1.6 }}>
+            You have <strong>14 days</strong> to cancel this subscription with a full refund (provided cleaning hasn&apos;t started). After that, our standard <strong>30-day notice</strong> applies. <a href="/legal/terms/customer" target="_blank" rel="noopener noreferrer" style={{ color: '#475569', textDecoration: 'underline' }}>See clause 11.2</a>.
+          </p>
+        </div>
+
+        {/* Express-consent checkbox (only when cleaning starts inside cooling-off) */}
+        {startsInsideCoolingOff && (
+          <div style={{ background: '#fffbeb', border: '1.5px solid #fde68a', borderRadius: '10px', padding: '14px 16px', marginBottom: '12px' }}>
+            <label style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', cursor: 'pointer' }}>
+              <input type="checkbox" checked={coolingOffConsent} onChange={e => setCoolingOffConsent(e.target.checked)} style={{ marginTop: '2px', width: '18px', height: '18px', cursor: 'pointer', flexShrink: 0, accentColor: '#d97706' }} />
+              <span style={{ fontSize: '12px', color: '#92400e', lineHeight: 1.6 }}>
+                I want my cleaning to start within the 14-day cancellation period. I understand that if I cancel after my cleaner has begun, I&apos;ll be charged for any cleans provided, and I&apos;ll lose my right to a full refund once the service has been fully provided.
+              </span>
+            </label>
+          </div>
+        )}
+
         {showLateMonthWarning && <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '10px', padding: '14px 16px', marginBottom: '14px', fontSize: '14px', color: '#92400e', lineHeight: 1.6 }}>⚠️ Your first payment is taken now, then monthly on the 1st. You may see two payments close together.</div>}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '12px 16px', marginBottom: '28px' }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 1L3 5V11C3 16.55 6.84 21.74 12 23C17.16 21.74 21 16.55 21 11V5L12 1Z" fill="#16a34a" opacity="0.15" stroke="#16a34a" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M9 12L11 14L15 10" stroke="#16a34a" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -335,7 +307,9 @@ function StartDateModal({ cleanerName, frequency, applicationId, requestId, conv
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
           <button onClick={onCancel} disabled={loading} style={{ flex: 1, background: 'white', border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '15px', fontSize: '15px', fontWeight: 600, color: '#64748b', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>Cancel</button>
-          <button onClick={() => onConfirm(startDate)} disabled={loading || !startDate} style={{ flex: 2, background: '#16a34a', border: 'none', borderRadius: '12px', padding: '15px', fontSize: '15px', fontWeight: 700, color: 'white', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, fontFamily: "'DM Sans', sans-serif" }}>{loading ? 'Setting up…' : 'Secure your cleaner →'}</button>
+          <button onClick={() => onConfirm(startDate, coolingOffConsent)} disabled={buttonDisabled} style={{ flex: 2, background: buttonDisabled ? '#94a3b8' : '#16a34a', border: 'none', borderRadius: '12px', padding: '15px', fontSize: '15px', fontWeight: 700, color: 'white', cursor: buttonDisabled ? 'not-allowed' : 'pointer', opacity: buttonDisabled ? 0.7 : 1, fontFamily: "'DM Sans', sans-serif" }}>
+            {loading ? 'Setting up…' : 'Secure your cleaner →'}
+          </button>
         </div>
       </div>
     </div>
@@ -356,7 +330,7 @@ function SuccessBanner({ onClose }: { onClose: () => void }) {
           <div style={{ fontSize: '32px', flexShrink: 0, animation: 'popIn 0.5s ease forwards' }}>🎉</div>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: '16px', fontWeight: 800, marginBottom: '4px', letterSpacing: '-0.2px' }}>Direct Debit confirmed!</div>
-            <div style={{ fontSize: '13px', opacity: 0.9, lineHeight: 1.5 }}>Your cleaner has been notified with your address and start date. They'll be in touch soon.</div>
+            <div style={{ fontSize: '13px', opacity: 0.9, lineHeight: 1.5 }}>Your cleaner has been notified with your address and start date. They&apos;ll be in touch soon.</div>
           </div>
           <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '8px', color: 'white', fontSize: '13px', padding: '4px 10px', cursor: 'pointer', flexShrink: 0, fontFamily: "'DM Sans', sans-serif" }}>Dismiss</button>
         </div>
@@ -365,7 +339,7 @@ function SuccessBanner({ onClose }: { onClose: () => void }) {
   )
 }
 
-// ─── Confirm Modal ────────────────────────────────────────────────────────────
+// ─── Confirm Modals ───────────────────────────────────────────────────────────
 
 function ConfirmModal({ message, subMessage, onConfirm, onCancel, confirmLabel = 'Confirm', danger = true }: {
   message: string; subMessage?: string; onConfirm: () => void; onCancel: () => void; confirmLabel?: string; danger?: boolean
@@ -385,22 +359,14 @@ function ConfirmModal({ message, subMessage, onConfirm, onCancel, confirmLabel =
   )
 }
 
-// Dedicated remove-listing confirmation. Yes (green) commits, No (red) cancels.
-// Plain text — no emoji or icons — to feel deliberately small and clear.
 function RemoveListingConfirm({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) {
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: '24px' }}>
       <div style={{ background: 'white', borderRadius: '20px', padding: '32px', maxWidth: '420px', width: '100%', textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
-        <p style={{ fontSize: '16px', color: '#0f172a', margin: '0 0 28px', lineHeight: 1.6, fontWeight: 600 }}>
-          Are you sure you want to remove your listing?
-        </p>
+        <p style={{ fontSize: '16px', color: '#0f172a', margin: '0 0 28px', lineHeight: 1.6, fontWeight: 600 }}>Are you sure you want to remove your listing?</p>
         <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-          <button onClick={onConfirm} style={{ background: '#16a34a', color: 'white', border: 'none', borderRadius: '8px', padding: '10px 32px', fontSize: '14px', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
-            Yes
-          </button>
-          <button onClick={onCancel} style={{ background: '#ef4444', color: 'white', border: 'none', borderRadius: '8px', padding: '10px 32px', fontSize: '14px', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
-            No
-          </button>
+          <button onClick={onConfirm} style={{ background: '#16a34a', color: 'white', border: 'none', borderRadius: '8px', padding: '10px 32px', fontSize: '14px', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>Yes</button>
+          <button onClick={onCancel} style={{ background: '#ef4444', color: 'white', border: 'none', borderRadius: '8px', padding: '10px 32px', fontSize: '14px', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>No</button>
         </div>
       </div>
     </div>
@@ -502,13 +468,9 @@ function ActiveRequestCard({ request, onPause, onRepublish, onDelete, onEdit, on
           {request.status === 'active' && pausesLeft > 0 && <ActionBtn onClick={onPause}>Pause listing</ActionBtn>}
           {request.status === 'paused' && (!isRelocked ? <ActionBtn onClick={onRepublish}>Republish</ActionBtn> : <span style={{ fontSize: '12px', color: '#94a3b8', alignSelf: 'center' }}>Available to republish in 24h</span>)}
           {isFulfilled && onSwitch && (
-            <ActionBtn onClick={onSwitch}>
-              {beforeStart ? '⚠️ Problem with my cleaner' : '🔄 Switch cleaner'}
-            </ActionBtn>
+            <ActionBtn onClick={onSwitch}>{beforeStart ? '⚠️ Problem with my cleaner' : '🔄 Switch cleaner'}</ActionBtn>
           )}
-          <ActionBtn onClick={onDelete} danger>
-            {isFulfilled ? 'Cancel subscription' : 'Remove listing'}
-          </ActionBtn>
+          <ActionBtn onClick={onDelete} danger>{isFulfilled ? 'Cancel subscription' : 'Remove listing'}</ActionBtn>
         </div>
       </div>
     </div>
@@ -562,12 +524,6 @@ function PastListingRow({ request }: { request: CleaningRequest }) {
 }
 
 // ─── Notifications Panel ─────────────────────────────────────────────────────
-//
-// Customer-side notifications card. Mirrors the cleaner dashboard's panel
-// style: title row + unread count, latest 5 (with internal scroll if more),
-// click-to-read, ✕ to dismiss, "Mark all" link.
-//
-// Empty state: collapsed-feeling card with "You're all caught up" 🔔 icon.
 
 const NOTIFICATION_ICONS: Record<string, string> = {
   new_application: '👋', chat_accepted: '💬', chat_declined: '😔',
@@ -589,31 +545,24 @@ function notifRelativeTime(iso: string) {
 }
 
 function NotificationsPanel({ notifications, onClick, onDismiss, onMarkAllRead }: {
-  notifications: NotificationItem[]
-  onClick: (n: NotificationItem) => void
-  onDismiss: (id: string, e: React.MouseEvent) => void
-  onMarkAllRead: () => void
+  notifications: NotificationItem[]; onClick: (n: NotificationItem) => void
+  onDismiss: (id: string, e: React.MouseEvent) => void; onMarkAllRead: () => void
 }) {
   const unreadCount = notifications.filter(n => !n.read).length
   const isEmpty = notifications.length === 0
-
   return (
     <div style={{ background: 'white', borderRadius: '20px', border: '1.5px solid #e2e8f0', padding: '20px 22px', boxShadow: '0 2px 16px rgba(0,0,0,0.04)', marginBottom: '36px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
         <div style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Recent notifications</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {unreadCount > 0 && <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 600 }}>{unreadCount} unread</span>}
-          {unreadCount > 0 && (
-            <button onClick={onMarkAllRead} style={{ background: 'none', border: 'none', fontSize: '11px', fontWeight: 600, color: '#3b82f6', cursor: 'pointer', padding: 0, fontFamily: "'DM Sans', sans-serif" }}>
-              Mark all read
-            </button>
-          )}
+          {unreadCount > 0 && <button onClick={onMarkAllRead} style={{ background: 'none', border: 'none', fontSize: '11px', fontWeight: 600, color: '#3b82f6', cursor: 'pointer', padding: 0, fontFamily: "'DM Sans', sans-serif" }}>Mark all read</button>}
         </div>
       </div>
       {isEmpty ? (
         <div style={{ textAlign: 'center', padding: '24px 16px', color: '#94a3b8' }}>
           <div style={{ fontSize: '24px', marginBottom: '8px' }}>🔔</div>
-          <div style={{ fontSize: '13px', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>You're all caught up</div>
+          <div style={{ fontSize: '13px', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>You&apos;re all caught up</div>
           <div style={{ fontSize: '12px', lineHeight: 1.5 }}>Updates about your cleaning request will appear here.</div>
         </div>
       ) : (
@@ -621,16 +570,8 @@ function NotificationsPanel({ notifications, onClick, onDismiss, onMarkAllRead }
           {notifications.map(n => {
             const icon = NOTIFICATION_ICONS[n.type] ?? NOTIFICATION_ICONS.default
             return (
-              <div
-                key={n.id}
-                onClick={() => onClick(n)}
-                style={{
-                  display: 'flex', gap: '12px', padding: '12px 14px', borderRadius: '12px',
-                  background: n.read ? 'transparent' : '#eff6ff',
-                  border: `1px solid ${n.read ? '#f1f5f9' : '#bfdbfe'}`,
-                  cursor: 'pointer', transition: 'background 0.15s ease', alignItems: 'flex-start',
-                }}
-              >
+              <div key={n.id} onClick={() => onClick(n)}
+                style={{ display: 'flex', gap: '12px', padding: '12px 14px', borderRadius: '12px', background: n.read ? 'transparent' : '#eff6ff', border: `1px solid ${n.read ? '#f1f5f9' : '#bfdbfe'}`, cursor: 'pointer', transition: 'background 0.15s ease', alignItems: 'flex-start' }}>
                 <div style={{ fontSize: '18px', flexShrink: 0, lineHeight: 1, marginTop: '1px' }}>{icon}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px', marginBottom: '2px' }}>
@@ -640,13 +581,7 @@ function NotificationsPanel({ notifications, onClick, onDismiss, onMarkAllRead }
                   {n.body && <div style={{ fontSize: '12px', color: '#64748b', lineHeight: 1.45 }}>{n.body}</div>}
                 </div>
                 {!n.read && <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#3b82f6', flexShrink: 0, marginTop: '6px' }} />}
-                <button
-                  onClick={e => onDismiss(n.id, e)}
-                  aria-label="Dismiss"
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#cbd5e1', fontSize: '14px', padding: '2px 4px', flexShrink: 0, lineHeight: 1, marginTop: '2px' }}
-                >
-                  ✕
-                </button>
+                <button onClick={e => onDismiss(n.id, e)} aria-label="Dismiss" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#cbd5e1', fontSize: '14px', padding: '2px 4px', flexShrink: 0, lineHeight: 1, marginTop: '2px' }}>✕</button>
               </div>
             )
           })}
@@ -666,21 +601,17 @@ function ApplicationCard({ app, onAccept, onDecline, onOpenChat, accepting, decl
   return (
     <div style={{ background: 'white', borderRadius: '16px', border: '1.5px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
       <div style={{ padding: '20px' }}>
-        {/* Status pill + applied date */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
           <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '100px', background: app.status === 'pending' ? '#f1f5f9' : app.status === 'accepted' ? '#f0fdf4' : '#fef2f2', color: app.status === 'pending' ? '#64748b' : app.status === 'accepted' ? '#15803d' : '#dc2626' }}>
             {app.status === 'pending' ? 'New' : app.status === 'accepted' ? 'Chatting' : 'Declined'}
           </span>
           <span style={{ fontSize: '12px', color: '#94a3b8' }}>{appliedLabel}</span>
         </div>
-
-        {/* Shared CleanerCard — single source of truth for cleaner display */}
         <CleanerCard data={app.cleaner} variant="full" />
       </div>
-
       {app.message && (
         <div style={{ padding: '0 20px 16px', borderTop: '1px solid #f1f5f9' }}>
-          <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px', marginTop: '16px' }}>{displayName.replace(/\.$/, '')}'s message</div>
+          <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px', marginTop: '16px' }}>{displayName.replace(/\.$/, '')}&apos;s message</div>
           <div style={{ background: '#eff6ff', borderRadius: '12px', padding: '14px 16px', borderLeft: '3px solid #2563eb' }}>
             <p style={{ margin: 0, fontSize: '14px', color: '#1e40af', lineHeight: 1.6 }}>{app.message}</p>
           </div>
@@ -712,44 +643,23 @@ function ApplicationsSection({ requestIds, requests, onAccept, onOpenChat }: {
   const [accepting, setAccepting] = useState<string | null>(null)
   const [declining, setDeclining] = useState<string | null>(null)
 
-  // ─── Initial fetch + realtime subscription ──────────────────────────────
-  // Uses /api/get-customer-applications (service role) to bypass the RLS
-  // that was stripping cleaner names off the nested profiles join.
-  // Subscribes to applications INSERT for this customer's request_ids so
-  // new applications appear in real-time without a refresh.
   useEffect(() => {
     if (!requestIds.length) { setLoading(false); return }
     let cancelled = false
-
     const fetchApplications = async () => {
       try {
         const res = await fetch(`/api/get-customer-applications?requestIds=${encodeURIComponent(requestIds.join(','))}`)
         const data = await res.json()
         if (!cancelled && res.ok) setApplications(data.applications ?? [])
-      } catch (err) {
-        console.error('Failed to load applications:', err)
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
+      } catch (err) { console.error('Failed to load applications:', err) }
+      finally { if (!cancelled) setLoading(false) }
     }
     fetchApplications()
-
-    // Realtime: refetch on new application insert for any of our requests
     const supabase = createClient()
-    const channel = supabase
-      .channel(`customer-applications-${requestIds.join(',')}`)
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'applications',
-        filter: `request_id=in.(${requestIds.join(',')})`,
-      }, () => { fetchApplications() })
+    const channel = supabase.channel(`customer-applications-${requestIds.join(',')}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'applications', filter: `request_id=in.(${requestIds.join(',')})` }, () => { fetchApplications() })
       .subscribe()
-
-    return () => {
-      cancelled = true
-      supabase.removeChannel(channel)
-    }
+    return () => { cancelled = true; supabase.removeChannel(channel) }
   }, [requestIds.join(',')])
 
   const handleAccept = async (app: Application) => {
@@ -776,7 +686,7 @@ function ApplicationsSection({ requestIds, requests, onAccept, onOpenChat }: {
         <div style={{ background: 'white', borderRadius: '14px', border: '1.5px dashed #e2e8f0', padding: '32px 24px', textAlign: 'center' }}>
           <div style={{ fontSize: '28px', marginBottom: '10px' }}>👀</div>
           <p style={{ fontSize: '14px', fontWeight: 600, color: '#475569', margin: '0 0 4px' }}>No applications yet</p>
-          <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0 }}>Once cleaners apply to your listing, you'll see them here.</p>
+          <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0 }}>Once cleaners apply to your listing, you&apos;ll see them here.</p>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -812,7 +722,6 @@ function CustomerDashboardContent() {
   useEffect(() => {
     let realtimeChannel: any = null
     let cancelled = false
-
     const init = async () => {
       try {
         const supabase = createClient()
@@ -829,20 +738,10 @@ function CustomerDashboardContent() {
           : { data: [], error: null }
         if (requestError) throw new Error(requestError.message)
 
-        // Load notifications for this customer
         if (cid) {
-          const { data: notifData } = await (supabase as any)
-            .from('notifications')
-            .select('id, type, title, body, link, read, created_at')
-            .eq('customer_id', cid)
-            .order('created_at', { ascending: false })
-            .limit(20)
+          const { data: notifData } = await (supabase as any).from('notifications').select('id, type, title, body, link, read, created_at').eq('customer_id', cid).order('created_at', { ascending: false }).limit(20)
           if (!cancelled && notifData) setNotifications(notifData as NotificationItem[])
-
-          // Realtime: insert/update/delete on customer's notifications.
-          // Insert prepends; update reflects mark-as-read; delete removes.
-          realtimeChannel = supabase
-            .channel(`customer-notifications-${cid}`)
+          realtimeChannel = supabase.channel(`customer-notifications-${cid}`)
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `customer_id=eq.${cid}` }, payload => {
               const n = payload.new as NotificationItem
               setNotifications(prev => prev.find(x => x.id === n.id) ? prev : [n, ...prev])
@@ -858,9 +757,7 @@ function CustomerDashboardContent() {
             .subscribe()
         }
 
-        if (!cancelled) {
-          setProfile(profileData); setRequests(requestData ?? [])
-        }
+        if (!cancelled) { setProfile(profileData); setRequests(requestData ?? []) }
         if (searchParams.get('gc_success') === '1') setShowSuccessBanner(true)
         const acceptAppId = searchParams.get('accept'); const acceptReqId = searchParams.get('request')
         if (acceptAppId && acceptReqId) { handleAcceptApplication(acceptAppId, acceptReqId); router.replace('/customer/dashboard') }
@@ -869,14 +766,7 @@ function CustomerDashboardContent() {
       } catch (err: any) { setError(err?.message ?? 'Something went wrong.') } finally { if (!cancelled) setLoading(false) }
     }
     init()
-
-    return () => {
-      cancelled = true
-      if (realtimeChannel) {
-        const supabase = createClient()
-        supabase.removeChannel(realtimeChannel)
-      }
-    }
+    return () => { cancelled = true; if (realtimeChannel) { const supabase = createClient(); supabase.removeChannel(realtimeChannel) } }
   }, [router])
 
   const handleAcceptApplication = async (applicationId: string, requestId: string) => {
@@ -912,7 +802,9 @@ function CustomerDashboardContent() {
     timerFiredRef.current = false
   }
 
-  const handleConfirmStartDate = async (startDate: string) => {
+  // Confirms the start date and forwards the cooling-off consent flag through
+  // to create-flow (and confirm-switch on the existing-mandate path).
+  const handleConfirmStartDate = async (startDate: string, coolingOffConsent: boolean) => {
     if (!startDateModal) return
     if (systemMessageTimerRef.current) { clearTimeout(systemMessageTimerRef.current); systemMessageTimerRef.current = null }
     timerFiredRef.current = false
@@ -921,7 +813,13 @@ function CustomerDashboardContent() {
       const res = await fetch('/api/gocardless/create-flow', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ applicationId: startDateModal.applicationId, requestId: startDateModal.requestId, conversationId: startDateModal.conversationId, startDate }),
+        body: JSON.stringify({
+          applicationId: startDateModal.applicationId,
+          requestId: startDateModal.requestId,
+          conversationId: startDateModal.conversationId,
+          startDate,
+          coolingOffConsent,
+        }),
       })
       const data = await res.json()
       if (!res.ok) { showToast('Could not set up Direct Debit — please try again'); setStartDateLoading(false); return }
@@ -936,16 +834,15 @@ function CustomerDashboardContent() {
             conversationId: startDateModal.conversationId,
             startDate,
             mandateId: data.mandateId,
+            coolingOffConsent,
           }),
         })
         const confirmData = await confirmRes.json()
         if (!confirmRes.ok || !confirmData.redirectUrl) {
-          showToast('Could not confirm — please contact support@vouchee.co.uk')
-          setStartDateLoading(false)
-          return
+          showToast('Could not confirm — please contact accounts@vouchee.co.uk')
+          setStartDateLoading(false); return
         }
-        window.location.href = confirmData.redirectUrl
-        return
+        window.location.href = confirmData.redirectUrl; return
       }
 
       if (!data.authorisationUrl) { showToast('Could not set up Direct Debit — please try again'); setStartDateLoading(false); return }
@@ -988,10 +885,6 @@ function CustomerDashboardContent() {
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 4000) }
 
-  // ─── Notification handlers ───────────────────────────────────────────────
-  // - Click: mark single as read (optimistic), then navigate if there's a link
-  // - Dismiss: delete the row (optimistic), call API to persist
-  // - Mark all: bulk mark unread → read, clears the My Dashboard badge
   const handleNotificationClick = async (n: NotificationItem) => {
     if (!n.read) {
       setNotifications(prev => prev.map(x => x.id === n.id ? { ...x, read: true } : x))
@@ -999,7 +892,6 @@ function CustomerDashboardContent() {
       catch (e) { console.error('Mark read failed:', e) }
     }
     if (!n.link) return
-    // If link includes ?chat=<id>, open the chat widget directly instead of navigating
     try {
       const linkUrl = new URL(n.link, window.location.origin)
       const chatId = linkUrl.searchParams.get('chat')
@@ -1012,7 +904,7 @@ function CustomerDashboardContent() {
   }
 
   const handleDismissNotification = async (id: string, e: React.MouseEvent) => {
-    e.stopPropagation() // don't trigger row click
+    e.stopPropagation()
     setNotifications(prev => prev.filter(x => x.id !== id))
     try { await fetch('/api/notifications/dismiss', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) }) }
     catch (err) { console.error('Dismiss failed:', err) }
@@ -1137,27 +1029,15 @@ function CustomerDashboardContent() {
                 {pausedRequests.map(req => <ActiveRequestCard key={req.id} request={req} onPause={() => setModal({ type: 'pause', id: req.id })} onRepublish={() => setModal({ type: 'republish', id: req.id })} onDelete={() => setModal({ type: 'delete', id: req.id })} onEdit={() => setEditingRequest(req)} />)}
               </div>
             )}
-            <NotificationsPanel
-              notifications={notifications}
-              onClick={handleNotificationClick}
-              onDismiss={handleDismissNotification}
-              onMarkAllRead={handleMarkAllRead}
-            />
+            <NotificationsPanel notifications={notifications} onClick={handleNotificationClick} onDismiss={handleDismissNotification} onMarkAllRead={handleMarkAllRead} />
             {activeRequestIds.length > 0 && <ApplicationsSection requestIds={activeRequestIds} requests={activeRequests} onAccept={handleAcceptApplication} onOpenChat={handleOpenChat} />}
 
             {fulfilledRequests.length > 0 && (
               <div style={{ marginBottom: '36px' }}>
                 <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '14px' }}>Confirmed cleaners</div>
                 {fulfilledRequests.map(req => (
-                  <ActiveRequestCard
-                    key={req.id}
-                    request={req}
-                    onPause={() => {}}
-                    onRepublish={() => {}}
-                    onDelete={() => handleDelete(req.id)}
-                    onEdit={() => setEditingRequest(req)}
-                    onSwitch={() => setSwitchModal({ requestId: req.id, isBeforeStart: checkIsBeforeStartDate(req.start_date) })}
-                  />
+                  <ActiveRequestCard key={req.id} request={req} onPause={() => {}} onRepublish={() => {}} onDelete={() => handleDelete(req.id)} onEdit={() => setEditingRequest(req)}
+                    onSwitch={() => setSwitchModal({ requestId: req.id, isBeforeStart: checkIsBeforeStartDate(req.start_date) })} />
                 ))}
               </div>
             )}
