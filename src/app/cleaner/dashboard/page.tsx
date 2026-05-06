@@ -3,6 +3,7 @@
 import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
 import { ChatWidget } from '@/components/chat-widget'
+import { NotificationsModal, PersonalDetailsModal } from '@/components/cleaner/profile-modals'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -127,15 +128,6 @@ function StatCard({ value, label, sub, color = '#0f172a', bg = '#f8fafc', border
   )
 }
 
-function Toggle({ value, onChange, disabled }: { value: boolean; onChange: () => void; disabled?: boolean }) {
-  return (
-    <button type="button" onClick={onChange} disabled={disabled} aria-pressed={value}
-      style={{ width: '36px', height: '22px', borderRadius: '100px', background: value ? '#16a34a' : '#cbd5e1', border: 'none', position: 'relative', cursor: disabled ? 'wait' : 'pointer', transition: 'background 0.15s ease', padding: 0, flexShrink: 0, opacity: disabled ? 0.6 : 1 }}>
-      <span style={{ position: 'absolute', top: '3px', left: value ? '17px' : '3px', width: '16px', height: '16px', borderRadius: '50%', background: 'white', transition: 'left 0.15s ease', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
-    </button>
-  )
-}
-
 const NOTIFICATION_ICONS: Record<string, string> = {
   chat_accepted: '💬', chat_declined: '😔', job_won: '🎉', job_lost: '👋',
   new_message: '✉️', application_approved: '✅', application_rejected: '❌',
@@ -219,10 +211,15 @@ function ProfileLinkCard({ shortId, ratingAverage, ratingCount }: { shortId: str
 }
 
 // ─── APPROVED DASHBOARD ─────────────────────────────────────────────────────
-function ApprovedDashboard({ profile, cleaner, stats, notifications, onTogglePref, onNotificationClick, onDismissNotification, onMarkAllRead }: {
+// Receives modal-open callbacks from the parent so the modals can be
+// rendered at the page level (where they can close cleanly without
+// interfering with the dashboard layout).
+
+function ApprovedDashboard({ profile, cleaner, stats, notifications, onOpenNotifications, onOpenDetails, onNotificationClick, onDismissNotification, onMarkAllRead }: {
   profile: CleanerProfile; cleaner: CleanerData; stats: CleanerStats
   notifications: NotificationItem[]
-  onTogglePref: (field: 'job_notify' | 'cover_cleans_notify' | 'marketing_opt_in') => void
+  onOpenNotifications: () => void
+  onOpenDetails: () => void
   onNotificationClick: (n: NotificationItem) => void
   onDismissNotification: (id: string, e: React.MouseEvent) => void
   onMarkAllRead: () => void
@@ -231,12 +228,36 @@ function ApprovedDashboard({ profile, cleaner, stats, notifications, onTogglePre
   const memberSince = formatMonthYear(cleaner.created_at)
   const cleans = cleaner.cleans_completed ?? 0
 
+  // Count active zones for the notifications card preview line
+  const activeZoneCount = (cleaner.zones ?? []).length
+
   return (
     <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '0 24px 60px', display: 'grid', gridTemplateColumns: '340px 1fr', gap: '24px', alignItems: 'start' }}>
       {/* ── LEFT COLUMN ── */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         <div style={{ background: 'white', borderRadius: '20px', border: '1.5px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 16px rgba(0,0,0,0.06)' }}>
-          <div style={{ padding: '24px 24px 20px' }}>
+          <div style={{ padding: '24px 24px 20px', position: 'relative' }}>
+            {/* ── Cog button — opens personal-details modal ── */}
+            <button
+              onClick={onOpenDetails}
+              aria-label="Edit your details"
+              title="Edit your details"
+              style={{
+                position: 'absolute', top: '14px', right: '14px',
+                width: '30px', height: '30px', borderRadius: '50%',
+                background: '#f8fafc', border: '1px solid #e2e8f0',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer', color: '#64748b', transition: 'all 0.15s',
+                padding: 0,
+              }}
+            >
+              {/* Cog SVG — same shape as the customer-side request-preview cog */}
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+              </svg>
+            </button>
+
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
                 <div style={{ position: 'relative', flexShrink: 0 }}>
@@ -263,7 +284,7 @@ function ApprovedDashboard({ profile, cleaner, stats, notifications, onTogglePre
                   </div>
                 </div>
               </div>
-              <div style={{ textAlign: 'center', background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '10px 14px', flexShrink: 0 }}>
+              <div style={{ textAlign: 'center', background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '10px 14px', flexShrink: 0, marginRight: '36px' }}>
                 <div style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a', lineHeight: 1 }}>{cleans}</div>
                 <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 700, marginTop: '2px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Cleans</div>
               </div>
@@ -280,24 +301,67 @@ function ApprovedDashboard({ profile, cleaner, stats, notifications, onTogglePre
           </div>
         </div>
 
-        <div style={{ background: 'white', borderRadius: '20px', border: '1.5px solid #e2e8f0', padding: '20px 20px 16px', boxShadow: '0 2px 16px rgba(0,0,0,0.04)' }}>
-          <div style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '14px' }}>Notification preferences</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            {([
-              { field: 'job_notify' as const, label: 'Job alerts', value: cleaner.job_notify, icon: '🔔' },
-              { field: 'cover_cleans_notify' as const, label: 'Cover clean alerts', value: cleaner.cover_cleans_notify, icon: '🔄' },
-              { field: 'marketing_opt_in' as const, label: 'Marketing & updates', value: cleaner.marketing_opt_in, icon: '📣' },
-            ]).map(({ field, label, value, icon }) => (
-              <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #f8fafc' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '14px' }}>{icon}</span>
-                  <span style={{ fontSize: '13px', color: '#475569', fontWeight: 500 }}>{label}</span>
-                </div>
-                <Toggle value={value} onChange={() => onTogglePref(field)} />
-              </div>
-            ))}
+        {/* ── Notification preferences card — now a clickable button ── */}
+        <button
+          onClick={onOpenNotifications}
+          style={{
+            background: 'white', borderRadius: '20px', border: '1.5px solid #e2e8f0',
+            padding: '20px', boxShadow: '0 2px 16px rgba(0,0,0,0.04)',
+            cursor: 'pointer', textAlign: 'left', width: '100%',
+            fontFamily: "'DM Sans', sans-serif", transition: 'border-color 0.15s, box-shadow 0.15s',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+            <div style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Notification preferences</div>
+            <span style={{ fontSize: '12px', fontWeight: 700, color: '#3b82f6' }}>Edit →</span>
           </div>
-        </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {/* Areas summary */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '14px' }}>📍</span>
+                <span style={{ fontSize: '13px', color: '#475569', fontWeight: 500 }}>Areas</span>
+              </div>
+              <span style={{
+                fontSize: '12px', fontWeight: 700,
+                color: activeZoneCount > 0 ? '#15803d' : '#94a3b8',
+                background: activeZoneCount > 0 ? '#f0fdf4' : '#f1f5f9',
+                border: `1px solid ${activeZoneCount > 0 ? '#86efac' : '#e2e8f0'}`,
+                borderRadius: '100px', padding: '3px 10px',
+              }}>
+                {activeZoneCount === 0 ? 'None' :
+                 activeZoneCount === 9 ? 'All zones' :
+                 `${activeZoneCount} ${activeZoneCount === 1 ? 'zone' : 'zones'}`}
+              </span>
+            </div>
+            {/* Cover cleans summary */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '14px' }}>🔄</span>
+                <span style={{ fontSize: '13px', color: '#475569', fontWeight: 500 }}>Cover cleans</span>
+              </div>
+              <span style={{
+                fontSize: '12px', fontWeight: 700,
+                color: cleaner.cover_cleans_notify ? '#15803d' : '#94a3b8',
+              }}>
+                {cleaner.cover_cleans_notify ? 'On' : 'Off'}
+              </span>
+            </div>
+            {/* Marketing summary */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '14px' }}>📣</span>
+                <span style={{ fontSize: '13px', color: '#475569', fontWeight: 500 }}>Updates &amp; promotions</span>
+              </div>
+              <span style={{
+                fontSize: '12px', fontWeight: 700,
+                color: cleaner.marketing_opt_in ? '#15803d' : '#94a3b8',
+              }}>
+                {cleaner.marketing_opt_in ? 'On' : 'Off'}
+              </span>
+            </div>
+          </div>
+        </button>
 
         <div style={{ background: 'linear-gradient(135deg, #fefce8, #fff7ed)', borderRadius: '16px', border: '1.5px solid #fde68a', padding: '18px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
@@ -473,6 +537,7 @@ function BlockedScreen({ status }: { status: 'rejected' | 'suspended' }) {
 
 export default function CleanerDashboardPage() {
   const router = useRouter()
+  const [userId, setUserId] = useState<string | null>(null)
   const [profile, setProfile] = useState<CleanerProfile | null>(null)
   const [cleaner, setCleaner] = useState<CleanerData | null>(null)
   const [stats, setStats] = useState<CleanerStats>({ pendingApplications: 0, jobsWon: 0, chatsAccepted: 0, chatsDeclined: 0, uniqueCustomers: 0 })
@@ -481,12 +546,17 @@ export default function CleanerDashboardPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  // Modal-open state — only one modal can be open at a time
+  const [showNotificationsModal, setShowNotificationsModal] = useState(false)
+  const [showDetailsModal, setShowDetailsModal] = useState(false)
+
   useEffect(() => {
     const init = async () => {
       try {
         const supabase = createClient()
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) { router.replace('/login'); return }
+        setUserId(user.id)
         setEmailConfirmed(!!user.email_confirmed_at)
 
         const { data: profileData, error: profileError } = await supabase
@@ -532,14 +602,18 @@ export default function CleanerDashboardPage() {
     init()
   }, [router])
 
-  const togglePreference = async (field: 'job_notify' | 'cover_cleans_notify' | 'marketing_opt_in') => {
+  // Called after the notifications modal saves successfully — updates local
+  // state so the dashboard summary card reflects the new values without
+  // needing a full reload.
+  const handleNotificationsSaved = (next: { zones: string[]; cover_cleans_notify: boolean; marketing_opt_in: boolean }) => {
     if (!cleaner) return
-    const previous = cleaner[field]
-    const next = !previous
-    setCleaner({ ...cleaner, [field]: next })
-    const supabase = createClient()
-    const { error } = await (supabase.from('cleaners') as any).update({ [field]: next }).eq('id', (cleaner as any).id)
-    if (error) { setCleaner({ ...cleaner, [field]: previous }); console.error('Failed to update preference:', error) }
+    setCleaner({ ...cleaner, ...next })
+  }
+
+  // Same pattern for personal details — updates local profile state.
+  const handleDetailsSaved = (next: { full_name: string; phone: string }) => {
+    if (!profile) return
+    setProfile({ ...profile, full_name: next.full_name, phone: next.phone })
   }
 
   const handleNotificationClick = async (n: NotificationItem) => {
@@ -618,7 +692,19 @@ export default function CleanerDashboardPage() {
         </div>
 
         {(status === 'submitted' || status === 'pending') && <PendingScreen profile={profile} cleaner={cleaner} emailConfirmed={emailConfirmed} />}
-        {status === 'approved' && <ApprovedDashboard profile={profile} cleaner={cleaner} stats={stats} notifications={notifications} onTogglePref={togglePreference} onNotificationClick={handleNotificationClick} onDismissNotification={handleDismissNotification} onMarkAllRead={handleMarkAllRead} />}
+        {status === 'approved' && (
+          <ApprovedDashboard
+            profile={profile}
+            cleaner={cleaner}
+            stats={stats}
+            notifications={notifications}
+            onOpenNotifications={() => setShowNotificationsModal(true)}
+            onOpenDetails={() => setShowDetailsModal(true)}
+            onNotificationClick={handleNotificationClick}
+            onDismissNotification={handleDismissNotification}
+            onMarkAllRead={handleMarkAllRead}
+          />
+        )}
         {(status === 'rejected' || status === 'suspended') && <BlockedScreen status={status} />}
       </main>
 
@@ -632,6 +718,28 @@ export default function CleanerDashboardPage() {
           conversations where cleaner_id matches this user's cleaner record.
           Shows count=0 tray when no conversations exist yet. */}
       <ChatWidget />
+
+      {/* ── Profile modals — rendered at page level so they overlay cleanly ── */}
+      {showNotificationsModal && cleaner && (
+        <NotificationsModal
+          cleanerId={cleaner.id}
+          initialZones={cleaner.zones ?? []}
+          initialCoverCleans={cleaner.cover_cleans_notify}
+          initialMarketing={cleaner.marketing_opt_in}
+          onClose={() => setShowNotificationsModal(false)}
+          onSaved={handleNotificationsSaved}
+        />
+      )}
+      {showDetailsModal && profile && cleaner && userId && (
+        <PersonalDetailsModal
+          profileId={userId}
+          initialFullName={profile.full_name}
+          initialEmail={profile.email}
+          initialPhone={profile.phone}
+          onClose={() => setShowDetailsModal(false)}
+          onSaved={handleDetailsSaved}
+        />
+      )}
     </div>
   )
 }
