@@ -6,11 +6,16 @@ import { Resend } from 'resend'
 const resend = new Resend(process.env.RESEND_API_KEY!)
 
 const ZONE_LABELS: Record<string, string> = {
-  central_south_east: 'Central / South East', north_west: 'North West',
-  north_east_roffey: 'North East / Roffey', south_west: 'South West',
-  warnham_north: 'Warnham / North', broadbridge_heath: 'Broadbridge Heath',
-  mannings_heath: 'Mannings Heath', faygate_kilnwood_vale: 'Faygate / Kilnwood Vale',
-  christs_hospital: "Christ's Hospital", southwater: 'Southwater',
+  central_south_east: 'Central / South East',
+  north_west: 'North West',
+  north_east_roffey: 'North East / Roffey',
+  south_west: 'South West',
+  warnham_north: 'Warnham / North',
+  broadbridge_heath: 'Broadbridge Heath',
+  mannings_heath: 'Mannings Heath',
+  faygate_kilnwood_vale: 'Faygate / Kilnwood Vale',
+  christs_hospital: "Christ's Hospital",
+  southwater: 'Southwater',
 }
 
 // ─── Cooling-off helpers ──────────────────────────────────────────────────────
@@ -24,23 +29,31 @@ const ZONE_LABELS: Record<string, string> = {
 // most recent one we successfully fetched as the root. This means an older
 // pre-migration fulfilled request (no fulfilled_at / cooling_off_until)
 // will simply route to Branch C, the existing 30-day notice flow.
-
 async function getRootCleanRequest(supabaseAdmin: any, requestId: string): Promise<any | null> {
   let current: any = null
   let nextId: string | null = requestId
   let safety = 10 // upper bound on switch chain length
 
   while (nextId && safety > 0) {
-    const { data, error } = await supabaseAdmin
+    // TS7022 fix: capture the result with explicit typing first, then
+    // destructure. Inline destructuring inside the loop hits a recursive
+    // type-inference edge case in TypeScript that fails Vercel builds.
+    const result: { data: any; error: any } = await supabaseAdmin
       .from('clean_requests')
       .select('id, switch_from_request_id, fulfilled_at, cooling_off_until, cooling_off_consent_given, start_date, frequency')
       .eq('id', nextId)
       .single()
+
+    const data = result.data
+    const error = result.error
+
     if (error || !data) break
+
     current = data
     nextId = data.switch_from_request_id
     safety--
   }
+
   return current
 }
 
@@ -50,9 +63,11 @@ async function getRootCleanRequest(supabaseAdmin: any, requestId: string): Promi
 //   - failed / cancelled / charged_back              → skip
 // Returns { refundedPence, firstRefundId, errors[] }. Best-effort: a failure
 // on any single payment is logged but does not stop the rest.
-
 async function processCoolingOffRefunds(
-  gcBaseUrl: string, gcToken: string, mandateId: string, requestId: string,
+  gcBaseUrl: string,
+  gcToken: string,
+  mandateId: string,
+  requestId: string,
 ): Promise<{ refundedPence: number; firstRefundId: string | null; errors: string[] }> {
   const errors: string[] = []
   let refundedPence = 0
@@ -155,97 +170,87 @@ async function processCoolingOffRefunds(
 // ─── Email templates ──────────────────────────────────────────────────────────
 
 // Cleaner email for the existing 30-day-notice flow (Branch C) — unchanged.
-function buildCleanerCancellationEmail({
-  cleanerFirstName, customerFirstName, zone,
-}: {
-  cleanerFirstName: string; customerFirstName: string; zone: string
-}): string {
+function buildCleanerCancellationEmail({ cleanerFirstName, customerFirstName, zone }: { cleanerFirstName: string; customerFirstName: string; zone: string }): string {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.vouchee.co.uk'
   const zoneLabel = ZONE_LABELS[zone] ?? zone
-
   return `<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:#f0f4f8;font-family:'Helvetica Neue',Arial,sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f4f8;padding:40px 16px;">
-  <tr><td align="center"><table width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;">
-    <tr><td style="background:#ffffff;padding:36px 40px 32px;text-align:center;border-radius:16px 16px 0 0;">
-      <img src="https://www.vouchee.co.uk/full-logo-black.png" width="260" height="60" alt="Vouchee" style="display:block;margin:0 auto 36px;max-width:100%;" />
-      <div style="font-size:28px;font-weight:800;color:#0f172a;letter-spacing:-0.5px;line-height:1.2;">Subscription update</div>
-    </td></tr>
-    <tr><td style="background:white;padding:36px 40px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 16px 16px;">
-      <p style="font-size:15px;color:#374151;line-height:1.7;margin:0 0 20px;">Hi ${cleanerFirstName},</p>
-      <p style="font-size:15px;color:#374151;line-height:1.7;margin:0 0 20px;">
-        We wanted to let you know that <strong>${customerFirstName}</strong> (${zoneLabel}) has informed Vouchee that they no longer need cleaning services and their Direct Debit has been cancelled.
-      </p>
-      <div style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:12px;padding:22px 28px;margin-bottom:24px;">
-        <div style="font-size:13px;font-weight:800;color:#1e40af;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;">📋 30-day notice period</div>
-        <p style="font-size:14px;color:#1e3a8a;line-height:1.7;margin:0;">
-          As per our terms, Vouchee operates on a <strong>30-day notice period</strong>. We recommend reaching out to ${customerFirstName} directly to confirm whether they still require cleans during this time — some customers continue with their cleaner through the notice period.
-        </p>
-      </div>
-      <div style="background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:12px;padding:22px 28px;margin-bottom:28px;">
-        <div style="font-size:13px;font-weight:800;color:#15803d;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;">⭐ Ask for a review</div>
-        <p style="font-size:14px;color:#166534;line-height:1.7;margin:0 0 16px;">
-          Once you've completed any remaining cleans, we'd love it if you could ask ${customerFirstName} to leave you a review on Vouchee. Reviews help you stand out to future customers and are a great way to build your reputation on the platform.
-        </p>
-        <a href="${appUrl}/cleaner/dashboard" style="display:inline-block;background:#16a34a;color:white;font-size:13px;font-weight:700;padding:11px 24px;border-radius:8px;text-decoration:none;">View your dashboard →</a>
-      </div>
-      <p style="font-size:14px;color:#64748b;line-height:1.7;margin:0 0 20px;">
-        Thank you for everything you've done for ${customerFirstName} — we hope to match you with new customers in your area soon.
-      </p>
-      <p style="font-size:12px;color:#94a3b8;text-align:center;margin:0;line-height:1.6;">
-        Questions? Reply to this email or contact us at <a href="mailto:cleaners@vouchee.co.uk" style="color:#94a3b8;">cleaners@vouchee.co.uk</a>
-      </p>
-    </td></tr>
-    <tr><td style="padding:24px 0;text-align:center;">
-      <p style="margin:0;font-size:12px;color:#94a3b8;">© 2026 Vouchee · <a href="https://www.vouchee.co.uk" style="color:#94a3b8;text-decoration:none;">vouchee.co.uk</a></p>
-    </td></tr>
-  </table></td></tr>
+<tr><td align="center"><table width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;">
+<tr><td style="background:#ffffff;padding:36px 40px 32px;text-align:center;border-radius:16px 16px 0 0;">
+<img src="https://www.vouchee.co.uk/full-logo-black.png" width="260" height="60" alt="Vouchee" style="display:block;margin:0 auto 36px;max-width:100%;" />
+<div style="font-size:28px;font-weight:800;color:#0f172a;letter-spacing:-0.5px;line-height:1.2;">Subscription update</div>
+</td></tr>
+<tr><td style="background:white;padding:36px 40px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 16px 16px;">
+<p style="font-size:15px;color:#374151;line-height:1.7;margin:0 0 20px;">Hi ${cleanerFirstName},</p>
+<p style="font-size:15px;color:#374151;line-height:1.7;margin:0 0 20px;">
+We wanted to let you know that <strong>${customerFirstName}</strong> (${zoneLabel}) has informed Vouchee that they no longer need cleaning services and their Direct Debit has been cancelled.
+</p>
+<div style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:12px;padding:22px 28px;margin-bottom:24px;">
+<div style="font-size:13px;font-weight:800;color:#1e40af;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;">📋 30-day notice period</div>
+<p style="font-size:14px;color:#1e3a8a;line-height:1.7;margin:0;">
+As per our terms, Vouchee operates on a <strong>30-day notice period</strong>. We recommend reaching out to ${customerFirstName} directly to confirm whether they still require cleans during this time — some customers continue with their cleaner through the notice period.
+</p>
+</div>
+<div style="background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:12px;padding:22px 28px;margin-bottom:28px;">
+<div style="font-size:13px;font-weight:800;color:#15803d;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;">⭐ Ask for a review</div>
+<p style="font-size:14px;color:#166534;line-height:1.7;margin:0 0 16px;">
+Once you've completed any remaining cleans, we'd love it if you could ask ${customerFirstName} to leave you a review on Vouchee. Reviews help you stand out to future customers and are a great way to build your reputation on the platform.
+</p>
+<a href="${appUrl}/cleaner/dashboard" style="display:inline-block;background:#16a34a;color:white;font-size:13px;font-weight:700;padding:11px 24px;border-radius:8px;text-decoration:none;">View your dashboard →</a>
+</div>
+<p style="font-size:14px;color:#64748b;line-height:1.7;margin:0 0 20px;">
+Thank you for everything you've done for ${customerFirstName} — we hope to match you with new customers in your area soon.
+</p>
+<p style="font-size:12px;color:#94a3b8;text-align:center;margin:0;line-height:1.6;">
+Questions? Reply to this email or contact us at <a href="mailto:cleaners@vouchee.co.uk" style="color:#94a3b8;">cleaners@vouchee.co.uk</a>
+</p>
+</td></tr>
+<tr><td style="padding:24px 0;text-align:center;">
+<p style="margin:0;font-size:12px;color:#94a3b8;">© 2026 Vouchee · <a href="https://www.vouchee.co.uk" style="color:#94a3b8;text-decoration:none;">vouchee.co.uk</a></p>
+</td></tr>
+</table></td></tr>
 </table></body></html>`
 }
 
 // Customer email for Branch A — full refund within 14 days
-function buildCoolingOffFullRefundEmail({
-  customerFirstName, refundedPence, refundEnd,
-}: {
-  customerFirstName: string; refundedPence: number; refundEnd: string
-}): string {
+function buildCoolingOffFullRefundEmail({ customerFirstName, refundedPence, refundEnd }: { customerFirstName: string; refundedPence: number; refundEnd: string }): string {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.vouchee.co.uk'
   const amountLabel = `£${(refundedPence / 100).toFixed(2)}`
   const refundCopy = refundedPence > 0
     ? `We'll refund <strong>${amountLabel}</strong> to the account your Direct Debit was set up from. The refund will arrive by <strong>${refundEnd}</strong>, in line with the statutory 14-day deadline.`
     : `No payments had been collected yet, so there's nothing to refund — your Direct Debit and any pending payments have been cancelled.`
-
   return `<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:#f0f4f8;font-family:'Helvetica Neue',Arial,sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f4f8;padding:40px 16px;">
-  <tr><td align="center"><table width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;">
-    <tr><td style="background:#ffffff;padding:36px 40px 32px;text-align:center;border-radius:16px 16px 0 0;">
-      <img src="https://www.vouchee.co.uk/full-logo-black.png" width="260" height="60" alt="Vouchee" style="display:block;margin:0 auto 36px;max-width:100%;" />
-      <div style="font-size:28px;font-weight:800;color:#0f172a;letter-spacing:-0.5px;line-height:1.2;">Cancellation confirmed</div>
-    </td></tr>
-    <tr><td style="background:white;padding:36px 40px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 16px 16px;">
-      <p style="font-size:15px;color:#374151;line-height:1.7;margin:0 0 20px;">Hi ${customerFirstName},</p>
-      <p style="font-size:15px;color:#374151;line-height:1.7;margin:0 0 20px;">
-        We've cancelled your Vouchee subscription under your <strong>14-day right to cancel</strong>. Your Direct Debit has been cancelled and no further payments will be collected.
-      </p>
-      <div style="background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:12px;padding:22px 28px;margin-bottom:24px;">
-        <div style="font-size:13px;font-weight:800;color:#15803d;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;">💷 Refund</div>
-        <p style="font-size:14px;color:#166534;line-height:1.7;margin:0;">${refundCopy}</p>
-      </div>
-      <p style="font-size:14px;color:#64748b;line-height:1.7;margin:0 0 20px;">
-        We're sorry it didn't work out this time. If you'd like to give Vouchee another try in future, you'd be very welcome back.
-      </p>
-      <a href="${appUrl}" style="display:inline-block;background:#0f172a;color:white;font-size:13px;font-weight:700;padding:11px 24px;border-radius:8px;text-decoration:none;margin-bottom:20px;">Visit Vouchee →</a>
-      <p style="font-size:12px;color:#94a3b8;line-height:1.6;margin:0;">
-        Reference: this cancellation was actioned under clause 11.2 of our <a href="${appUrl}/legal/terms/customer" style="color:#94a3b8;">Customer Terms</a>. Questions? Reply to this email or contact <a href="mailto:legal@vouchee.co.uk" style="color:#94a3b8;">legal@vouchee.co.uk</a>.
-      </p>
-    </td></tr>
-    <tr><td style="padding:24px 0;text-align:center;">
-      <p style="margin:0;font-size:12px;color:#94a3b8;">© 2026 Vouchee · <a href="https://www.vouchee.co.uk" style="color:#94a3b8;text-decoration:none;">vouchee.co.uk</a></p>
-    </td></tr>
-  </table></td></tr>
+<tr><td align="center"><table width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;">
+<tr><td style="background:#ffffff;padding:36px 40px 32px;text-align:center;border-radius:16px 16px 0 0;">
+<img src="https://www.vouchee.co.uk/full-logo-black.png" width="260" height="60" alt="Vouchee" style="display:block;margin:0 auto 36px;max-width:100%;" />
+<div style="font-size:28px;font-weight:800;color:#0f172a;letter-spacing:-0.5px;line-height:1.2;">Cancellation confirmed</div>
+</td></tr>
+<tr><td style="background:white;padding:36px 40px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 16px 16px;">
+<p style="font-size:15px;color:#374151;line-height:1.7;margin:0 0 20px;">Hi ${customerFirstName},</p>
+<p style="font-size:15px;color:#374151;line-height:1.7;margin:0 0 20px;">
+We've cancelled your Vouchee subscription under your <strong>14-day right to cancel</strong>. Your Direct Debit has been cancelled and no further payments will be collected.
+</p>
+<div style="background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:12px;padding:22px 28px;margin-bottom:24px;">
+<div style="font-size:13px;font-weight:800;color:#15803d;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;">💷 Refund</div>
+<p style="font-size:14px;color:#166534;line-height:1.7;margin:0;">${refundCopy}</p>
+</div>
+<p style="font-size:14px;color:#64748b;line-height:1.7;margin:0 0 20px;">
+We're sorry it didn't work out this time. If you'd like to give Vouchee another try in future, you'd be very welcome back.
+</p>
+<a href="${appUrl}" style="display:inline-block;background:#0f172a;color:white;font-size:13px;font-weight:700;padding:11px 24px;border-radius:8px;text-decoration:none;margin-bottom:20px;">Visit Vouchee →</a>
+<p style="font-size:12px;color:#94a3b8;line-height:1.6;margin:0;">
+Reference: this cancellation was actioned under clause 11.2 of our <a href="${appUrl}/legal/terms/customer" style="color:#94a3b8;">Customer Terms</a>. Questions? Reply to this email or contact <a href="mailto:legal@vouchee.co.uk" style="color:#94a3b8;">legal@vouchee.co.uk</a>.
+</p>
+</td></tr>
+<tr><td style="padding:24px 0;text-align:center;">
+<p style="margin:0;font-size:12px;color:#94a3b8;">© 2026 Vouchee · <a href="https://www.vouchee.co.uk" style="color:#94a3b8;text-decoration:none;">vouchee.co.uk</a></p>
+</td></tr>
+</table></td></tr>
 </table></body></html>`
 }
 
@@ -256,105 +261,96 @@ function buildCoolingOffPartialReviewEmail({ customerFirstName }: { customerFirs
 <html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:#f0f4f8;font-family:'Helvetica Neue',Arial,sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f4f8;padding:40px 16px;">
-  <tr><td align="center"><table width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;">
-    <tr><td style="background:#ffffff;padding:36px 40px 32px;text-align:center;border-radius:16px 16px 0 0;">
-      <img src="https://www.vouchee.co.uk/full-logo-black.png" width="260" height="60" alt="Vouchee" style="display:block;margin:0 auto 36px;max-width:100%;" />
-      <div style="font-size:28px;font-weight:800;color:#0f172a;letter-spacing:-0.5px;line-height:1.2;">Cancellation received</div>
-    </td></tr>
-    <tr><td style="background:white;padding:36px 40px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 16px 16px;">
-      <p style="font-size:15px;color:#374151;line-height:1.7;margin:0 0 20px;">Hi ${customerFirstName},</p>
-      <p style="font-size:15px;color:#374151;line-height:1.7;margin:0 0 20px;">
-        We've received your cancellation under your <strong>14-day right to cancel</strong>. Your Direct Debit has been cancelled and no further recurring payments will be collected.
-      </p>
-      <div style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:12px;padding:22px 28px;margin-bottom:24px;">
-        <div style="font-size:13px;font-weight:800;color:#92400e;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;">⏳ Pro-rata refund — under review</div>
-        <p style="font-size:14px;color:#78350f;line-height:1.7;margin:0;">
-          Because cleaning has already begun under your express consent, we'll review the cleans completed and refund the unused portion of your service fee. We'll be in touch within <strong>5 working days</strong> with the refund amount and timing.
-        </p>
-      </div>
-      <p style="font-size:14px;color:#64748b;line-height:1.7;margin:0 0 20px;">
-        If you have any details that would help our review (for example, dates of cleans completed), please reply to this email.
-      </p>
-      <p style="font-size:12px;color:#94a3b8;line-height:1.6;margin:0;">
-        Reference: this cancellation was actioned under clause 11.2 of our <a href="${appUrl}/legal/terms/customer" style="color:#94a3b8;">Customer Terms</a>. Questions? <a href="mailto:legal@vouchee.co.uk" style="color:#94a3b8;">legal@vouchee.co.uk</a>.
-      </p>
-    </td></tr>
-    <tr><td style="padding:24px 0;text-align:center;">
-      <p style="margin:0;font-size:12px;color:#94a3b8;">© 2026 Vouchee · <a href="https://www.vouchee.co.uk" style="color:#94a3b8;text-decoration:none;">vouchee.co.uk</a></p>
-    </td></tr>
-  </table></td></tr>
+<tr><td align="center"><table width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;">
+<tr><td style="background:#ffffff;padding:36px 40px 32px;text-align:center;border-radius:16px 16px 0 0;">
+<img src="https://www.vouchee.co.uk/full-logo-black.png" width="260" height="60" alt="Vouchee" style="display:block;margin:0 auto 36px;max-width:100%;" />
+<div style="font-size:28px;font-weight:800;color:#0f172a;letter-spacing:-0.5px;line-height:1.2;">Cancellation received</div>
+</td></tr>
+<tr><td style="background:white;padding:36px 40px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 16px 16px;">
+<p style="font-size:15px;color:#374151;line-height:1.7;margin:0 0 20px;">Hi ${customerFirstName},</p>
+<p style="font-size:15px;color:#374151;line-height:1.7;margin:0 0 20px;">
+We've received your cancellation under your <strong>14-day right to cancel</strong>. Your Direct Debit has been cancelled and no further recurring payments will be collected.
+</p>
+<div style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:12px;padding:22px 28px;margin-bottom:24px;">
+<div style="font-size:13px;font-weight:800;color:#92400e;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;">⏳ Pro-rata refund — under review</div>
+<p style="font-size:14px;color:#78350f;line-height:1.7;margin:0;">
+Because cleaning has already begun under your express consent, we'll review the cleans completed and refund the unused portion of your service fee. We'll be in touch within <strong>5 working days</strong> with the refund amount and timing.
+</p>
+</div>
+<p style="font-size:14px;color:#64748b;line-height:1.7;margin:0 0 20px;">
+If you have any details that would help our review (for example, dates of cleans completed), please reply to this email.
+</p>
+<p style="font-size:12px;color:#94a3b8;line-height:1.6;margin:0;">
+Reference: this cancellation was actioned under clause 11.2 of our <a href="${appUrl}/legal/terms/customer" style="color:#94a3b8;">Customer Terms</a>. Questions? <a href="mailto:legal@vouchee.co.uk" style="color:#94a3b8;">legal@vouchee.co.uk</a>.
+</p>
+</td></tr>
+<tr><td style="padding:24px 0;text-align:center;">
+<p style="margin:0;font-size:12px;color:#94a3b8;">© 2026 Vouchee · <a href="https://www.vouchee.co.uk" style="color:#94a3b8;text-decoration:none;">vouchee.co.uk</a></p>
+</td></tr>
+</table></td></tr>
 </table></body></html>`
 }
 
 // Admin email for Branch B — alerts so the pro-rata review doesn't slip
-function buildAdminCoolingOffPartialAlertEmail({
-  customerFullName, customerEmail, requestId, startDate,
-}: {
-  customerFullName: string; customerEmail: string; requestId: string; startDate: string
-}): string {
+function buildAdminCoolingOffPartialAlertEmail({ customerFullName, customerEmail, requestId, startDate }: { customerFullName: string; customerEmail: string; requestId: string; startDate: string }): string {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.vouchee.co.uk'
   return `<!DOCTYPE html>
 <html><body style="font-family:'Helvetica Neue',Arial,sans-serif;background:#f0f4f8;padding:24px;">
 <div style="max-width:600px;margin:0 auto;background:white;border:1.5px solid #fde68a;border-radius:12px;padding:28px;">
-  <div style="font-size:14px;font-weight:800;color:#92400e;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:14px;">⚠️ Cooling-off cancellation — pro-rata refund needed</div>
-  <p style="font-size:14px;color:#374151;line-height:1.6;margin:0 0 14px;">
-    A customer has cancelled within the 14-day cooling-off period <strong>after cleaning began with their express consent</strong>. A pro-rata refund needs to be calculated and issued within 14 days.
-  </p>
-  <table width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #f1f5f9;border-bottom:1px solid #f1f5f9;margin:14px 0;">
-    <tr><td style="padding:8px 0;font-size:13px;color:#64748b;">Customer</td><td style="padding:8px 0;font-size:13px;font-weight:700;color:#0f172a;text-align:right;">${customerFullName}</td></tr>
-    <tr><td style="padding:8px 0;font-size:13px;color:#64748b;">Email</td><td style="padding:8px 0;font-size:13px;font-weight:700;color:#0f172a;text-align:right;">${customerEmail}</td></tr>
-    <tr><td style="padding:8px 0;font-size:13px;color:#64748b;">Start date</td><td style="padding:8px 0;font-size:13px;font-weight:700;color:#0f172a;text-align:right;">${startDate}</td></tr>
-    <tr><td style="padding:8px 0;font-size:13px;color:#64748b;">Request ID</td><td style="padding:8px 0;font-size:12px;font-family:monospace;color:#0f172a;text-align:right;">${requestId}</td></tr>
-  </table>
-  <p style="font-size:13px;color:#64748b;line-height:1.6;margin:0;">
-    Action: confirm cleans completed with the cleaner, calculate pro-rata refund (subscription fee minus per-clean rate × cleans done), issue via GoCardless dashboard, reply to customer with confirmation.
-  </p>
-  <p style="font-size:12px;color:#94a3b8;line-height:1.6;margin:14px 0 0;">
-    Statutory 14-day refund deadline applies (CCR 2013).
-  </p>
+<div style="font-size:14px;font-weight:800;color:#92400e;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:14px;">⚠️ Cooling-off cancellation — pro-rata refund needed</div>
+<p style="font-size:14px;color:#374151;line-height:1.6;margin:0 0 14px;">
+A customer has cancelled within the 14-day cooling-off period <strong>after cleaning began with their express consent</strong>. A pro-rata refund needs to be calculated and issued within 14 days.
+</p>
+<table width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #f1f5f9;border-bottom:1px solid #f1f5f9;margin:14px 0;">
+<tr><td style="padding:8px 0;font-size:13px;color:#64748b;">Customer</td><td style="padding:8px 0;font-size:13px;font-weight:700;color:#0f172a;text-align:right;">${customerFullName}</td></tr>
+<tr><td style="padding:8px 0;font-size:13px;color:#64748b;">Email</td><td style="padding:8px 0;font-size:13px;font-weight:700;color:#0f172a;text-align:right;">${customerEmail}</td></tr>
+<tr><td style="padding:8px 0;font-size:13px;color:#64748b;">Start date</td><td style="padding:8px 0;font-size:13px;font-weight:700;color:#0f172a;text-align:right;">${startDate}</td></tr>
+<tr><td style="padding:8px 0;font-size:13px;color:#64748b;">Request ID</td><td style="padding:8px 0;font-size:12px;font-family:monospace;color:#0f172a;text-align:right;">${requestId}</td></tr>
+</table>
+<p style="font-size:13px;color:#64748b;line-height:1.6;margin:0;">
+Action: confirm cleans completed with the cleaner, calculate pro-rata refund (subscription fee minus per-clean rate × cleans done), issue via GoCardless dashboard, reply to customer with confirmation.
+</p>
+<p style="font-size:12px;color:#94a3b8;line-height:1.6;margin:14px 0 0;">
+Statutory 14-day refund deadline applies (CCR 2013).
+</p>
 </div>
 </body></html>`
 }
 
 // Cleaner email for cooling-off cancellations (Branches A and B) — different
 // tone from the standard-cancellation email. No 30-day notice, no review CTA.
-function buildCleanerCoolingOffCancellationEmail({
-  cleanerFirstName, customerFirstName, zone, serviceHasBegun,
-}: {
-  cleanerFirstName: string; customerFirstName: string; zone: string; serviceHasBegun: boolean
-}): string {
+function buildCleanerCoolingOffCancellationEmail({ cleanerFirstName, customerFirstName, zone, serviceHasBegun }: { cleanerFirstName: string; customerFirstName: string; zone: string; serviceHasBegun: boolean }): string {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.vouchee.co.uk'
   const zoneLabel = ZONE_LABELS[zone] ?? zone
   const completedCleansCopy = serviceHasBegun
     ? `If any cleans have already taken place, we'll be in touch separately about settling for those.`
     : `As cleaning hadn't started yet, no further action is needed on your end.`
-
   return `<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:#f0f4f8;font-family:'Helvetica Neue',Arial,sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f4f8;padding:40px 16px;">
-  <tr><td align="center"><table width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;">
-    <tr><td style="background:#ffffff;padding:36px 40px 32px;text-align:center;border-radius:16px 16px 0 0;">
-      <img src="https://www.vouchee.co.uk/full-logo-black.png" width="260" height="60" alt="Vouchee" style="display:block;margin:0 auto 36px;max-width:100%;" />
-      <div style="font-size:28px;font-weight:800;color:#0f172a;letter-spacing:-0.5px;line-height:1.2;">Subscription update</div>
-    </td></tr>
-    <tr><td style="background:white;padding:36px 40px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 16px 16px;">
-      <p style="font-size:15px;color:#374151;line-height:1.7;margin:0 0 20px;">Hi ${cleanerFirstName},</p>
-      <p style="font-size:15px;color:#374151;line-height:1.7;margin:0 0 20px;">
-        We're letting you know that <strong>${customerFirstName}</strong> (${zoneLabel}) has cancelled their Vouchee subscription within their statutory 14-day cancellation period. ${completedCleansCopy}
-      </p>
-      <p style="font-size:14px;color:#64748b;line-height:1.7;margin:0 0 20px;">
-        This is a right every customer has under UK consumer law and isn't a reflection on your work. Don't be discouraged — keep an eye on your dashboard for new opportunities in your area.
-      </p>
-      <a href="${appUrl}/cleaner/dashboard" style="display:inline-block;background:#16a34a;color:white;font-size:13px;font-weight:700;padding:11px 24px;border-radius:8px;text-decoration:none;margin-bottom:16px;">View your dashboard →</a>
-      <p style="font-size:12px;color:#94a3b8;text-align:center;margin:0;line-height:1.6;">
-        Questions? <a href="mailto:cleaners@vouchee.co.uk" style="color:#94a3b8;">cleaners@vouchee.co.uk</a>
-      </p>
-    </td></tr>
-    <tr><td style="padding:24px 0;text-align:center;">
-      <p style="margin:0;font-size:12px;color:#94a3b8;">© 2026 Vouchee · vouchee.co.uk</p>
-    </td></tr>
-  </table></td></tr>
+<tr><td align="center"><table width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;">
+<tr><td style="background:#ffffff;padding:36px 40px 32px;text-align:center;border-radius:16px 16px 0 0;">
+<img src="https://www.vouchee.co.uk/full-logo-black.png" width="260" height="60" alt="Vouchee" style="display:block;margin:0 auto 36px;max-width:100%;" />
+<div style="font-size:28px;font-weight:800;color:#0f172a;letter-spacing:-0.5px;line-height:1.2;">Subscription update</div>
+</td></tr>
+<tr><td style="background:white;padding:36px 40px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 16px 16px;">
+<p style="font-size:15px;color:#374151;line-height:1.7;margin:0 0 20px;">Hi ${cleanerFirstName},</p>
+<p style="font-size:15px;color:#374151;line-height:1.7;margin:0 0 20px;">
+We're letting you know that <strong>${customerFirstName}</strong> (${zoneLabel}) has cancelled their Vouchee subscription within their statutory 14-day cancellation period. ${completedCleansCopy}
+</p>
+<p style="font-size:14px;color:#64748b;line-height:1.7;margin:0 0 20px;">
+This is a right every customer has under UK consumer law and isn't a reflection on your work. Don't be discouraged — keep an eye on your dashboard for new opportunities in your area.
+</p>
+<a href="${appUrl}/cleaner/dashboard" style="display:inline-block;background:#16a34a;color:white;font-size:13px;font-weight:700;padding:11px 24px;border-radius:8px;text-decoration:none;margin-bottom:16px;">View your dashboard →</a>
+<p style="font-size:12px;color:#94a3b8;text-align:center;margin:0;line-height:1.6;">
+Questions? <a href="mailto:cleaners@vouchee.co.uk" style="color:#94a3b8;">cleaners@vouchee.co.uk</a>
+</p>
+</td></tr>
+<tr><td style="padding:24px 0;text-align:center;">
+<p style="margin:0;font-size:12px;color:#94a3b8;">© 2026 Vouchee · vouchee.co.uk</p>
+</td></tr>
+</table></td></tr>
 </table></body></html>`
 }
 
@@ -369,6 +365,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const { requestId } = body
+
     if (!requestId) {
       return NextResponse.json({ error: 'requestId required' }, { status: 400 })
     }
@@ -384,6 +381,7 @@ export async function POST(request: NextRequest) {
       .select('id, customer_id, status, gocardless_subscription_id, assigned_cleaner_id, zone, frequency, start_date, switch_from_request_id, fulfilled_at, cooling_off_until, cooling_off_consent_given')
       .eq('id', requestId)
       .single()
+
     if (reqError || !cleanRequest) {
       return NextResponse.json({ error: 'Request not found' }, { status: 404 })
     }
@@ -397,6 +395,7 @@ export async function POST(request: NextRequest) {
     // Verify ownership
     const { data: customerRecord } = await supabaseAdmin
       .from('customers').select('id, gocardless_mandate_id').eq('profile_id', user.id).single()
+
     const { data: profileData } = await supabaseAdmin
       .from('profiles').select('role').eq('id', user.id).single()
 
@@ -413,25 +412,32 @@ export async function POST(request: NextRequest) {
     // same one that was originally formed (a switch is a continuation,
     // not a new contract).
     const root = await getRootCleanRequest(supabaseAdmin, requestId)
-    const now = new Date()
 
+    const now = new Date()
     const hasCoolingOffData = !!(root?.cooling_off_until)
-    const inCoolingOff = hasCoolingOffData && new Date(root.cooling_off_until).getTime() > now.getTime()
+    const inCoolingOff = hasCoolingOffData &&
+      new Date(root.cooling_off_until).getTime() > now.getTime()
 
     // Service is "begun" when the agreed start_date has passed. We use the
     // *current* request's start_date (not the root's) because in a switch
     // the clock for service-already-rendered ticks against the new cleaner's
     // start date, even if cooling-off itself runs from the root.
-    const startDateMs = cleanRequest.start_date ? new Date(cleanRequest.start_date).getTime() : Infinity
+    const startDateMs = cleanRequest.start_date
+      ? new Date(cleanRequest.start_date).getTime()
+      : Infinity
     const serviceHasBegun = startDateMs <= now.getTime()
 
     type Route = 'cooling_off_full_refund' | 'cooling_off_partial_review' | 'standard_30_day'
     const route: Route =
-      inCoolingOff && !serviceHasBegun ? 'cooling_off_full_refund'
-      : inCoolingOff &&  serviceHasBegun ? 'cooling_off_partial_review'
-      : 'standard_30_day'
+      inCoolingOff && !serviceHasBegun ? 'cooling_off_full_refund' :
+      inCoolingOff && serviceHasBegun  ? 'cooling_off_partial_review' :
+                                         'standard_30_day'
 
-    console.log(`Cancel route for ${requestId}:`, { route, inCoolingOff, serviceHasBegun, hasCoolingOffData, coolingOffUntil: root?.cooling_off_until, startDate: cleanRequest.start_date })
+    console.log(`Cancel route for ${requestId}:`, {
+      route, inCoolingOff, serviceHasBegun, hasCoolingOffData,
+      coolingOffUntil: root?.cooling_off_until,
+      startDate: cleanRequest.start_date
+    })
 
     // ── GoCardless config ─────────────────────────────────────────────────────
     const gcEnvironment = process.env.GOCARDLESS_ENVIRONMENT ?? 'sandbox'
@@ -471,8 +477,8 @@ export async function POST(request: NextRequest) {
     if (route === 'cooling_off_full_refund' && customerRecord?.gocardless_mandate_id) {
       const mandateId = customerRecord.gocardless_mandate_id
       const r = await processCoolingOffRefunds(gcBaseUrl, gcToken, mandateId, requestId)
-      refundedPence  = r.refundedPence
-      firstRefundId  = r.firstRefundId
+      refundedPence = r.refundedPence
+      firstRefundId = r.firstRefundId
 
       // Cancel the mandate so the customer is fully clean — also clear the
       // pointer on customers so any future re-engagement sets up a fresh
@@ -505,9 +511,9 @@ export async function POST(request: NextRequest) {
 
     // ── Update clean_request with cancellation metadata ──────────────────────
     const cancellationReason =
-      route === 'cooling_off_full_refund'      ? 'cooling_off_full_refund'
-      : route === 'cooling_off_partial_review' ? 'cooling_off_partial_review_required'
-      : 'standard_30_day'
+      route === 'cooling_off_full_refund'    ? 'cooling_off_full_refund' :
+      route === 'cooling_off_partial_review' ? 'cooling_off_partial_review_required' :
+                                               'standard_30_day'
 
     await supabaseAdmin
       .from('clean_requests')
@@ -523,7 +529,7 @@ export async function POST(request: NextRequest) {
     let cleanerEmail: string | null = null
     let cleanerFirstName = 'there'
     let customerFirstName = 'your customer'
-    let customerFullName  = 'Your customer'
+    let customerFullName = 'Your customer'
     let customerEmailAddr = ''
 
     if (cleanRequest.assigned_cleaner_id) {
@@ -540,7 +546,7 @@ export async function POST(request: NextRequest) {
     const { data: customerProfile } = await supabaseAdmin
       .from('profiles').select('full_name, email').eq('id', user.id).single()
     customerFirstName = customerProfile?.full_name?.split(' ')[0] ?? 'your customer'
-    customerFullName  = customerProfile?.full_name ?? 'Your customer'
+    customerFullName = customerProfile?.full_name ?? 'Your customer'
     customerEmailAddr = customerProfile?.email ?? ''
 
     // ── Send the right emails for the route ───────────────────────────────────
@@ -564,10 +570,13 @@ export async function POST(request: NextRequest) {
           to: cleanerEmail,
           subject: `Subscription update — ${customerFirstName} has cancelled`,
           html: buildCleanerCoolingOffCancellationEmail({
-            cleanerFirstName, customerFirstName, zone: cleanRequest.zone ?? '', serviceHasBegun: false,
+            cleanerFirstName, customerFirstName,
+            zone: cleanRequest.zone ?? '',
+            serviceHasBegun: false,
           }),
         }))
       }
+
     } else if (route === 'cooling_off_partial_review') {
       if (customerEmailAddr) {
         emailTasks.push(resend.emails.send({
@@ -584,7 +593,10 @@ export async function POST(request: NextRequest) {
         to: adminEmail,
         subject: `[Action required] Cooling-off cancellation — pro-rata refund needed (${customerFirstName})`,
         html: buildAdminCoolingOffPartialAlertEmail({
-          customerFullName, customerEmail: customerEmailAddr, requestId, startDate: cleanRequest.start_date ?? 'unknown',
+          customerFullName,
+          customerEmail: customerEmailAddr,
+          requestId,
+          startDate: cleanRequest.start_date ?? 'unknown',
         }),
       }))
       if (cleanerEmail) {
@@ -593,10 +605,13 @@ export async function POST(request: NextRequest) {
           to: cleanerEmail,
           subject: `Subscription update — ${customerFirstName} has cancelled`,
           html: buildCleanerCoolingOffCancellationEmail({
-            cleanerFirstName, customerFirstName, zone: cleanRequest.zone ?? '', serviceHasBegun: true,
+            cleanerFirstName, customerFirstName,
+            zone: cleanRequest.zone ?? '',
+            serviceHasBegun: true,
           }),
         }))
       }
+
     } else {
       // Branch C — existing 30-day-notice email to the cleaner. Customer
       // doesn't get an email here because the existing /cancel page already
@@ -607,7 +622,8 @@ export async function POST(request: NextRequest) {
           to: cleanerEmail,
           subject: `Subscription update — ${customerFirstName} has cancelled`,
           html: buildCleanerCancellationEmail({
-            cleanerFirstName, customerFirstName, zone: cleanRequest.zone ?? '',
+            cleanerFirstName, customerFirstName,
+            zone: cleanRequest.zone ?? '',
           }),
         }))
       }
