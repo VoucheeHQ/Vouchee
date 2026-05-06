@@ -179,7 +179,7 @@ export function jobAlertHtml(opts: {
     ${cardsHtml}
 
     <p style="margin:24px 0 0;font-size:13px;color:#64748b;line-height:1.6;text-align:center;">
-      Tap any job to apply directly. The first cleaners to apply often get the chat first — so don't hang about if one looks right for you.
+      Apply now to start chatting with the customer and secure the job!
     </p>
   `
 
