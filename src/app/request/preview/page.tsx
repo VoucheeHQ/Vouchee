@@ -205,7 +205,7 @@ async function publishRequest(data: RequestData, userId: string): Promise<string
   const { data: inserted, error: insertError } = await (supabase as any)
     .from("clean_requests").insert({
       customer_id: customerId,
-      status: "pending",
+      status: "active",
       service_type: "regular" as any,
       zone: zone as any,
       bedrooms: data.bedrooms ?? 2,
@@ -223,6 +223,21 @@ async function publishRequest(data: RequestData, userId: string): Promise<string
     }).select("id").single()
 
   if (insertError || !inserted) throw new Error(insertError?.message ?? "Failed to publish request")
+
+  // Fire cleaner job alert emails. Non-fatal — if email infrastructure is
+  // down, the listing still publishes and cleaners can find it on /jobs.
+  // The endpoint matches cleaners by zone + job_notify preference and
+  // dedupes via cleaner_job_alerts_sent so this can't double-send.
+  try {
+    await fetch('/api/notifications/cleaner-job-alert', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ requestId: inserted.id }),
+    })
+  } catch (alertErr) {
+    console.error('Cleaner job alert fire failed (non-fatal):', alertErr)
+  }
+
   return inserted.id
 }
 
