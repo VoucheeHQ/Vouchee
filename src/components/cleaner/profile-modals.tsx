@@ -214,6 +214,18 @@ export function NotificationsModal({
             No zones selected — you won&apos;t receive job alerts.
           </p>
         )}
+
+        <p style={{ fontSize: '12px', color: '#64748b', margin: '12px 0 0', lineHeight: 1.5 }}>
+          Not sure which zone covers your area?{' '}
+          <a
+            href="/coverage"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}
+          >
+            View the coverage map →
+          </a>
+        </p>
       </div>
 
       {/* ── Cover cleans toggle ─────────────────────────────────────────── */}
