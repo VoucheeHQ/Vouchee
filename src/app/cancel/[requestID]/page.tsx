@@ -7,11 +7,15 @@ import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
 
 const FREQUENCY_LABEL: Record<string, string> = {
-  weekly: 'Weekly', fortnightly: 'Fortnightly', monthly: 'Monthly',
+  weekly: 'Weekly',
+  fortnightly: 'Fortnightly',
+  monthly: 'Monthly',
 }
 
 const MONTHLY_FEE: Record<string, number> = {
-  weekly: 4333, fortnightly: 3248, monthly: 2499,
+  weekly: 4333,
+  fortnightly: 3248,
+  monthly: 2499,
 }
 
 const RETENTION_POINTS: { icon: string; text: string }[] = [
@@ -40,19 +44,29 @@ async function computeCoolingOffState(supabase: any, requestId: string, startDat
   let nextId: string | null = requestId
   let coolingOffUntil: string | null = null
   let safety = 10
+
   while (nextId && safety > 0) {
-    const { data } = await supabase.from('clean_requests')
+    // TS7022 fix: capture with explicit typing first, then destructure.
+    // Inline destructure inside a while loop hits a recursive type-inference
+    // edge case in TypeScript that fails Vercel builds.
+    const result: { data: any; error: any } = await supabase
+      .from('clean_requests')
       .select('id, switch_from_request_id, cooling_off_until')
       .eq('id', nextId)
       .single()
+
+    const data = result.data
     if (!data) break
+
     if (data.cooling_off_until) coolingOffUntil = data.cooling_off_until
     nextId = data.switch_from_request_id
     safety--
   }
+
   const now = Date.now()
   const inCoolingOff = !!coolingOffUntil && new Date(coolingOffUntil).getTime() > now
   const serviceHasBegun = !!startDate && new Date(startDate).getTime() <= now
+
   return { inCoolingOff, serviceHasBegun, coolingOffUntil }
 }
 
@@ -68,12 +82,12 @@ interface CancelResult {
 export default function CancelPage({ params }: { params: { requestId: string } }) {
   const { requestId } = params
   const router = useRouter()
-
   const [loading, setLoading] = useState(true)
   const [cancelling, setCancelling] = useState(false)
   const [result, setResult] = useState<CancelResult | null>(null)
   const [notFound, setNotFound] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
   const [frequency, setFrequency] = useState('fortnightly')
   const [cleanerName, setCleanerName] = useState<string | null>(null)
   const [customerName, setCustomerName] = useState<string | null>(null)
@@ -99,7 +113,6 @@ export default function CancelPage({ params }: { params: { requestId: string } }
           .select('id, status, frequency, zone, start_date, assigned_cleaner_id')
           .eq('id', requestId)
           .single()
-
         if (reqErr || !req) { setNotFound(true); setLoading(false); return }
 
         if (req.status !== 'fulfilled') {
@@ -147,11 +160,13 @@ export default function CancelPage({ params }: { params: { requestId: string } }
         body: JSON.stringify({ requestId }),
       })
       const data = await res.json()
+
       if (!res.ok) {
         setError('Could not cancel — please contact accounts@vouchee.co.uk')
         setCancelling(false)
         return
       }
+
       setResult({
         route: (data.route ?? 'standard_30_day') as CancelRoute,
         refundedAmountPence: data.refundedAmountPence,
@@ -260,7 +275,6 @@ function CoolingOffCancelScreen({
       <Header userRole="customer" />
       <main style={{ flex: 1 }}>
         <div style={{ maxWidth: '560px', margin: '0 auto', padding: '48px 24px 80px' }}>
-
           <div style={{ textAlign: 'center', marginBottom: '32px' }}>
             <div style={{ fontSize: '40px', marginBottom: '16px' }}>🛡️</div>
             <h1 style={{ fontSize: '28px', fontWeight: 800, color: '#0f172a', margin: '0 0 10px', letterSpacing: '-0.3px' }}>
@@ -315,7 +329,6 @@ function CoolingOffCancelScreen({
           >
             {cancelling ? 'Cancelling…' : 'Cancel my subscription'}
           </button>
-
           <button
             onClick={onBack}
             disabled={cancelling}
@@ -323,7 +336,6 @@ function CoolingOffCancelScreen({
           >
             Keep my subscription
           </button>
-
         </div>
       </main>
       <Footer />
@@ -358,9 +370,7 @@ function Standard30DayCancelScreen({
               {'Before you go, ' + (customerName ?? 'there') + '…'}
             </h1>
             <p style={{ fontSize: '15px', color: '#64748b', lineHeight: 1.7, margin: 0 }}>
-              {cleanerName
-                ? cleanerName + ' has been cleaning for you. We\'d love to keep that going.'
-                : 'We\'d love to help you keep your home looking its best.'}
+              {cleanerName ? cleanerName + ' has been cleaning for you. We\'d love to keep that going.' : 'We\'d love to help you keep your home looking its best.'}
             </p>
           </div>
 
