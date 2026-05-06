@@ -1326,6 +1326,31 @@ export default function AdminDashboard() {
                   }}
                 />
 
+<TestCard
+                  title="✅ Cleaner decision emails (approval + rejection)"
+                  description="Sends both decision emails fired when admin approves or rejects a cleaner: the celebration 'Welcome to Vouchee' email plus the kind generic rejection email. Both go to your logged-in admin email so you can preview them side by side. Uses dummy applicant 'Alex'."
+                  buttonLabel="Send test emails →"
+                  buttonColor="#16a34a"
+                  onRun={async () => {
+                    const res = await fetch('/api/admin/test-cleaner-decision-emails', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                    })
+                    const data = await res.json()
+                    if (!res.ok || !data.success) {
+                      return { success: false, message: data.error ?? 'Request failed' }
+                    }
+                    const approvalOK = !data.approval?.error
+                    const rejectionOK = !data.rejection?.error
+                    if (approvalOK && rejectionOK) {
+                      return { success: true, message: `Both emails sent to ${data.sentTo}` }
+                    }
+                    const failures: string[] = []
+                    if (!approvalOK) failures.push(`approval: ${data.approval.error}`)
+                    if (!rejectionOK) failures.push(`rejection: ${data.rejection.error}`)
+                    return { success: false, message: failures.join(' | ') }
+                  }}
+                />
                 <TestCard
                   title="🧹 Cleaner acceptance email"
                   description="Sends the 'You've been chosen' email that a cleaner receives when a customer selects them and confirms a start date via GoCardless. Uses Alison C. as the cleaner and Adam Bell as the customer. Sends to adamjbell95@gmail.com."
