@@ -50,11 +50,13 @@ const SERVICE_LABELS: Record<string, string> = {
   oven_clean: 'Oven Clean',
 }
 
-// Format cover_date for display: "Tuesday 13 May" — matches the /jobs page
-// formatter so customer + cleaner experiences feel consistent.
+// Cover-date formatters — the email card splits weekday and date into
+// separate chips ("Tuesday" + "13 May") so each piece reads cleanly.
+function formatCoverDay(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-GB', { weekday: 'long' })
+}
 function formatCoverDate(iso: string): string {
-  const d = new Date(iso)
-  return d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' })
+  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
 }
 
 export interface JobAlertCard {
@@ -120,7 +122,7 @@ function buildJobCard(job: JobAlertCard, appUrl: string): string {
   const serviceLabel = SERVICE_LABELS[job.service_type] ?? job.service_type
   const applyUrl = `${appUrl}/jobs?apply=${job.request_id}`
 
-  // Build the chip row — for cover, we show cover_date + time-window in
+  // Build the chip row — for cover, we show day + date + time-window in
   // place of frequency/preferred_days/time_of_day (which are placeholder
   // values for one-off requests).
   const chips: string[] = []
@@ -129,7 +131,10 @@ function buildJobCard(job: JobAlertCard, appUrl: string): string {
   if (job.hours_per_session) chips.push(`${job.hours_per_session} hrs`)
 
   if (isCover) {
-    if (job.cover_date) chips.push(`📅 ${formatCoverDate(job.cover_date)}`)
+    if (job.cover_date) {
+      chips.push(formatCoverDay(job.cover_date))
+      chips.push(formatCoverDate(job.cover_date))
+    }
     if (job.time_window_start && job.time_window_end) {
       chips.push(`${job.time_window_start}–${job.time_window_end}`)
     }
@@ -141,14 +146,10 @@ function buildJobCard(job: JobAlertCard, appUrl: string): string {
     if (job.time_of_day) chips.push(job.time_of_day)
   }
 
-  // Cover chips get the legendary purple/pink palette to match the rest of
-  // the cover-clean visual language (customer panic button, /jobs border).
-  const chipBg = isCover ? '#fdf4ff' : '#f1f5f9'
-  const chipFg = isCover ? '#86198f' : '#475569'
-  const chipBorder = isCover ? '1px solid #f5d0fe;' : ''
-
+  // Single chip palette for both regular and cover — the gradient header
+  // and card border do the cover-clean differentiation; chips stay clean.
   const chipsHtml = chips.map(c =>
-    `<span style="display:inline-block;background:${chipBg};color:${chipFg};border-radius:100px;padding:3px 10px;font-size:12px;font-weight:600;margin:2px 4px 2px 0;${chipBorder}">${htmlEscape(c)}</span>`
+    `<span style="display:inline-block;background:#f1f5f9;color:#475569;border-radius:100px;padding:3px 10px;font-size:12px;font-weight:600;margin:2px 4px 2px 0;">${htmlEscape(c)}</span>`
   ).join('')
 
   // Estimated total per clean — only shown if we have both rate and hours
@@ -165,19 +166,12 @@ function buildJobCard(job: JobAlertCard, appUrl: string): string {
         </td>
         ${estPerClean ? `
         <td style="padding:10px 14px;text-align:right;">
-          <div style="font-size:10px;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:0.07em;">Est. per clean</div>
+          <div style="font-size:10px;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:0.07em;">${isCover ? 'Est. earnings' : 'Est. per clean'}</div>
           <div style="font-size:16px;font-weight:700;color:#92400e;">${estPerClean}</div>
         </td>
         ` : ''}
       </tr>
     </table>
-  ` : ''
-
-  // Cover-only: pay-direct reassurance line under the rate.
-  const payDirectLine = isCover ? `
-    <p style="margin:0 0 12px;font-size:12px;color:#86198f;line-height:1.6;text-align:center;background:#fdf4ff;border:1px solid #f5d0fe;border-radius:10px;padding:8px 12px;">
-      💸 Pays direct — no Direct Debit setup needed.
-    </p>
   ` : ''
 
   // Cover-only: gradient header strip.
@@ -211,7 +205,6 @@ function buildJobCard(job: JobAlertCard, appUrl: string): string {
           <div style="font-size:13px;color:#64748b;margin-bottom:12px;">${htmlEscape(serviceLabel)}</div>
           <div style="margin-bottom:6px;">${chipsHtml}</div>
           ${rateBlock}
-          ${payDirectLine}
           <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:12px;">
             <tr>
               <td align="center">
@@ -236,15 +229,18 @@ export function jobAlertHtml(opts: {
 }): string {
   const { firstName, jobs, appUrl } = opts
 
-  // Cover-only emails get an urgency-flavoured intro. Mixed batches and
-  // regular jobs use the neutral intro. (In practice the route fires one
-  // job per email today — this branch handles future batching too.)
+  // Cover-only emails get an urgency-flavoured intro with the pay-direct
+  // reassurance as an italic line underneath. Mixed batches and regular
+  // jobs use the neutral intro. (In practice the route fires one job per
+  // email today — this branch handles future batching too.)
   const allCover = jobs.length > 0 && jobs.every(j => j.service_type === 'cover')
 
+  const coverPayLine = `<br><em style="font-style:italic;color:#64748b;">The customer will pay you directly for your time.</em>`
+
   const intro = allCover && jobs.length === 1
-    ? `Someone in your area needs a cover clean — a one-off urgent job. You'll be paid direct (no Direct Debit setup needed).`
+    ? `Someone in your area has requested a cover clean! This is a one-off request.${coverPayLine}`
     : allCover
-      ? `${jobs.length} cover cleans need filling in your area — one-off urgent jobs, paid direct.`
+      ? `${jobs.length} people in your area have requested cover cleans! These are one-off requests.${coverPayLine}`
       : jobs.length === 1
         ? `We've had a new cleaner request come in that I think you might like.`
         : `We've had ${jobs.length} new cleaner requests come in that I think you might like.`
