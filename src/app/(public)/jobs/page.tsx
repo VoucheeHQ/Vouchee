@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -12,8 +12,8 @@ type HorshamZone =
   | 'south_west' | 'warnham_north' | 'broadbridge_heath'
   | 'mannings_heath' | 'faygate_kilnwood_vale' | 'christs_hospital'
 
-type ServiceType = 'regular' | 'deep_clean' | 'end_of_tenancy' | 'oven_clean'
-type JobStatus = 'pending' | 'pending_review' | 'assigned' | 'active' | 'completed' | 'cancelled'
+type ServiceType = 'regular' | 'cover' | 'deep_clean' | 'end_of_tenancy' | 'oven_clean'
+type JobStatus = 'pending' | 'pending_review' | 'assigned' | 'active' | 'completed' | 'cancelled' | 'fulfilled' | 'deleted'
 
 interface Job {
   id: string
@@ -34,6 +34,12 @@ interface Job {
   created_at: string
   updated_at: string
   customer_id: string
+  // Cover-clean fields (service_type='cover')
+  cover_date: string | null
+  time_window_start: string | null
+  time_window_end: string | null
+  parent_request_id: string | null
+  original_cleaner_id: string | null
 }
 
 // ─── Display helpers ──────────────────────────────────
@@ -52,6 +58,7 @@ const ZONE_LABELS: Record<HorshamZone, string> = {
 
 const SERVICE_LABELS: Record<ServiceType, string> = {
   regular: 'Regular Clean',
+  cover: 'Cover Clean',
   deep_clean: 'Deep Clean',
   end_of_tenancy: 'End of Tenancy',
   oven_clean: 'Oven Clean',
@@ -98,11 +105,18 @@ function timeAgo(dateStr: string) {
   return 'Just now'
 }
 
+// Format cover_date for display: "Tuesday 13 May" — full weekday, day, short month.
+function formatCoverDate(iso: string): string {
+  const d = new Date(iso)
+  return d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' })
+}
+
 // Apply the same filter as the initial fetch — used both for first load and for
 // incoming realtime rows so we don't show old/cancelled stuff that's outside
 // the 10-day window.
 function passesJobFilter(row: any): boolean {
   if (row.hidden) return false
+  if (row.status === 'deleted') return false
   if (row.status === 'pending') return true
   if (row.status === 'pending_review') return true
   if (row.status === 'active') return true
@@ -152,7 +166,8 @@ function JobCard({ job, isOwn = false, userRole, cleanerApproved, onEdit, onAppl
   const [tasksExpanded, setTasksExpanded] = useState(false)
   const router = useRouter()
 
-  const isCompleted = job.status === 'completed' || job.status === 'cancelled' || job.status === 'assigned' || job.status === 'active'
+  const isCompleted = job.status === 'completed' || job.status === 'cancelled' || job.status === 'assigned' || job.status === 'fulfilled'
+  const isCover = job.service_type === 'cover'
   const isGrace = job.status === 'pending_review'
   const zone = job.zone ? ZONE_LABELS[job.zone as HorshamZone] : 'Horsham'
   const days = (job.preferred_days?.length ? job.preferred_days : job.preferred_day ? [job.preferred_day] : [])
@@ -178,6 +193,7 @@ function JobCard({ job, isOwn = false, userRole, cleanerApproved, onEdit, onAppl
     <div className={`relative rounded-2xl border bg-white transition-all duration-200 ${
       isCompleted && !isOwn ? 'opacity-60 border-gray-200'
       : isOwn ? 'border-green-300 shadow-md ring-2 ring-green-100'
+      : isCover ? 'border-purple-300 shadow-md ring-2 ring-pink-100 hover:ring-pink-200 hover:-translate-y-0.5'
       : 'border-gray-200 shadow-sm hover:shadow-md hover:-translate-y-0.5'
     }`}>
       {isCompleted && !isOwn && (
@@ -196,6 +212,11 @@ function JobCard({ job, isOwn = false, userRole, cleanerApproved, onEdit, onAppl
       )}
       <div className="p-5">
         <div className="mb-3">
+          {isCover && (
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)', color: 'white', fontSize: '11px', fontWeight: 800, padding: '4px 12px', borderRadius: '100px', letterSpacing: '0.04em', marginBottom: '10px', boxShadow: '0 2px 8px rgba(168, 85, 247, 0.3)' }}>
+              🆘 Cover clean
+            </div>
+          )}
           <div className="flex items-start gap-2 mb-1">
             <span className="text-base">📍</span>
             <h3 className="font-bold text-gray-900 text-lg leading-tight pr-32">{zone}</h3>
@@ -205,9 +226,15 @@ function JobCard({ job, isOwn = false, userRole, cleanerApproved, onEdit, onAppl
         <div className="flex flex-wrap gap-1.5 mb-4">
           {job.bedrooms > 0 && <span className="text-xs bg-gray-100 text-gray-700 rounded-full px-2.5 py-1 font-medium">{job.bedrooms} bed</span>}
           {job.hours_per_session && <span className="text-xs bg-gray-100 text-gray-700 rounded-full px-2.5 py-1 font-medium">{job.hours_per_session} hrs</span>}
-          {daysLabel && <span className="text-xs bg-gray-100 text-gray-700 rounded-full px-2.5 py-1 font-medium">{daysLabel}</span>}
-          {job.time_of_day && <span className="text-xs bg-gray-100 text-gray-700 rounded-full px-2.5 py-1 font-medium">{job.time_of_day}</span>}
-          {job.frequency && (
+          {isCover && job.cover_date && (
+            <span className="text-xs bg-pink-50 text-pink-700 border border-pink-200 rounded-full px-2.5 py-1 font-medium">📅 {formatCoverDate(job.cover_date)}</span>
+          )}
+          {isCover && job.time_window_start && job.time_window_end && (
+            <span className="text-xs bg-purple-50 text-purple-700 border border-purple-200 rounded-full px-2.5 py-1 font-medium">{job.time_window_start}–{job.time_window_end}</span>
+          )}
+          {!isCover && daysLabel && <span className="text-xs bg-gray-100 text-gray-700 rounded-full px-2.5 py-1 font-medium">{daysLabel}</span>}
+          {!isCover && job.time_of_day && <span className="text-xs bg-gray-100 text-gray-700 rounded-full px-2.5 py-1 font-medium">{job.time_of_day}</span>}
+          {!isCover && job.frequency && (
             <span className="text-xs bg-blue-50 text-blue-700 border border-blue-200 rounded-full px-2.5 py-1 font-medium">
               {FREQUENCY_LABELS[job.frequency] ?? job.frequency}
             </span>
@@ -403,6 +430,9 @@ export default function JobsPage() {
   const [appliedJobIds, setAppliedJobIds] = useState<Set<string>>(new Set())
   const [applyingToJob, setApplyingToJob] = useState<Job | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  // Tracks the current cleaner's id for the "don't show their own customer's
+  // cover request to them" filter. Ref so realtime handlers see fresh value.
+  const cleanerIdRef = useRef<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -443,6 +473,7 @@ export default function JobsPage() {
             .single<{ id: string; dbs_checked: boolean; has_insurance: boolean; right_to_work: boolean; created_at: string; application_status: string }>()
 
           if (cleanerRecord && !cancelled) {
+            cleanerIdRef.current = cleanerRecord.id
             setCleanerData(cleanerRecord)
             setCleanerApproved(cleanerRecord.application_status === 'approved')
             const { data: existingApps } = await authClient
@@ -454,10 +485,20 @@ export default function JobsPage() {
         }
       }
 
-      const { data, error } = await authClient
+      // Build the listings query. For cleaners, hide their own customer's
+      // cover request (where original_cleaner_id matches their cleaner id).
+      // The .or() filter keeps regular requests (original_cleaner_id IS NULL)
+      // and other cleaners' cover requests visible.
+      let query = authClient
         .from('clean_requests')
-        .select(`id, service_type, zone, bedrooms, bathrooms, has_pets, preferred_day, preferred_days, time_of_day, hourly_rate, hours_per_session, frequency, tasks, customer_notes, status, created_at, updated_at, customer_id`)
+        .select(`id, service_type, zone, bedrooms, bathrooms, has_pets, preferred_day, preferred_days, time_of_day, hourly_rate, hours_per_session, frequency, tasks, customer_notes, status, created_at, updated_at, customer_id, cover_date, time_window_start, time_window_end, parent_request_id, original_cleaner_id`)
         .eq('hidden', false)
+
+      if (cleanerIdRef.current) {
+        query = query.or(`original_cleaner_id.is.null,original_cleaner_id.neq.${cleanerIdRef.current}`)
+      }
+
+      const { data, error } = await query
         .order('created_at', { ascending: false })
         .limit(100)
 
@@ -479,15 +520,18 @@ export default function JobsPage() {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'clean_requests' }, payload => {
         const row = payload.new as any
         if (cancelled || !passesJobFilter(row)) return
+        // Hide own customer's cover request from the original cleaner
+        if (cleanerIdRef.current && row.original_cleaner_id === cleanerIdRef.current) return
         setJobs(prev => prev.find(j => j.id === row.id) ? prev : [row as Job, ...prev])
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'clean_requests' }, payload => {
         const row = payload.new as any
         if (cancelled) return
+        const ownCustomerCover = !!cleanerIdRef.current && row.original_cleaner_id === cleanerIdRef.current
         setJobs(prev => {
           const exists = prev.find(j => j.id === row.id)
-          if (!passesJobFilter(row)) {
-            // Row no longer qualifies — remove from list
+          if (!passesJobFilter(row) || ownCustomerCover) {
+            // Row no longer qualifies (or shouldn't be visible to this cleaner) — remove
             return exists ? prev.filter(j => j.id !== row.id) : prev
           }
           if (exists) {
@@ -657,6 +701,7 @@ export default function JobsPage() {
           <select value={filters.service} onChange={e => setFilters(f => ({ ...f, service: e.target.value }))} className="text-sm border border-gray-200 rounded-full px-4 py-2 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-900">
             <option value="all">All services</option>
             <option value="regular">Regular Clean</option>
+            <option value="cover">Cover Clean</option>
             <option value="deep_clean">Deep Clean</option>
             <option value="end_of_tenancy">End of Tenancy</option>
             <option value="oven_clean">Oven Clean</option>
