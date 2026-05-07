@@ -11,9 +11,12 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.vouchee.co.uk'
 // POST /api/notifications/cleaner-job-alert
 //
 // Fires immediately when a customer publishes a new clean_request. Looks up
-// approved cleaners with job_notify=true whose zones overlap the new listing's
-// zone. Sends each one an email with the new job. Logs to the dedupe table
-// so this can't fire twice for the same cleaner+request pair.
+// approved cleaners whose zones overlap the new listing's zone and who have
+// opted into alerts for this kind of job:
+//   - Regular requests (service_type !== 'cover'): gated on job_notify=true
+//   - Cover requests   (service_type === 'cover'): gated on cover_cleans_notify=true
+// Sends each one an email with the new job. Logs to the dedupe table so this
+// can't fire twice for the same cleaner+request pair.
 //
 // Body: { requestId: string }
 //
@@ -88,11 +91,17 @@ export async function POST(request: NextRequest) {
   // Postgres array containment via .contains() — finds rows where zones
   // array contains the given value. With <50 cleaners this is cheap; if
   // the cleaner pool grows we'd index zones with GIN.
+  //
+  // Cover requests gate on cover_cleans_notify rather than job_notify so
+  // cleaners can opt into one-off urgent jobs separately from regular jobs.
+  const isCover = req.service_type === 'cover'
+  const notifyColumn: 'job_notify' | 'cover_cleans_notify' = isCover ? 'cover_cleans_notify' : 'job_notify'
+
   const { data: cleaners, error: cleanersErr } = await admin
     .from('cleaners')
-    .select('id, profile_id, zones, job_notify, application_status')
+    .select('id, profile_id, zones, job_notify, cover_cleans_notify, application_status')
     .eq('application_status', 'approved')
-    .eq('job_notify', true)
+    .eq(notifyColumn, true)
     .contains('zones', [req.zone]) as { data: any[] | null, error: any }
 
   if (cleanersErr) {
@@ -158,7 +167,7 @@ export async function POST(request: NextRequest) {
         const { error: sendErr } = await resend.emails.send({
           from: 'Vouchee <cleaners@vouchee.co.uk>',
           to: profile.email,
-          subject: '🧹 New job in your area',
+          subject: isCover ? '🆘 Cover clean needed in your area' : '🧹 New job in your area',
           html: jobAlertHtml({ firstName, jobs: [card], appUrl: APP_URL }),
         })
 
