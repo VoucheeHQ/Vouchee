@@ -8,6 +8,7 @@ import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
 import { CleanerCard } from '@/components/cleaner-card'
 import { CleanerCardData } from '@/lib/cleaner-card'
+import { CoverCleanModal } from '@/components/customer/cover-clean-modal'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -33,6 +34,7 @@ interface CleaningRequest {
   preferred_days: string[] | null
   time_of_day: string | null
   start_date: string | null
+  assigned_cleaner_id: string | null
 }
 
 interface EditDraft {
@@ -99,6 +101,13 @@ function daysSince(iso: string) { return Math.floor((Date.now() - new Date(iso).
 function checkIsBeforeStartDate(startDate: string | null): boolean {
   if (!startDate) return true
   return new Date() < new Date(startDate)
+}
+
+// Cover-clean panic button only appears once the first clean has had time to happen
+// (start_date is more than 24h in the past). Per locked spec.
+function firstCleanHappened(startDate: string | null): boolean {
+  if (!startDate) return false
+  return new Date(startDate).getTime() < Date.now() - 24 * 60 * 60 * 1000
 }
 
 function calculateBilling(frequency: Frequency, startDate: string): {
@@ -384,9 +393,9 @@ function ComingSoonBanner({ message, onClose }: { message: string; onClose: () =
 
 // ─── Active Request Card ──────────────────────────────────────────────────────
 
-function ActiveRequestCard({ request, onPause, onRepublish, onDelete, onEdit, onSwitch }: {
+function ActiveRequestCard({ request, onPause, onRepublish, onDelete, onEdit, onSwitch, onCover }: {
   request: CleaningRequest; onPause: () => void; onRepublish: () => void
-  onDelete: () => void; onEdit: () => void; onSwitch?: () => void
+  onDelete: () => void; onEdit: () => void; onSwitch?: () => void; onCover?: () => void
 }) {
   const hours = request.hours_per_session ?? 0
   const rate = request.hourly_rate ?? 0
@@ -472,6 +481,36 @@ function ActiveRequestCard({ request, onPause, onRepublish, onDelete, onEdit, on
           )}
           <ActionBtn onClick={onDelete} danger>{isFulfilled ? 'Cancel subscription' : 'Remove listing'}</ActionBtn>
         </div>
+        {isFulfilled && onCover && firstCleanHappened(request.start_date) && (
+          <div style={{ marginTop: '18px', paddingTop: '16px', borderTop: '1px dashed #e2e8f0' }}>
+            <button
+              type="button"
+              onClick={onCover}
+              style={{
+                width: '100%',
+                background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '14px',
+                padding: '16px',
+                fontSize: '15px',
+                fontWeight: 800,
+                cursor: 'pointer',
+                fontFamily: "'DM Sans', sans-serif",
+                letterSpacing: '-0.2px',
+                boxShadow: '0 6px 20px rgba(168, 85, 247, 0.35)',
+                transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 10px 28px rgba(168, 85, 247, 0.45)' }}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(168, 85, 247, 0.35)' }}
+            >
+              🆘 Need cover for this clean?
+            </button>
+            <div style={{ fontSize: '12px', color: '#94a3b8', textAlign: 'center', marginTop: '8px', lineHeight: 1.5 }}>
+              One-off — you&apos;ll pay your cover cleaner directly
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -714,6 +753,7 @@ function CustomerDashboardContent() {
   const [startDateModal, setStartDateModal] = useState<{ applicationId: string; requestId: string; conversationId: string; cleanerName: string; frequency: Frequency } | null>(null)
   const [startDateLoading, setStartDateLoading] = useState(false)
   const [switchModal, setSwitchModal] = useState<{ requestId: string; isBeforeStart: boolean } | null>(null)
+  const [coverModalReq, setCoverModalReq] = useState<CleaningRequest | null>(null)
   const [notifications, setNotifications] = useState<NotificationItem[]>([])
   const [customerId, setCustomerId] = useState<string | null>(null)
   const systemMessageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -1037,7 +1077,8 @@ function CustomerDashboardContent() {
                 <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '14px' }}>Confirmed cleaners</div>
                 {fulfilledRequests.map(req => (
                   <ActiveRequestCard key={req.id} request={req} onPause={() => {}} onRepublish={() => {}} onDelete={() => handleDelete(req.id)} onEdit={() => setEditingRequest(req)}
-                    onSwitch={() => setSwitchModal({ requestId: req.id, isBeforeStart: checkIsBeforeStartDate(req.start_date) })} />
+                    onSwitch={() => setSwitchModal({ requestId: req.id, isBeforeStart: checkIsBeforeStartDate(req.start_date) })}
+                    onCover={() => setCoverModalReq(req)} />
                 ))}
               </div>
             )}
@@ -1065,6 +1106,34 @@ function CustomerDashboardContent() {
         {showSuccessBanner && <SuccessBanner onClose={() => setShowSuccessBanner(false)} />}
         {startDateModal && <StartDateModal cleanerName={startDateModal.cleanerName} frequency={startDateModal.frequency} applicationId={startDateModal.applicationId} requestId={startDateModal.requestId} conversationId={startDateModal.conversationId} onCancel={handleCancelStartDate} onConfirm={handleConfirmStartDate} loading={startDateLoading} />}
         {switchModal && <SwitchCleanerModal requestId={switchModal.requestId} isBeforeStart={switchModal.isBeforeStart} onCancel={() => setSwitchModal(null)} onSuccess={handleSwitchSuccess} />}
+        {coverModalReq && customerId && (
+          <CoverCleanModal
+            parentRequest={{
+              id: coverModalReq.id,
+              hours_per_session: coverModalReq.hours_per_session,
+              hourly_rate: coverModalReq.hourly_rate,
+              tasks: coverModalReq.tasks,
+              bedrooms: coverModalReq.bedrooms,
+              bathrooms: coverModalReq.bathrooms,
+              zone: coverModalReq.zone,
+            }}
+            originalCleanerId={coverModalReq.assigned_cleaner_id || ''}
+            customerId={customerId}
+            onClose={() => setCoverModalReq(null)}
+            onSuccess={async () => {
+              try {
+                const supabase = createClient()
+                const { data: { user } } = await supabase.auth.getUser()
+                if (!user) return
+                const { data: customerRecord } = await (supabase as any).from('customers').select('id').eq('profile_id', user.id).single()
+                if (!customerRecord) return
+                const { data: requestData } = await (supabase as any).from('clean_requests').select('*').eq('customer_id', customerRecord.id).order('created_at', { ascending: false })
+                if (requestData) setRequests(requestData)
+                showToast('Cover request posted — cleaners are being notified now')
+              } catch {}
+            }}
+          />
+        )}
       </div>
     </>
   )
