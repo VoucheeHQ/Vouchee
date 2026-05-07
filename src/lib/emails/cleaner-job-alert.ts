@@ -1,14 +1,20 @@
 // ─────────────────────────────────────────────────────────────────────────
-// Email template for the hourly cleaner job alerts.
+// Email template for the cleaner job alerts.
 //
 // SINGLE SOURCE OF TRUTH for: jobAlertHtml — sent to approved cleaners
-// when new jobs appear in their zones during the last hour.
+// in real-time when a new clean_request is published in their zones.
+//
+// Two flavours, both rendered through the same function:
+//   - Regular jobs (service_type !== 'cover') — neutral palette, blue CTA
+//   - Cover cleans (service_type === 'cover') — gradient header, purple/pink
+//     border, cover_date + time-window in place of frequency/days/time-of-day,
+//     plus a "pays direct" reassurance line.
 //
 // Style mirrors application-received.ts and cleaner-decision.ts so the
 // platform's emails feel like a coherent family. Brand colours imported
 // from application-received.ts to enforce consistency.
 //
-// One email per cleaner per hour with all matching jobs as cards.
+// One email per cleaner per request; the route handles the dedupe table.
 // ─────────────────────────────────────────────────────────────────────────
 
 import { BRAND_BLUE, LOGO_URL } from './application-received'
@@ -38,9 +44,17 @@ const FREQUENCY_LABELS: Record<string, string> = {
 
 const SERVICE_LABELS: Record<string, string> = {
   regular: 'Regular Clean',
+  cover: 'Cover Clean',
   deep_clean: 'Deep Clean',
   end_of_tenancy: 'End of Tenancy',
   oven_clean: 'Oven Clean',
+}
+
+// Format cover_date for display: "Tuesday 13 May" — matches the /jobs page
+// formatter so customer + cleaner experiences feel consistent.
+function formatCoverDate(iso: string): string {
+  const d = new Date(iso)
+  return d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' })
 }
 
 export interface JobAlertCard {
@@ -54,6 +68,10 @@ export interface JobAlertCard {
   frequency: string | null
   preferred_days: string[] | null
   time_of_day: string | null
+  // Cover-clean fields (only populated when service_type === 'cover')
+  cover_date: string | null
+  time_window_start: string | null
+  time_window_end: string | null
 }
 
 function emailShell(appUrl: string, innerHtml: string, title: string) {
@@ -92,24 +110,45 @@ function emailShell(appUrl: string, innerHtml: string, title: string) {
 // Renders a single job card row as an HTML table cell. Mobile-friendly
 // (no flexbox), inlines all styles for max email-client compatibility,
 // includes a CTA button that deep-links straight into the apply modal.
+//
+// Cover-clean cards get a gradient header strip + purple/pink border + a
+// pay-direct reassurance line under the rate, so cleaners can spot them
+// instantly in their inbox.
 function buildJobCard(job: JobAlertCard, appUrl: string): string {
+  const isCover = job.service_type === 'cover'
   const zone = job.zone ? (ZONE_LABELS[job.zone] ?? job.zone) : 'Horsham'
   const serviceLabel = SERVICE_LABELS[job.service_type] ?? job.service_type
   const applyUrl = `${appUrl}/jobs?apply=${job.request_id}`
 
-  // Build the chip row — bedrooms · hours · frequency · days · time
+  // Build the chip row — for cover, we show cover_date + time-window in
+  // place of frequency/preferred_days/time_of_day (which are placeholder
+  // values for one-off requests).
   const chips: string[] = []
   if (job.bedrooms && job.bedrooms > 0) chips.push(`${job.bedrooms} bed`)
   if (job.bathrooms && job.bathrooms > 0) chips.push(`${job.bathrooms} bath`)
   if (job.hours_per_session) chips.push(`${job.hours_per_session} hrs`)
-  if (job.frequency) chips.push(FREQUENCY_LABELS[job.frequency] ?? job.frequency)
-  if (job.preferred_days && job.preferred_days.length > 0) {
-    chips.push(job.preferred_days.map(d => d.slice(0, 3)).join(' · '))
+
+  if (isCover) {
+    if (job.cover_date) chips.push(`📅 ${formatCoverDate(job.cover_date)}`)
+    if (job.time_window_start && job.time_window_end) {
+      chips.push(`${job.time_window_start}–${job.time_window_end}`)
+    }
+  } else {
+    if (job.frequency) chips.push(FREQUENCY_LABELS[job.frequency] ?? job.frequency)
+    if (job.preferred_days && job.preferred_days.length > 0) {
+      chips.push(job.preferred_days.map(d => d.slice(0, 3)).join(' · '))
+    }
+    if (job.time_of_day) chips.push(job.time_of_day)
   }
-  if (job.time_of_day) chips.push(job.time_of_day)
+
+  // Cover chips get the legendary purple/pink palette to match the rest of
+  // the cover-clean visual language (customer panic button, /jobs border).
+  const chipBg = isCover ? '#fdf4ff' : '#f1f5f9'
+  const chipFg = isCover ? '#86198f' : '#475569'
+  const chipBorder = isCover ? '1px solid #f5d0fe;' : ''
 
   const chipsHtml = chips.map(c =>
-    `<span style="display:inline-block;background:#f1f5f9;color:#475569;border-radius:100px;padding:3px 10px;font-size:12px;font-weight:600;margin:2px 4px 2px 0;">${htmlEscape(c)}</span>`
+    `<span style="display:inline-block;background:${chipBg};color:${chipFg};border-radius:100px;padding:3px 10px;font-size:12px;font-weight:600;margin:2px 4px 2px 0;${chipBorder}">${htmlEscape(c)}</span>`
   ).join('')
 
   // Estimated total per clean — only shown if we have both rate and hours
@@ -134,18 +173,49 @@ function buildJobCard(job: JobAlertCard, appUrl: string): string {
     </table>
   ` : ''
 
+  // Cover-only: pay-direct reassurance line under the rate.
+  const payDirectLine = isCover ? `
+    <p style="margin:0 0 12px;font-size:12px;color:#86198f;line-height:1.6;text-align:center;background:#fdf4ff;border:1px solid #f5d0fe;border-radius:10px;padding:8px 12px;">
+      💸 Pays direct — no Direct Debit setup needed.
+    </p>
+  ` : ''
+
+  // Cover-only: gradient header strip.
+  // background-color is the Outlook-desktop fallback; gradient renders in
+  // modern email clients (Gmail, Apple Mail, Outlook 365, iOS Mail).
+  const coverHeader = isCover ? `
+    <tr>
+      <td style="background-color:#c026d3;background:linear-gradient(135deg,#a855f7 0%,#ec4899 100%);padding:10px 20px;border-radius:14px 14px 0 0;">
+        <div style="font-size:12px;font-weight:800;color:#ffffff;letter-spacing:0.08em;text-transform:uppercase;">🆘 Cover clean — one-off urgent job</div>
+      </td>
+    </tr>
+  ` : ''
+
+  // Card border + CTA differ for cover vs regular.
+  const cardBorder = isCover ? '2px solid #d8b4fe' : '1.5px solid #e2e8f0'
+  const cardBorderRadius = isCover ? '14px' : '14px'
+  const ctaBackgroundColor = isCover ? '#c026d3' : BRAND_BLUE
+  const ctaBackground = isCover
+    ? 'linear-gradient(135deg,#a855f7 0%,#ec4899 100%)'
+    : BRAND_BLUE
+  const ctaShadow = isCover
+    ? 'box-shadow:0 2px 8px rgba(168,85,247,0.30);'
+    : 'box-shadow:0 1px 2px rgba(37,99,235,0.15);'
+
   return `
-    <table width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;border:1.5px solid #e2e8f0;border-radius:14px;margin-bottom:14px;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;border:${cardBorder};border-radius:${cardBorderRadius};margin-bottom:14px;overflow:hidden;">
+      ${coverHeader}
       <tr>
         <td style="padding:18px 20px 16px;">
           <div style="font-size:16px;font-weight:800;color:#0f172a;margin-bottom:2px;">📍 ${htmlEscape(zone)}</div>
           <div style="font-size:13px;color:#64748b;margin-bottom:12px;">${htmlEscape(serviceLabel)}</div>
           <div style="margin-bottom:6px;">${chipsHtml}</div>
           ${rateBlock}
+          ${payDirectLine}
           <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:12px;">
             <tr>
               <td align="center">
-                <a href="${applyUrl}" style="display:inline-block;background:${BRAND_BLUE};color:#ffffff;font-size:14px;font-weight:700;padding:11px 28px;border-radius:10px;text-decoration:none;box-shadow:0 1px 2px rgba(37,99,235,0.15);">Apply now →</a>
+                <a href="${applyUrl}" style="display:inline-block;background-color:${ctaBackgroundColor};background:${ctaBackground};color:#ffffff;font-size:14px;font-weight:700;padding:11px 28px;border-radius:10px;text-decoration:none;${ctaShadow}">Apply now →</a>
               </td>
             </tr>
           </table>
@@ -166,9 +236,18 @@ export function jobAlertHtml(opts: {
 }): string {
   const { firstName, jobs, appUrl } = opts
 
-  const intro = jobs.length === 1
-    ? `We've had a new cleaner request come in that I think you might like.`
-    : `We've had ${jobs.length} new cleaner requests come in that I think you might like.`
+  // Cover-only emails get an urgency-flavoured intro. Mixed batches and
+  // regular jobs use the neutral intro. (In practice the route fires one
+  // job per email today — this branch handles future batching too.)
+  const allCover = jobs.length > 0 && jobs.every(j => j.service_type === 'cover')
+
+  const intro = allCover && jobs.length === 1
+    ? `Someone in your area needs a cover clean — a one-off urgent job. You'll be paid direct (no Direct Debit setup needed).`
+    : allCover
+      ? `${jobs.length} cover cleans need filling in your area — one-off urgent jobs, paid direct.`
+      : jobs.length === 1
+        ? `We've had a new cleaner request come in that I think you might like.`
+        : `We've had ${jobs.length} new cleaner requests come in that I think you might like.`
 
   const cardsHtml = jobs.map(j => buildJobCard(j, appUrl)).join('')
 
@@ -183,9 +262,11 @@ export function jobAlertHtml(opts: {
     </p>
   `
 
-  const subject = jobs.length === 1
-    ? `New job in your area`
-    : `${jobs.length} new jobs in your area`
+  const subject = allCover && jobs.length === 1
+    ? `Cover clean needed in your area`
+    : jobs.length === 1
+      ? `New job in your area`
+      : `${jobs.length} new jobs in your area`
 
   return emailShell(appUrl, inner, subject)
 }

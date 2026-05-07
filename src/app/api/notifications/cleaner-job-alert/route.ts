@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
   // ─── Load the request and verify ownership ──────────────────────────────
   const { data: req, error: reqErr } = await admin
     .from('clean_requests')
-    .select('id, customer_id, zone, service_type, bedrooms, bathrooms, hours_per_session, hourly_rate, frequency, preferred_days, time_of_day, status, hidden')
+    .select('id, customer_id, zone, service_type, bedrooms, bathrooms, hours_per_session, hourly_rate, frequency, preferred_days, time_of_day, status, hidden, cover_date, time_window_start, time_window_end')
     .eq('id', body.requestId)
     .single() as { data: any, error: any }
 
@@ -151,6 +151,9 @@ export async function POST(request: NextRequest) {
     frequency: req.frequency,
     preferred_days: req.preferred_days,
     time_of_day: req.time_of_day,
+    cover_date: req.cover_date,
+    time_window_start: req.time_window_start,
+    time_window_end: req.time_window_end,
   }
 
   // ─── Send emails in parallel + log dedupe rows on success ────────────────
