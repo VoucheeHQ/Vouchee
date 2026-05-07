@@ -201,6 +201,13 @@ function JobCard({ job, isOwn = false, userRole, cleanerApproved, onEdit, onAppl
           <span className="text-xs font-semibold tracking-widest uppercase text-gray-400 border border-gray-300 rounded-full px-2.5 py-1">Filled</span>
         </div>
       )}
+      {isCover && !isOwn && !isCompleted && (
+        <div className="absolute top-4 right-4 z-10">
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)', color: 'white', fontSize: '11px', fontWeight: 800, padding: '4px 12px', borderRadius: '100px', letterSpacing: '0.04em', boxShadow: '0 2px 8px rgba(168, 85, 247, 0.3)' }}>
+            🆘 Cover clean
+          </span>
+        </div>
+      )}
       {isOwn && (
         <div className="absolute top-4 right-4 z-10 flex flex-col items-end gap-2">
           {isGrace ? (
@@ -212,11 +219,6 @@ function JobCard({ job, isOwn = false, userRole, cleanerApproved, onEdit, onAppl
       )}
       <div className="p-5">
         <div className="mb-3">
-          {isCover && (
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)', color: 'white', fontSize: '11px', fontWeight: 800, padding: '4px 12px', borderRadius: '100px', letterSpacing: '0.04em', marginBottom: '10px', boxShadow: '0 2px 8px rgba(168, 85, 247, 0.3)' }}>
-              🆘 Cover clean
-            </div>
-          )}
           <div className="flex items-start gap-2 mb-1">
             <span className="text-base">📍</span>
             <h3 className="font-bold text-gray-900 text-lg leading-tight pr-32">{zone}</h3>
@@ -639,8 +641,25 @@ export default function JobsPage() {
   })
 
   const sortedFiltered = [...filtered].sort((a, b) => {
+    // 1. My own listing always first (customer view)
     if (a.id === myJobId) return -1
     if (b.id === myJobId) return 1
+
+    // 2. Active cover cleans with a future cover_date pinned next.
+    //    Once cover_date passes OR the listing moves off 'active' (cleaner
+    //    found / cancelled / etc.), it falls back into normal flow.
+    const today = new Date(); today.setHours(0, 0, 0, 0)
+    const isPinnedCover = (j: Job) =>
+      j.service_type === 'cover'
+      && j.status === 'active'
+      && !!j.cover_date
+      && new Date(j.cover_date).getTime() >= today.getTime()
+    const aPin = isPinnedCover(a)
+    const bPin = isPinnedCover(b)
+    if (aPin && !bPin) return -1
+    if (!aPin && bPin) return 1
+
+    // 3. Fall back to fetch order (created_at desc)
     return 0
   })
 
