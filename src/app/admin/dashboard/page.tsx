@@ -1381,6 +1381,33 @@ export default function AdminDashboard() {
                   }}
                 />
 
+                {/* Cleaner job alert — sends both regular and cover variants so we can preview the visual differences side-by-side */}
+                <TestCard
+                  title="🆘 Cleaner job alert emails (regular + cover)"
+                  description="Sends both flavours of the real-time cleaner job alert: a regular weekly clean and a cover clean (one-off urgent job with date + time-window + pay-direct messaging). Both go to your logged-in admin email so you can compare the styling side-by-side. Templates are imported from the same shared lib production uses, so editing src/lib/emails/cleaner-job-alert.ts changes what the next test renders."
+                  buttonLabel="Send test emails →"
+                  buttonColor="#a855f7"
+                  onRun={async () => {
+                    const res = await fetch('/api/admin/test-cleaner-job-alert-email', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                    })
+                    const data = await res.json()
+                    if (!res.ok || !data.success) {
+                      return { success: false, message: data.error ?? 'Request failed' }
+                    }
+                    const regularOK = !data.regular?.error
+                    const coverOK = !data.cover?.error
+                    if (regularOK && coverOK) {
+                      return { success: true, message: `Both emails sent to ${data.sentTo}` }
+                    }
+                    const failures: string[] = []
+                    if (!regularOK) failures.push(`regular: ${data.regular.error}`)
+                    if (!coverOK) failures.push(`cover: ${data.cover.error}`)
+                    return { success: false, message: failures.join(' | ') }
+                  }}
+                />
+
               </div>
             </div>
           )}
