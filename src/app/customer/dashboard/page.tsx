@@ -864,6 +864,27 @@ function CustomerDashboardContent() {
       const data = await res.json()
       if (!res.ok) { showToast('Could not set up Direct Debit — please try again'); setStartDateLoading(false); return }
 
+      // Cover-clean: backend skipped GoCardless and fulfilled directly.
+      // No DD, no redirect — just refresh the dashboard so the cover request
+      // moves into "Confirmed cleaners" and the customer sees the success.
+      if (data.type === 'cover_fulfilled') {
+        setStartDateModal(null)
+        setStartDateLoading(false)
+        showToast('Cover cleaner confirmed — they\u2019ll be in touch shortly')
+        try {
+          const supabase = createClient()
+          const { data: { user } } = await supabase.auth.getUser()
+          if (user) {
+            const { data: customerRecord } = await (supabase as any).from('customers').select('id').eq('profile_id', user.id).single()
+            if (customerRecord) {
+              const { data: requestData } = await (supabase as any).from('clean_requests').select('*').eq('customer_id', customerRecord.id).order('created_at', { ascending: false })
+              if (requestData) setRequests(requestData)
+            }
+          }
+        } catch {}
+        return
+      }
+
       if (data.type === 'existing_mandate') {
         const confirmRes = await fetch('/api/gocardless/confirm-switch', {
           method: 'POST',
