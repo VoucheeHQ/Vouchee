@@ -491,11 +491,15 @@ export default function JobsPage() {
             // in the customer's "new application" email. Without this we'd
             // ship hardcoded zeros and the email would render "New to Vouchee"
             // for cleaners who actually have reviews.
+            //
+            // Note: the route returns { cleaner: CleanerCardData }, so we
+            // unwrap here. Rest of the file reads cleanerCardData.stats / .reviews
+            // directly.
             try {
               const cardRes = await fetch(`/api/cleaners/${cleanerRecord.id}/card`)
               if (cardRes.ok && !cancelled) {
-                const cardData = (await cardRes.json()) as CleanerCardData
-                if (!cancelled) setCleanerCardData(cardData)
+                const cardJson = (await cardRes.json()) as { cleaner: CleanerCardData }
+                if (!cancelled && cardJson?.cleaner) setCleanerCardData(cardJson.cleaner)
               }
             } catch (cardErr) {
               console.error('Failed to load cleaner card data:', cardErr)
