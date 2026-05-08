@@ -76,6 +76,11 @@ export async function POST(request: NextRequest) {
     const customerFirstName = customerFullName?.split(' ')?.[0] ?? 'there'
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.vouchee.co.uk'
 
+    // Convert a name into its possessive form, stripping any trailing period
+    // first so initials like "Alison C." render as "Alison C's" (not "Alison C.'s").
+    const possessive = (name: string) => name.replace(/\.\s*$/, '') + "'s"
+    const cleanerNamePossessive = possessive(cleanerName)
+
     const acceptUrl = `${appUrl}/customer/dashboard?accept=${applicationId}&request=${requestId}`
     const declineUrl = `${appUrl}/customer/dashboard?decline=${applicationId}`
 
@@ -149,35 +154,15 @@ export async function POST(request: NextRequest) {
         <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
 
           <tr>
-            <td style="padding:0 0 24px;">
-              <table cellpadding="0" cellspacing="0">
-                <tr>
-                  <td style="vertical-align:middle;">
-                    <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 500 411.55" width="32" height="32" style="display:block;">
-                      <defs>
-                        <linearGradient id="em-lg1" x1="271.32" y1="378.46" x2="-1.11" y2="106.04" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#0350e6"/><stop offset="1" stop-color="#58c9fc"/></linearGradient>
-                        <linearGradient id="em-lg2" x1="190.51" y1="395.38" x2="8.83" y2="79.68" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#0350e6"/><stop offset="0.05" stop-color="#0f60e9"/><stop offset="0.15" stop-color="#2580ef"/><stop offset="0.27" stop-color="#389bf4"/><stop offset="0.4" stop-color="#46aff7"/><stop offset="0.54" stop-color="#50befa"/><stop offset="0.72" stop-color="#56c6fc"/><stop offset="1" stop-color="#58c9fc"/></linearGradient>
-                        <linearGradient id="em-lg3" x1="240.56" y1="261.33" x2="471.93" y2="29.96" xlink:href="#em-lg1"/>
-                        <linearGradient id="em-lg4" x1="454.29" y1="-25.77" x2="243.01" y2="281.54" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#58c9fc"/><stop offset="0.28" stop-color="#56c6fc"/><stop offset="0.46" stop-color="#50befa"/><stop offset="0.6" stop-color="#46aff7"/><stop offset="0.73" stop-color="#389bf4"/><stop offset="0.85" stop-color="#2580ef"/><stop offset="0.95" stop-color="#0f60e9"/><stop offset="1" stop-color="#0350e6"/></linearGradient>
-                        <linearGradient id="em-lg5" x1="315.29" y1="283.01" x2="501.98" y2="-66.17" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#0350e6" stop-opacity="0.5"/><stop offset="0.03" stop-color="#0350e6"/><stop offset="1" stop-color="#0350e6"/></linearGradient>
-                      </defs>
-                      <path fill="url(#em-lg1)" d="M0,102.22,160,382.46c21,36.86,73.31,39.15,97.49,4.28L315,303.8l-23.62,6.9a47.51,47.51,0,0,1-53.44-20.15L156,161.51a136.85,136.85,0,0,0-134-62.28Z"/>
-                      <path fill="url(#em-lg2)" d="M184.15,382.46l-160-280.24.84-.11c-.34-.4-.69-.8-1-1.23a8.84,8.84,0,0,1-1-1.77l-1,.12-22,3L160,382.46a57.56,57.56,0,0,0,62.24,27.83A57,57,0,0,1,184.15,382.46Z"/>
-                      <path fill="url(#em-lg3)" d="M220.61,238.18,302,104.12A215.68,215.68,0,0,1,481.56.41L500,0l-1.38,1.12A221.63,221.63,0,0,0,444,66.88L333.68,269.33A58.94,58.94,0,0,1,293.13,299h0a46.5,46.5,0,0,1-48.5-21.43Z"/>
-                      <path fill="url(#em-lg4)" d="M500,0l-.44.34-2.51.06A215.71,215.71,0,0,0,317.47,104.12l-81.36,134,24,39.38A46.37,46.37,0,0,0,292,299.15a45,45,0,0,1-7.74.66,46.46,46.46,0,0,1-39.66-22.26l-24-39.38,81.36-134A215.73,215.73,0,0,1,481.55.41Z"/>
-                      <path fill="url(#em-lg5)" d="M500,0l-1.38,1.11A221.69,221.69,0,0,0,444,66.87L333.67,269.33A58.81,58.81,0,0,1,293.13,299a46.48,46.48,0,0,1-8.83.84,45.69,45.69,0,0,1-10.72-1.26,58.84,58.84,0,0,0,38.58-29.22L422.5,66.87c10.27-19.15,30.33-48.5,65.39-62.75A110.21,110.21,0,0,1,500,0Z"/>
-                    </svg>
-                  </td>
-                  <td style="padding-left:10px;font-size:18px;font-weight:700;color:#0f172a;vertical-align:middle;">Vouchee</td>
-                </tr>
-              </table>
+            <td style="padding:0 0 24px;text-align:center;">
+              <img src="https://www.vouchee.co.uk/full-logo-black.png" width="200" height="46" alt="Vouchee" style="display:block;margin:0 auto;max-width:100%;height:auto;border:0;outline:none;text-decoration:none;" />
             </td>
           </tr>
 
           <tr>
             <td style="background:white;border-radius:20px;padding:36px;border:1px solid #e2e8f0;">
               <p style="margin:0 0 6px;font-size:22px;font-weight:800;color:#0f172a;">🎉 A cleaner has applied to your request!</p>
-              <p style="margin:0 0 28px;font-size:14px;color:#64748b;line-height:1.6;">Hey ${customerFirstName} — a cleaner wants to clean your home. Review their application below.</p>
+              <p style="margin:0 0 28px;font-size:14px;color:#64748b;line-height:1.6;">Hey ${customerFirstName} — review their application below.</p>
 
               <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border-radius:14px;padding:18px 20px;margin-bottom:24px;border:1px solid #e2e8f0;">
                 <tr><td style="padding-bottom:10px;">
@@ -251,7 +236,7 @@ export async function POST(request: NextRequest) {
                 ${message ? `
                 <tr>
                   <td style="padding:16px 20px;border-top:1px solid #f1f5f9;">
-                    <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">${cleanerName}'s message</div>
+                    <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">${cleanerNamePossessive} message</div>
                     <div style="background:#eff6ff;border-radius:12px;padding:14px 16px;border-left:3px solid #2563eb;">
                       <p style="margin:0;font-size:14px;color:#1e40af;line-height:1.6;">${message}</p>
                     </div>

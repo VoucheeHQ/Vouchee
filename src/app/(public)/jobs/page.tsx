@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { CleanerCardData } from '@/lib/cleaner-card'
 
 // ─── Types ────────────────────────────────────────────
 
@@ -321,7 +322,7 @@ function ApplyModal({ job, cleanerProfile, onClose, onSubmit, submitting }: {
   const estPerSession = job.hourly_rate && job.hours_per_session ? (job.hourly_rate * job.hours_per_session).toFixed(2) : null
   const days = (job.preferred_days?.length ? job.preferred_days : job.preferred_day ? [job.preferred_day] : [])
   const daysLabel = days.length > 0 ? days.map((d: string) => d.slice(0, 3)).join(' · ') : null
-  const showNoRatingsTip = showNewCleanerTip && cleanerProfile && cleanerProfile.completedCleans === 0
+  const showNoRatingsTip = showNewCleanerTip && cleanerProfile && !cleanerProfile.hasRatings
   const allTasks = job.tasks ?? []
   const regularTasks = allTasks.filter(t => REGULAR_TASKS.includes(t))
   const specialTasks = allTasks.filter(t => !REGULAR_TASKS.includes(t))
@@ -428,6 +429,7 @@ export default function JobsPage() {
   const [userRole, setUserRole] = useState<string | null>(null)
   const [cleanerApproved, setCleanerApproved] = useState(false)
   const [cleanerData, setCleanerData] = useState<any>(null)
+  const [cleanerCardData, setCleanerCardData] = useState<CleanerCardData | null>(null)
   const [profileData, setProfileData] = useState<any>(null)
   const [appliedJobIds, setAppliedJobIds] = useState<Set<string>>(new Set())
   const [applyingToJob, setApplyingToJob] = useState<Job | null>(null)
@@ -483,6 +485,21 @@ export default function JobsPage() {
               .select('request_id')
               .eq('cleaner_id', cleanerRecord.id)
             if (existingApps && !cancelled) setAppliedJobIds(new Set((existingApps as any[]).map(a => a.request_id)))
+
+            // Canonical CleanerCardData fetch — drives the "new cleaner" tip
+            // threshold in the apply modal and the reviews/stats/rating shown
+            // in the customer's "new application" email. Without this we'd
+            // ship hardcoded zeros and the email would render "New to Vouchee"
+            // for cleaners who actually have reviews.
+            try {
+              const cardRes = await fetch(`/api/cleaners/${cleanerRecord.id}/card`)
+              if (cardRes.ok && !cancelled) {
+                const cardData = (await cardRes.json()) as CleanerCardData
+                if (!cancelled) setCleanerCardData(cardData)
+              }
+            } catch (cardErr) {
+              console.error('Failed to load cleaner card data:', cardErr)
+            }
           }
         }
       }
@@ -610,6 +627,9 @@ export default function JobsPage() {
           cleanerDbs: cleanerData.dbs_checked,
           cleanerInsured: cleanerData.has_insurance,
           cleanerRightToWork: cleanerData.right_to_work,
+          cleanerReviews: cleanerCardData?.reviews ?? [],
+          cleanerJobsCompleted: cleanerCardData?.stats.cleans_completed ?? 0,
+          cleanerRating: cleanerCardData?.stats.rating_average ?? 0,
           message: message.trim(),
           jobZone: applyingToJob.zone ? ZONE_LABELS[applyingToJob.zone as HorshamZone] : 'Horsham',
           jobBedrooms: applyingToJob.bedrooms,
@@ -760,7 +780,7 @@ export default function JobsPage() {
       {applyingToJob && (
         <ApplyModal
           job={applyingToJob}
-          cleanerProfile={cleanerData ? { name: profileData?.full_name ?? 'You', hasRatings: false, completedCleans: 0 } : null}
+          cleanerProfile={cleanerData ? { name: profileData?.full_name ?? 'You', hasRatings: (cleanerCardData?.stats.rating_count ?? 0) > 0, completedCleans: cleanerCardData?.stats.cleans_completed ?? 0 } : null}
           onClose={() => setApplyingToJob(null)}
           onSubmit={handleApply}
           submitting={submitting}
