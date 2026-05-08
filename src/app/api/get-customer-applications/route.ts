@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
 
   const { data: cleaners } = await admin
     .from('cleaners')
-    .select('id, profile_id, short_id, created_at, dbs_checked, right_to_work, has_insurance, cleans_completed, rating_average, rating_count, zones')
+    .select('id, profile_id, short_id, created_at, dbs_checked, right_to_work, has_insurance, rating_average, rating_count, zones')
     .in('id', cleanerIds) as { data: Array<any> | null }
 
   const profileIds = (cleaners ?? []).map(c => c.profile_id)
@@ -135,7 +135,10 @@ export async function GET(request: NextRequest) {
     console.warn('reviews lookup failed (non-fatal):', e)
   }
 
-  // Unique customers per cleaner — single query, group in memory
+  // Jobs accepted + unique customers per cleaner — single query, group in memory.
+  // jobs_accepted = raw count of accepted applications (the headline metric).
+  // unique_customers = subset where the request actually reached fulfilled.
+  const jobsAcceptedByCleaner = new Map<string, number>()
   const uniqueCustomersByCleaner = new Map<string, number>()
   try {
     const { data: wonApps } = await admin
@@ -146,6 +149,7 @@ export async function GET(request: NextRequest) {
     if (wonApps) {
       const grouped = new Map<string, Set<string>>()
       for (const w of wonApps) {
+        jobsAcceptedByCleaner.set(w.cleaner_id, (jobsAcceptedByCleaner.get(w.cleaner_id) ?? 0) + 1)
         if (w.clean_requests?.status !== 'fulfilled') continue
         const set = grouped.get(w.cleaner_id) ?? new Set()
         set.add(w.request_id)
@@ -180,7 +184,7 @@ export async function GET(request: NextRequest) {
         has_insurance: !!cleaner?.has_insurance,
       },
       stats: {
-        cleans_completed: cleaner?.cleans_completed ?? 0,
+        jobs_accepted: jobsAcceptedByCleaner.get(app.cleaner_id) ?? 0,
         rating_average: (cleaner?.rating_count ?? 0) > 0 ? cleaner.rating_average : null,
         rating_count: cleaner?.rating_count ?? 0,
         unique_customers: uniqueCustomersByCleaner.get(app.cleaner_id) ?? 0,
