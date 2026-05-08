@@ -1027,6 +1027,7 @@ function CustomerDashboardContent() {
             <div style={{ marginBottom: '36px' }}>
               <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '14px' }}>Request a clean</div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                {/* Regular clean — primary action; greys out when an active listing exists */}
                 <div style={{ background: 'white', borderRadius: '14px', border: '1.5px solid #e2e8f0', padding: '18px', position: 'relative', overflow: 'hidden' }}>
                   {hasActive && <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.7)', borderRadius: '14px', zIndex: 1 }} />}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}><span style={{ fontSize: '22px' }}>🧹</span><span style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>Regular clean</span></div>
@@ -1034,24 +1035,36 @@ function CustomerDashboardContent() {
                   {hasActive ? <div style={{ fontSize: '12px', color: '#94a3b8', fontStyle: 'italic' }}>{hasPaused ? 'Edit or delete your paused listing first' : 'You already have an active listing'}</div>
                     : <button onClick={() => router.push('/request/property')} style={{ background: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>Post request →</button>}
                 </div>
-                <div style={{ background: 'white', borderRadius: '14px', border: '1.5px solid #e2e8f0', padding: '18px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}><span style={{ fontSize: '22px' }}>🏠</span><span style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>End of tenancy</span></div>
-                  <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '14px', lineHeight: 1.4 }}>Deep clean for move-out or move-in</div>
-                  <button onClick={() => showToast('End of tenancy cleans — contact us at contact@vouchee.co.uk')} style={{ background: '#f1f5f9', color: '#64748b', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>Enquire</button>
+
+                {/* Cover clean — visible-but-muted feature-discovery tile.
+                    The real entry point is the 🆘 button on the fulfilled-request card below.
+                    Click handler is context-aware: nudges users with a confirmed cleaner toward
+                    that button, and tells everyone else the prerequisite. */}
+                <div style={{ background: '#f8fafc', borderRadius: '14px', border: '1.5px solid #e2e8f0', padding: '18px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}><span style={{ fontSize: '22px' }}>🆘</span><span style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>Cover clean</span></div>
+                  <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '14px', lineHeight: 1.4 }}>One-off cover when your regular cleaner can&apos;t make it</div>
+                  <button
+                    onClick={() => {
+                      if (fulfilledRequests.length > 0) {
+                        showToast('Use the 🆘 button on your confirmed cleaner card below')
+                      } else {
+                        showToast('You have no active cleaners to cover. Cover cleans appear once you have a confirmed cleaner.')
+                      }
+                    }}
+                    style={{ background: '#f1f5f9', color: '#64748b', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
+                  >Request cover →</button>
                 </div>
-                <div style={{ background: 'white', borderRadius: '14px', border: '1.5px solid #e2e8f0', padding: '18px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}><span style={{ fontSize: '22px' }}>🔄</span><span style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>Cover clean</span></div>
-                  <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '10px', lineHeight: 1.4 }}>One-off cover when your regular cleaner is away</div>
-                  <div style={{ marginBottom: '12px', padding: '8px 10px', background: '#eff6ff', borderRadius: '8px', border: '1px solid #bfdbfe' }}>
-                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#1d4ed8', marginBottom: '2px' }}>📣 Instant alerts</div>
-                    <div style={{ fontSize: '11px', color: '#3b82f6', lineHeight: 1.4 }}>All available cleaners in your area get notified immediately</div>
+
+                {/* Special request — combines former End-of-tenancy + Oven-clean tiles into a
+                    single full-width row. Future: redirect to dedicated /request/special page. */}
+                <div style={{ background: 'white', borderRadius: '14px', border: '1.5px solid #e2e8f0', padding: '18px', gridColumn: '1 / -1' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
+                    <div style={{ flex: 1, minWidth: '200px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}><span style={{ fontSize: '22px' }}>✨</span><span style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>Special request</span></div>
+                      <div style={{ fontSize: '12px', color: '#64748b', lineHeight: 1.4 }}>End of tenancy, oven clean, and other one-off jobs</div>
+                    </div>
+                    <button onClick={() => showToast('Special requests — contact us at contact@vouchee.co.uk')} style={{ background: '#f1f5f9', color: '#64748b', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", flexShrink: 0, whiteSpace: 'nowrap' }}>Enquire</button>
                   </div>
-                  <button onClick={() => showToast('Cover cleans are coming soon')} style={{ background: '#f1f5f9', color: '#64748b', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>Coming soon</button>
-                </div>
-                <div style={{ background: 'white', borderRadius: '14px', border: '1.5px solid #e2e8f0', padding: '18px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}><span style={{ fontSize: '22px' }}>🫙</span><span style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>Oven clean</span></div>
-                  <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '14px', lineHeight: 1.4 }}>Specialist one-off oven deep clean</div>
-                  <button onClick={() => showToast('Oven cleans — contact us at contact@vouchee.co.uk')} style={{ background: '#f1f5f9', color: '#64748b', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>Enquire</button>
                 </div>
               </div>
               {hasPaused && !hasActive && <div style={{ marginTop: '12px', padding: '12px 16px', background: '#fefce8', border: '1px solid #fef08a', borderRadius: '10px', fontSize: '13px', color: '#92400e' }}>💡 You have a paused listing. Consider editing or deleting it before posting a new request.</div>}

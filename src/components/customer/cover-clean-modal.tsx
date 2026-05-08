@@ -276,7 +276,7 @@ export function CoverCleanModal({
         await fetch('/api/notifications/cleaner-job-alert', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ request_id: data.id }),
+          body: JSON.stringify({ requestId: data.id }),
         })
       } catch (mailErr) {
         console.error('Cover job-alert fire failed (request still posted):', mailErr)
