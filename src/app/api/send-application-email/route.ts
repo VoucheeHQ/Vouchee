@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
       customerId, applicationId, requestId,
       cleanerName, cleanerInitial, cleanerMemberSince,
       cleanerDbs, cleanerInsured, cleanerRightToWork,
-      cleanerReviews, cleanerJobsCompleted, cleanerRating,
+      cleanerReviews, cleanerJobsAccepted, cleanerRating,
       message, jobZone, jobBedrooms, jobBathrooms, jobHours, jobRate,
     } = body
 
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
     const declineUrl = `${appUrl}/customer/dashboard?decline=${applicationId}`
 
     const hasReviews = cleanerReviews && cleanerReviews.length > 0
-    const jobsCompleted = cleanerJobsCompleted ?? 0
+    const jobsAccepted = cleanerJobsAccepted ?? 0
     const rating = cleanerRating ?? 0
 
     // ─── In-platform notification for the customer ─────────────────────────
@@ -119,18 +119,32 @@ export async function POST(request: NextRequest) {
       console.warn('[notify-customer] SKIPPED — customersTableId is null/undefined')
     }
 
+    // HTML-escape — review bodies and customer names are user content
+    const escapeHtml = (s: string) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+
+    // Render N filled stars + (5-N) outlined stars given a 0-5 rating
+    const renderStars = (n: number | null | undefined) => {
+      const r = Math.round(Math.max(0, Math.min(5, Number(n) || 0)))
+      return '★'.repeat(r) + '☆'.repeat(5 - r)
+    }
+
+    // Render up to 2 of the cleaner's real reviews. Stays blurred to maintain
+    // the "accept to unlock" gate — the goal is to signal that real reviews
+    // exist (and how many stars), not let the customer browse without
+    // committing. Defensive against missing fields and against the rating
+    // column being either 'rating' (CleanerReview type) or 'stars' (DB column).
+    const reviewsToShow = (Array.isArray(cleanerReviews) ? cleanerReviews : []).slice(0, 2)
+    const realReviewsHtml = reviewsToShow.map((r: any, i: number) => `
+      <div style="${i === 0 && reviewsToShow.length > 1 ? 'margin-bottom:8px;' : ''}padding:10px 12px;background:white;border-radius:8px;border:1px solid #e2e8f0;">
+        <span style="color:#f59e0b;font-size:12px;">${renderStars(r.rating ?? r.stars)}</span>
+        <div style="font-size:13px;color:#475569;margin-top:3px;line-height:1.4;">${escapeHtml(String(r.body ?? '').slice(0, 280))}</div>
+        <div style="font-size:11px;color:#94a3b8;margin-top:3px;">— ${escapeHtml(r.customer_first_name ?? 'Customer')}</div>
+      </div>
+    `).join('')
+
     const reviewsSection = hasReviews ? `
       <div style="-webkit-filter:blur(4px);filter:blur(4px);">
-        <div style="margin-bottom:8px;padding:10px 12px;background:white;border-radius:8px;border:1px solid #e2e8f0;">
-          <span style="color:#f59e0b;font-size:12px;">★★★★★</span>
-          <div style="font-size:13px;color:#475569;margin-top:3px;line-height:1.4;">Absolutely brilliant — left the house spotless. Would highly recommend to anyone looking for a reliable cleaner.</div>
-          <div style="font-size:11px;color:#94a3b8;margin-top:3px;">— Sarah T.</div>
-        </div>
-        <div style="padding:10px 12px;background:white;border-radius:8px;border:1px solid #e2e8f0;">
-          <span style="color:#f59e0b;font-size:12px;">★★★★★</span>
-          <div style="font-size:13px;color:#475569;margin-top:3px;line-height:1.4;">Very professional and thorough. Always on time and incredibly easy to communicate with. A real gem!</div>
-          <div style="font-size:11px;color:#94a3b8;margin-top:3px;">— James H.</div>
-        </div>
+        ${realReviewsHtml}
       </div>
       <div style="font-size:12px;color:#94a3b8;margin-top:10px;text-align:center;font-style:italic;">🔒 Accept this application to unlock their full reviews</div>
     ` : `
@@ -215,8 +229,8 @@ export async function POST(request: NextRequest) {
                     <table width="100%" cellpadding="0" cellspacing="0">
                       <tr>
                         <td style="text-align:center;padding:8px 0;">
-                          <div style="font-size:20px;font-weight:800;color:#0f172a;">${jobsCompleted}</div>
-                          <div style="font-size:11px;color:#94a3b8;margin-top:2px;">Cleans completed</div>
+                          <div style="font-size:20px;font-weight:800;color:#0f172a;">${jobsAccepted}</div>
+                          <div style="font-size:11px;color:#94a3b8;margin-top:2px;">Jobs accepted</div>
                         </td>
                         <td style="width:1px;background:#e2e8f0;"></td>
                         <td style="text-align:center;padding:8px 0;">

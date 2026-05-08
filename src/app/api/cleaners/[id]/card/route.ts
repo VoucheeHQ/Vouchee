@@ -55,7 +55,7 @@ export async function GET(
   // ─── 1. Cleaner row ──────────────────────────────────────────────────────
   const { data: cleaner, error: cleanerErr } = await admin
     .from('cleaners')
-    .select('id, profile_id, short_id, created_at, dbs_checked, right_to_work, has_insurance, cleans_completed, rating_average, rating_count, zones')
+    .select('id, profile_id, short_id, created_at, dbs_checked, right_to_work, has_insurance, rating_average, rating_count, zones')
     .eq('id', cleanerId)
     .single() as { data: any, error: any }
 
@@ -103,9 +103,12 @@ export async function GET(
     console.warn('reviews lookup failed (non-fatal):', e)
   }
 
-  // ─── 4. Unique customers count ───────────────────────────────────────────
-  // From applications where this cleaner won the job (status='accepted' AND
-  // request reached fulfilled). Cheaper to compute here than to add a column.
+  // ─── 4. Jobs accepted + unique customers ─────────────────────────────────
+  // jobs_accepted = raw count of applications where this cleaner was picked.
+  // This is the headline trust metric ("Mary has been chosen 14 times").
+  // unique_customers = subset of those where the request actually reached
+  // fulfilled status, i.e. real completed jobs.
+  let jobsAccepted = 0
   let uniqueCustomers = 0
   try {
     const { data: wonApps } = await admin
@@ -113,6 +116,7 @@ export async function GET(
       .select('request_id, status, clean_requests!inner(status)')
       .eq('cleaner_id', cleanerId)
       .eq('status', 'accepted') as { data: Array<{ request_id: string; clean_requests: { status: string } }> | null }
+    jobsAccepted = (wonApps ?? []).length
     uniqueCustomers = new Set(
       (wonApps ?? [])
         .filter(a => a.clean_requests?.status === 'fulfilled')
@@ -137,7 +141,7 @@ export async function GET(
       has_insurance: !!cleaner.has_insurance,
     },
     stats: {
-      cleans_completed: cleaner.cleans_completed ?? 0,
+      jobs_accepted: jobsAccepted,
       rating_average: cleaner.rating_count > 0 ? cleaner.rating_average : null,
       rating_count: cleaner.rating_count ?? 0,
       unique_customers: uniqueCustomers,

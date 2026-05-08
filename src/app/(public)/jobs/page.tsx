@@ -632,7 +632,7 @@ export default function JobsPage() {
           cleanerInsured: cleanerData.has_insurance,
           cleanerRightToWork: cleanerData.right_to_work,
           cleanerReviews: cleanerCardData?.reviews ?? [],
-          cleanerJobsCompleted: cleanerCardData?.stats?.cleans_completed ?? 0,
+          cleanerJobsAccepted: cleanerCardData?.stats?.jobs_accepted ?? 0,
           cleanerRating: cleanerCardData?.stats?.rating_average ?? 0,
           message: message.trim(),
           jobZone: applyingToJob.zone ? ZONE_LABELS[applyingToJob.zone as HorshamZone] : 'Horsham',
@@ -784,7 +784,7 @@ export default function JobsPage() {
       {applyingToJob && (
         <ApplyModal
           job={applyingToJob}
-          cleanerProfile={cleanerData ? { name: profileData?.full_name ?? 'You', hasRatings: (cleanerCardData?.stats?.rating_count ?? 0) > 0, completedCleans: cleanerCardData?.stats?.cleans_completed ?? 0 } : null}
+          cleanerProfile={cleanerData ? { name: profileData?.full_name ?? 'You', hasRatings: (cleanerCardData?.stats?.rating_count ?? 0) > 0, completedCleans: cleanerCardData?.stats?.jobs_accepted ?? 0 } : null}
           onClose={() => setApplyingToJob(null)}
           onSubmit={handleApply}
           submitting={submitting}

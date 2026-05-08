@@ -76,7 +76,7 @@ export function CleanerCard({ data, variant = 'full', avatarOverride }: Props) {
   const ratingAvg = stats.rating_average ?? 0
   const hasRating = stats.rating_count > 0
   const showRealReviews = reviews.length > 0
-  const cleansCompleted = stats.cleans_completed
+  const jobsAccepted = stats.jobs_accepted
 
   // ─── Compact variant (chat widget header) ──────────────────────────────────
   if (variant === 'compact') {
@@ -99,7 +99,7 @@ export function CleanerCard({ data, variant = 'full', avatarOverride }: Props) {
     )
   }
 
-  // ─── Header (matches cleaner dashboard layout: avatar + name + stars on left, CLEANS box on right) ──────
+  // ─── Header (matches cleaner dashboard layout: avatar + name + stars on left, JOBS box on right) ──────
   const Header = (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px', gap: '12px' }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', minWidth: 0 }}>
@@ -121,10 +121,10 @@ export function CleanerCard({ data, variant = 'full', avatarOverride }: Props) {
           </div>
         </div>
       </div>
-      {/* CLEANS box — always shown */}
+      {/* JOBS box — shows accepted-application count, the warm-trust metric */}
       <div style={{ textAlign: 'center', background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '10px 14px', flexShrink: 0 }}>
-        <div style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a', lineHeight: 1 }}>{cleansCompleted}</div>
-        <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 700, marginTop: '2px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Cleans</div>
+        <div style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a', lineHeight: 1 }}>{jobsAccepted}</div>
+        <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 700, marginTop: '2px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Jobs</div>
       </div>
     </div>
   )
