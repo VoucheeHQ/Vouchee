@@ -1,5 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { Resend } from 'resend'
+import {
+  coverCleanerEmailHtml,
+  coverCleanerEmailSubject,
+  coverCustomerEmailHtml,
+  coverCustomerEmailSubject,
+} from '@/lib/emails/cover-clean-confirm'
+
+const resend = new Resend(process.env.RESEND_API_KEY!)
 
 export async function POST(request: NextRequest) {
   const supabaseAdmin = createClient(
@@ -21,7 +30,7 @@ export async function POST(request: NextRequest) {
     //    already locked in when the customer posted the cover request).
     const { data: cleanRequest, error: reqError } = await supabaseAdmin
       .from('clean_requests')
-      .select('id, customer_id, bedrooms, bathrooms, frequency, hourly_rate, hours_per_session, tasks, zone, service_type, cover_date')
+      .select('id, customer_id, bedrooms, bathrooms, frequency, hourly_rate, hours_per_session, tasks, zone, service_type, cover_date, time_window_start, time_window_end, customer_notes')
       .eq('id', requestId)
       .single()
 
@@ -33,10 +42,9 @@ export async function POST(request: NextRequest) {
     // ── Cover-clean branch ──────────────────────────────────────────────────
     // Cover cleans are one-off, paid directly between customer and cleaner.
     // No GoCardless mandate, no recurring subscription, no Vouchee fee, no
-    // cooling-off (no contract that triggers UK CCR 2013). We mark the
-    // request fulfilled, set assigned_cleaner_id from the application, and
-    // decline any other pending applications. The cover-specific accept
-    // email is fired by file 7 — wired below as a best-effort POST.
+    // cooling-off (no contract triggers UK CCR 2013). We mark the request
+    // fulfilled, set assigned_cleaner_id, decline siblings, and fire the
+    // cover-specific accept emails (file 7).
     //
     // This branch fires BEFORE the cooling-off guard and customer/mandate
     // lookup so a customer with an existing regular-clean mandate isn't
@@ -73,22 +81,180 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Could not confirm cover cleaner' }, { status: 500 })
       }
 
+      // Mark winning application 'accepted' (was 'pending').
+      const { error: acceptError } = await supabaseAdmin
+        .from('applications')
+        .update({ status: 'accepted' })
+        .eq('id', applicationId)
+      if (acceptError) {
+        console.error('Cover accept: winning app update failed (non-fatal):', acceptError)
+      }
+
       // Decline sibling pending applications — this cleaner won, others lost.
       // Best-effort: a failure here doesn't undo the fulfill above.
-      const { error: declineError } = await supabaseAdmin
+      const { data: rejectedSiblings } = await supabaseAdmin
         .from('applications')
         .update({ status: 'rejected' })
         .eq('request_id', requestId)
         .neq('id', applicationId)
         .eq('status', 'pending')
-      if (declineError) {
-        console.error('Cover accept: sibling decline failed (non-fatal):', declineError)
+        .select('id, cleaner_id') as { data: Array<{ id: string; cleaner_id: string }> | null }
+
+      // ── Look up profiles for emails + notifications ─────────────────────
+      // Customer (for email, name, phone, address)
+      const { data: customerRecord } = await supabaseAdmin
+        .from('customers')
+        .select('id, profile_id, address_line1, address_line2, city, postcode')
+        .eq('id', cleanRequest.customer_id)
+        .single() as { data: { id: string; profile_id: string; address_line1: string; address_line2: string | null; city: string; postcode: string } | null }
+
+      const { data: customerProfile } = customerRecord
+        ? await supabaseAdmin.from('profiles').select('full_name, email, phone').eq('id', customerRecord.profile_id).single() as { data: { full_name: string | null; email: string | null; phone: string | null } | null }
+        : { data: null }
+
+      // Cleaner (for email, name, phone)
+      const { data: cleanerRecord } = await supabaseAdmin
+        .from('cleaners').select('profile_id').eq('id', application.cleaner_id).single() as { data: { profile_id: string } | null }
+      const { data: cleanerProfile } = cleanerRecord
+        ? await supabaseAdmin.from('profiles').select('full_name, email, phone').eq('id', cleanerRecord.profile_id).single() as { data: { full_name: string | null; email: string | null; phone: string | null } | null }
+        : { data: null }
+
+      const customerFirstName = customerProfile?.full_name?.split(' ')[0] ?? 'Your customer'
+      const customerFullName  = customerProfile?.full_name ?? 'Your customer'
+      const customerEmail     = customerProfile?.email ?? ''
+      const customerPhone     = customerProfile?.phone ?? null
+      const cleanerFullName   = cleanerProfile?.full_name ?? 'Cleaner'
+      const cleanerFirstName  = cleanerFullName.split(' ')[0]
+      const cleanerEmail      = cleanerProfile?.email ?? null
+      const cleanerPhone      = cleanerProfile?.phone ?? null
+
+      // Format the address for the cleaner-side email (postcode etc.)
+      const formatPostcode = (raw: string) => {
+        const c = (raw ?? '').toUpperCase().replace(/\s+/g, '')
+        return c.length > 4 ? c.slice(0, -3) + ' ' + c.slice(-3) : c
+      }
+      const address = customerRecord ? [
+        customerRecord.address_line1,
+        customerRecord.address_line2,
+        customerRecord.city,
+        formatPostcode(customerRecord.postcode),
+      ].filter(Boolean).join(', ') : ''
+
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.vouchee.co.uk'
+      const cleanerCardUrl = `${appUrl}/cleaners/${application.cleaner_id}`
+      const coverDateIso = cleanRequest.cover_date ?? startDate
+
+      // ── Fire all post-confirmation actions in parallel ──────────────────
+      // System message + notification + emails. Each is best-effort — logging
+      // failures rather than failing the whole request, since the fulfill is
+      // already committed and we'd rather over-communicate than under.
+      const tasks: Promise<unknown>[] = []
+
+      // System message in the conversation (so the chat reflects confirmation)
+      if (customerRecord) {
+        tasks.push(
+          supabaseAdmin.from('messages').insert({
+            conversation_id: conversationId,
+            sender_id: customerRecord.profile_id,
+            sender_role: 'customer',
+            content: `🎉 __system__ Cover clean confirmed for ${coverDateIso}. Your address has been shared with your cleaner. Payment is direct between you and ${cleanerFirstName}.`,
+          } as any)
+        )
       }
 
-      // TODO (file 7): fire cover-specific accept email to the cleaner here.
-      // For now the regular accept email path is bypassed since this route
-      // returns before reaching it. The cleaner will see the fulfilled state
-      // in their dashboard immediately; email follows when file 7 ships.
+      // Cleaner notification (in-app)
+      tasks.push(
+        supabaseAdmin.from('notifications').insert({
+          cleaner_id: application.cleaner_id,
+          type: 'job_won',
+          title: `🎉 ${customerFirstName} confirmed you for the cover clean`,
+          body: `Cover clean: ${coverDateIso}. Check your email for the full details.`,
+          link: '/cleaner/dashboard',
+        } as any)
+      )
+
+      // Cleaner email (cover-aware, with pay-direct callout)
+      if (cleanerEmail) {
+        tasks.push(
+          resend.emails.send({
+            from: 'Vouchee <hello@vouchee.co.uk>',
+            to: cleanerEmail,
+            subject: coverCleanerEmailSubject(coverDateIso),
+            html: coverCleanerEmailHtml({
+              cleanerFirstName,
+              customerFirstName,
+              customerFullName,
+              customerEmail,
+              customerPhone,
+              address,
+              coverDateIso,
+              timeWindowStart: cleanRequest.time_window_start ?? null,
+              timeWindowEnd: cleanRequest.time_window_end ?? null,
+              bedrooms: cleanRequest.bedrooms,
+              bathrooms: cleanRequest.bathrooms,
+              hoursPerSession: cleanRequest.hours_per_session,
+              hourlyRate: Number(cleanRequest.hourly_rate ?? 0),
+              tasks: cleanRequest.tasks ?? [],
+              zone: cleanRequest.zone ?? '',
+              customerNotes: cleanRequest.customer_notes ?? null,
+            }),
+          })
+        )
+      } else {
+        console.error('Cover accept: no cleaner email — skipping cleaner email send')
+      }
+
+      // Customer email (cover-aware, with pay-direct callout)
+      if (customerEmail) {
+        tasks.push(
+          resend.emails.send({
+            from: 'Vouchee <hello@vouchee.co.uk>',
+            to: customerEmail,
+            subject: coverCustomerEmailSubject(coverDateIso, cleanerFirstName),
+            html: coverCustomerEmailHtml({
+              customerFirstName,
+              cleanerFullName,
+              cleanerFirstName,
+              cleanerEmail,
+              cleanerPhone,
+              cleanerCardUrl,
+              coverDateIso,
+              timeWindowStart: cleanRequest.time_window_start ?? null,
+              timeWindowEnd: cleanRequest.time_window_end ?? null,
+              bedrooms: cleanRequest.bedrooms,
+              bathrooms: cleanRequest.bathrooms,
+              hoursPerSession: cleanRequest.hours_per_session,
+              hourlyRate: Number(cleanRequest.hourly_rate ?? 0),
+              tasks: cleanRequest.tasks ?? [],
+              zone: cleanRequest.zone ?? '',
+            }),
+          })
+        )
+      } else {
+        console.error('Cover accept: no customer email — skipping customer email send')
+      }
+
+      // Rejection notifications for losing applicants. Email twin can ship
+      // later — for now, a notification is enough so they see "job filled"
+      // in their dashboard.
+      if (rejectedSiblings && rejectedSiblings.length > 0) {
+        for (const rej of rejectedSiblings) {
+          tasks.push(
+            supabaseAdmin.from('notifications').insert({
+              cleaner_id: rej.cleaner_id,
+              type: 'job_lost',
+              title: 'Application update',
+              body: `${customerFirstName} chose another cleaner for this cover clean. Don't be discouraged — new cover requests appear regularly.`,
+              link: '/jobs',
+            } as any)
+          )
+        }
+      }
+
+      const results = await Promise.allSettled(tasks)
+      results.forEach((r, i) => {
+        if (r.status === 'rejected') console.error(`Cover accept: post-action ${i} failed:`, r.reason)
+      })
 
       return NextResponse.json({
         type: 'cover_fulfilled',
