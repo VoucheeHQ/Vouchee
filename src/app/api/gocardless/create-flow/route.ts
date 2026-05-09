@@ -148,7 +148,9 @@ export async function POST(request: NextRequest) {
       // System message + notification + emails. Each is best-effort — logging
       // failures rather than failing the whole request, since the fulfill is
       // already committed and we'd rather over-communicate than under.
-      const tasks: Promise<unknown>[] = []
+      // PromiseLike accepts both Resend's real Promises and Supabase's thenable
+      // PostgrestBuilder return values.
+      const tasks: PromiseLike<unknown>[] = []
 
       // System message in the conversation (so the chat reflects confirmation)
       if (customerRecord) {
