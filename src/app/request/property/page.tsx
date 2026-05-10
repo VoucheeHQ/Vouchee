@@ -46,24 +46,29 @@ const HOURS_OPTIONS = [
   { value: 4.5,  label: '4+ hours' },
 ]
 
-const SECTOR_TO_ZONE: Record<string, string> = {
-  "RH121": "central_south_east", "RH122": "central_south_east",
-  "RH123": "south_west",         "RH124": "north_east_roffey",
-  "RH125": "north_west",         "RH126": "warnham_north",
-  "RH127": "warnham_north",      "RH128": "north_west",
-  "RH129": "north_west",         "RH120": "faygate_kilnwood_vale",
-  "RH130": "christs_hospital",   "RH131": "christs_hospital",
-  "RH132": "south_west",         "RH133": "mannings_heath",
-  "RH134": "mannings_heath",     "RH135": "central_south_east",
-  "RH136": "mannings_heath",     "RH137": "broadbridge_heath",
-  "RH138": "broadbridge_heath",  "RH139": "southwater",
-  "RH110": "faygate_kilnwood_vale", "RH111": "faygate_kilnwood_vale",
-  "RH112": "faygate_kilnwood_vale", "RH113": "faygate_kilnwood_vale",
+// Maps the Sector display string from postcode-sectors.ts to the DB zone ID.
+// Single source of truth — getZoneFromPostcode now uses getPostcodeSector
+// internally so both the displayed area label and the stored zone are always
+// derived from the same file. The old SECTOR_TO_ZONE district map was a
+// separate, inconsistent system that caused mismatches (e.g. RH12 2 → central
+// instead of north_west).
+const SECTOR_DISPLAY_TO_ZONE_ID: Record<string, string> = {
+  'Central / South East':       'central_south_east',
+  'North West':                  'north_west',
+  'North East / Roffey':         'north_east_roffey',
+  'South West':                  'south_west',
+  'Warnham / Surrounding North': 'warnham_north',
+  'Broadbridge Heath':           'broadbridge_heath',
+  'Mannings Heath':              'mannings_heath',
+  'Faygate / Kilnwood Vale':     'faygate_kilnwood_vale',
+  'Christs Hospital':            'christs_hospital',
+  'Southwater':                  'southwater',
 }
 
 function getZoneFromPostcode(postcode: string): string | null {
-  const clean = postcode.toUpperCase().replace(/\s+/g, "")
-  return SECTOR_TO_ZONE[clean.slice(0, 5)] ?? SECTOR_TO_ZONE[clean.slice(0, 4)] ?? null
+  const sector = getPostcodeSector(postcode)
+  if (!sector) return null
+  return SECTOR_DISPLAY_TO_ZONE_ID[sector.sector] ?? null
 }
 
 function getSuggestedHours(bedrooms: number, bathrooms: number, tasks: string[] = []) {

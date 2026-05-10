@@ -103,6 +103,10 @@ const POSTCODE_SECTORS: Record<string, PostcodeSector> = {
   'RH13 5U': { sector: 'South West', description: 'South West Horsham' },
 
   // ── CENTRAL / SOUTH EAST ────────────────────────────────────────────────
+  // Note: some RH12 1N sectors extend into the south-west of Horsham.
+  // Adam confirmed RH12 1NE is South West, so 'RH12 1N' overrides the
+  // broad 'RH12 1' entry for all RH12 1Nx postcodes (longest-match wins).
+  'RH12 1N': { sector: 'South West', description: 'West Horsham (south-west fringe of town centre)' },
   'RH12 1':  { sector: 'Central / South East', description: 'Central Horsham' },
   'RH12 3':  { sector: 'Central / South East', description: 'Horsham west fringe' },
   'RH13 5A': { sector: 'Central / South East', description: 'Central Horsham' },
