@@ -273,8 +273,16 @@ function ChatWindow({ conversation, currentUserId, currentRole, onClose, onDismi
       .on('presence', { event: 'leave' }, ({ key }: { key: string }) => {
         if (key !== currentUserId) setOtherIsTyping(false)
       })
-      .subscribe(async (status: string) => {
-        if (status === 'SUBSCRIBED') await channel.track({ typing: false })
+      .subscribe(async (status: string, err?: Error) => {
+        if (status === 'SUBSCRIBED') {
+          await channel.track({ typing: false })
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          // Surface the failure mode instead of dying silently. If realtime
+          // ever breaks again, the console will tell us which of the three
+          // failure modes hit (vs. a JWT-expiry case where the channel stays
+          // SUBSCRIBED but server-side RLS drops the broadcast).
+          console.warn(`[chat-widget] conversation:${conversation.id} status=${status}`, err ?? '')
+        }
       })
 
     channelRef.current = channel
@@ -970,7 +978,7 @@ export function ChatWidget() {
   }, [initialized])
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_OUT') {
         setConversations([])
         setOpenIds(new Set())
@@ -979,6 +987,15 @@ export function ChatWidget() {
         setInitialized(false)
         cleanerIdRef.current = null
         currentUserIdRef.current = null
+      }
+      // Defensive realtime auth refresh.
+      // When supabase-js auto-refreshes the JWT (~hourly), we explicitly push
+      // the new token to the realtime websocket. Without this, channels stay
+      // marked SUBSCRIBED but the server's RLS check uses an expired token
+      // and silently drops broadcasts — symptom: messages don't appear in
+      // realtime until a hard refresh gets a fresh JWT.
+      if ((event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN') && session?.access_token) {
+        supabase.realtime.setAuth(session.access_token)
       }
     })
     return () => subscription.unsubscribe()
