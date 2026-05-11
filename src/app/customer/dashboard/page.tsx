@@ -711,8 +711,12 @@ function ApplicationsSection({ requestIds, requests, onAccept, onOpenChat }: {
   const handleDecline = async (app: Application) => {
     setDeclining(app.id)
     try {
-      await fetch('/api/decline-application', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ applicationId: app.id }) })
-      setApplications(prev => prev.filter(a => a.id !== app.id))
+      const res = await fetch('/api/decline-application', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ applicationId: app.id }) })
+      if (res.ok) {
+        setApplications(prev => prev.filter(a => a.id !== app.id))
+      } else {
+        console.error('Decline failed:', await res.json())
+      }
     } catch (err) { console.error('Decline error:', err) } finally { setDeclining(null) }
   }
 
@@ -801,6 +805,14 @@ function CustomerDashboardContent() {
         if (searchParams.get('gc_success') === '1') setShowSuccessBanner(true)
         const acceptAppId = searchParams.get('accept'); const acceptReqId = searchParams.get('request')
         if (acceptAppId && acceptReqId) { handleAcceptApplication(acceptAppId, acceptReqId); router.replace('/customer/dashboard') }
+        const declineAppId = searchParams.get('decline')
+        if (declineAppId) {
+          // Fire-and-forget: dashboard already shows the rejected state once
+          // applications reload. Don't await — just kick it off and clean the URL.
+          fetch('/api/decline-application', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ applicationId: declineAppId }) })
+            .catch(err => console.error('Email decline failed:', err))
+          router.replace('/customer/dashboard')
+        }
         const chatId = searchParams.get('chat')
         if (chatId) setTimeout(() => window.dispatchEvent(new CustomEvent('vouchee:open-chat', { detail: { conversationId: chatId } })), 800)
       } catch (err: any) { setError(err?.message ?? 'Something went wrong.') } finally { if (!cancelled) setLoading(false) }

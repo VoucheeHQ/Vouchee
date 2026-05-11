@@ -1,12 +1,20 @@
 {
-    "crons": [
-      {
-        "path": "/api/cron/auto-close-chats",
-        "schedule": "0 3 * * *"
-      },
-      {
-        "path": "/api/cron/check-payment-grace",
-        "schedule": "0 4 * * *"
-      }
-    ]
-  }
+  "crons": [
+    {
+      "path": "/api/cron/auto-close-chats",
+      "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/check-payment-grace",
+      "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/nudge-missed-messages",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/nudge-pending-applications",
+      "schedule": "0 8 * * *"
+    }
+  ]
+}
