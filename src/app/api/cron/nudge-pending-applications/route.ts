@@ -6,11 +6,12 @@ import { Resend } from 'resend'
 // GET /api/cron/nudge-pending-applications
 //
 // Runs daily (see vercel.json). Emails customers who have pending applications
-// that have been sitting unactioned for 24h or more.
+// that have been sitting unactioned for between 1 and 7 days.
 //
-// Threshold: ≥ 24h. No upper cap — continues daily until the customer acts.
-// In practice the cron runs once a day so a customer who ignores applications
-// gets at most one nudge per day, which is reasonable.
+// Window: 1 day ≤ application age ≤ 7 days.
+//   < 1 day → too soon, the customer may still be reviewing
+//   > 7 days → customer has implicitly decided; further nudges would be spam
+//              and would hurt our sending reputation
 //
 // One email per customer covering all their pending-application requests,
 // to avoid spam when a customer has multiple active listings.
@@ -42,16 +43,18 @@ export async function GET(request: NextRequest) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.vouchee.co.uk'
 
   const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
 
-  // ── 1. Find pending applications older than 24h ───────────────────────────
+  // ── 1. Find pending applications aged 1–7 days ────────────────────────────
   const { data: pendingApps, error: appErr } = await admin
     .from('applications')
     .select('id, cleaner_id, request_id, created_at')
     .eq('status', 'pending')
-    .lte('created_at', cutoff) as { data: Array<{ id: string; cleaner_id: string; request_id: string; created_at: string }> | null; error: any }
+    .lte('created_at', cutoff)
+    .gte('created_at', sevenDaysAgo) as { data: Array<{ id: string; cleaner_id: string; request_id: string; created_at: string }> | null; error: any }
 
   if (appErr || !pendingApps?.length) {
-    console.log('nudge-pending-applications: no pending apps older than 24h', appErr)
+    console.log('nudge-pending-applications: no pending apps in the 1–7 day window', appErr)
     return NextResponse.json({ nudged: 0 })
   }
 
