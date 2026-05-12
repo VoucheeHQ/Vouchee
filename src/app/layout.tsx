@@ -4,6 +4,8 @@ import './globals.css'
 import { Toaster } from 'sonner'
 import { AuthListener } from '@/components/auth-listener'
 import { ChatWidget } from '@/components/chat-widget'
+import { CookieBanner } from '@/components/cookie-banner'
+import { PostHogProvider } from '@/components/posthog-provider'
 
 const dmSans = DM_Sans({
   subsets: ['latin'],
@@ -52,8 +54,10 @@ export default function RootLayout({
     <html lang="en" className={dmSans.variable}>
       <body>
         <AuthListener />
+        <PostHogProvider />
         {children}
         <ChatWidget />
+        <CookieBanner />
         <Toaster position="top-right" richColors closeButton />
       </body>
     </html>

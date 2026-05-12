@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import VoucheeLogoText from '@/assets/vouchee-logo-text.svg'
+import { CookiePreferencesLink } from './cookie-preferences-link'
 
 export function Footer() {
   const currentYear = new Date().getFullYear()
@@ -55,6 +56,11 @@ export function Footer() {
                     </Link>
                   </li>
                 ))}
+                {category === 'Legal' && (
+                  <li>
+                    <CookiePreferencesLink className="text-sm text-ink-secondary transition-colors hover:text-brand-600" />
+                  </li>
+                )}
               </ul>
             </div>
           ))}

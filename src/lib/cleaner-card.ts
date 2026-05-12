@@ -78,3 +78,21 @@ export function formatMemberSince(iso: string | null | undefined): string {
   if (!iso) return 'Recently'
   return new Date(iso).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
 }
+
+// Each cleaner gets a deterministic colour from this palette at signup-time
+// (the hash of their cleaners.id picks a slot). Used to colour their avatar
+// and as the accent colour for trust-signal UI like the Jobs won box.
+// Keep in sync with chat-widget.tsx AVATAR_COLORS — same palette so the
+// cleaner has one identity across chat, dashboard, and public profile.
+const AVATAR_COLORS = [
+  '#e67e22', '#e74c3c', '#9b59b6', '#16a085', '#d35400',
+  '#c0392b', '#8e44ad', '#2980b9', '#27ae60', '#f39c12',
+]
+
+export function getAvatarColor(id: string): string {
+  let hash = 0
+  for (let i = 0; i < id.length; i++) {
+    hash = id.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length]
+}

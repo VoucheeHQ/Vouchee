@@ -15,7 +15,7 @@ export default function CookiePolicyPage() {
         <h1 style={{ fontSize: 'clamp(28px, 5vw, 42px)', fontWeight: 800, color: '#0f172a', margin: '0 0 16px', letterSpacing: '-0.4px', lineHeight: 1.15 }}>
           Cookie Policy
         </h1>
-        <p style={{ fontSize: '15px', color: '#64748b', margin: 0 }}>Last updated: April 2025</p>
+        <p style={{ fontSize: '15px', color: '#64748b', margin: 0 }}>Last updated: May 2026</p>
       </div>
 
       <div style={{ fontSize: '15px', color: '#374151', lineHeight: 1.8 }}>
@@ -39,25 +39,23 @@ export default function CookiePolicyPage() {
             type: 'Strictly necessary',
           },
           {
-            name: '__stripe_mid / __stripe_sid',
-            purpose: 'Payment security',
-            description: 'Set by Stripe when you set up a Direct Debit. Used to detect fraud and verify your session during payment.',
-            duration: '1 year / 30 minutes',
+            name: 'vouchee_cookie_consent_v1',
+            purpose: 'Cookie preferences',
+            description: 'Stores your cookie consent choices so we do not show you the banner on every visit. Stored in your browser using localStorage rather than a traditional cookie.',
+            duration: '12 months',
             type: 'Strictly necessary',
           },
           {
-            name: 'GoCardless session',
-            purpose: 'Direct Debit setup',
-            description: 'Set by GoCardless during the Direct Debit authorisation flow. Maintains your session while you complete the setup.',
-            duration: 'Session',
-            type: 'Strictly necessary',
+            name: 'ph_* (PostHog)',
+            purpose: 'Analytics',
+            description: 'Set by PostHog only if you have opted in to analytics cookies. Used to understand how the platform is used so we can improve it. Not used for advertising.',
+            duration: '12 months',
+            type: 'Analytics (opt-in)',
           },
         ]} />
 
         <Section title="Analytics">
-          Vouchee uses PostHog for basic analytics to understand how the platform is being used. PostHog may set cookies to track page views and user journeys. No personal information is shared with PostHog beyond anonymised usage data.
-          <br /><br />
-          We do not use Google Analytics, Facebook Pixel, or any other advertising or tracking technologies.
+          Vouchee uses PostHog for product analytics to understand how the platform is being used. PostHog is only loaded if you opt in via the cookie banner. No personal information is shared with PostHog beyond anonymised usage data, and we do not use Google Analytics, Facebook Pixel, or any other advertising or tracking technologies.
         </Section>
 
         <Section title="Amazon affiliate links">
