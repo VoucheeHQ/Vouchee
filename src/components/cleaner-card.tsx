@@ -12,7 +12,7 @@
 // formatting inline — use the helpers there.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { CleanerCardData } from '@/lib/cleaner-card'
+import { CleanerCardData, getAvatarColor } from '@/lib/cleaner-card'
 
 type Variant = 'full' | 'compact' | 'public'
 
@@ -22,19 +22,6 @@ interface Props {
   // Optional override for compact (chat) variant — cleaner-side shows a number
   // instead of the avatar initial. e.g. avatarOverride={{ label: '2', subtitle: 'Faygate / Kilnwood Vale' }}
   avatarOverride?: { label: string; subtitle?: string }
-}
-
-const ZONE_LABELS: Record<string, string> = {
-  central_south_east: 'Central / South East',
-  north_west: 'North West',
-  north_east_roffey: 'North East / Roffey',
-  south_west: 'South West',
-  warnham_north: 'Warnham / North',
-  broadbridge_heath: 'Broadbridge Heath',
-  mannings_heath: 'Mannings Heath',
-  faygate_kilnwood_vale: 'Faygate / Kilnwood Vale',
-  christs_hospital: "Christ's Hospital",
-  southwater: 'Southwater',
 }
 
 // 5-star row that always shows 5 stars — empty by default, filled up to `rating`.
@@ -57,14 +44,16 @@ function CredentialBadge({ label }: { label: string }) {
   )
 }
 
-function Avatar({ label, color = '#3b82f6', size = 52 }: { label: string; color?: string; size?: number }) {
-  // Match the cleaner dashboard avatar — gradient blue-to-indigo, white text
+function Avatar({ label, color, size = 52 }: { label: string; color: string; size?: number }) {
+  // Use a same-hue gradient so the avatar has subtle depth without being flat.
+  // color-mix() darkens the base colour by 22% for the second stop.
   return (
     <div style={{
       width: `${size}px`, height: `${size}px`, borderRadius: '50%',
-      background: 'linear-gradient(135deg, #3b82f6, #6366f1)',
+      background: `linear-gradient(135deg, ${color}, color-mix(in srgb, ${color}, #000 22%))`,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       fontSize: `${size * 0.42}px`, fontWeight: 800, color: 'white', flexShrink: 0,
+      boxShadow: `0 2px 8px ${color}40`,
     }}>
       {label}
     </div>
@@ -77,6 +66,10 @@ export function CleanerCard({ data, variant = 'full', avatarOverride }: Props) {
   const hasRating = stats.rating_count > 0
   const showRealReviews = reviews.length > 0
   const jobsWon = stats.jobs_won
+  // Each cleaner has a deterministic colour signature (assigned at signup via
+  // hash of their cleaners.id). Used on the avatar and the Jobs won accent so
+  // the card has a unified visual identity per cleaner.
+  const avatarColor = getAvatarColor(data.id)
 
   // ─── Compact variant (chat widget header) ──────────────────────────────────
   if (variant === 'compact') {
@@ -84,7 +77,7 @@ export function CleanerCard({ data, variant = 'full', avatarOverride }: Props) {
     const subtitle = avatarOverride?.subtitle ?? ''
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
-        <Avatar label={avatarLabel} size={32} />
+        <Avatar label={avatarLabel} color={avatarColor} size={32} />
         <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{ fontSize: '13px', fontWeight: 700, color: 'white', lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {name_short}
@@ -103,7 +96,7 @@ export function CleanerCard({ data, variant = 'full', avatarOverride }: Props) {
   const Header = (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px', gap: '12px' }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', minWidth: 0 }}>
-        <Avatar label={initial} size={56} />
+        <Avatar label={initial} color={avatarColor} size={56} />
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: '17px', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.2px' }}>
             {name_short}
@@ -121,10 +114,19 @@ export function CleanerCard({ data, variant = 'full', avatarOverride }: Props) {
           </div>
         </div>
       </div>
-      {/* JOBS box — shows jobs-won count (fulfilled hires), the trust metric */}
-      <div style={{ textAlign: 'center', background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '10px 14px', flexShrink: 0 }}>
-        <div style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a', lineHeight: 1 }}>{jobsWon}</div>
-        <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 700, marginTop: '2px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Jobs won</div>
+      {/* JOBS box — faded golden tile, matching the credential-badge aesthetic
+          (50 bg + 200 border + 700 text, amber instead of green). */}
+      <div style={{
+        textAlign: 'center',
+        background: '#fffbeb',
+        border: '1px solid #fde68a',
+        borderRadius: '14px',
+        padding: '12px 16px',
+        flexShrink: 0,
+        minWidth: '78px',
+      }}>
+        <div style={{ fontSize: '26px', fontWeight: 900, color: '#b45309', lineHeight: 1, letterSpacing: '-0.02em' }}>{jobsWon}</div>
+        <div style={{ fontSize: '10px', color: '#b45309', fontWeight: 700, marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Jobs won</div>
       </div>
     </div>
   )
@@ -192,20 +194,6 @@ export function CleanerCard({ data, variant = 'full', avatarOverride }: Props) {
     <div>
       {Header}
       {CredentialBadges}
-      {data.zones.length > 0 && (
-        <div style={{ marginBottom: '14px' }}>
-          <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>
-            Areas covered
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-            {data.zones.map(z => (
-              <span key={z} style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '4px 10px', fontSize: '12px', fontWeight: 600 }}>
-                {ZONE_LABELS[z] ?? z}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
       {ReviewsBlock}
     </div>
   )
