@@ -135,10 +135,11 @@ export async function GET(request: NextRequest) {
     console.warn('reviews lookup failed (non-fatal):', e)
   }
 
-  // Jobs accepted + unique customers per cleaner — single query, group in memory.
-  // jobs_accepted = raw count of accepted applications (the headline metric).
-  // unique_customers = subset where the request actually reached fulfilled.
-  const jobsAcceptedByCleaner = new Map<string, number>()
+  // Jobs won + unique customers per cleaner — single query, group in memory.
+  // jobs_won = applications that were accepted AND the clean_request was
+  // actually fulfilled (the headline trust metric).
+  // unique_customers = subset by distinct request_id.
+  const jobsWonByCleaner = new Map<string, number>()
   const uniqueCustomersByCleaner = new Map<string, number>()
   try {
     const { data: wonApps } = await admin
@@ -149,8 +150,8 @@ export async function GET(request: NextRequest) {
     if (wonApps) {
       const grouped = new Map<string, Set<string>>()
       for (const w of wonApps) {
-        jobsAcceptedByCleaner.set(w.cleaner_id, (jobsAcceptedByCleaner.get(w.cleaner_id) ?? 0) + 1)
         if (w.clean_requests?.status !== 'fulfilled') continue
+        jobsWonByCleaner.set(w.cleaner_id, (jobsWonByCleaner.get(w.cleaner_id) ?? 0) + 1)
         const set = grouped.get(w.cleaner_id) ?? new Set()
         set.add(w.request_id)
         grouped.set(w.cleaner_id, set)
@@ -184,7 +185,7 @@ export async function GET(request: NextRequest) {
         has_insurance: !!cleaner?.has_insurance,
       },
       stats: {
-        jobs_accepted: jobsAcceptedByCleaner.get(app.cleaner_id) ?? 0,
+        jobs_won: jobsWonByCleaner.get(app.cleaner_id) ?? 0,
         rating_average: (cleaner?.rating_count ?? 0) > 0 ? cleaner.rating_average : null,
         rating_count: cleaner?.rating_count ?? 0,
         unique_customers: uniqueCustomersByCleaner.get(app.cleaner_id) ?? 0,

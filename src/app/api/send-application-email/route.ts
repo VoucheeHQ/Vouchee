@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
       customerId, applicationId, requestId,
       cleanerName, cleanerInitial, cleanerMemberSince,
       cleanerDbs, cleanerInsured, cleanerRightToWork,
-      cleanerReviews, cleanerJobsAccepted, cleanerRating,
+      cleanerReviews, cleanerJobsWon, cleanerRating,
       message, jobZone, jobBedrooms, jobBathrooms, jobHours, jobRate,
     } = body
 
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
     const declineUrl = `${appUrl}/customer/dashboard?decline=${applicationId}`
 
     const hasReviews = cleanerReviews && cleanerReviews.length > 0
-    const jobsAccepted = cleanerJobsAccepted ?? 0
+    const jobsWon = cleanerJobsWon ?? 0
     const rating = cleanerRating ?? 0
 
     // ─── In-platform notification for the customer ─────────────────────────
@@ -229,8 +229,8 @@ export async function POST(request: NextRequest) {
                     <table width="100%" cellpadding="0" cellspacing="0">
                       <tr>
                         <td style="text-align:center;padding:8px 0;">
-                          <div style="font-size:20px;font-weight:800;color:#0f172a;">${jobsAccepted}</div>
-                          <div style="font-size:11px;color:#94a3b8;margin-top:2px;">Jobs accepted</div>
+                          <div style="font-size:20px;font-weight:800;color:#0f172a;">${jobsWon}</div>
+                          <div style="font-size:11px;color:#94a3b8;margin-top:2px;">Jobs won</div>
                         </td>
                         <td style="width:1px;background:#e2e8f0;"></td>
                         <td style="text-align:center;padding:8px 0;">

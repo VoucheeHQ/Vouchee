@@ -41,7 +41,7 @@ export interface CleanerCardData {
 
   // Aggregate stats
   stats: {
-    jobs_accepted: number    // count of applications.status='accepted' for this cleaner
+    jobs_won: number         // count of applications.status='accepted' AND clean_requests.status='fulfilled'
     rating_average: number | null  // null when rating_count = 0
     rating_count: number
     unique_customers: number

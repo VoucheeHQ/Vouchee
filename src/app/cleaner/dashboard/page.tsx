@@ -226,12 +226,11 @@ function ApprovedDashboard({ profile, cleaner, stats, notifications, onOpenNotif
 }) {
   const shortName = formatShortName(profile.full_name)
   const memberSince = formatMonthYear(cleaner.created_at)
-  // "Jobs accepted" — pulled from the live stat (applications.status='accepted')
-  // computed in the dashboard's data-load effect. Replaces the old read of
-  // cleaner.cleans_completed which was a stored column that never got
-  // updated (always 0). Now matches the metric shown on the customer-side
-  // CleanerCard, so cleaner and customer see the same number.
-  const jobsAccepted = stats.chatsAccepted
+  // "Jobs won" — pulled from the live stat (applications.status='accepted'
+  // AND clean_requests.status='fulfilled'), computed in the dashboard's
+  // data-load effect. This matches the metric shown on the customer-side
+  // CleanerCard, so cleaner and customer see the same trust number.
+  const jobsWon = stats.jobsWon
 
   // Count active zones for the notifications card preview line
   const activeZoneCount = (cleaner.zones ?? []).length
@@ -290,8 +289,8 @@ function ApprovedDashboard({ profile, cleaner, stats, notifications, onOpenNotif
                 </div>
               </div>
               <div style={{ textAlign: 'center', background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '10px 14px', flexShrink: 0, marginRight: '36px' }}>
-                <div style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a', lineHeight: 1 }}>{jobsAccepted}</div>
-                <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 700, marginTop: '2px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Jobs accepted</div>
+                <div style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a', lineHeight: 1 }}>{jobsWon}</div>
+                <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 700, marginTop: '2px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Jobs won</div>
               </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '16px' }}>
@@ -410,7 +409,7 @@ function ApprovedDashboard({ profile, cleaner, stats, notifications, onOpenNotif
         <div style={{ background: 'white', borderRadius: '20px', border: '1.5px solid #e2e8f0', padding: '24px', boxShadow: '0 2px 16px rgba(0,0,0,0.04)' }}>
           <div style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '16px' }}>Your Vouchee business</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
-            <StatCard value={jobsAccepted} label="Jobs accepted" sub="Customers who've chosen you as their cleaner" bg="#f0fdf4" border="#86efac" color="#15803d" />
+            <StatCard value={jobsWon} label="Jobs won" sub="Customers who confirmed you for a clean" bg="#f0fdf4" border="#86efac" color="#15803d" />
             <StatCard value={stats.uniqueCustomers} label="Unique customers" sub="Different households you've worked with" bg="#fdf4ff" border="#e9d5ff" color="#7c3aed" />
           </div>
         </div>
