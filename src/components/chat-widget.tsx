@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import './chat-widget.css'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -415,7 +416,7 @@ function ChatWindow({ conversation, currentUserId, currentRole, onClose, onDismi
   const showApproveButton = currentRole === 'customer' && !isFulfilled && !isClosed && applicationId
 
   return (
-    <div style={{
+    <div className="vouchee-chat-window" style={{
       width: '328px', height: showApproveButton ? '480px' : '440px',
       background: 'white', borderRadius: '8px 8px 0 0',
       boxShadow: '0 -2px 16px rgba(0,0,0,0.18)',
@@ -1055,7 +1056,7 @@ export function ChatWidget() {
   const openExpanded = conversations.filter(c => openIds.has(c.id))
 
   return (
-    <div style={{ position: 'fixed', bottom: 0, right: '16px', zIndex: 400, display: 'flex', alignItems: 'flex-end', gap: '12px', fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)" }}>
+    <div className="vouchee-chat-dock" style={{ position: 'fixed', bottom: 0, right: '16px', zIndex: 400, display: 'flex', alignItems: 'flex-end', gap: '12px', fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)" }}>
       {openExpanded.map(conv => (
         <ChatWindow
           key={conv.id}

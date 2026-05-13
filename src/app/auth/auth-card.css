@@ -1,0 +1,11 @@
+/*
+ * Shared responsive overrides for the login / forgot-password /
+ * reset-password cards. Each card uses padding: 40px inline — tighten on
+ * small screens. Same scoped/!important pattern as the dashboards.
+ */
+
+@media (max-width: 480px) {
+  .vouchee-auth-card {
+    padding: 28px 22px !important;
+  }
+}

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import VoucheeLogoText from '@/assets/vouchee-logo-text.svg'
+import '../auth/auth-card.css'
 
 export default function ForgotPasswordPage() {
   const router = useRouter()
@@ -65,7 +66,7 @@ export default function ForgotPasswordPage() {
         </a>
 
         {/* Card */}
-        <div style={{
+        <div className="vouchee-auth-card" style={{
           background: 'white', borderRadius: '24px', padding: '40px',
           width: '100%', maxWidth: '420px',
           boxShadow: '0 4px 32px rgba(0,0,0,0.07)',

@@ -1,0 +1,11 @@
+/*
+ * Onboarding shell responsive overrides. Tightens the H1 on small screens —
+ * 28px is too aggressive on a 320-360px phone. Same scoped/!important pattern
+ * as the dashboards.
+ */
+
+@media (max-width: 480px) {
+  .vouchee-onboarding-shell h1 {
+    font-size: 24px !important;
+  }
+}

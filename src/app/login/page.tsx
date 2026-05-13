@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Eye, EyeOff } from 'lucide-react'
 import VoucheeLogoText from '@/assets/vouchee-logo-text.svg'
+import '../auth/auth-card.css'
 
 type Role = 'cleaner' | 'customer' | null
 
@@ -138,7 +139,7 @@ function LoginPageInner() {
           <VoucheeLogoText width={140} height={36} />
         </a>
 
-        <div style={{
+        <div className="vouchee-auth-card" style={{
           background: 'white',
           borderRadius: '24px',
           padding: '40px',

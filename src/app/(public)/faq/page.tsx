@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import './faq.css'
 
 type FAQItem = {
   q: string
@@ -278,11 +279,11 @@ export default function FAQPage() {
           </div>
         </div>
 
-        <div style={{ maxWidth: '980px', margin: '0 auto', padding: '0 24px 80px', display: 'flex', gap: '32px', alignItems: 'flex-start' }}>
+        <div className="faq-layout" style={{ maxWidth: '980px', margin: '0 auto', padding: '0 24px 80px', display: 'flex', gap: '32px', alignItems: 'flex-start' }}>
 
           {/* Sidebar */}
-          <div style={{ width: '240px', flexShrink: 0, position: 'sticky', top: '24px' }}>
-            <div style={{ background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(16px)', borderRadius: '18px', border: '1px solid rgba(255,255,255,0.8)', padding: '8px', boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
+          <div className="faq-sidebar" style={{ width: '240px', flexShrink: 0, position: 'sticky', top: '24px' }}>
+            <div className="faq-sidebar-inner" style={{ background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(16px)', borderRadius: '18px', border: '1px solid rgba(255,255,255,0.8)', padding: '8px', boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
               {faqs.map((cat, i) => (
                 <button
                   key={i}

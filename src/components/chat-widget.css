@@ -1,0 +1,15 @@
+/*
+ * Chat widget responsive overrides. Same scoped/!important pattern as the
+ * dashboards. The fixed 328px window slightly overflows on 320-360px phones,
+ * and a row-laid dock can push the tray off-screen when chats are open.
+ */
+
+@media (max-width: 480px) {
+  .vouchee-chat-window {
+    width: calc(100vw - 24px) !important;
+    max-width: 360px !important;
+  }
+  .vouchee-chat-dock {
+    flex-direction: column !important;
+  }
+}

@@ -1,5 +1,7 @@
 'use client'
 
+import './onboarding-shell.css'
+
 // ─── Design tokens (single source of truth) ───────────────────────────────────
 const SHELL = {
   maxWidth:     '560px',
@@ -42,7 +44,7 @@ export function OnboardingShell({
   const progressPct   = isAlmostThere ? 100 : (step / 4) * 100
 
   return (
-    <div style={{
+    <div className="vouchee-onboarding-shell" style={{
       minHeight:  '100vh',
       background: SHELL.background,
       fontFamily: SHELL.fontFamily,

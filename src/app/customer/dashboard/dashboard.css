@@ -1,0 +1,23 @@
+/*
+ * Customer dashboard responsive overrides. Same pattern as the cleaner
+ * dashboard: scoped under .vouchee-customer-dashboard, !important to win
+ * over inline styles. See src/app/cleaner/dashboard/dashboard.css.
+ */
+
+@media (max-width: 768px) {
+  .vouchee-customer-dashboard {
+    padding: 24px 16px 40px !important;
+  }
+  .vouchee-customer-dashboard .dashboard-tile-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .vouchee-customer-dashboard h1 {
+    font-size: 24px !important;
+  }
+  .dashboard-modal-card {
+    padding: 28px !important;
+  }
+}

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import '../auth-card.css'
 
 export default function ResetPasswordPage() {
   const router = useRouter()
@@ -55,7 +56,7 @@ export default function ResetPasswordPage() {
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       fontFamily: "'DM Sans', sans-serif", padding: '24px',
     }}>
-      <div style={{ background: 'white', borderRadius: '20px', padding: '40px', maxWidth: '400px', width: '100%', boxShadow: '0 4px 24px rgba(0,0,0,0.08)', border: '1px solid #e2e8f0' }}>
+      <div className="vouchee-auth-card" style={{ background: 'white', borderRadius: '20px', padding: '40px', maxWidth: '400px', width: '100%', boxShadow: '0 4px 24px rgba(0,0,0,0.08)', border: '1px solid #e2e8f0' }}>
 
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <div style={{ fontSize: '32px', marginBottom: '12px' }}>🔑</div>

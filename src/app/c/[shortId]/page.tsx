@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Header } from '@/components/layout/header'
 import { CleanerCard } from '@/components/cleaner-card'
 import { CleanerCardData } from '@/lib/cleaner-card'
+import './profile.css'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // /c/[shortId] — public cleaner profile + review submission page.
@@ -232,7 +233,7 @@ export default function CleanerReviewPage() {
   return (
     <div style={{ minHeight: '100vh', background: '#f8fafc', fontFamily: "'DM Sans', sans-serif" }}>
       <Header />
-      <div style={{ maxWidth: '640px', margin: '0 auto', padding: '32px 24px 60px' }}>
+      <div className="vouchee-cleaner-profile" style={{ maxWidth: '640px', margin: '0 auto', padding: '32px 24px 60px' }}>
 
         {/* ── Cleaner card — shared CleanerCard component, public variant ── */}
         <div style={{ background: 'white', borderRadius: '20px', border: '1.5px solid #e2e8f0', padding: '24px', marginBottom: '20px', boxShadow: '0 2px 16px rgba(0,0,0,0.04)' }}>

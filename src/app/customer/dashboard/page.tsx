@@ -10,6 +10,7 @@ import { CleanerCard } from '@/components/cleaner-card'
 import { CleanerCardData } from '@/lib/cleaner-card'
 import { CoverCleanModal } from '@/components/customer/cover-clean-modal'
 import { FeedbackWidget } from '@/components/feedback-widget'
+import './dashboard.css'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -208,7 +209,7 @@ function SwitchCleanerModal({ requestId, isBeforeStart, onCancel, onSuccess }: {
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500, padding: '24px' }}>
-      <div style={{ background: 'white', borderRadius: '24px', padding: '36px', maxWidth: '480px', width: '100%', boxShadow: '0 32px 80px rgba(0,0,0,0.22)', maxHeight: '90vh', overflowY: 'auto' }}>
+      <div className="dashboard-modal-card" style={{ background: 'white', borderRadius: '24px', padding: '36px', maxWidth: '480px', width: '100%', boxShadow: '0 32px 80px rgba(0,0,0,0.22)', maxHeight: '90vh', overflowY: 'auto' }}>
         <h3 style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '22px', fontWeight: 800, color: '#0f172a', margin: '0 0 6px' }}>{title}</h3>
         <p style={{ fontSize: '14px', color: '#64748b', lineHeight: 1.6, margin: '0 0 20px' }}>
           {isBeforeStart ? "If your cleaner has cancelled or isn't showing up, we'll find you a new one." : "If you're unhappy with your current cleaner, we can help you find a new one."}
@@ -270,7 +271,7 @@ function StartDateModal({ cleanerName, frequency, applicationId, requestId, conv
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500, padding: '24px' }}>
-      <div style={{ background: 'white', borderRadius: '24px', padding: '44px 48px', maxWidth: '540px', width: '100%', boxShadow: '0 32px 80px rgba(0,0,0,0.22)', maxHeight: '92vh', overflowY: 'auto' }}>
+      <div className="dashboard-modal-card" style={{ background: 'white', borderRadius: '24px', padding: '44px 48px', maxWidth: '540px', width: '100%', boxShadow: '0 32px 80px rgba(0,0,0,0.22)', maxHeight: '92vh', overflowY: 'auto' }}>
         <h3 style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '26px', fontWeight: 800, color: '#0f172a', textAlign: 'center', margin: '0 0 32px', letterSpacing: '-0.3px' }}>When would you like {firstName} to start?</h3>
         <div style={{ marginBottom: '28px' }}>
           <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '10px' }}>Start date</label>
@@ -1030,7 +1031,7 @@ function CustomerDashboardContent() {
   if (loading) return <div style={{ minHeight: '100vh', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans', sans-serif" }}><div style={{ textAlign: 'center' }}><div style={{ fontSize: '32px', marginBottom: '12px' }}>🧹</div><p style={{ fontSize: '14px', color: '#64748b' }}>Loading your dashboard…</p></div></div>
   if (error || !profile) return (
     <div style={{ minHeight: '100vh', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans', sans-serif", padding: '24px' }}>
-      <div style={{ background: 'white', borderRadius: '20px', padding: '40px', maxWidth: '400px', textAlign: 'center', border: '1.5px solid #fecaca' }}>
+      <div className="dashboard-modal-card" style={{ background: 'white', borderRadius: '20px', padding: '40px', maxWidth: '400px', textAlign: 'center', border: '1.5px solid #fecaca' }}>
         <div style={{ fontSize: '32px', marginBottom: '12px' }}>⚠️</div>
         <p style={{ fontSize: '14px', color: '#dc2626', margin: '0 0 16px' }}>{error ?? 'Could not load your dashboard.'}</p>
         <button onClick={() => router.push('/login')} style={{ background: '#0f172a', color: 'white', border: 'none', borderRadius: '10px', padding: '10px 24px', fontSize: '14px', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>Back to login</button>
@@ -1053,14 +1054,14 @@ function CustomerDashboardContent() {
       <div style={{ minHeight: '100vh', background: '#f8fafc', fontFamily: "'DM Sans', sans-serif", display: 'flex', flexDirection: 'column' }}>
         <Header userRole={profile.role} />
         <main style={{ flex: 1 }}>
-          <div style={{ maxWidth: '720px', margin: '0 auto', padding: '40px 24px 60px' }}>
+          <div className="vouchee-customer-dashboard" style={{ maxWidth: '720px', margin: '0 auto', padding: '40px 24px 60px' }}>
             <div style={{ marginBottom: '36px' }}>
               <h1 style={{ fontSize: '30px', fontWeight: 700, color: '#0f172a', marginBottom: '6px' }}>Hey {firstName}! 👋</h1>
               <p style={{ fontSize: '15px', color: '#64748b' }}>{hasActive ? 'Your request is live — cleaners can apply.' : 'Manage your cleaning requests below.'}</p>
             </div>
             <div style={{ marginBottom: '36px' }}>
               <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '14px' }}>Request a clean</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div className="dashboard-tile-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 {/* Regular clean — primary action; greys out when an active listing exists */}
                 <div style={{ background: 'white', borderRadius: '14px', border: '1.5px solid #e2e8f0', padding: '18px', position: 'relative', overflow: 'hidden' }}>
                   {hasActive && <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.7)', borderRadius: '14px', zIndex: 1 }} />}
