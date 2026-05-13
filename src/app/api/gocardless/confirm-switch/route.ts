@@ -380,6 +380,13 @@ export async function POST(request: NextRequest) {
         switch_pending: false,
       } as any).eq('id', oldRequest.id)
 
+      // Mark the old cleaner's accepted application as ended for hours tracking
+      if (oldRequest.assigned_cleaner_id) {
+        await supabaseAdmin.from('applications').update({
+          ended_at: new Date().toISOString(),
+        } as any).eq('request_id', oldRequest.id).eq('cleaner_id', oldRequest.assigned_cleaner_id).eq('status', 'accepted')
+      }
+
       // Send farewell to old cleaner
       if (oldRequest.assigned_cleaner_id) {
         const { data: oldCleanerRec } = await supabaseAdmin.from('cleaners').select('profile_id').eq('id', oldRequest.assigned_cleaner_id).single() as { data: { profile_id: string } | null }

@@ -320,12 +320,21 @@ export async function POST(request: NextRequest) {
       switch_requested_at: new Date().toISOString(),
       switch_reason: reason?.trim() || null,
     } as any).eq('id', requestId)
+    // (ended_at is NOT set here — the old cleaner keeps working until the new
+    // cleaner is confirmed via confirm-switch. ended_at is set there.)
   } else {
     await admin.from('clean_requests').update({
       status: 'cancelled',
       switch_requested_at: new Date().toISOString(),
       switch_reason: reason?.trim() || null,
     } as any).eq('id', requestId)
+    // Mark the old cleaner's accepted application as ended for hours tracking.
+    // (Best-effort — failure here shouldn't unwind the cancellation.)
+    if (oldCleanerId) {
+      await admin.from('applications').update({
+        ended_at: new Date().toISOString(),
+      } as any).eq('request_id', requestId).eq('cleaner_id', oldCleanerId).eq('status', 'accepted')
+    }
   }
 
   // ─── 6. Update blocked list ───────────────────────────────────────────────

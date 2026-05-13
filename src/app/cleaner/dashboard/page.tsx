@@ -44,6 +44,7 @@ interface CleanerStats {
   chatsAccepted: number
   chatsDeclined: number
   uniqueCustomers: number
+  estimatedHoursWorked: number
 }
 
 interface NotificationItem {
@@ -127,6 +128,54 @@ function StatCard({ value, label, sub, color = '#0f172a', bg = '#f8fafc', border
       {sub && <div style={{ fontSize: '11px', color: '#94a3b8', lineHeight: 1.4 }}>{sub}</div>}
     </div>
   )
+}
+
+// Estimate hours worked for a single accepted application.
+//
+//   - One-off types (cover, deep_clean, end_of_tenancy, oven_clean):
+//       hours_per_session × 1 (just the single session)
+//   - Recurring regular cleans (weekly / fortnightly / monthly):
+//       sessions_elapsed × hours_per_session,
+//       where sessions_elapsed = floor(days_elapsed / interval_days).
+//       Start point: clean_requests.fulfilled_at (when the relationship became real).
+//       End point:   applications.ended_at if set, else now.
+//
+// "Estimated" wording carries the imprecision — we count expected sessions
+// based on cadence, not actually-completed sessions. Pauses are NOT subtracted
+// (intentional simplification per product spec — assume cleans still happen
+// or restart silently).
+//
+// Returns a non-negative number of hours.
+function estimateHoursForApplication(app: {
+  ended_at: string | null
+  clean_requests: {
+    service_type: string | null
+    frequency: 'weekly' | 'fortnightly' | 'monthly' | null
+    hours_per_session: number | null
+    fulfilled_at: string | null
+  } | null
+}): number {
+  const req = app.clean_requests
+  if (!req) return 0
+  const hpx = req.hours_per_session ?? 0
+  if (hpx <= 0) return 0
+
+  const ONE_OFF: ReadonlyArray<string> = ['cover', 'deep_clean', 'end_of_tenancy', 'oven_clean']
+  if (req.service_type && ONE_OFF.includes(req.service_type)) {
+    return hpx
+  }
+
+  // Recurring (regular). Need fulfilled_at to compute elapsed time.
+  if (!req.fulfilled_at || !req.frequency) return 0
+  const intervalDays = req.frequency === 'weekly' ? 7
+                     : req.frequency === 'fortnightly' ? 14
+                     : 30 // monthly approximation
+  const start = new Date(req.fulfilled_at).getTime()
+  const end = app.ended_at ? new Date(app.ended_at).getTime() : Date.now()
+  if (end <= start) return 0
+  const daysElapsed = (end - start) / (1000 * 60 * 60 * 24)
+  const sessions = Math.floor(daysElapsed / intervalDays)
+  return sessions * hpx
 }
 
 const NOTIFICATION_ICONS: Record<string, string> = {
@@ -410,7 +459,7 @@ function ApprovedDashboard({ profile, cleaner, stats, notifications, onOpenNotif
         <div style={{ background: 'white', borderRadius: '20px', border: '1.5px solid #e2e8f0', padding: '24px', boxShadow: '0 2px 16px rgba(0,0,0,0.04)' }}>
           <div style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '16px' }}>Your Vouchee business</div>
           <div className="dashboard-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
-            <StatCard value={jobsWon} label="Jobs won" bg="#f0fdf4" border="#86efac" color="#15803d" />
+            <StatCard value={stats.estimatedHoursWorked} label="Estimated hours worked" bg="#fffbeb" border="#fde68a" color="#b45309" />
             <StatCard value={stats.uniqueCustomers} label="Unique customers" bg="#fdf4ff" border="#e9d5ff" color="#7c3aed" />
           </div>
         </div>
@@ -545,7 +594,7 @@ export default function CleanerDashboardPage() {
   const [userId, setUserId] = useState<string | null>(null)
   const [profile, setProfile] = useState<CleanerProfile | null>(null)
   const [cleaner, setCleaner] = useState<CleanerData | null>(null)
-  const [stats, setStats] = useState<CleanerStats>({ pendingApplications: 0, jobsWon: 0, chatsAccepted: 0, chatsDeclined: 0, uniqueCustomers: 0 })
+  const [stats, setStats] = useState<CleanerStats>({ pendingApplications: 0, jobsWon: 0, chatsAccepted: 0, chatsDeclined: 0, uniqueCustomers: 0, estimatedHoursWorked: 0 })
   const [notifications, setNotifications] = useState<NotificationItem[]>([])
   const [emailConfirmed, setEmailConfirmed] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -579,10 +628,23 @@ export default function CleanerDashboardPage() {
 
         const { data: appData } = await supabase
           .from('applications')
-          .select('id, status, request_id, clean_requests(status)')
+          .select('id, status, request_id, ended_at, clean_requests(status, service_type, frequency, hours_per_session, fulfilled_at)')
           .eq('cleaner_id', (cleanerData as any).id)
         if (appData) {
-          const apps = appData as Array<{ id: string; status: string; request_id: string; clean_requests: { status: string } | null }>
+          type AppRow = {
+            id: string
+            status: string
+            request_id: string
+            ended_at: string | null
+            clean_requests: {
+              status: string
+              service_type: string | null
+              frequency: 'weekly' | 'fortnightly' | 'monthly' | null
+              hours_per_session: number | null
+              fulfilled_at: string | null
+            } | null
+          }
+          const apps = appData as AppRow[]
           // A "pending" application is only meaningful while the underlying
           // request is still actively seeking a cleaner. Once the request is
           // fulfilled / deleted / paused / cancelled, the cleaner's app is
@@ -594,9 +656,13 @@ export default function CleanerDashboardPage() {
           ).length
           const chatsAccepted = apps.filter(a => a.status === 'accepted').length
           const chatsDeclined = apps.filter(a => a.status === 'rejected' || a.status === 'declined').length
-          const jobsWon = apps.filter(a => a.status === 'accepted' && a.clean_requests?.status === 'fulfilled').length
-          const uniqueCustomers = new Set(apps.filter(a => a.status === 'accepted' && a.clean_requests?.status === 'fulfilled').map(a => a.request_id)).size
-          setStats({ pendingApplications: pending, jobsWon, chatsAccepted, chatsDeclined, uniqueCustomers })
+          const fulfilledAccepted = apps.filter(a => a.status === 'accepted' && a.clean_requests?.status === 'fulfilled')
+          const jobsWon = fulfilledAccepted.length
+          const uniqueCustomers = new Set(fulfilledAccepted.map(a => a.request_id)).size
+          const estimatedHoursWorked = Math.round(
+            fulfilledAccepted.reduce((acc, a) => acc + estimateHoursForApplication(a), 0)
+          )
+          setStats({ pendingApplications: pending, jobsWon, chatsAccepted, chatsDeclined, uniqueCustomers, estimatedHoursWorked })
         }
 
         const { data: notifData, error: notifError } = await supabase

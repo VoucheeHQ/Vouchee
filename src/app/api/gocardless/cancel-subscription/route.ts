@@ -525,6 +525,18 @@ export async function POST(request: NextRequest) {
       } as any)
       .eq('id', requestId)
 
+    // Mark the assigned cleaner's accepted application as ended for
+    // hours-worked tracking. Best-effort — failure here shouldn't unwind
+    // the cancellation, which is already committed above.
+    if (cleanRequest.assigned_cleaner_id) {
+      await supabaseAdmin
+        .from('applications')
+        .update({ ended_at: now.toISOString() } as any)
+        .eq('request_id', requestId)
+        .eq('cleaner_id', cleanRequest.assigned_cleaner_id)
+        .eq('status', 'accepted')
+    }
+
     // ── Look up cleaner + customer details for emails ─────────────────────────
     let cleanerEmail: string | null = null
     let cleanerFirstName = 'there'
