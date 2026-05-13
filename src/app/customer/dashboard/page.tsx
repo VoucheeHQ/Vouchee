@@ -11,10 +11,11 @@ import { CleanerCardData } from '@/lib/cleaner-card'
 import { CoverCleanModal } from '@/components/customer/cover-clean-modal'
 import { FeedbackWidget } from '@/components/feedback-widget'
 import './dashboard.css'
+import { LAUNCH_DATE_LABEL } from '@/lib/launch'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type RequestStatus = 'active' | 'paused' | 'deleted' | 'pending_review' | 'pending' | 'completed' | 'cancelled' | 'fulfilled'
+type RequestStatus = 'active' | 'paused' | 'deleted' | 'pending_review' | 'pending' | 'completed' | 'cancelled' | 'fulfilled' | 'pre_launch_pending'
 type Frequency = 'weekly' | 'fortnightly' | 'monthly'
 
 interface CustomerProfile { full_name: string; email: string; role: string }
@@ -86,7 +87,7 @@ const TIME_SLOTS = ['Morning (8am - 12pm)', 'During the day (8am - 5pm)', 'After
 const ALL_DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
 const DAY_SHORT: Record<string, string> = { monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed', thursday: 'Thu', friday: 'Fri', saturday: 'Sat', sunday: 'Sun' }
 
-const ACTIVE_STATUSES: RequestStatus[] = ['active', 'pending_review', 'pending']
+const ACTIVE_STATUSES: RequestStatus[] = ['active', 'pending_review', 'pending', 'pre_launch_pending']
 const PAST_STATUSES: RequestStatus[] = ['deleted', 'paused', 'completed', 'cancelled', 'fulfilled']
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -413,14 +414,15 @@ function ActiveRequestCard({ request, onPause, onRepublish, onDelete, onEdit, on
   const beforeStart = isFulfilled ? checkIsBeforeStartDate(request.start_date) : false
 
   const statusConfig: Record<string, { label: string; dot: string; border: string; headerBg: string; textColor: string }> = {
-    active:         { label: 'Live — accepting applications', dot: '#22c55e', border: '#bbf7d0', headerBg: '#f0fdf4', textColor: '#15803d' },
-    pending_review: { label: 'Under review',                  dot: '#f59e0b', border: '#fde68a', headerBg: '#fffbeb', textColor: '#92400e' },
-    pending:        { label: 'Live — accepting applications', dot: '#22c55e', border: '#bbf7d0', headerBg: '#f0fdf4', textColor: '#15803d' },
-    paused:         { label: 'Paused',                        dot: '#eab308', border: '#fef08a', headerBg: '#fefce8', textColor: '#854d0e' },
-    deleted:        { label: 'Deleted',                       dot: '#ef4444', border: '#fecaca', headerBg: '#fef2f2', textColor: '#991b1b' },
-    completed:      { label: 'Completed',                     dot: '#8b5cf6', border: '#ddd6fe', headerBg: '#f5f3ff', textColor: '#6d28d9' },
-    cancelled:      { label: 'Cancelled',                     dot: '#94a3b8', border: '#e2e8f0', headerBg: '#f8fafc', textColor: '#64748b' },
-    fulfilled:      { label: 'Cleaner confirmed',             dot: '#16a34a', border: '#bbf7d0', headerBg: '#f0fdf4', textColor: '#15803d' },
+    active:              { label: 'Live — accepting applications',     dot: '#22c55e', border: '#bbf7d0', headerBg: '#f0fdf4', textColor: '#15803d' },
+    pending_review:      { label: 'Under review',                      dot: '#f59e0b', border: '#fde68a', headerBg: '#fffbeb', textColor: '#92400e' },
+    pending:             { label: 'Live — accepting applications',     dot: '#22c55e', border: '#bbf7d0', headerBg: '#f0fdf4', textColor: '#15803d' },
+    paused:              { label: 'Paused',                            dot: '#eab308', border: '#fef08a', headerBg: '#fefce8', textColor: '#854d0e' },
+    deleted:             { label: 'Deleted',                           dot: '#ef4444', border: '#fecaca', headerBg: '#fef2f2', textColor: '#991b1b' },
+    completed:           { label: 'Completed',                         dot: '#8b5cf6', border: '#ddd6fe', headerBg: '#f5f3ff', textColor: '#6d28d9' },
+    cancelled:           { label: 'Cancelled',                         dot: '#94a3b8', border: '#e2e8f0', headerBg: '#f8fafc', textColor: '#64748b' },
+    fulfilled:           { label: 'Cleaner confirmed',                 dot: '#16a34a', border: '#bbf7d0', headerBg: '#f0fdf4', textColor: '#15803d' },
+    pre_launch_pending:  { label: 'Pending launch',                    dot: '#3b82f6', border: '#bfdbfe', headerBg: '#eff6ff', textColor: '#1e40af' },
   }
   const sc = statusConfig[request.status] ?? statusConfig.active
 
@@ -1235,6 +1237,20 @@ function CustomerDashboardContent() {
               <h1 style={{ fontSize: '30px', fontWeight: 700, color: '#0f172a', marginBottom: '6px' }}>Hey {firstName}! 👋</h1>
               <p style={{ fontSize: '15px', color: '#64748b' }}>{hasActive ? 'Your request is live — cleaners can apply.' : 'Manage your cleaning requests below.'}</p>
             </div>
+
+            {/* Pre-launch banner — shown when the customer has a listing waiting
+                for launch. Disappears as soon as admin flips it to active. */}
+            {activeRequests.some(r => r.status === 'pre_launch_pending') && (
+              <div style={{ marginBottom: '36px', background: 'linear-gradient(135deg, #eff6ff, #f0f9ff)', border: '1.5px solid #bfdbfe', borderRadius: '16px', padding: '20px 22px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '22px' }}>📫</span>
+                  <span style={{ fontSize: '15px', fontWeight: 800, color: '#1e40af' }}>You&apos;re on the early list</span>
+                </div>
+                <p style={{ fontSize: '13px', color: '#1e40af', lineHeight: 1.6, margin: 0 }}>
+                  We open to cleaners on <strong>{LAUNCH_DATE_LABEL}</strong>. Your request is saved — we&apos;ll email you the moment cleaners can apply, and your listing will go live automatically.
+                </p>
+              </div>
+            )}
             <div style={{ marginBottom: '36px' }}>
               <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '14px' }}>Request a clean</div>
               <div className="dashboard-tile-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { OnboardingShell } from '@/components/layout/onboarding-shell'
+import { isLaunched, LAUNCH_DATE_LABEL } from '@/lib/launch'
 
 const TASK_LABELS: Record<string, string> = {
   general: "General cleaning", hoovering: "Hoovering", mopping: "Mopping",
@@ -150,7 +151,7 @@ function setPublishedId(id: string) {
   try { localStorage.setItem(PUBLISHED_KEY, id) } catch {}
 }
 
-async function publishRequest(data: RequestData, userId: string): Promise<string> {
+async function publishRequest(data: RequestData, userId: string): Promise<{ id: string; status: 'active' | 'pre_launch_pending' }> {
   const supabase = createClient()
   const { data: existingCustomer } = await (supabase as any)
     .from("customers").select("id").eq("profile_id", userId).single() as { data: { id: string } | null }
@@ -180,22 +181,39 @@ async function publishRequest(data: RequestData, userId: string): Promise<string
   }
 
   // ── Role guard — block cleaners from posting listings ────────────────────
+  // Also captures email + role for the launch-gate decision below.
   const { data: { user: currentUser } } = await supabase.auth.getUser()
+  let callerRole: string | null = null
+  let callerEmail: string | null = null
   if (currentUser) {
-    const { data: roleCheck } = await (supabase as any)
-      .from('profiles').select('role').eq('id', currentUser.id).single()
-    if (roleCheck?.role === 'cleaner') throw new Error('Cleaners cannot post listings.')
+    const { data: profileCheck } = await (supabase as any)
+      .from('profiles').select('role, email').eq('id', currentUser.id).single()
+    callerRole = profileCheck?.role ?? null
+    callerEmail = profileCheck?.email ?? null
+    if (callerRole === 'cleaner') throw new Error('Cleaners cannot post listings.')
   }
+
+  // ── Launch gate ──────────────────────────────────────────────────────────
+  // Pre-launch (date < LAUNCH_DATE and no env override): listings go in as
+  // 'pre_launch_pending' so cleaners can't see them on /jobs. Admins and the
+  // founder email bypass the gate so they can keep testing the live flow
+  // with real listings. Migration 003 adds this value to the enum.
+  // See src/lib/launch.ts for the single source of truth.
+  const FOUNDER_EMAIL = 'adamjbell95@gmail.com'
+  const bypassGate = callerRole === 'admin' || callerEmail === FOUNDER_EMAIL
+  const listingStatus: 'active' | 'pre_launch_pending' =
+    isLaunched() || bypassGate ? 'active' : 'pre_launch_pending'
 
   // ── Active listing guard — one active or fulfilled listing at a time ──────
   // Enforced server-side so it can't be bypassed by navigating directly to this page.
-  // Statuses that count as "blocking": active, pending, pending_review, fulfilled.
+  // Statuses that count as "blocking": active, pending, pending_review, fulfilled,
+  // and pre_launch_pending (so a pre-launch customer can't double-post while waiting).
   // paused and cancelled do NOT block — customer can post fresh while paused.
   const { count: activeCount } = await (supabase as any)
     .from('clean_requests')
     .select('id', { count: 'exact', head: true })
     .eq('customer_id', customerId)
-    .in('status', ['active', 'pending', 'pending_review', 'fulfilled'])
+    .in('status', ['active', 'pending', 'pending_review', 'fulfilled', 'pre_launch_pending'])
 
   if (activeCount && activeCount > 0) {
     throw new Error('You already have an active listing. Manage it from your dashboard before posting a new one.')
@@ -205,7 +223,7 @@ async function publishRequest(data: RequestData, userId: string): Promise<string
   const { data: inserted, error: insertError } = await (supabase as any)
     .from("clean_requests").insert({
       customer_id: customerId,
-      status: "active",
+      status: listingStatus,
       service_type: "regular" as any,
       zone: zone as any,
       bedrooms: data.bedrooms ?? 2,
@@ -224,21 +242,22 @@ async function publishRequest(data: RequestData, userId: string): Promise<string
 
   if (insertError || !inserted) throw new Error(insertError?.message ?? "Failed to publish request")
 
-  // Fire cleaner job alert emails. Non-fatal — if email infrastructure is
-  // down, the listing still publishes and cleaners can find it on /jobs.
-  // The endpoint matches cleaners by zone + job_notify preference and
-  // dedupes via cleaner_job_alerts_sent so this can't double-send.
-  try {
-    await fetch('/api/notifications/cleaner-job-alert', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ requestId: inserted.id }),
-    })
-  } catch (alertErr) {
-    console.error('Cleaner job alert fire failed (non-fatal):', alertErr)
+  // Fire cleaner job alert emails — but ONLY for live listings. Pre-launch
+  // listings stay quiet until the admin flips them on launch day, at which
+  // point the bulk-flip route fires alerts in one batch.
+  if (listingStatus === 'active') {
+    try {
+      await fetch('/api/notifications/cleaner-job-alert', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId: inserted.id }),
+      })
+    } catch (alertErr) {
+      console.error('Cleaner job alert fire failed (non-fatal):', alertErr)
+    }
   }
 
-  return inserted.id
+  return { id: inserted.id, status: listingStatus }
 }
 
 function Stepper({ label, value, onDown, onUp, atMin, atMax, display }: {
@@ -374,6 +393,7 @@ export default function ReviewPublishPage() {
   const [isPublishing, setIsPublishing] = useState(false)
   const [published, setPublished] = useState(false)
   const [publishedZone, setPublishedZone] = useState<string>("")
+  const [publishedStatus, setPublishedStatus] = useState<'active' | 'pre_launch_pending'>('active')
   const [userId, setUserId] = useState<string | null>(null)
   const [authChecked, setAuthChecked] = useState(false)
   const publishLock = useRef(false)
@@ -440,12 +460,15 @@ export default function ReviewPublishPage() {
           return
         }
       }
-      const requestId = await publishRequest(data, userId)
-      setPublishedId(requestId)
+      const result = await publishRequest(data, userId)
+      setPublishedId(result.id)
+      setPublishedStatus(result.status)
       clearRequestData()
       setPublishedZone(getAreaLabel(data))
       setPublished(true)
-      toast.success("Your request is live!")
+      toast.success(result.status === 'pre_launch_pending'
+        ? "You're on the early list — we'll let you know when cleaners are live."
+        : "Your request is live!")
     } catch (err: any) {
       toast.error(err.message ?? "Something went wrong. Please try again.")
       publishLock.current = false
@@ -460,25 +483,34 @@ export default function ReviewPublishPage() {
     </div>
   )
 
-  if (published) return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'DM Sans', sans-serif", padding: "24px", textAlign: "center" }}>
-      <div style={{ maxWidth: "400px" }}>
-        <div style={{ fontSize: "64px", marginBottom: "24px" }}>🎉</div>
-        <h2 style={{ fontSize: "28px", fontWeight: 800, color: "#0f172a", margin: "0 0 12px" }}>You're live!</h2>
-        <p style={{ fontSize: "16px", color: "#64748b", lineHeight: 1.6, margin: "0 0 28px" }}>
-          Your request is now visible to cleaners in {publishedZone}. You'll be notified as soon as someone applies.
-        </p>
-        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-          <button onClick={() => router.push("/customer/dashboard")} style={{ padding: "16px 32px", borderRadius: "14px", border: "none", background: "linear-gradient(135deg, #2563eb, #3b82f6)", color: "white", fontSize: "16px", fontWeight: 700, fontFamily: "'DM Sans', sans-serif", cursor: "pointer", boxShadow: "0 4px 20px rgba(37,99,235,0.35)" }}>
-            Go to my dashboard →
-          </button>
-          <Link href="/jobs" style={{ padding: "14px 32px", borderRadius: "14px", border: "1.5px solid #e2e8f0", background: "white", color: "#64748b", fontSize: "14px", fontWeight: 600, fontFamily: "'DM Sans', sans-serif", textDecoration: "none", display: "block" }}>
-            See your request on the jobs board →
-          </Link>
+  if (published) {
+    const isPreLaunch = publishedStatus === 'pre_launch_pending'
+    return (
+      <div style={{ minHeight: "100vh", background: "linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'DM Sans', sans-serif", padding: "24px", textAlign: "center" }}>
+        <div style={{ maxWidth: "440px" }}>
+          <div style={{ fontSize: "64px", marginBottom: "24px" }}>{isPreLaunch ? "📫" : "🎉"}</div>
+          <h2 style={{ fontSize: "28px", fontWeight: 800, color: "#0f172a", margin: "0 0 12px" }}>
+            {isPreLaunch ? "You're on the early list" : "You're live!"}
+          </h2>
+          <p style={{ fontSize: "16px", color: "#64748b", lineHeight: 1.6, margin: "0 0 28px" }}>
+            {isPreLaunch
+              ? `We open to cleaners on ${LAUNCH_DATE_LABEL}. Your request for ${publishedZone} is saved — we'll email you the moment cleaners can apply, and your listing will go live automatically.`
+              : `Your request is now visible to cleaners in ${publishedZone}. You'll be notified as soon as someone applies.`}
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            <button onClick={() => router.push("/customer/dashboard")} style={{ padding: "16px 32px", borderRadius: "14px", border: "none", background: "linear-gradient(135deg, #2563eb, #3b82f6)", color: "white", fontSize: "16px", fontWeight: 700, fontFamily: "'DM Sans', sans-serif", cursor: "pointer", boxShadow: "0 4px 20px rgba(37,99,235,0.35)" }}>
+              Go to my dashboard →
+            </button>
+            {!isPreLaunch && (
+              <Link href="/jobs" style={{ padding: "14px 32px", borderRadius: "14px", border: "1.5px solid #e2e8f0", background: "white", color: "#64748b", fontSize: "14px", fontWeight: 600, fontFamily: "'DM Sans', sans-serif", textDecoration: "none", display: "block" }}>
+                See your request on the jobs board →
+              </Link>
+            )}
+          </div>
         </div>
       </div>
-    </div>
-  )
+    )
+  }
 
   const pricing = PRICING[data.frequency ?? ""] ?? PRICING.fortnightly
   const rate = typeof data.hourlyRate === "number" ? data.hourlyRate : 0

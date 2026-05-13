@@ -1381,6 +1381,23 @@ export default function AdminDashboard() {
                   }}
                 />
 
+                {/* Launch flip — bulk converts all pre-launch listings to live and fires alerts.
+                    Use ONCE on launch day, after flipping NEXT_PUBLIC_LAUNCHED to 'true' in Vercel. */}
+                <TestCard
+                  title="🚀 Launch all pending listings"
+                  description="Flips every clean_request whose status is 'pre_launch_pending' to 'active' and fires a cleaner-job-alert for each. Use this ONCE on launch day, immediately after switching NEXT_PUBLIC_LAUNCHED to 'true' in Vercel. Re-running is safe (no rows match)."
+                  buttonLabel="Launch all pending →"
+                  buttonColor="#dc2626"
+                  onRun={async () => {
+                    const ok = window.confirm('LAUNCH: flip every pre-launch listing to live and email all matching cleaners. Continue?')
+                    if (!ok) return { success: false, message: 'Cancelled.' }
+                    const res = await fetch('/api/admin/launch-listings', { method: 'POST' })
+                    const data = await res.json()
+                    if (!res.ok) return { success: false, message: data.error ?? 'Failed' }
+                    return { success: true, message: `Flipped ${data.flipped}, alerted ${data.alerted} cleaners.` }
+                  }}
+                />
+
                 {/* Cleaner job alert — sends both regular and cover variants so we can preview the visual differences side-by-side */}
                 <TestCard
                   title="🆘 Cleaner job alert emails (regular + cover)"
