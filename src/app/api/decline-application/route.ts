@@ -78,14 +78,19 @@ export async function POST(request: NextRequest) {
     const zone = cleanRequest?.zone ?? ''
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.vouchee.co.uk'
 
-    // 5. Update application status
-    await supabaseAdmin
+    // 5. Update application status — CAS on 'pending' so a second fire
+    // (back-button bookmark, StrictMode double-mount) flips no rows and
+    // skips the email send below. Prevents a double rejection email.
+    const { data: casRows } = await supabaseAdmin
       .from('applications')
       .update({ status: 'rejected' })
       .eq('id', applicationId)
+      .eq('status', 'pending')
+      .select('id') as { data: Array<{ id: string }> | null }
+    const wasFirstDecline = (casRows?.length ?? 0) === 1
 
-    // 6. Send rejection email
-    if (cleanerEmail) {
+    // 6. Send rejection email — ONLY on the first decline. Idempotent.
+    if (wasFirstDecline && cleanerEmail) {
       await resend.emails.send({
         from: 'Vouchee <hello@vouchee.co.uk>',
         to: cleanerEmail,

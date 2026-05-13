@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
+import { parseLocalDate } from '@/lib/utils'
 
 const resend = new Resend(process.env.RESEND_API_KEY!)
 
@@ -46,7 +47,7 @@ function calcProRata(startDate: string, frequency: string): number {
   const intervalDays = frequency === 'weekly' ? 7 : 14
   const perCleanPence = PER_CLEAN_PENCE[frequency] ?? PER_CLEAN_PENCE.fortnightly
 
-  const start = new Date(startDate)
+  const start = parseLocalDate(startDate)
   const year = start.getFullYear()
   const month = start.getMonth()
   const endOfMonth = new Date(year, month + 1, 0)
@@ -62,7 +63,7 @@ function calcProRata(startDate: string, frequency: string): number {
 }
 
 function getFirstBillingDate(startDate: string): string {
-  const start = new Date(startDate)
+  const start = parseLocalDate(startDate)
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
@@ -74,8 +75,13 @@ function getFirstBillingDate(startDate: string): string {
     if (day !== 0 && day !== 6) workingDays++
   }
 
+  // Format as YYYY-MM-DD in local time. toISOString() would shift to UTC
+  // and slice off a day in any TZ west of UTC (e.g. Vercel iad1).
   const billingDate = start > minDate ? start : minDate
-  return billingDate.toISOString().split('T')[0]
+  const yyyy = billingDate.getFullYear()
+  const mm = String(billingDate.getMonth() + 1).padStart(2, '0')
+  const dd = String(billingDate.getDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
 }
 
 function formatAddress(a1: string, a2: string | null, city: string, postcode: string): string {
@@ -83,7 +89,10 @@ function formatAddress(a1: string, a2: string | null, city: string, postcode: st
 }
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+  // For date-only ISO strings (YYYY-MM-DD), parse as local to keep the
+  // intended day. For full timestamps, let Date parse it as-is.
+  const d = iso.length === 10 ? parseLocalDate(iso) : new Date(iso)
+  return d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 }
 
 function formatPostcode(raw: string): string {
@@ -542,7 +551,17 @@ export async function GET(request: NextRequest) {
         return NextResponse.redirect(`${appUrl}/customer/dashboard?gc_abandoned=1&conversationId=${conversationId}`)
       }
     } else {
-      console.warn('No billing_request param — proceeding without mandate verification (dev/test flow)')
+      // Hard-fail in production: without a billingRequestId we cannot verify
+      // the mandate exists or that the customer actually completed the GC
+      // flow. The pre-launch sandbox/dev flow needed this loophole; live
+      // confirmations always carry the param. NEXT_PUBLIC_APP_URL is set on
+      // Vercel only, so the env-based check is good enough to gate it.
+      const isProd = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1'
+      if (isProd) {
+        console.error('GC confirm: missing billingRequestId in production — refusing to confirm')
+        return NextResponse.redirect(`${appUrl}/customer/dashboard?gc_error=1`)
+      }
+      console.warn('GC confirm: no billing_request param — proceeding without mandate verification (DEV ONLY)')
     }
 
     // ── 2. Look up DB records ────────────────────────────────────────────────

@@ -44,14 +44,20 @@ export async function POST(request: NextRequest) {
 
     // Participant check: caller must be either the customer (conversation
     // .customer_id is profiles.id directly) or the cleaner (lookup cleaners
-    // .profile_id where cleaners.id = conversation.cleaner_id).
-    let isParticipant = (conversation as any).customer_id === user.id
-    if (!isParticipant) {
+    // .profile_id where cleaners.id = conversation.cleaner_id). We capture
+    // the caller's role here too so the recipient is derived from auth
+    // rather than the last message in the conversation (which races: two
+    // messages arriving back-to-back used to read the same last-message
+    // row and email the wrong party).
+    let callerRole: 'customer' | 'cleaner' | null = null
+    if ((conversation as any).customer_id === user.id) {
+      callerRole = 'customer'
+    } else {
       const { data: cleanerRow } = await supabaseAdmin
         .from('cleaners').select('profile_id').eq('id', (conversation as any).cleaner_id).single() as { data: { profile_id: string } | null }
-      isParticipant = cleanerRow?.profile_id === user.id
+      if (cleanerRow?.profile_id === user.id) callerRole = 'cleaner'
     }
-    if (!isParticipant) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    if (!callerRole) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
     // 2. Get the sender (determined by auth header — the person who just sent the message)
     //    We need to identify the RECIPIENT so we can email them
@@ -74,18 +80,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Could not find user profiles' }, { status: 404 })
     }
 
-    // 3. Get the last message sender role to determine who receives the notification
-    const { data: lastMessages } = await supabaseAdmin
-      .from('messages')
-      .select('sender_role, sender_id')
-      .eq('conversation_id', conversationId)
-      .order('created_at', { ascending: false })
-      .limit(1)
-
-    const senderRole = lastMessages?.[0]?.sender_role
-
-    // Recipient is the OTHER party
-    const isCustomerSender = senderRole === 'customer'
+    // 3. Sender role is derived from auth (callerRole), not the last message.
+    // The previous "read last message" approach raced when two messages
+    // arrived in quick succession — both reads picked up the same row and
+    // both emailed the wrong recipient. Using the authenticated caller's
+    // role is race-free and unspoofable.
+    const isCustomerSender = callerRole === 'customer'
     const recipientEmail = isCustomerSender ? cleanerProfile.email : customerProfile.email
     const recipientName = isCustomerSender
       ? cleanerProfile.full_name?.split(' ')?.[0] ?? 'there'

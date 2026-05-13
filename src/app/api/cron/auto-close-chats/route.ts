@@ -99,16 +99,33 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ ok: true, archived: 0, message: 'Nothing to archive' })
   }
 
-  // Step 5: archive in one bulk update
+  // Step 4.5: race-window re-check — a user can land a message between our
+  // candidate scan and the bulk update. Re-query messages for the toArchive
+  // set and drop any conversation that's been touched since the cutoff.
+  const { data: freshMessages } = await admin
+    .from('messages')
+    .select('conversation_id')
+    .in('conversation_id', toArchive)
+    .gt('created_at', cutoff) as { data: Array<{ conversation_id: string }> | null }
+  const recentlyActiveIds = new Set((freshMessages ?? []).map(m => m.conversation_id))
+  const finalToArchive = toArchive.filter(id => !recentlyActiveIds.has(id))
+
+  if (finalToArchive.length === 0) {
+    return NextResponse.json({ ok: true, archived: 0, message: 'All candidates received fresh messages mid-run' })
+  }
+
+  // Step 5: archive in one bulk update. Defensive `.lt('updated_at', cutoff)`
+  // catches anything that's bumped updated_at via a non-message path.
   const { error: updateErr } = await (admin.from('conversations') as any)
     .update({ status: 'archived' })
-    .in('id', toArchive)
+    .in('id', finalToArchive)
+    .lt('updated_at', cutoff)
 
   if (updateErr) {
     console.error('[auto-close] archive failed:', updateErr)
     return NextResponse.json({ error: 'Archive failed', details: updateErr }, { status: 500 })
   }
 
-  console.log(`[auto-close] archived ${toArchive.length} conversations`)
-  return NextResponse.json({ ok: true, archived: toArchive.length })
+  console.log(`[auto-close] archived ${finalToArchive.length} conversations`)
+  return NextResponse.json({ ok: true, archived: finalToArchive.length })
 }

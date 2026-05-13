@@ -987,10 +987,19 @@ function CustomerDashboardContent() {
         if (acceptAppId && acceptReqId) { handleAcceptApplication(acceptAppId, acceptReqId); router.replace('/customer/dashboard') }
         const declineAppId = searchParams.get('decline')
         if (declineAppId) {
-          // Fire-and-forget: dashboard already shows the rejected state once
-          // applications reload. Don't await — just kick it off and clean the URL.
-          fetch('/api/decline-application', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ applicationId: declineAppId }) })
-            .catch(err => console.error('Email decline failed:', err))
+          // Fire-and-forget — but gate on a per-session "already fired" set so
+          // back-button / bookmark / StrictMode double-mount don't re-fire the
+          // decline and re-email the cleaner. The server route is also CAS-
+          // gated on application.status === 'pending', so even if the gate
+          // here leaks, the email won't double-send.
+          const FIRED_KEY = 'vouchee:declined-ids'
+          let firedIds: string[] = []
+          try { firedIds = JSON.parse(sessionStorage.getItem(FIRED_KEY) || '[]') } catch {}
+          if (!firedIds.includes(declineAppId)) {
+            try { sessionStorage.setItem(FIRED_KEY, JSON.stringify([...firedIds, declineAppId])) } catch {}
+            fetch('/api/decline-application', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ applicationId: declineAppId }) })
+              .catch(err => console.error('Email decline failed:', err))
+          }
           router.replace('/customer/dashboard')
         }
         const chatId = searchParams.get('chat')
@@ -1174,16 +1183,39 @@ function CustomerDashboardContent() {
 
   const handlePause = async (id: string) => {
     const supabase = createClient()
-    await (supabase as any).from('clean_requests').update({ status: 'paused', paused_at: new Date().toISOString() }).eq('id', id)
-    setRequests(r => r.map(req => req.id === id ? { ...req, status: 'paused' as RequestStatus, paused_at: new Date().toISOString() } : req))
+    // Optimistic UI update — but check the write actually succeeded. Without
+    // this rollback the dashboard previously lied to the user when the
+    // server rejected the change (e.g. RLS, network, validation).
+    const snapshot = requests.find(r => r.id === id)
+    const pausedAt = new Date().toISOString()
+    setRequests(r => r.map(req => req.id === id ? { ...req, status: 'paused' as RequestStatus, paused_at: pausedAt } : req))
     setModal(null)
+    const { error } = await (supabase as any).from('clean_requests').update({ status: 'paused', paused_at: pausedAt }).eq('id', id)
+    if (error) {
+      console.error('Pause failed:', error)
+      showToast("Couldn't pause your listing — please try again")
+      if (snapshot) setRequests(r => r.map(req => req.id === id ? snapshot : req))
+    }
   }
 
   const handleRepublish = async (id: string) => {
     const req = requests.find(r => r.id === id); if (!req) return
     const supabase = createClient()
-    await (supabase as any).from('clean_requests').update({ status: 'active', paused_at: new Date().toISOString(), republish_count: req.republish_count + 1 }).eq('id', id)
-    setRequests(r => r.map(req => req.id === id ? { ...req, status: 'active' as RequestStatus, republish_count: req.republish_count + 1 } : req))
+    // Republish: clear paused_at so the semantics stay clean — paused_at
+    // means "currently or most recently paused", null means "not paused".
+    // Previously this was set to now() which left a stale "paused_at" on a
+    // re-active listing and confused the isRelocked check on the next pause.
+    // Optimistic update with rollback on write failure.
+    const snapshot = req
+    const newCount = (req.republish_count ?? 0) + 1
+    setRequests(r => r.map(rq => rq.id === id ? { ...rq, status: 'active' as RequestStatus, paused_at: null, republish_count: newCount } : rq))
+    const { error } = await (supabase as any).from('clean_requests').update({ status: 'active', paused_at: null, republish_count: newCount }).eq('id', id)
+    if (error) {
+      console.error('Republish failed:', error)
+      showToast("Couldn't republish your listing — please try again")
+      setRequests(r => r.map(rq => rq.id === id ? snapshot : rq))
+      return
+    }
     setModal(null)
   }
 

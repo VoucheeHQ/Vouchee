@@ -13,6 +13,26 @@ export function formatDate(date: string | Date, formatStr: string = 'PPP'): stri
   return format(dateObj, formatStr)
 }
 
+/**
+ * Parse a 'YYYY-MM-DD' string as midnight in the LOCAL timezone, not UTC.
+ *
+ * Why this exists: `new Date('2026-06-01')` is interpreted as UTC midnight
+ * by JavaScript. In any timezone west of UTC (e.g. Vercel functions running
+ * in iad1, which is UTC-5), the resulting Date's day-of-month is 31 May,
+ * not 1 June — so calling .getDate(), .toLocaleDateString(), or doing day
+ * arithmetic gives a date one day off.
+ *
+ * Suffixing 'T00:00:00' (no Z, no offset) tells the parser "local midnight",
+ * which behaves consistently with what a UK user typing "1 June" expects.
+ *
+ * Only safe for date-only strings; pass a full ISO timestamp untouched.
+ */
+export function parseLocalDate(yyyyMmDd: string): Date {
+  // Defensive: if the caller passes a full timestamp, fall through to Date.
+  if (yyyyMmDd.includes('T')) return new Date(yyyyMmDd)
+  return new Date(yyyyMmDd + 'T00:00:00')
+}
+
 export function formatDateTime(date: string | Date): string {
   return formatDate(date, 'PPP p')
 }

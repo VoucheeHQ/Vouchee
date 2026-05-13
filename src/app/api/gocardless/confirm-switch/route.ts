@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
 import { Resend } from 'resend'
+import { parseLocalDate } from '@/lib/utils'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/confirm-switch
@@ -51,7 +52,7 @@ function calcProRata(startDate: string, frequency: string): number {
   if (frequency === 'monthly') return PER_CLEAN_PENCE.monthly
   const intervalDays = frequency === 'weekly' ? 7 : 14
   const perCleanPence = PER_CLEAN_PENCE[frequency] ?? PER_CLEAN_PENCE.fortnightly
-  const start = new Date(startDate)
+  const start = parseLocalDate(startDate)
   const endOfMonth = new Date(start.getFullYear(), start.getMonth() + 1, 0)
   let cleans = 0, cleanDate = new Date(start)
   while (cleanDate <= endOfMonth) { cleans++; cleanDate.setDate(cleanDate.getDate() + intervalDays) }
@@ -59,12 +60,17 @@ function calcProRata(startDate: string, frequency: string): number {
 }
 
 function getFirstBillingDate(startDate: string): string {
-  const start = new Date(startDate)
+  const start = parseLocalDate(startDate)
   const today = new Date(); today.setHours(0, 0, 0, 0)
   let workingDays = 0
   const minDate = new Date(today)
   while (workingDays < 3) { minDate.setDate(minDate.getDate() + 1); const d = minDate.getDay(); if (d !== 0 && d !== 6) workingDays++ }
-  return (start > minDate ? start : minDate).toISOString().split('T')[0]
+  // Format as YYYY-MM-DD in LOCAL time (matches how GoCardless expects dates).
+  const out = start > minDate ? start : minDate
+  const yyyy = out.getFullYear()
+  const mm = String(out.getMonth() + 1).padStart(2, '0')
+  const dd = String(out.getDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
 }
 
 /**
@@ -74,21 +80,23 @@ function getFirstBillingDate(startDate: string): string {
 function calcLastCleanDate(oldStartDate: string, frequency: string, newStartDate: string): string {
   if (frequency === 'monthly') {
     // Monthly: last clean is the 1st of the month before new start
-    const d = new Date(newStartDate)
+    const d = parseLocalDate(newStartDate)
     d.setDate(1)
     d.setMonth(d.getMonth() - 1)
-    return d.toISOString().split('T')[0]
+    const yyyy = d.getFullYear(); const mm = String(d.getMonth() + 1).padStart(2, '0'); const dd = String(d.getDate()).padStart(2, '0')
+    return `${yyyy}-${mm}-${dd}`
   }
   const intervalDays = frequency === 'weekly' ? 7 : 14
-  const anchor = new Date(oldStartDate)
-  const cutoff = new Date(newStartDate)
+  const anchor = parseLocalDate(oldStartDate)
+  const cutoff = parseLocalDate(newStartDate)
   let current = new Date(anchor)
   let last = new Date(anchor)
   while (current < cutoff) {
     last = new Date(current)
     current.setDate(current.getDate() + intervalDays)
   }
-  return last.toISOString().split('T')[0]
+  const yyyy = last.getFullYear(); const mm = String(last.getMonth() + 1).padStart(2, '0'); const dd = String(last.getDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
 }
 
 function formatAddress(a1: string, a2: string | null, city: string, postcode: string): string {
@@ -98,7 +106,9 @@ function formatAddress(a1: string, a2: string | null, city: string, postcode: st
 }
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+  // Date-only strings need local parsing to avoid the UTC-shift off-by-one.
+  const d = iso.length === 10 ? parseLocalDate(iso) : new Date(iso)
+  return d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 }
 
 function getFreqLabel(f: string | null | undefined) {

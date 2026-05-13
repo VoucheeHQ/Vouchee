@@ -32,7 +32,8 @@ const ZONE_LABELS: Record<string, string> = {
 async function getRootCleanRequest(supabaseAdmin: any, requestId: string): Promise<any | null> {
   let current: any = null
   let nextId: string | null = requestId
-  let safety = 10 // upper bound on switch chain length
+  const MAX_HOPS = 10 // upper bound on switch chain length
+  let safety = MAX_HOPS
 
   while (nextId && safety > 0) {
     // TS7022 fix: capture the result with explicit typing first, then
@@ -52,6 +53,15 @@ async function getRootCleanRequest(supabaseAdmin: any, requestId: string): Promi
     current = data
     nextId = data.switch_from_request_id
     safety--
+  }
+
+  // Log loudly if we hit the cap — chains over 10 hops are almost certainly
+  // either a cycle in switch_from_request_id or a customer who has switched
+  // cleaners >10 times for one logical job. Either way, cooling-off and
+  // refund math downstream may resolve to the wrong root; admin should
+  // intervene.
+  if (safety === 0 && nextId) {
+    console.warn(`[cancel-subscription] switch chain capped at ${MAX_HOPS} hops for request ${requestId} — possible cycle or unusually long history. Manual review recommended.`)
   }
 
   return current
