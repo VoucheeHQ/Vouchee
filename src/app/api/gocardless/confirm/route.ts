@@ -707,15 +707,19 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // ── 4. Fire all post-confirmation actions ────────────────────────────────
-    console.log('Firing all post-confirmation actions. cleanerEmail:', cleanerEmail)
-
-    await Promise.all([
-      // The fulfilled update now also stamps the cooling-off anchor fields.
-      // fulfilled_at is set once and never updated; cooling_off_until is
-      // computed from it; cooling_off_consent_given comes from the modal
-      // checkbox (forwarded through create-flow → GC redirect → here).
-      supabaseAdmin.from('clean_requests').update({
+    // ── 4. Atomically transition to 'fulfilled' BEFORE firing emails ─────────
+    // The early-out at line 565 is a read-only check, so two redirects that
+    // race past it both reach this block. Without a CAS here, both would
+    // fire the customer/cleaner welcome emails, both system messages, etc.
+    // (GoCardless dedupes the pro-rata + subscription via Idempotency-Key,
+    // so the financial side is safe — the spam side isn't.)
+    //
+    // The CAS transitions any non-fulfilled row to fulfilled. Only the
+    // winner gets row_count === 1 and proceeds to send emails. The loser
+    // redirects straight to the dashboard.
+    const { data: fulfilledRows } = await supabaseAdmin
+      .from('clean_requests')
+      .update({
         status: 'fulfilled',
         start_date: startDate,
         assigned_cleaner_id: application.cleaner_id,
@@ -723,8 +727,20 @@ export async function GET(request: NextRequest) {
         cooling_off_until: coolingOffUntilIso,
         cooling_off_consent_given: coolingOffConsentGiven,
         ...(mandateId ? { gocardless_mandate_id: mandateId } as any : {}),
-      } as any).eq('id', requestId),
+      } as any)
+      .eq('id', requestId)
+      .neq('status', 'fulfilled')
+      .select('id') as { data: Array<{ id: string }> | null }
 
+    if (!fulfilledRows || fulfilledRows.length === 0) {
+      console.log('CAS lost — another confirmation already fulfilled this request, skipping emails')
+      return NextResponse.redirect(`${appUrl}/customer/dashboard?gc_success=1&chat=${conversationId}`)
+    }
+
+    // ── 5. Fire all post-confirmation actions ────────────────────────────────
+    console.log('Firing all post-confirmation actions. cleanerEmail:', cleanerEmail)
+
+    await Promise.all([
       // Write mandate to customer record for switch flow reuse
       mandateId
         ? supabaseAdmin.from('customers').update({ gocardless_mandate_id: mandateId } as any).eq('id', customerRecord.id)

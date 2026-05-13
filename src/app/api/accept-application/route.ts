@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase/server'
 
 export async function POST(request: NextRequest) {
-  const supabaseAdmin = createClient(
+  // ─── Auth: only the customer who owns the clean_request may accept ───────
+  const supabaseAuth = await createClient()
+  const { data: { user } } = await supabaseAuth.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const supabaseAdmin = createSupabaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
@@ -47,9 +53,35 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Customer not found' }, { status: 404 })
     }
 
+    // Ownership check: caller's profile must match the request's customer profile
+    if ((customerRecord as any).profile_id !== user.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
     const wasPending = (application as any).status === 'pending'
 
-    // 4. Check if a conversation already exists
+    // 4. Compare-and-swap on the application status. The update only flips
+    //    rows that are still 'pending', so a concurrent second call (whether
+    //    a double-click or two tabs) will see zero rows updated and fall
+    //    through to the "existing conversation" branch below. Without this
+    //    CAS, two simultaneous accepts on the same applicationId both pass
+    //    the existingConv lookup and both create duplicate conversations.
+    const { data: casRows, error: updateErr } = await supabaseAdmin
+      .from('applications')
+      .update({ status: 'accepted' } as any)
+      .eq('id', applicationId)
+      .eq('status', 'pending')
+      .select('id') as { data: Array<{ id: string }> | null, error: any }
+
+    if (updateErr) {
+      console.error('Application status update failed:', updateErr)
+      return NextResponse.json({ error: 'Failed to update application' }, { status: 500 })
+    }
+
+    const weWonTheCas = (casRows?.length ?? 0) === 1
+
+    // 5. Look up an existing conversation (after the CAS so a concurrent
+    //    winner has had a chance to create one if it's still racing).
     const { data: existingConv } = await supabaseAdmin
       .from('conversations')
       .select('id')
@@ -57,22 +89,15 @@ export async function POST(request: NextRequest) {
       .eq('cleaner_id', application.cleaner_id)
       .single() as { data: { id: string } | null }
 
-    // 5. ALWAYS mark the application accepted — idempotent, safe to re-run
-    const { error: updateErr } = await supabaseAdmin
-      .from('applications')
-      .update({ status: 'accepted' } as any)
-      .eq('id', applicationId)
-
-    if (updateErr) {
-      console.error('Application status update failed:', updateErr)
-      return NextResponse.json({ error: 'Failed to update application' }, { status: 500 })
-    }
-
     let conversationId: string
 
     if (existingConv?.id) {
       // Chat already exists — just return the existing conversation
       conversationId = existingConv.id
+    } else if (!weWonTheCas) {
+      // We didn't win the CAS, but no conversation exists yet — the winner
+      // is mid-insert. Refuse rather than racing it and creating a duplicate.
+      return NextResponse.json({ error: 'Application is being processed — try again' }, { status: 409 })
     } else {
       // ─── Compute the cleaner's next chat number (1..99, stable forever) ───
       // Look at all this cleaner's existing conversations and assign the next

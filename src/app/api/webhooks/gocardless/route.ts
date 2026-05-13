@@ -268,14 +268,27 @@ async function handlePaymentFailed(admin: any, ev: any) {
   const customerFirstName = customerName?.split(' ')[0] ?? 'there'
   const graceUntil = new Date(Date.now() + GRACE_DAYS * 24 * 60 * 60 * 1000).toISOString()
 
-  // Update the request — mark failed + start grace period
-  await (admin.from('clean_requests') as any)
-    .update({
-      payment_failed_at: new Date().toISOString(),
-      payment_failure_count: (request.payment_failure_count ?? 0) + 1,
-      payment_grace_until: graceUntil,
-    })
-    .eq('id', request.id)
+  // Increment the failure count atomically via the RPC defined in migration
+  // 002. Two concurrent payments.failed events for the same request would
+  // otherwise race on a read-modify-write and lose a count. Falls back to
+  // the read-then-write path if the RPC isn't available yet (e.g. migration
+  // not applied), preserving existing behaviour.
+  let newFailureCount = (request.payment_failure_count ?? 0) + 1
+  try {
+    const { data: rpcCount, error: rpcErr } = await (admin as any)
+      .rpc('increment_payment_failure', { p_request_id: request.id, p_grace_until: graceUntil })
+    if (rpcErr) throw rpcErr
+    if (typeof rpcCount === 'number') newFailureCount = rpcCount
+  } catch (e: any) {
+    console.warn('[gc-webhook] increment_payment_failure RPC unavailable — apply migration 002. Falling back to read-then-write.', e?.message ?? e)
+    await (admin.from('clean_requests') as any)
+      .update({
+        payment_failed_at: new Date().toISOString(),
+        payment_failure_count: newFailureCount,
+        payment_grace_until: graceUntil,
+      })
+      .eq('id', request.id)
+  }
 
   // In-app notification for customer
   await (admin.from('notifications') as any).insert({
@@ -314,7 +327,7 @@ async function handlePaymentFailed(admin: any, ev: any) {
     <p style="font-size:18px;font-weight:800;margin:0 0 8px;">🚨 Payment failed</p>
     <p style="font-size:14px;color:#475569;margin:0 0 16px;">Customer: ${customerName ?? 'unknown'} (${customerEmail ?? 'no email'})</p>
     <p style="font-size:14px;color:#475569;margin:0 0 16px;">Reason: ${ev.details?.cause ?? 'unknown'} — ${ev.details?.description ?? ''}</p>
-    <p style="font-size:14px;color:#475569;margin:0 0 16px;">Failure count: ${(request.payment_failure_count ?? 0) + 1}</p>
+    <p style="font-size:14px;color:#475569;margin:0 0 16px;">Failure count: ${newFailureCount}</p>
     <p style="font-size:14px;color:#475569;margin:0 0 16px;">Grace until: ${graceUntil}</p>
     <p style="font-size:13px;color:#94a3b8;margin:0;">Request ID: ${request.id}</p>
   `

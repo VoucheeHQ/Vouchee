@@ -20,11 +20,16 @@ import { createClient } from '@supabase/supabase-js'
 // Vercel cron requests are authenticated via a CRON_SECRET header to prevent
 // arbitrary external calls firing this endpoint.
 const CRON_SECRET = process.env.CRON_SECRET
+const IS_PROD = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1'
 
 export async function GET(request: NextRequest) {
-  // Vercel sends "Authorization: Bearer <CRON_SECRET>" on cron-triggered calls.
-  // In dev / local you can hit the endpoint without the header by skipping the
-  // check when CRON_SECRET is unset, but in production it must be set.
+  // Fail-closed in production: missing CRON_SECRET means the endpoint is
+  // wide-open, which previously meant anyone could trigger admin-level
+  // writes by hitting this URL. Hard 500 in prod, allow dev usage without.
+  if (IS_PROD && !CRON_SECRET) {
+    console.error('CRON_SECRET is not configured — refusing to run cron')
+    return NextResponse.json({ error: 'CRON_SECRET not configured' }, { status: 500 })
+  }
   if (CRON_SECRET) {
     const auth = request.headers.get('authorization')
     if (auth !== `Bearer ${CRON_SECRET}`) {

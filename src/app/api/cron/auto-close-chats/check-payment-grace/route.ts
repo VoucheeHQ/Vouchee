@@ -21,6 +21,7 @@ import { Resend } from 'resend'
 // ─────────────────────────────────────────────────────────────────────────────
 
 const CRON_SECRET = process.env.CRON_SECRET
+const IS_PROD = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1'
 const resend = new Resend(process.env.RESEND_API_KEY)
 const ADMIN_EMAIL = 'support@vouchee.co.uk'
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.vouchee.co.uk'
@@ -29,6 +30,12 @@ const GOCARDLESS_API_BASE = process.env.GOCARDLESS_ENVIRONMENT === 'live'
   : 'https://api-sandbox.gocardless.com'
 
 export async function GET(request: NextRequest) {
+  // Fail-closed in production: this cron cancels subscriptions and emails
+  // customers, so unauthenticated access is high-impact. Hard 500 in prod.
+  if (IS_PROD && !CRON_SECRET) {
+    console.error('CRON_SECRET is not configured — refusing to run cron')
+    return NextResponse.json({ error: 'CRON_SECRET not configured' }, { status: 500 })
+  }
   if (CRON_SECRET) {
     const auth = request.headers.get('authorization')
     if (auth !== `Bearer ${CRON_SECRET}`) {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -223,8 +223,16 @@ export function CoverCleanModal({
     setTasks(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t])
   }
 
+  // Synchronous re-entry guard. setSubmitting is async (React batches the
+  // state update), so a fast double-tap can fire handleSubmit twice before
+  // `submitting` flips to true — creating two cover-clean rows. A ref flips
+  // synchronously and blocks the second call on the same tick.
+  const submitInFlight = useRef(false)
+
   const handleSubmit = async () => {
     if (!canSubmit) return
+    if (submitInFlight.current) return
+    submitInFlight.current = true
     setSubmitting(true)
     setError(null)
 
@@ -266,6 +274,7 @@ export function CoverCleanModal({
         console.error('Cover request insert failed:', insertError)
         setError('Could not post your cover request — please try again.')
         setSubmitting(false)
+        submitInFlight.current = false
         return
       }
 
@@ -288,6 +297,7 @@ export function CoverCleanModal({
       console.error('Cover submit threw:', err)
       setError('Something went wrong — please try again.')
       setSubmitting(false)
+      submitInFlight.current = false
     }
   }
 

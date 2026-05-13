@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+import { createClient as createServerClient } from '@/lib/supabase/server'
 import { Resend } from 'resend'
 
 const resend = new Resend(process.env.RESEND_API_KEY!)
@@ -196,23 +197,41 @@ function buildCustomerConfirmEmail({
 }
 
 export async function GET(request: NextRequest) {
+  // ─── Auth: admin only ─────────────────────────────────────────────────────
+  // Previously gated by ?secret=vouchee-test, which was committed in repo.
+  // Use the standard admin pattern: session lookup → profiles.role === 'admin'.
+  const supabaseAuth = await createServerClient()
+  const { data: { user } } = await supabaseAuth.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const supabaseAdmin = createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+
+  const { data: profile } = await supabaseAdmin
+    .from('profiles').select('role, email').eq('id', user.id).single() as { data: { role: string; email: string } | null }
+  if (!profile || profile.role !== 'admin') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   const { searchParams } = new URL(request.url)
-  const secret = searchParams.get('secret')
-  const overrideTo = searchParams.get('overrideTo')
+  // overrideTo is restricted to the admin's own address — previously this
+  // accepted any value, which let anyone with the hardcoded secret exfiltrate
+  // PII to an arbitrary mailbox. Mismatch fails loudly so a fat-fingered
+  // "test" doesn't silently fall through to the real recipient.
+  const overrideToRaw = searchParams.get('overrideTo')
+  if (overrideToRaw && overrideToRaw !== profile.email) {
+    return NextResponse.json({ error: 'overrideTo must match the admin profile email' }, { status: 400 })
+  }
+  const overrideTo = overrideToRaw
+
   const applicationId = searchParams.get('applicationId')
   const startDate = searchParams.get('startDate') ?? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-
-  if (secret !== 'vouchee-test') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.vouchee.co.uk'
 
   try {
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
 
     const { data: application } = await supabaseAdmin
       .from('applications').select('cleaner_id, request_id').eq('id', applicationId).single()

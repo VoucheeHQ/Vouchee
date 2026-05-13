@@ -291,25 +291,38 @@ export async function POST(request: NextRequest) {
     ? [...existingBlocked, oldCleanerId]
     : existingBlocked
 
-  // ─── 4. Handle subscription (only cancel if not keepCurrent) ─────────────
-  if (!keepCurrent) {
-    const subscriptionId = cleanRequest.gocardless_subscription_id
-    if (subscriptionId) {
-      const gcEnvironment = process.env.GOCARDLESS_ENVIRONMENT ?? 'sandbox'
-      const gcBaseUrl = gcEnvironment === 'live' ? 'https://api.gocardless.com' : 'https://api-sandbox.gocardless.com'
-      const cancelRes = await fetch(`${gcBaseUrl}/subscriptions/${subscriptionId}/actions/cancel`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.GOCARDLESS_ACCESS_TOKEN!}`,
-          'GoCardless-Version': '2015-07-06',
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify({ data: {} }),
-      })
-      if (!cancelRes.ok) console.error('GC subscription cancel failed:', await cancelRes.text())
-      else console.log('GC subscription cancelled:', subscriptionId)
-    }
+  // ─── 4. Create fresh listing FIRST ────────────────────────────────────────
+  // Ordering matters: if this insert fails after we've cancelled the GC
+  // subscription and transitioned the old request, the customer is left
+  // paying nothing and with no listing. Insert the replacement upfront so a
+  // failure here aborts cleanly before any other state is touched.
+  const { data: newRequest, error: insertErr } = await admin
+    .from('clean_requests')
+    .insert({
+      customer_id: cleanRequest.customer_id,
+      status: 'active',
+      service_type: 'regular',
+      zone: cleanRequest.zone,
+      bedrooms: cleanRequest.bedrooms,
+      bathrooms: cleanRequest.bathrooms,
+      has_pets: false,
+      preferred_days: cleanRequest.preferred_days ?? [],
+      time_of_day: cleanRequest.time_of_day ?? null,
+      hourly_rate: cleanRequest.hourly_rate ?? null,
+      hours_per_session: cleanRequest.hours_per_session ?? null,
+      frequency: cleanRequest.frequency ?? null,
+      tasks: cleanRequest.tasks ?? [],
+      customer_notes: cleanRequest.customer_notes ?? null,
+      is_switch: true,
+      switch_from_request_id: requestId,
+      switch_requested_at: new Date().toISOString(),
+    } as any)
+    .select('id')
+    .single() as { data: { id: string } | null, error: any }
+
+  if (insertErr || !newRequest) {
+    console.error('Failed to create new request:', insertErr)
+    return NextResponse.json({ error: 'Failed to create new listing' }, { status: 500 })
   }
 
   // ─── 5. Update old request ────────────────────────────────────────────────
@@ -342,37 +355,33 @@ export async function POST(request: NextRequest) {
     blocked_cleaner_ids: newBlocked,
   } as any).eq('id', customerRecord.id)
 
-  // ─── 7. Create fresh listing ──────────────────────────────────────────────
-  const { data: newRequest, error: insertErr } = await admin
-    .from('clean_requests')
-    .insert({
-      customer_id: cleanRequest.customer_id,
-      status: 'active',
-      service_type: 'regular',
-      zone: cleanRequest.zone,
-      bedrooms: cleanRequest.bedrooms,
-      bathrooms: cleanRequest.bathrooms,
-      has_pets: false,
-      preferred_days: cleanRequest.preferred_days ?? [],
-      time_of_day: cleanRequest.time_of_day ?? null,
-      hourly_rate: cleanRequest.hourly_rate ?? null,
-      hours_per_session: cleanRequest.hours_per_session ?? null,
-      frequency: cleanRequest.frequency ?? null,
-      tasks: cleanRequest.tasks ?? [],
-      customer_notes: cleanRequest.customer_notes ?? null,
-      is_switch: true,
-      switch_from_request_id: requestId,
-      switch_requested_at: new Date().toISOString(),
-    } as any)
-    .select('id')
-    .single() as { data: { id: string } | null, error: any }
-
-  if (insertErr || !newRequest) {
-    console.error('Failed to create new request:', insertErr)
-    return NextResponse.json({ error: 'Failed to create new listing' }, { status: 500 })
+  // ─── 7. Cancel subscription (only if not keepCurrent) ────────────────────
+  // Done LAST among the state changes — if this fails, the new listing
+  // exists, the DB transitions have already committed, and the old GC
+  // subscription remains. That's recoverable: admin can cancel manually, or
+  // the customer can simply retry. The new listing existing is the marker
+  // that a switch is in progress.
+  if (!keepCurrent) {
+    const subscriptionId = cleanRequest.gocardless_subscription_id
+    if (subscriptionId) {
+      const gcEnvironment = process.env.GOCARDLESS_ENVIRONMENT ?? 'sandbox'
+      const gcBaseUrl = gcEnvironment === 'live' ? 'https://api.gocardless.com' : 'https://api-sandbox.gocardless.com'
+      const cancelRes = await fetch(`${gcBaseUrl}/subscriptions/${subscriptionId}/actions/cancel`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.GOCARDLESS_ACCESS_TOKEN!}`,
+          'GoCardless-Version': '2015-07-06',
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({ data: {} }),
+      })
+      if (!cancelRes.ok) console.error('GC subscription cancel failed:', await cancelRes.text())
+      else console.log('GC subscription cancelled:', subscriptionId)
+    }
   }
 
-  // ─── 8. Load names for emails ─────────────────────────────────────────────
+  // ─── 8. Load names for emails ────────────────────────────────────────────
   const { data: customerProfile } = await admin
     .from('profiles').select('full_name, email').eq('id', user.id).single() as { data: { full_name: string | null; email: string | null } | null }
 

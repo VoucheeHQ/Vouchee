@@ -582,6 +582,14 @@ export default function JobsPage() {
 
   const handleApply = async (message: string) => {
     if (!applyingToJob || !cleanerData) return
+    // Defense-in-depth: the UI already disables the apply button for
+    // unapproved cleaners, but a determined caller could re-enable it. The
+    // canonical enforcement lives server-side in send-application-email,
+    // and ultimately should be an RLS policy on `applications`.
+    if (!cleanerApproved) {
+      console.warn('Apply blocked: cleaner not approved')
+      return
+    }
     setSubmitting(true)
     try {
       const authClient = createClient()

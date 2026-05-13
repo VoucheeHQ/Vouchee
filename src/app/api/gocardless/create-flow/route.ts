@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase/server'
 import { Resend } from 'resend'
 import {
   coverCleanerEmailHtml,
@@ -11,7 +12,12 @@ import {
 const resend = new Resend(process.env.RESEND_API_KEY!)
 
 export async function POST(request: NextRequest) {
-  const supabaseAdmin = createClient(
+  // ─── Auth: only the customer who owns the request may create a flow ─────
+  const supabaseAuth = await createClient()
+  const { data: { user } } = await supabaseAuth.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const supabaseAdmin = createSupabaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
@@ -37,6 +43,18 @@ export async function POST(request: NextRequest) {
     if (reqError || !cleanRequest) {
       console.error('Clean request lookup failed:', reqError)
       return NextResponse.json({ error: 'Clean request not found' }, { status: 404 })
+    }
+
+    // Ownership check: caller must be the customer who owns this request.
+    // Done early so all downstream paths (cover branch + switch + new mandate)
+    // are protected.
+    const { data: ownerRecord } = await supabaseAdmin
+      .from('customers')
+      .select('profile_id')
+      .eq('id', cleanRequest.customer_id)
+      .single() as { data: { profile_id: string } | null }
+    if (!ownerRecord || ownerRecord.profile_id !== user.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     // ── Cover-clean branch ──────────────────────────────────────────────────
@@ -67,7 +85,13 @@ export async function POST(request: NextRequest) {
       // Mark the cover request fulfilled with the chosen cleaner.
       // start_date is set to cover_date so downstream UI (e.g. fulfilled-card
       // copy) treats this consistently with regular cleans.
-      const { error: updateError } = await supabaseAdmin
+      //
+      // CAS: only transition rows that are still non-fulfilled. Without the
+      // .neq guard, two simultaneous cover-accepts on the same request both
+      // pass the initial lookup and both run through the fulfillment path,
+      // firing duplicate emails to the customer + a "you won" + a "you lost"
+      // to each cleaner. The CAS makes the loser bail before emails fire.
+      const { data: fulfilledRows, error: updateError } = await supabaseAdmin
         .from('clean_requests')
         .update({
           status: 'fulfilled',
@@ -75,10 +99,16 @@ export async function POST(request: NextRequest) {
           start_date: cleanRequest.cover_date ?? startDate,
         })
         .eq('id', requestId)
+        .neq('status', 'fulfilled')
+        .select('id') as { data: Array<{ id: string }> | null, error: any }
 
       if (updateError) {
         console.error('Cover accept: fulfill update failed:', updateError)
         return NextResponse.json({ error: 'Could not confirm cover cleaner' }, { status: 500 })
+      }
+      if (!fulfilledRows || fulfilledRows.length === 0) {
+        console.log('Cover accept: CAS lost — another caller already fulfilled this request')
+        return NextResponse.json({ error: 'Already fulfilled — please refresh' }, { status: 409 })
       }
 
       // Mark winning application 'accepted' (was 'pending').

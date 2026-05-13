@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase/server'
 import { Resend } from 'resend'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -275,7 +276,12 @@ function buildCustomerConfirmEmail(opts: {
 }
 
 export async function POST(request: NextRequest) {
-  const supabaseAdmin = createClient(
+  // ─── Auth: only the customer who owns the request + mandate may switch ───
+  const supabaseAuth = await createClient()
+  const { data: { user } } = await supabaseAuth.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const supabaseAdmin = createSupabaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
@@ -325,9 +331,20 @@ export async function POST(request: NextRequest) {
   }
 
   const { data: customerRecord } = await supabaseAdmin
-    .from('customers').select('id, profile_id, address_line1, address_line2, city, postcode')
+    .from('customers').select('id, profile_id, address_line1, address_line2, city, postcode, gocardless_mandate_id')
     .eq('id', cleanRequest.customer_id).single() as { data: any }
   if (!customerRecord) return NextResponse.json({ error: 'Customer not found' }, { status: 404 })
+
+  // Ownership: caller must own this customer record, AND the supplied
+  // mandateId must be the one we have on file for this customer. Both checks
+  // are required — without the mandate check, a customer could charge another
+  // customer's mandate by knowing both their requestId and that mandateId.
+  if (customerRecord.profile_id !== user.id) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+  if (customerRecord.gocardless_mandate_id !== mandateId) {
+    return NextResponse.json({ error: 'Mandate does not belong to caller' }, { status: 403 })
+  }
 
   const { data: cleanerRecord } = await supabaseAdmin
     .from('cleaners').select('profile_id').eq('id', application.cleaner_id).single() as { data: { profile_id: string } | null }

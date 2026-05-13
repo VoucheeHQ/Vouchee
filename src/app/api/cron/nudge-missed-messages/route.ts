@@ -18,8 +18,15 @@ import { Resend } from 'resend'
 // ─────────────────────────────────────────────────────────────────────────────
 
 const CRON_SECRET = process.env.CRON_SECRET
+const IS_PROD = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1'
 
 export async function GET(request: NextRequest) {
+  // Fail-closed in production: missing CRON_SECRET means anyone can trigger
+  // this endpoint. Hard 500 in prod, allow dev usage without.
+  if (IS_PROD && !CRON_SECRET) {
+    console.error('CRON_SECRET is not configured — refusing to run cron')
+    return NextResponse.json({ error: 'CRON_SECRET not configured' }, { status: 500 })
+  }
   if (CRON_SECRET) {
     const auth = request.headers.get('authorization')
     if (auth !== `Bearer ${CRON_SECRET}`) {
@@ -37,6 +44,9 @@ export async function GET(request: NextRequest) {
   const now = new Date()
   const windowStart = new Date(now.getTime() - 48 * 60 * 60 * 1000).toISOString()
   const windowEnd   = new Date(now.getTime() -  4 * 60 * 60 * 1000).toISOString()
+  // Skip conversations nudged within the last 22h — protects against cron
+  // retries double-emailing. 22h (rather than 24h) leaves headroom for drift.
+  const dedupeCutoff = new Date(now.getTime() - 22 * 60 * 60 * 1000).toISOString()
 
   // ── 1. Get all messages sent by cleaners in the nudge window ──────────────
   const { data: cleanerMessages, error: msgErr } = await admin
@@ -79,12 +89,32 @@ export async function GET(request: NextRequest) {
   }
 
   // ── 3. Get conversation + customer details for unanswered convs ───────────
-  const { data: conversations } = await admin
-    .from('conversations')
-    .select('id, customer_id, cleaner_id, clean_request_id')
-    .in('id', unansweredConvIds) as { data: Array<{ id: string; customer_id: string; cleaner_id: string; clean_request_id: string }> | null }
+  // The `last_nudge_sent_at` filter is wrapped in try/catch because the
+  // column is added by migration 002 and may not exist in older deployments.
+  // If the filtered query errors, fall back to the unfiltered version (cron
+  // continues to work, dedupe becomes a no-op until the migration is applied).
+  type ConvRow = { id: string; customer_id: string; cleaner_id: string; clean_request_id: string }
+  let conversations: ConvRow[] | null = null
+  let dedupeActive = true
+  try {
+    const { data, error } = await admin
+      .from('conversations')
+      .select('id, customer_id, cleaner_id, clean_request_id')
+      .in('id', unansweredConvIds)
+      .or(`last_nudge_sent_at.is.null,last_nudge_sent_at.lt.${dedupeCutoff}`) as { data: ConvRow[] | null; error: any }
+    if (error) throw error
+    conversations = data
+  } catch (e: any) {
+    console.warn('nudge-missed-messages: last_nudge_sent_at filter unavailable — apply migration 002. Falling back to unfiltered query.', e?.message ?? e)
+    dedupeActive = false
+    const { data } = await admin
+      .from('conversations')
+      .select('id, customer_id, cleaner_id, clean_request_id')
+      .in('id', unansweredConvIds) as { data: ConvRow[] | null }
+    conversations = data
+  }
 
-  if (!conversations?.length) return NextResponse.json({ nudged: 0 })
+  if (!conversations || conversations.length === 0) return NextResponse.json({ nudged: 0 })
 
   // Filter to active requests only — don't nudge on fulfilled/deleted/cancelled
   const requestIds = conversations.map(c => c.clean_request_id)
@@ -197,6 +227,22 @@ export async function GET(request: NextRequest) {
       })
       nudged++
       console.log(`nudge-missed-messages: nudged ${customer.email} (${count} conv${count > 1 ? 's' : ''})`)
+
+      // Stamp last_nudge_sent_at on every conversation included in this email.
+      // Done AFTER the email succeeds so a Resend failure doesn't silently
+      // mark rows as nudged and starve them next cron run. Wrapped because
+      // the column is migration-gated (see migration 002).
+      if (dedupeActive) {
+        const convIds = convs.map(c => c.id)
+        try {
+          await admin
+            .from('conversations')
+            .update({ last_nudge_sent_at: new Date().toISOString() } as any)
+            .in('id', convIds)
+        } catch (stampErr: any) {
+          console.warn('nudge-missed-messages: stamp failed (non-fatal):', stampErr?.message ?? stampErr)
+        }
+      }
     } catch (e) {
       console.error(`nudge-missed-messages: failed for ${customer.email}:`, e)
     }

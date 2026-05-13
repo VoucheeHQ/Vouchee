@@ -1,11 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase/server'
 import { Resend } from 'resend'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
+// Escape user-controlled strings interpolated into the email HTML. Without
+// this, a sender's name (from profiles.full_name) or message content can
+// inject HTML/<style> into the recipient's inbox.
+const escapeHtml = (s: string) => String(s)
+  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;').replace(/'/g, '&#39;')
+
 export async function POST(request: NextRequest) {
-  const supabaseAdmin = createClient(
+  // ─── Auth: only a participant in the conversation may send a message ─────
+  const supabaseAuth = await createClient()
+  const { data: { user } } = await supabaseAuth.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const supabaseAdmin = createSupabaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
@@ -28,6 +41,17 @@ export async function POST(request: NextRequest) {
     if (convError || !conversation) {
       return NextResponse.json({ error: 'Conversation not found' }, { status: 404 })
     }
+
+    // Participant check: caller must be either the customer (conversation
+    // .customer_id is profiles.id directly) or the cleaner (lookup cleaners
+    // .profile_id where cleaners.id = conversation.cleaner_id).
+    let isParticipant = (conversation as any).customer_id === user.id
+    if (!isParticipant) {
+      const { data: cleanerRow } = await supabaseAdmin
+        .from('cleaners').select('profile_id').eq('id', (conversation as any).cleaner_id).single() as { data: { profile_id: string } | null }
+      isParticipant = cleanerRow?.profile_id === user.id
+    }
+    if (!isParticipant) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
     // 2. Get the sender (determined by auth header — the person who just sent the message)
     //    We need to identify the RECIPIENT so we can email them
@@ -79,11 +103,11 @@ export async function POST(request: NextRequest) {
     await resend.emails.send({
       from: 'Vouchee <info@vouchee.co.uk>',
       to: recipientEmail,
-      subject: `New message from ${senderName} on Vouchee`,
+      subject: `New message from ${escapeHtml(senderName)} on Vouchee`,
       html: `
         <div style="font-family: 'DM Sans', Arial, sans-serif; max-width: 520px; margin: 0 auto; background: #f8fafc; padding: 32px 16px;">
           <div style="background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.06);">
-            
+
             <!-- Header -->
             <div style="background: #1e293b; padding: 24px 32px;">
               <div style="font-size: 22px; font-weight: 800; color: white; letter-spacing: -0.5px;">Vouchee</div>
@@ -92,14 +116,14 @@ export async function POST(request: NextRequest) {
 
             <!-- Body -->
             <div style="padding: 28px 32px;">
-              <p style="font-size: 16px; color: #0f172a; margin: 0 0 8px; font-weight: 600;">Hi ${recipientName},</p>
+              <p style="font-size: 16px; color: #0f172a; margin: 0 0 8px; font-weight: 600;">Hi ${escapeHtml(recipientName)},</p>
               <p style="font-size: 14px; color: #475569; margin: 0 0 24px; line-height: 1.6;">
-                <strong>${senderName}</strong> sent you a message on Vouchee:
+                <strong>${escapeHtml(senderName)}</strong> sent you a message on Vouchee:
               </p>
 
               <!-- Message bubble -->
               <div style="background: #f1f5f9; border-left: 3px solid #2563eb; border-radius: 0 12px 12px 0; padding: 14px 18px; margin-bottom: 28px;">
-                <p style="margin: 0; font-size: 14px; color: #1e293b; line-height: 1.6; font-style: italic;">"${content}"</p>
+                <p style="margin: 0; font-size: 14px; color: #1e293b; line-height: 1.6; font-style: italic;">"${escapeHtml(content)}"</p>
               </div>
 
               <a href="${dashboardUrl}" style="display: inline-block; background: #2563eb; color: white; text-decoration: none; border-radius: 10px; padding: 12px 28px; font-size: 14px; font-weight: 700;">

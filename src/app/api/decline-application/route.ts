@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase/server'
 import { Resend } from 'resend'
 
 const resend = new Resend(process.env.RESEND_API_KEY!)
@@ -13,7 +14,12 @@ const ZONE_LABELS: Record<string, string> = {
 }
 
 export async function POST(request: NextRequest) {
-  const supabaseAdmin = createClient(
+  // ─── Auth: only the customer who owns the clean_request may decline ──────
+  const supabaseAuth = await createClient()
+  const { data: { user } } = await supabaseAuth.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const supabaseAdmin = createSupabaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
@@ -44,12 +50,16 @@ export async function POST(request: NextRequest) {
       .eq('id', application.request_id)
       .single()
 
-    // 3. Get customer first name
+    // 3. Get customer first name + verify ownership
     const { data: customerRecord } = await supabaseAdmin
       .from('customers')
       .select('profile_id')
       .eq('id', cleanRequest?.customer_id)
       .single()
+
+    if (!customerRecord || (customerRecord as any).profile_id !== user.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
 
     const { data: customerProfile } = customerRecord?.profile_id
       ? await supabaseAdmin.from('profiles').select('full_name').eq('id', customerRecord.profile_id).single()

@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
-import { createClient } from '@supabase/supabase-js'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase/server'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
 export async function POST(request: NextRequest) {
-  const supabaseAdmin = createClient(
+  // ─── Auth: only the cleaner who owns the application may send the email ─
+  const supabaseAuth = await createClient()
+  const { data: { user } } = await supabaseAuth.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const supabaseAdmin = createSupabaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
@@ -19,6 +25,30 @@ export async function POST(request: NextRequest) {
       cleanerReviews, cleanerJobsWon, cleanerRating,
       message, jobZone, jobBedrooms, jobBathrooms, jobHours, jobRate,
     } = body
+
+    // Verify the application exists and belongs to the calling cleaner.
+    // This stops anyone with a known applicationId from triggering emails or
+    // notifications for it.
+    if (!applicationId) {
+      return NextResponse.json({ error: 'Missing applicationId' }, { status: 400 })
+    }
+    const { data: appRow } = await supabaseAdmin
+      .from('applications').select('id, cleaner_id, request_id').eq('id', applicationId).single() as { data: { id: string; cleaner_id: string; request_id: string } | null }
+    if (!appRow) return NextResponse.json({ error: 'Application not found' }, { status: 404 })
+
+    const { data: callerCleaner } = await supabaseAdmin
+      .from('cleaners').select('id, application_status').eq('profile_id', user.id).single() as { data: { id: string; application_status: string } | null }
+    if (!callerCleaner || callerCleaner.id !== appRow.cleaner_id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+    // Suspended / pending / rejected cleaners can't trigger application
+    // emails even if they manage to insert into applications directly.
+    // Proper enforcement is an RLS policy on `applications`; this is the
+    // server-side gate for the email path.
+    if (callerCleaner.application_status !== 'approved') {
+      console.warn(`send-application-email: blocked — cleaner ${callerCleaner.id} status=${callerCleaner.application_status}`)
+      return NextResponse.json({ error: 'Cleaner not approved' }, { status: 403 })
+    }
 
     // customerId may be either a profiles UUID or a customers UUID
     // Try profiles first, then fall back to looking up via customers table
@@ -119,8 +149,13 @@ export async function POST(request: NextRequest) {
       console.warn('[notify-customer] SKIPPED — customersTableId is null/undefined')
     }
 
-    // HTML-escape — review bodies and customer names are user content
-    const escapeHtml = (s: string) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+    // HTML-escape — all interpolated user/body content needs this to stop
+    // the cleaner (or any caller) from injecting markup into the customer's
+    // inbox. Applied below to every ${...} that touches body-supplied or
+    // DB-derived strings.
+    const escapeHtml = (s: string) => String(s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;')
 
     // Render N filled stars + (5-N) outlined stars given a 0-5 rating
     const renderStars = (n: number | null | undefined) => {
@@ -159,7 +194,7 @@ export async function POST(request: NextRequest) {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>New application from ${cleanerName}</title>
+  <title>New application from ${escapeHtml(cleanerName)}</title>
 </head>
 <body style="margin:0;padding:0;background:#f8fafc;font-family:'Helvetica Neue',Arial,sans-serif;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;padding:40px 0;">
@@ -176,12 +211,12 @@ export async function POST(request: NextRequest) {
           <tr>
             <td style="background:white;border-radius:20px;padding:36px;border:1px solid #e2e8f0;">
               <p style="margin:0 0 6px;font-size:22px;font-weight:800;color:#0f172a;">🎉 A cleaner has applied to your request!</p>
-              <p style="margin:0 0 28px;font-size:14px;color:#64748b;line-height:1.6;">Hey ${customerFirstName} — review their application below.</p>
+              <p style="margin:0 0 28px;font-size:14px;color:#64748b;line-height:1.6;">Hey ${escapeHtml(customerFirstName)} — review their application below.</p>
 
               <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border-radius:14px;padding:18px 20px;margin-bottom:24px;border:1px solid #e2e8f0;">
                 <tr><td style="padding-bottom:10px;">
                   <span style="font-size:15px;">📍</span>
-                  <span style="font-size:16px;font-weight:800;color:#0f172a;margin-left:6px;">${jobZone}</span>
+                  <span style="font-size:16px;font-weight:800;color:#0f172a;margin-left:6px;">${escapeHtml(jobZone)}</span>
                   <span style="font-size:13px;color:#64748b;margin-left:8px;">Regular Clean</span>
                 </td></tr>
                 <tr><td style="padding-bottom:14px;">
@@ -204,11 +239,11 @@ export async function POST(request: NextRequest) {
                           <table cellpadding="0" cellspacing="0">
                             <tr>
                               <td style="vertical-align:middle;">
-                                <div style="width:52px;height:52px;min-width:52px;border-radius:50%;background:#2563eb;text-align:center;display:table-cell;font-size:22px;font-weight:800;color:white;line-height:52px;">${cleanerInitial}</div>
+                                <div style="width:52px;height:52px;min-width:52px;border-radius:50%;background:#2563eb;text-align:center;display:table-cell;font-size:22px;font-weight:800;color:white;line-height:52px;">${escapeHtml(cleanerInitial)}</div>
                               </td>
                               <td style="padding-left:14px;vertical-align:middle;">
-                                <div style="font-size:17px;font-weight:800;color:#0f172a;line-height:1.2;">${cleanerName}</div>
-                                <div style="font-size:12px;color:#94a3b8;margin-top:3px;">Member since ${cleanerMemberSince}</div>
+                                <div style="font-size:17px;font-weight:800;color:#0f172a;line-height:1.2;">${escapeHtml(cleanerName)}</div>
+                                <div style="font-size:12px;color:#94a3b8;margin-top:3px;">Member since ${escapeHtml(cleanerMemberSince)}</div>
                               </td>
                             </tr>
                           </table>
@@ -250,9 +285,9 @@ export async function POST(request: NextRequest) {
                 ${message ? `
                 <tr>
                   <td style="padding:16px 20px;border-top:1px solid #f1f5f9;">
-                    <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">${cleanerNamePossessive} message</div>
+                    <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">${escapeHtml(cleanerNamePossessive)} message</div>
                     <div style="background:#eff6ff;border-radius:12px;padding:14px 16px;border-left:3px solid #2563eb;">
-                      <p style="margin:0;font-size:14px;color:#1e40af;line-height:1.6;">${message}</p>
+                      <p style="margin:0;font-size:14px;color:#1e40af;line-height:1.6;">${escapeHtml(message)}</p>
                     </div>
                   </td>
                 </tr>` : ''}
@@ -296,7 +331,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = await resend.emails.send({
       from: 'Vouchee <hello@vouchee.co.uk>',
       to: customerEmail,
-      subject: `New application from ${cleanerName}`,
+      subject: `New application from ${cleanerName}`.replace(/[\r\n]+/g, ' '),
       html,
     })
 

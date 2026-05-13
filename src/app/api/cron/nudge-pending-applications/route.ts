@@ -18,6 +18,7 @@ import { Resend } from 'resend'
 // ─────────────────────────────────────────────────────────────────────────────
 
 const CRON_SECRET = process.env.CRON_SECRET
+const IS_PROD = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1'
 
 const ZONE_LABELS: Record<string, string> = {
   central_south_east: 'Central / South East', north_west: 'North West',
@@ -28,6 +29,12 @@ const ZONE_LABELS: Record<string, string> = {
 }
 
 export async function GET(request: NextRequest) {
+  // Fail-closed in production: missing CRON_SECRET means anyone can trigger
+  // this endpoint. Hard 500 in prod, allow dev usage without.
+  if (IS_PROD && !CRON_SECRET) {
+    console.error('CRON_SECRET is not configured — refusing to run cron')
+    return NextResponse.json({ error: 'CRON_SECRET not configured' }, { status: 500 })
+  }
   if (CRON_SECRET) {
     const auth = request.headers.get('authorization')
     if (auth !== `Bearer ${CRON_SECRET}`) {
@@ -44,17 +51,47 @@ export async function GET(request: NextRequest) {
 
   const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+  // Skip applications nudged within the last 22h — protects against cron
+  // retries (e.g. Vercel re-firing after a Resend network blip) double-emailing
+  // the customer. 22h (rather than 24h) leaves headroom for cron drift.
+  const dedupeCutoff = new Date(Date.now() - 22 * 60 * 60 * 1000).toISOString()
 
   // ── 1. Find pending applications aged 1–7 days ────────────────────────────
-  const { data: pendingApps, error: appErr } = await admin
-    .from('applications')
-    .select('id, cleaner_id, request_id, created_at')
-    .eq('status', 'pending')
-    .lte('created_at', cutoff)
-    .gte('created_at', sevenDaysAgo) as { data: Array<{ id: string; cleaner_id: string; request_id: string; created_at: string }> | null; error: any }
+  // The `last_nudge_sent_at` filter is wrapped in try/catch because the
+  // column is added by migration 002 and may not exist in older deployments.
+  // If the filtered query errors, fall back to the unfiltered version (cron
+  // continues to work, dedupe becomes a no-op until the migration is applied).
+  type PendingApp = { id: string; cleaner_id: string; request_id: string; created_at: string }
+  let pendingApps: PendingApp[] | null = null
+  let dedupeActive = true
+  try {
+    const { data, error } = await admin
+      .from('applications')
+      .select('id, cleaner_id, request_id, created_at')
+      .eq('status', 'pending')
+      .lte('created_at', cutoff)
+      .gte('created_at', sevenDaysAgo)
+      .or(`last_nudge_sent_at.is.null,last_nudge_sent_at.lt.${dedupeCutoff}`) as { data: PendingApp[] | null; error: any }
+    if (error) throw error
+    pendingApps = data
+  } catch (e: any) {
+    console.warn('nudge-pending-applications: last_nudge_sent_at filter unavailable — apply migration 002. Falling back to unfiltered query.', e?.message ?? e)
+    dedupeActive = false
+    const { data, error: appErr } = await admin
+      .from('applications')
+      .select('id, cleaner_id, request_id, created_at')
+      .eq('status', 'pending')
+      .lte('created_at', cutoff)
+      .gte('created_at', sevenDaysAgo) as { data: PendingApp[] | null; error: any }
+    if (appErr) {
+      console.log('nudge-pending-applications: query failed', appErr)
+      return NextResponse.json({ nudged: 0 })
+    }
+    pendingApps = data
+  }
 
-  if (appErr || !pendingApps?.length) {
-    console.log('nudge-pending-applications: no pending apps in the 1–7 day window', appErr)
+  if (!pendingApps || pendingApps.length === 0) {
+    console.log('nudge-pending-applications: no pending apps in the 1–7 day window')
     return NextResponse.json({ nudged: 0 })
   }
 
@@ -207,6 +244,22 @@ export async function GET(request: NextRequest) {
       })
       nudged++
       console.log(`nudge-pending-applications: nudged ${customer.email} (${totalApps} apps)`)
+
+      // Stamp last_nudge_sent_at on every application included in this email.
+      // Done AFTER the email succeeds so a Resend failure doesn't silently
+      // mark rows as nudged and starve them next cron run. Wrapped because
+      // the column is migration-gated (see migration 002).
+      if (dedupeActive) {
+        const appIds = requestGroups.flatMap(g => g.apps.map(a => a.id))
+        try {
+          await admin
+            .from('applications')
+            .update({ last_nudge_sent_at: new Date().toISOString() } as any)
+            .in('id', appIds)
+        } catch (stampErr: any) {
+          console.warn('nudge-pending-applications: stamp failed (non-fatal):', stampErr?.message ?? stampErr)
+        }
+      }
     } catch (e) {
       console.error(`nudge-pending-applications: failed for ${customer.email}:`, e)
     }
