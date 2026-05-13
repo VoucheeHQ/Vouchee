@@ -103,11 +103,11 @@ export default function ArticlePage({ params }: Props) {
       <section className="container max-w-3xl mx-auto px-6 pb-16">
         <div className="prose prose-gray prose-lg max-w-none
           prose-headings:font-bold prose-headings:text-gray-900
-          prose-h2:text-2xl prose-h2:mt-10 prose-h2:mb-4
-          prose-h3:text-xl prose-h3:mt-8 prose-h3:mb-3
-          prose-p:text-gray-600 prose-p:leading-relaxed
-          prose-li:text-gray-600
-          prose-strong:text-gray-800
+          prose-h2:text-2xl prose-h2:mt-14 prose-h2:mb-5 prose-h2:tracking-tight
+          prose-h3:text-xl prose-h3:mt-10 prose-h3:mb-3
+          prose-p:text-gray-600 prose-p:leading-[1.85]
+          prose-li:text-gray-600 prose-li:leading-[1.75] prose-li:my-2
+          prose-strong:text-gray-900
           prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline
           prose-blockquote:border-blue-200 prose-blockquote:bg-blue-50 prose-blockquote:rounded-xl prose-blockquote:px-6 prose-blockquote:py-4 prose-blockquote:not-italic
           prose-img:rounded-xl prose-img:shadow-sm

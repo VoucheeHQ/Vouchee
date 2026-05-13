@@ -34,6 +34,18 @@ function InlineImage({ src, alt, caption }: { src: string; alt: string; caption?
   )
 }
 
+// A warmer, attention-grabbing variant of Callout. Use Highlight for key
+// takeaways or important facts; use Callout for tips and CTAs. Different
+// colour palette so the two don't blend into each other on the page.
+function Highlight({ label, children }: { label?: string; children: React.ReactNode }) {
+  return (
+    <div className="not-prose bg-amber-50 border-l-4 border-amber-400 rounded-r-xl px-5 py-4 my-7">
+      {label && <div className="text-[11px] font-bold text-amber-700 uppercase tracking-wider mb-1.5">{label}</div>}
+      <div className="text-[15px] text-amber-900 leading-relaxed font-medium">{children}</div>
+    </div>
+  )
+}
+
 // ── Article content switcher ───────────────────────────────────
 
 export function ArticleContent({ slug }: { slug: string }) {
@@ -74,6 +86,12 @@ function EssentialCleaningKit() {
       <h2>The products that do the heavy lifting</h2>
       <p>Once the basics are covered, there are a handful of products that professional cleaners reach for when the standard spray isn't enough. These are the ones that come up repeatedly when we talk to cleaners on the Vouchee platform about what's actually in their kit bags.</p>
 
+      <InlineImage
+        src="https://images.unsplash.com/photo-1585421514738-01798e348b17?w=1200&q=80"
+        alt="Professional cleaning products lined up ready to use"
+        caption="The products professional cleaners reach for tend to do one job extremely well."
+      />
+
       <ul>
         <li><strong>Bar Keepers Friend</strong> is a powder cleanser that removes limescale, rust stains, and tarnish from sinks, ceramic hobs, and stainless steel. One of the most versatile products available, and almost every cleaner on our platform swears by it.</li>
         <li><strong>The Pink Stuff</strong> is a paste that works on ovens, grout, pots and pans, and almost anything else with baked-on residue. It sounds gimmicky but cleaners who've tried it rarely go back.</li>
@@ -87,6 +105,10 @@ function EssentialCleaningKit() {
         <ProductLink name="Viakal" href="https://www.amazon.co.uk/s?k=Viakal+Limescale+Remover&tag=vouchee-21" />
         <ProductLink name="HG Mould Spray" href="https://www.amazon.co.uk/s?k=HG+Mould+Spray&tag=vouchee-21" />
       </div>
+
+      <Highlight label="Horsham-specific">
+        Horsham is in a hard-water area. Limescale is a constant fight here, and it's the single biggest reason a kitchen or bathroom that&apos;s only ever been cleaned with a multi-surface spray starts looking dull within months.
+      </Highlight>
 
       <h2>Floors</h2>
       <p>For hard floors, <strong>Flash Floor Cleaner</strong> works across tiles, laminate, and vinyl without leaving residue. If you have carpets, a good hoover is the most important investment you'll make. The <strong>Henry Hoover</strong> remains the benchmark for reliability and value, and it's what the majority of professional cleaners in our network use day to day.</p>
@@ -136,6 +158,12 @@ function HowToFindACleaner() {
       <p>Before you start looking, it's worth being clear on what you want. The main question is whether you need a <strong>regular cleaner</strong> (weekly or fortnightly) or a <strong>one-off clean</strong> (end of tenancy, post-renovation, or a seasonal deep clean).</p>
       <p>Regular cleaning relationships are the most valuable. Once you find someone good, life genuinely gets easier. From the requests we see come through on Vouchee, the majority of Horsham homeowners are looking for fortnightly regular cleans, usually covering 3-4 hours for a mid-sized family home.</p>
 
+      <InlineImage
+        src="https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=1200&q=80"
+        alt="A professional cleaner working in a customer's home"
+        caption="A good fit is as much about the working style as the credentials on paper."
+      />
+
       <h2>What to look for in a cleaner</h2>
       <p>A professional domestic cleaner operating in your home should be able to demonstrate three things. We require all three from every cleaner on Vouchee before they can apply for a single job:</p>
       <ul>
@@ -147,6 +175,10 @@ function HowToFindACleaner() {
       <Callout emoji="✅">
         All cleaners on Vouchee have been DBS checked, hold public liability insurance of at least £1,000,000, and have confirmed their right to work in the UK before being approved. We monitor these accreditations continuously, and if anything lapses the cleaner is suspended until it's resolved.
       </Callout>
+
+      <Highlight label="The three non-negotiables">
+        DBS check. Public liability insurance with at least £1m cover. Right to work in the UK. If a cleaner can&apos;t produce all three, walk away. It&apos;s not rude to ask, it&apos;s the bare minimum.
+      </Highlight>
 
       <h2>Questions to ask before you book</h2>
       <p>Even once you've found a cleaner who looks good on paper, a short conversation before your first session makes a big difference. When customers message cleaners through Vouchee before accepting an application, the most useful questions tend to be:</p>
@@ -180,6 +212,12 @@ function DeepCleanVsRegular() {
       <p>A regular clean is a recurring maintenance service, usually weekly or fortnightly. The cleaner keeps your home at a consistent standard: hoovering, mopping, wiping surfaces, cleaning bathrooms and kitchens, and generally maintaining what's already there.</p>
       <p>A typical regular clean for a 3-bedroom home in Horsham takes 2–3 hours. It works best when done consistently. The longer between cleans, the more time each session takes to get back to standard.</p>
 
+      <InlineImage
+        src="https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=1200&q=80"
+        alt="A spotless kitchen after a deep clean"
+        caption="The difference after a proper deep clean is the kind you notice when you walk in."
+      />
+
       <h2>What is a deep clean?</h2>
       <p>A deep clean is a much more intensive, one-off service. It covers everything a regular clean does but goes significantly further: inside cupboards and appliances, behind furniture, grout lines, limescale buildup, skirting boards, window frames, and anything else that accumulates over months rather than weeks.</p>
       <p>Deep cleans typically take 4–8 hours depending on property size and condition. When cleaners on Vouchee quote for deep clean jobs, they usually ask for more information about the property's current condition before confirming a time estimate. That's normal, and a good sign they're being realistic rather than just telling you what you want to hear.</p>
@@ -192,6 +230,10 @@ function DeepCleanVsRegular() {
         <li><strong>Before starting a regular cleaning service.</strong> Many cleaners prefer to start from a clean baseline rather than spend the first several regular sessions catching up.</li>
         <li><strong>Seasonal.</strong> Some households do a deep clean once or twice a year regardless.</li>
       </ul>
+
+      <Highlight label="Rule of thumb">
+        New build or recently deep-cleaned property? Start with a regular clean. Older property, just moved in, or it&apos;s been a while since anything was professionally cleaned? Book a deep clean first, then a regular service from there.
+      </Highlight>
 
       <h2>Which one should you book?</h2>
       <p>If your home is in reasonable condition and you want to start a regular cleaning routine, a regular clean from a good cleaner is usually sufficient. If the property hasn't had a thorough clean in a while, or you've just moved in, a one-off deep clean first makes the ongoing maintenance much easier. In our experience, it also leads to a better long-term relationship with your cleaner.</p>
@@ -215,6 +257,12 @@ function WhatToExpect() {
       <p>A cleaner isn't a tidier. Their job is to clean surfaces, floors, and fixtures, not to move your belongings around in order to do it. The more decluttered the space is before they arrive, the more actual cleaning gets done in the time you're paying for.</p>
       <p>You don't need to do a deep tidy. Just a quick pass to clear surfaces, put dishes away, and move anything you don't want disturbed. We'd estimate 10 minutes of prep adds the equivalent of 20–30 minutes of cleaning time to a session.</p>
 
+      <InlineImage
+        src="https://images.unsplash.com/photo-1484154218962-a197022b5858?w=1200&q=80"
+        alt="A bright, clean living room after a professional session"
+        caption="This is the feeling you're paying for. Walking in to a room that's been properly looked after."
+      />
+
       <h2>What a standard session covers</h2>
       <p>A typical 2–3 hour regular clean in a 3-bedroom Horsham home will usually cover:</p>
       <ul>
@@ -230,6 +278,10 @@ function WhatToExpect() {
       <h2>Tell them about the things that matter to you</h2>
       <p>Every home is different. If you have a fragile ornament, a surface that marks easily, a pet that must not go upstairs, or a strong preference for eco-friendly products, say so before the first session, not after. This is probably the single most consistent piece of feedback we hear from cleaners: they'd much rather know in advance than find out by accident.</p>
       <p>Through Vouchee's chat, you can share any of this before you've even confirmed the booking.</p>
+
+      <Highlight label="The 10-minute investment">
+        Ten minutes of decluttering before the cleaner arrives is worth roughly half an hour of their time. Clear surfaces, put away dishes, and the next two hours go entirely on cleaning instead of moving your things out of the way.
+      </Highlight>
 
       <h2>After the first session</h2>
       <p>The first session is always slightly longer than subsequent ones, because the cleaner is getting to know the property. Over time, they become faster and more efficient because they know where everything is and what needs the most attention.</p>
@@ -258,6 +310,12 @@ function CleaningProductsProfessionals() {
         <ProductLink name="Bar Keepers Friend" href="https://www.amazon.co.uk/s?k=Bar+Keepers+Friend+Powder&tag=vouchee-21" />
       </div>
 
+      <InlineImage
+        src="https://images.unsplash.com/photo-1563453392212-326f5e854473?w=1200&q=80"
+        alt="A collection of cleaning supplies on a shelf"
+        caption="The shopping list of a working professional looks quite different from the cleaning aisle."
+      />
+
       <h2>HG Mould Spray: the one that actually works</h2>
       <p>Standard bleach-based bathroom sprays bleach mould temporarily; they don't remove it. HG Mould Spray penetrates the mould at the root and removes it properly. Leave it on for a few minutes, wipe off, and the mould is genuinely gone rather than lightened.</p>
       <p>For grout lines and silicone around baths and showers in Horsham's older housing stock, it's the best product available at any price point. We hear about it consistently from cleaners who work on properties that haven't had regular professional attention.</p>
@@ -273,6 +331,10 @@ function CleaningProductsProfessionals() {
       <div className="not-prose my-4">
         <ProductLink name="Elbow Grease Degreaser" href="https://www.amazon.co.uk/s?k=Elbow+Grease+Degreaser+Spray&tag=vouchee-21" />
       </div>
+
+      <Highlight label="If you only buy two products">
+        Bar Keepers Friend for surfaces and Viakal for limescale. Between them, they handle about 80% of the stubborn jobs that come up in a Horsham home. Everything else is a refinement.
+      </Highlight>
 
       <h2>Viakal: limescale in hard water areas</h2>
       <p>Horsham sits in a hard water area, which means limescale builds up faster than most homeowners expect, often visibly within a few weeks on shower screens and taps. Standard cleaners slow it down; Viakal removes it. It's one of the most commonly mentioned products when we ask our cleaners what they'd tell a new customer to buy immediately.</p>
@@ -320,6 +382,12 @@ function SelfEmployedCleaner() {
         HMRC's free guidance at <a href="https://www.gov.uk/self-employed-national-insurance-rates" target="_blank" rel="noopener noreferrer" className="font-semibold underline">gov.uk</a> explains current rates clearly. If your income grows significantly, one session with a local accountant is money well spent.
       </Callout>
 
+      <InlineImage
+        src="https://images.unsplash.com/photo-1542626991-cbc4e32524cc?w=1200&q=80"
+        alt="A self-employed cleaner planning their week on a laptop"
+        caption="The admin side is smaller than people expect once you've set it up properly."
+      />
+
       <h2>Step 3: Get your credentials in order</h2>
       <p>To work professionally in customers' homes, and to be approved on Vouchee, you need three things:</p>
       <ul>
@@ -327,6 +395,10 @@ function SelfEmployedCleaner() {
         <li><strong>Public liability insurance.</strong> Cover starts from around £60–£80 a year for £1,000,000 of coverage. Providers like Protectivity and Simply Business offer policies specifically for domestic cleaners, and the application takes about 10 minutes online.</li>
         <li><strong>Right to work documentation.</strong> A passport or biometric residence permit confirming you're legally entitled to work in the UK.</li>
       </ul>
+
+      <Highlight label="Set aside 25%">
+        The biggest mistake new self-employed cleaners make is spending everything they earn. Put 25% of every payment into a separate account from day one. By the time your first tax bill arrives, you&apos;ll have it covered without thinking about it.
+      </Highlight>
 
       <h2>Step 4: Set your rates</h2>
       <p>Domestic cleaning in the Horsham area typically ranges from £14–£18 per hour for self-employed cleaners. Based on what we see through Vouchee job listings, the majority of customers in the area set their budget in the £15–£16 range for regular cleans. Setting your rate at the low end to get started is understandable, but it's worth increasing it as your reviews build. Clients who find good cleaners are rarely price-sensitive enough to switch for a pound an hour.</p>
@@ -353,6 +425,12 @@ function DBSChecksExplained() {
       <p>DBS stands for Disclosure and Barring Service, the government body that issues criminal records checks in England and Wales. A DBS check lets clients see whether you have any relevant criminal history before allowing you into their home.</p>
       <p>There are three types of DBS check. For domestic cleaning, a <strong>standard check</strong> is the usual requirement. It shows spent and unspent convictions, cautions, reprimands, and final warnings. Enhanced checks, which also include information held by local police, are typically only required for cleaners working in environments with vulnerable adults or children.</p>
 
+      <InlineImage
+        src="https://images.unsplash.com/photo-1521791136064-7986c2920216?w=1200&q=80"
+        alt="DBS paperwork and ID documents ready to send"
+        caption="The application itself is short. The waiting is the hardest part of getting your first DBS."
+      />
+
       <h2>How to get a DBS check</h2>
       <p>You can't apply for a DBS check directly as an individual for employment purposes. You need to go through an <strong>umbrella body</strong>. For self-employed cleaners, the most practical options are commercial umbrella bodies like uCheck or Capita, which charge a small admin fee (typically £5–£15) on top of the DBS fee.</p>
       <p>The DBS fee for a standard check is <strong>£18</strong>. With an umbrella body's admin fee, expect to pay £23–£33 total. Processing typically takes 2–4 weeks, though it can be faster. We recommend applying before you need it rather than when you're waiting for an approval, as it's one of the most common delays we see in getting new cleaners onto the Vouchee platform.</p>
@@ -364,6 +442,10 @@ function DBSChecksExplained() {
       <Callout emoji="💡">
         Register for the Update Service at <a href="https://www.gov.uk/dbs-update-service" target="_blank" rel="noopener noreferrer" className="font-semibold underline">gov.uk/dbs-update-service</a> within 30 days of receiving your certificate. After that window closes, you'll need to apply for a new DBS to join. You can't register retrospectively.
       </Callout>
+
+      <Highlight label="Don't miss the 30-day window">
+        The DBS Update Service costs £13 a year and saves you from ever reapplying. But you can only register within 30 days of your certificate being issued. Miss that window and you&apos;ll need a whole new DBS to join, so set a reminder the day yours arrives.
+      </Highlight>
 
       <h2>How long does a DBS certificate last?</h2>
       <p>Technically, a DBS certificate has no expiry date. It reflects your record at the date it was issued. In practice, most professional clients and platforms expect a certificate issued within the last 2–3 years, or an active DBS Update Service registration. At Vouchee, we accept either and flag certificates that are approaching the 3-year mark so cleaners can plan their renewal in advance.</p>
@@ -387,6 +469,12 @@ function BuildACleaningRound() {
       <p>The most important structural decision in building a cleaning round is where you want to work. Cleaning jobs scattered across a wide area waste significant time and fuel between sessions. A tight geographic focus, ideally within 2–3 miles of your home, means more sessions in the same day and lower running costs.</p>
       <p>Horsham's areas vary quite significantly in terms of housing density and property type. From job requests we see on Vouchee, Central Horsham, Roffey, and Broadbridge Heath tend to generate the most consistent demand. North West Horsham and Warnham have a higher concentration of larger properties with longer session times. Pick the areas that suit your schedule and working style.</p>
 
+      <InlineImage
+        src="https://images.unsplash.com/photo-1568992687947-868a62a9f521?w=1200&q=80"
+        alt="A planner and notes for a cleaning round in Horsham"
+        caption="Your diary is your business. A good round runs on rhythm, not just hours worked."
+      />
+
       <h2>The economics of a full round</h2>
       <p>A full-time cleaning round typically involves 5–6 clients per day for a 5-day week, which works out to around 25–30 regular sessions per week. At a rate of £15–£17 per hour with sessions averaging 2.5–3 hours, a full round generates £900–£1,300 per week before expenses.</p>
       <p>Building to that point takes time. From what we observe across the Vouchee platform, cleaners who are active and responsive typically reach 10–15 regular clients within 3–6 months. The first 5 clients are the hardest to find; the next 10–15 often come through referrals from the first five.</p>
@@ -398,6 +486,10 @@ function BuildACleaningRound() {
         <li><strong>Local Facebook groups.</strong> Horsham has several active community groups. A well-written post introducing yourself, mentioning your DBS and insurance, and asking for enquiries still generates leads, particularly in the village communities around Horsham.</li>
         <li><strong>Existing clients' referrals.</strong> Once you have 3–4 happy clients, ask them directly if they know anyone who might need a cleaner. Most people in Horsham know several households that don't have a regular cleaner. A personal recommendation carries far more weight than any advertisement.</li>
       </ul>
+
+      <Highlight label="The first five are the hardest">
+        Your first five regular clients are the steepest hill. After that, referrals start doing most of the work. Cleaners who quit usually quit in the first three months, before the round compounds.
+      </Highlight>
 
       <h2>Protecting your round</h2>
       <p>Once you've built a round, the biggest risk is losing clients to life changes: people moving, financial circumstances changing, or simply trying someone different. The best protection is being excellent and easy to work with: reliable, communicative, and consistent.</p>
