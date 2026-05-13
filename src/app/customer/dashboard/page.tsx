@@ -1257,8 +1257,17 @@ function CustomerDashboardContent() {
                   <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '14px', lineHeight: 1.4 }}>One-off cover when your regular cleaner can&apos;t make it</div>
                   <button
                     onClick={() => {
-                      if (fulfilledRequests.length > 0) {
-                        showToast('Use the 🆘 button on your confirmed cleaner card below')
+                      // Pick the first fulfilled request whose first clean has
+                      // already happened — that's the eligibility gate the
+                      // SOS button on the cleaner card uses too. If the
+                      // customer has multiple confirmed cleaners we still take
+                      // the first eligible one; they can use the per-card
+                      // button below if they need to target a specific cleaner.
+                      const eligible = fulfilledRequests.find(r => firstCleanHappened(r.start_date))
+                      if (eligible) {
+                        setCoverModalReq(eligible)
+                      } else if (fulfilledRequests.length > 0) {
+                        showToast("Cover cleans become available after your first clean")
                       } else {
                         showToast('You have no active cleaners to cover. Cover cleans appear once you have a confirmed cleaner.')
                       }
