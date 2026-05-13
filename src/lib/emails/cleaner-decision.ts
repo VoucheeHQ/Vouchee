@@ -138,17 +138,17 @@ export function rejectionHtml(firstName: string, appUrl: string) {
   const inner = `
     <p style="margin:0 0 6px;font-size:22px;font-weight:800;color:#0f172a;">Hi ${htmlEscape(firstName)},</p>
     <p style="margin:0 0 18px;font-size:14px;color:#475569;line-height:1.7;">
-      Thank you for taking the time to apply to Vouchee and for the conversation we had — we genuinely appreciated meeting you.
+      Thanks so much for taking the time to apply.
     </p>
     <p style="margin:0 0 18px;font-size:14px;color:#475569;line-height:1.7;">
-      After careful consideration, we're not able to take your application forward at this time. We're sorry we can't share more detail than that.
+      Right now isn't the right moment for us to bring you on. We're keeping the cleaner side of the platform deliberately small while we settle into the early weeks, and we're holding off on growing it for now.
     </p>
     <p style="margin:0 0 28px;font-size:14px;color:#475569;line-height:1.7;">
-      We wish you all the best — both with your cleaning work and beyond.
+      We won't keep you waiting on a list or get back in touch later. Genuinely wishing you all the best with your cleaning work.
     </p>
 
     <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.5;text-align:center;">
-      The Vouchee team
+      Adam<br/>Vouchee
     </p>
   `
   return emailShell(appUrl, inner, 'Update on your Vouchee application')

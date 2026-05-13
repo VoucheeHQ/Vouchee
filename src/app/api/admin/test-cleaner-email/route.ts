@@ -162,15 +162,16 @@ export async function GET(request: NextRequest) {
   }
 
   const { searchParams } = new URL(request.url)
-  // overrideTo is restricted to the admin's own address — previously this
-  // accepted any value, which let anyone with the hardcoded secret exfiltrate
-  // PII to an arbitrary mailbox. Mismatch fails loudly so a fat-fingered
-  // "test" doesn't silently fall through to the real recipient.
+  // Tests always send to the LOGGED-IN ADMIN, never the real cleaner.
+  // The previous flow defaulted to the real cleaner's email when overrideTo
+  // was absent — a footgun: hitting Test once would email an actual cleaner.
+  // overrideTo still exists as an explicit knob, but must equal the admin's
+  // own profile email so it can't be used to exfiltrate PII to a third party.
   const overrideToRaw = searchParams.get('overrideTo')
   if (overrideToRaw && overrideToRaw !== profile.email) {
     return NextResponse.json({ error: 'overrideTo must match the admin profile email' }, { status: 400 })
   }
-  const overrideTo = overrideToRaw
+  const destinationEmail = overrideToRaw ?? profile.email
 
   const applicationId = searchParams.get('applicationId')
   const startDate = searchParams.get('startDate') ?? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
@@ -226,7 +227,7 @@ export async function GET(request: NextRequest) {
 
     const result = await resend.emails.send({
       from: 'Vouchee <hello@vouchee.co.uk>',
-      to: overrideTo ?? cleanerProfile.email,
+      to: destinationEmail,
       subject: `🎉 [TEST] You've been chosen — starting ${formattedStartDate}`,
       html: buildCleanerEmail({
         cleanerFirstName, customerFirstName, customerFullName, customerEmail, customerPhone,
@@ -240,7 +241,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      sentTo: overrideTo ?? cleanerProfile.email,
+      sentTo: destinationEmail,
       startDate,
       resendId: result.data?.id,
     })

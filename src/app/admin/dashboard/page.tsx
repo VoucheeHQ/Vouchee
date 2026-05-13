@@ -1358,7 +1358,7 @@ export default function AdminDashboard() {
                   buttonColor="#2563eb"
                   onRun={async () => {
                     const res = await fetch(
-                      '/api/admin/test-cleaner-email?secret=vouchee-test&applicationId=5d2c5f56-080d-48cd-b552-a666881bde38&startDate=2026-04-17&overrideTo=adamjbell95@gmail.com'
+                      '/api/admin/test-cleaner-email?applicationId=5d2c5f56-080d-48cd-b552-a666881bde38&startDate=2026-04-17'
                     )
                     const data = await res.json()
                     if (data.success) return { success: true, message: `Sent to ${data.sentTo}` }
@@ -1373,7 +1373,7 @@ export default function AdminDashboard() {
                   buttonColor="#16a34a"
                   onRun={async () => {
                     const res = await fetch(
-                      '/api/admin/test-customer-email?secret=vouchee-test&applicationId=5d2c5f56-080d-48cd-b552-a666881bde38&startDate=2026-04-17&overrideTo=adamjbell95@gmail.com'
+                      '/api/admin/test-customer-email?applicationId=5d2c5f56-080d-48cd-b552-a666881bde38&startDate=2026-04-17'
                     )
                     const data = await res.json()
                     if (data.success) return { success: true, message: `Sent to ${data.sentTo}` }
