@@ -79,7 +79,7 @@ const ZONE_LABELS: Record<string, string> = {
 }
 
 const FREQUENCY_LABEL: Record<Frequency, string> = { weekly: 'Weekly', fortnightly: 'Fortnightly', monthly: 'Monthly' }
-const MONTHLY_FEES: Record<Frequency, number> = { weekly: 4333, fortnightly: 3248, monthly: 2499 }
+const MONTHLY_FEES: Record<Frequency, number> = { weekly: 3996, fortnightly: 2998, monthly: 2499 }
 const PER_CLEAN_PENCE: Record<Frequency, number> = { weekly: 999, fortnightly: 1499, monthly: 2499 }
 
 const TIME_SLOTS = ['Morning (8am - 12pm)', 'During the day (8am - 5pm)', 'Afternoon (12pm - 5pm)', 'Evening (5pm - 8pm)', 'Flexible']

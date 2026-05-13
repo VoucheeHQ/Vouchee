@@ -64,7 +64,7 @@ const faqs: { category: string; emoji: string; questions: FAQItem[] }[] = [
         q: 'How much does Vouchee cost?',
         a: (
           <>
-            The Vouchee service fee is <strong>£9.99 per clean for weekly customers, £14.99 per clean for fortnightly, and £24.99/month for monthly</strong>. It's billed 30 days in advance, calculated as 52 weeks ÷ 12 months. That's it — no commission on what you pay your cleaner, no booking fees.
+            The Vouchee service fee is <strong>£39.96/month for weekly cleans (£9.99 × 4), £29.98/month for fortnightly (£14.99 × 2), or £24.99/month for monthly</strong>. Billed by Direct Debit — no commission on what you pay your cleaner, no booking fees.
           </>
         ),
       },

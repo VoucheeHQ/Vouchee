@@ -13,8 +13,8 @@ const FREQUENCY_LABEL: Record<string, string> = {
 }
 
 const MONTHLY_FEE: Record<string, number> = {
-  weekly: 4333,
-  fortnightly: 3248,
+  weekly: 3996,
+  fortnightly: 2998,
   monthly: 2499,
 }
 

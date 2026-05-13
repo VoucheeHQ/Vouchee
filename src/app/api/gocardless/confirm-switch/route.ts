@@ -34,8 +34,9 @@ const TASK_LABELS: Record<string, string> = {
 }
 const STANDARD_TASK_IDS = new Set(['general', 'general_cleaning', 'hoovering', 'mopping', 'bathroom', 'kitchen', 'bins'])
 
+// Flat 4× / 2× / 1× per month (matches confirm/route.ts)
 const MONTHLY_AMOUNT_PENCE: Record<string, number> = {
-  weekly: 4333, fortnightly: 3248, monthly: 2499,
+  weekly: 3996, fortnightly: 2998, monthly: 2499,
 }
 const PER_CLEAN_PENCE: Record<string, number> = {
   weekly: 999, fortnightly: 1499, monthly: 2499,

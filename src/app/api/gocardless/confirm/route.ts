@@ -26,10 +26,10 @@ const ZONE_LABELS: Record<string, string> = {
   christs_hospital: "Christ's Hospital", southwater: 'Southwater',
 }
 
-// Vouchee monthly fees in pence
+// Vouchee monthly fees in pence — flat 4× / 2× / 1× per month
 const MONTHLY_AMOUNT_PENCE: Record<string, number> = {
-  weekly:      4333, // £43.33
-  fortnightly: 3248, // £32.48
+  weekly:      3996, // £9.99 × 4
+  fortnightly: 2998, // £14.99 × 2
   monthly:     2499, // £24.99
 }
 

@@ -29,9 +29,9 @@ A two-sided marketplace connecting self-employed cleaners with customers in Hors
 
 | Frequency | Per Session Fee | Monthly Charge |
 |-----------|----------------|----------------|
-| Weekly | £9.99 | £9.99 × 4.3333 = **£43.33** |
-| Fortnightly | £14.99 | £14.99 × 2.1667 = **£32.48** |
-| Monthly | £19.99 flat | **£19.99** |
+| Weekly | £9.99 | **£39.96** (4 × £9.99) |
+| Fortnightly | £14.99 | **£29.98** (2 × £14.99) |
+| Monthly | £24.99 | **£24.99** |
 
 ---
 

@@ -19,13 +19,13 @@ export default function HomePageContent({ location = 'Horsham' }: HomePageProps)
             </div>
 
             <h1 className="mb-6 text-4xl font-bold tracking-tight text-ink md:text-6xl">
-              Professional cleaning,{' '}
-              <span className="gradient-text">made simple</span>
+              Find a local cleaner,{' '}
+              <span className="text-brand-600">vouched for</span>{' '}
+              by your neighbours
             </h1>
 
             <p className="mb-10 text-lg text-ink-secondary md:text-xl">
-              Connect with vetted, local cleaners in {location} for weekly, fortnightly, or monthly services.
-              No contracts, flexible scheduling, satisfaction guaranteed.
+              Created in Horsham, for Horsham.
             </p>
 
             {/* Service type cards */}
@@ -119,7 +119,7 @@ export default function HomePageContent({ location = 'Horsham' }: HomePageProps)
                     <span className="text-4xl font-bold text-ink">£9.99</span>
                     <span className="text-ink-secondary"> / clean</span>
                   </div>
-                  <CardDescription className="mt-2">Billed monthly: £43.33</CardDescription>
+                  <CardDescription className="mt-2">Billed monthly: £39.96</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ul className="space-y-2 text-sm">
@@ -140,7 +140,7 @@ export default function HomePageContent({ location = 'Horsham' }: HomePageProps)
                     <span className="text-4xl font-bold text-ink">£14.99</span>
                     <span className="text-ink-secondary"> / clean</span>
                   </div>
-                  <CardDescription className="mt-2">Billed monthly: £32.48</CardDescription>
+                  <CardDescription className="mt-2">Billed monthly: £29.98</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ul className="space-y-2 text-sm">
@@ -173,7 +173,7 @@ export default function HomePageContent({ location = 'Horsham' }: HomePageProps)
           </div>
 
           <p className="mt-8 text-center text-sm text-ink-secondary">
-            Platform service fee based on 52 weeks per year, averaged across 12 months. You pay your cleaner directly for their time.
+            You pay your cleaner directly for their time.
           </p>
         </div>
       </section>

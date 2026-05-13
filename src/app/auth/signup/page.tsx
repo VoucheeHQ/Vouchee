@@ -26,9 +26,9 @@ const TASK_LABELS: Record<string, string> = {
 }
 
 const PRICING: Record<string, { pricePerSession: number; monthlyCharge: number; sessionsPerMonth: string; label: string }> = {
-  weekly:      { pricePerSession: 9.99,  monthlyCharge: 43.33, sessionsPerMonth: "~4.33/month", label: "Weekly" },
-  fortnightly: { pricePerSession: 14.99, monthlyCharge: 32.48, sessionsPerMonth: "~2.17/month", label: "Fortnightly" },
-  monthly:     { pricePerSession: 19.99, monthlyCharge: 19.99, sessionsPerMonth: "1/month",      label: "Monthly" },
+  weekly:      { pricePerSession: 9.99,  monthlyCharge: 39.96, sessionsPerMonth: "4/month", label: "Weekly" },
+  fortnightly: { pricePerSession: 14.99, monthlyCharge: 29.98, sessionsPerMonth: "2/month", label: "Fortnightly" },
+  monthly:     { pricePerSession: 24.99, monthlyCharge: 24.99, sessionsPerMonth: "1/month", label: "Monthly" },
 }
 
 interface RequestData {

@@ -79,20 +79,20 @@ export const PRICING_TIERS: Record<FrequencyType, PricingTier> = {
   weekly: {
     frequency: 'weekly',
     pricePerSession: 9.99,
-    sessionsPerMonth: 4.3333,
-    monthlyCharge: 43.33,
+    sessionsPerMonth: 4,
+    monthlyCharge: 39.96,
   },
   fortnightly: {
     frequency: 'fortnightly',
     pricePerSession: 14.99,
-    sessionsPerMonth: 2.1667,
-    monthlyCharge: 32.48,
+    sessionsPerMonth: 2,
+    monthlyCharge: 29.98,
   },
   monthly: {
     frequency: 'monthly',
-    pricePerSession: 19.99,
+    pricePerSession: 24.99,
     sessionsPerMonth: 1,
-    monthlyCharge: 19.99,
+    monthlyCharge: 24.99,
   },
 }
 

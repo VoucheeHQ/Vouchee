@@ -23,18 +23,18 @@ const PRICING_TIERS = [
     frequency: 'weekly' as FrequencyType,
     title: 'Weekly',
     pricePerSession: 9.99,
-    monthlyCharge: 43.33,
+    monthlyCharge: 39.96,
     description: 'Every week',
-    sessionsPerMonth: '~4.33',
+    sessionsPerMonth: '4',
     popular: true,
   },
   {
     frequency: 'fortnightly' as FrequencyType,
     title: 'Fortnightly',
     pricePerSession: 14.99,
-    monthlyCharge: 32.48,
+    monthlyCharge: 29.98,
     description: 'Every 2 weeks',
-    sessionsPerMonth: '~2.17',
+    sessionsPerMonth: '2',
   },
   {
     frequency: 'monthly' as FrequencyType,
@@ -235,8 +235,7 @@ export default function RequestFrequencyPage() {
               })}
             </div>
 
-            <p style={{ fontSize: '11px', color: '#94a3b8', textAlign: 'center', margin: '12px 0 0' }}>* Based on 52 weeks per year, averaged across 12 months</p>
-            <div style={{ textAlign: 'center', marginTop: '10px' }}>
+            <div style={{ textAlign: 'center', marginTop: '14px' }}>
               <a href="/why-vouchee?from=frequency" style={{ fontSize: '13px', color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>Why find cleaners through Vouchee? →</a>
             </div>
           </div>
