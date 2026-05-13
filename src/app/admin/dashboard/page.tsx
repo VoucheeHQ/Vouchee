@@ -36,6 +36,11 @@ function ago(iso: string) {
 function fmt(iso: string) {
   return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 }
+// "12 Mar 2026 · 3d ago" — used in table cells where both the absolute
+// date (for scanning trends) and the relative age (for recency feel) matter.
+function dual(iso: string) {
+  return `${fmt(iso)} · ${ago(iso)}`
+}
 
 async function adminAction(body: Record<string, unknown>) {
   const res = await fetch('/api/admin/actions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
@@ -202,17 +207,16 @@ interface CleanerRow {
 const QUALIFYING_QUESTIONS = [
   { id: 'q1', label: 'Why do you want to join Vouchee?' },
   { id: 'q2', label: 'How many years of professional cleaning experience do you have?' },
-  { id: 'q3', label: 'Do you have your own transport? (needed for Horsham patch)' },
-  { id: 'q4', label: 'What\'s your typical availability — weekdays, evenings, weekends?' },
-  { id: 'q5', label: 'Do you bring your own supplies, or expect customers to provide?' },
+  { id: 'q3', label: 'Do you have your own transport, and do you bring your own supplies?' },
+  { id: 'q4', label: 'What are you hoping to get out of the platform?' },
+  { id: 'q5', label: 'Do you have your DBS and insurance ready to provide now?' },
 ]
 
 const PLATFORM_CHECKLIST = [
-  { id: 'p1', label: 'Explained: no off-platform contact before mandate confirmed' },
-  { id: 'p2', label: 'Explained: how payment works (customer Direct Debit → cleaner directly)' },
-  { id: 'p3', label: 'Explained: Vouchee\'s 10% fee structure' },
-  { id: 'p4', label: 'Explained: job application flow + customer expectations' },
-  { id: 'p5', label: 'Explained: what happens if a customer cancels' },
+  { id: 'p1', label: 'Explained: off-platform contact results in a ban from Vouchee' },
+  { id: 'p2', label: 'Explained: how payments work (customer Direct Debit → cleaner directly)' },
+  { id: 'p3', label: 'Explained: job application process and customer expectations' },
+  { id: 'p4', label: 'Explained: what happens if a customer cancels' },
 ]
 
 function PipelineCount({ label, count, color, active, onClick }: { label: string; count: number; color: string; active: boolean; onClick: () => void }) {
@@ -853,13 +857,58 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
   const [userSearch, setUserSearch] = useState('')
   const [listingSearch, setListingSearch] = useState('')
+  const [cleanerSearch, setCleanerSearch] = useState('')
+  const [applicationSearch, setApplicationSearch] = useState('')
+  const [conversationSearch, setConversationSearch] = useState('')
   const [viewingConv, setViewingConv] = useState<ConversationRow | null>(null)
   const [confirmAction, setConfirmAction] = useState<{ message: string; onConfirm: () => void } | null>(null)
   const [listingFilter, setListingFilter] = useState<'all' | 'active' | 'hidden'>('all')
   const [cleanersList, setCleanersList] = useState<CleanerRow[]>([])
   const [cleanerFilter, setCleanerFilter] = useState<'all' | 'submitted' | 'in_review' | 'approved' | 'rejected'>('submitted')
   const [viewingCleaner, setViewingCleaner] = useState<CleanerRow | null>(null)
+  // Per-tab "loading more on search" indicator. Doesn't block the page,
+  // just shows in the search bar so the admin knows something's happening.
+  const [searching, setSearching] = useState<Record<string, boolean>>({})
   const supabase = createClient()
+
+  // Debounced server-side search: each tab watches its own search state and
+  // re-fires the matching load function 300ms after the admin stops typing.
+  // The empty-string branch resets to the default 25-row view.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setSearching(s => ({ ...s, users: true }))
+      loadUsers(userSearch).finally(() => setSearching(s => ({ ...s, users: false })))
+    }, userSearch ? 300 : 0)
+    return () => clearTimeout(t)
+  }, [userSearch])
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setSearching(s => ({ ...s, cleaners: true }))
+      loadCleaners(cleanerSearch).finally(() => setSearching(s => ({ ...s, cleaners: false })))
+    }, cleanerSearch ? 300 : 0)
+    return () => clearTimeout(t)
+  }, [cleanerSearch])
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setSearching(s => ({ ...s, listings: true }))
+      loadListings(listingSearch).finally(() => setSearching(s => ({ ...s, listings: false })))
+    }, listingSearch ? 300 : 0)
+    return () => clearTimeout(t)
+  }, [listingSearch])
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setSearching(s => ({ ...s, applications: true }))
+      loadApplications(applicationSearch).finally(() => setSearching(s => ({ ...s, applications: false })))
+    }, applicationSearch ? 300 : 0)
+    return () => clearTimeout(t)
+  }, [applicationSearch])
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setSearching(s => ({ ...s, conversations: true }))
+      loadConversations(conversationSearch).finally(() => setSearching(s => ({ ...s, conversations: false })))
+    }, conversationSearch ? 300 : 0)
+    return () => clearTimeout(t)
+  }, [conversationSearch])
 
   useEffect(() => {
     const init = async () => {
@@ -867,7 +916,10 @@ export default function AdminDashboard() {
       if (!user) { router.replace('/login'); return }
       const { data: profile } = await (supabase as any).from('profiles').select('role').eq('id', user.id).single()
       if (!profile || profile.role !== 'admin') { router.replace('/login'); return }
-      await Promise.all([loadStats(), loadUsers(), loadCleaners(), loadListings(), loadApplications(), loadConversations(), loadViolations()])
+      // Stats + violations don't have a dedicated search effect; everything
+      // else is fired by the per-tab search useEffects above (which run on
+      // mount with empty search = default 25-row load).
+      await Promise.all([loadStats(), loadViolations()])
       setLoading(false)
     }
     init()
@@ -886,71 +938,315 @@ export default function AdminDashboard() {
     setStats({ totalCustomers: customers ?? 0, totalCleaners: cleaners ?? 0, activeListings: listingsCount ?? 0, totalApplications: apps ?? 0, totalConversations: convs ?? 0, totalMessages: msgs ?? 0, violationsToday: viols ?? 0 })
   }
 
-  const loadUsers = async () => {
-    const { data } = await (supabase as any).from('profiles').select('id, full_name, email, role, created_at, suspended').in('role', ['customer', 'cleaner']).order('created_at', { ascending: false }).limit(200)
+  // Default load = 25 most recent. When a search term is supplied, hit the
+  // server with an ilike on name + email so we can find people who aren't
+  // in the first 25. Keeps initial load fast as the user base grows.
+  const loadUsers = async (search = '') => {
+    let q = (supabase as any)
+      .from('profiles')
+      .select('id, full_name, email, role, created_at, suspended')
+      .in('role', ['customer', 'cleaner'])
+      .order('created_at', { ascending: false })
+    const s = search.trim()
+    if (s) {
+      q = q.or(`full_name.ilike.%${s}%,email.ilike.%${s}%`).limit(100)
+    } else {
+      q = q.limit(25)
+    }
+    const { data } = await q
     setUsers(data ?? [])
   }
 
-  const loadCleaners = async () => {
-    const { data: cleaners } = await (supabase as any)
+  // Two-query load (was N+1 per cleaner). When a search term is supplied,
+  // we first find matching profile ids, then load only cleaners whose
+  // profile_id is in that set. Default = 25 most recent.
+  const loadCleaners = async (search = '') => {
+    const s = search.trim()
+
+    // ── Step 1: optional profile-id pre-filter for search ──
+    let profileFilterIds: string[] | null = null
+    if (s) {
+      const { data: matches } = await (supabase as any)
+        .from('profiles')
+        .select('id')
+        .or(`full_name.ilike.%${s}%,email.ilike.%${s}%`)
+        .limit(200)
+      profileFilterIds = ((matches as any[]) ?? []).map(p => p.id)
+      if (profileFilterIds.length === 0) { setCleanersList([]); return }
+    }
+
+    // ── Step 2: cleaners (filtered by profile_id when searching) ──
+    let cq = (supabase as any)
       .from('cleaners')
       .select('id, profile_id, application_status, created_at, dbs_checked, has_insurance, right_to_work, interview_notes, interview_qualifying, interview_platform, approved_at, rejected_at, rejection_reason, cleans_completed, dbs_verified, dbs_file_url, dbs_expiry, dbs_uploaded_at, insurance_verified, insurance_file_url, insurance_expiry, insurance_uploaded_at, right_to_work_verified, right_to_work_file_url, right_to_work_expiry, right_to_work_uploaded_at, suspension_reason, suspended_at')
       .order('created_at', { ascending: false })
-      .limit(200)
-    if (!cleaners) return
-    const enriched = await Promise.all((cleaners as any[]).map(async c => {
-      const { data: p } = await (supabase as any).from('profiles').select('full_name, email').eq('id', c.profile_id).single()
-      return {
-        ...c,
-        full_name: (p as any)?.full_name ?? '—',
-        email: (p as any)?.email ?? '—',
-      } as CleanerRow
-    }))
+    if (profileFilterIds) cq = cq.in('profile_id', profileFilterIds).limit(100)
+    else cq = cq.limit(25)
+    const { data: cleaners } = await cq
+    if (!cleaners || (cleaners as any[]).length === 0) { setCleanersList([]); return }
+
+    // ── Step 3: batch profile lookup (replaces N+1 per-row .single()) ──
+    const profileIds = (cleaners as any[]).map(c => c.profile_id)
+    const { data: profiles } = await (supabase as any)
+      .from('profiles').select('id, full_name, email').in('id', profileIds)
+    const pMap = new Map(((profiles as any[]) ?? []).map(p => [p.id, p]))
+
+    const enriched = (cleaners as any[]).map(c => ({
+      ...c,
+      full_name: (pMap.get(c.profile_id) as any)?.full_name ?? '—',
+      email: (pMap.get(c.profile_id) as any)?.email ?? '—',
+    })) as CleanerRow[]
     setCleanersList(enriched)
   }
 
-  const loadListings = async () => {
-    const { data: reqs } = await (supabase as any).from('clean_requests').select('id, status, created_at, zone, bedrooms, bathrooms, hourly_rate, frequency, customer_id, hidden').order('created_at', { ascending: false }).limit(200)
-    if (!reqs) return
-    const enriched = await Promise.all(reqs.map(async (r: any) => {
-      const { data: cust } = await (supabase as any).from('customers').select('profiles(full_name, email)').eq('id', r.customer_id).single()
-      return { id: r.id, status: r.status, created_at: r.created_at, zone: r.zone, bedrooms: r.bedrooms, bathrooms: r.bathrooms, hourly_rate: r.hourly_rate, frequency: r.frequency, hidden: r.hidden ?? false, customer_name: (cust as any)?.profiles?.full_name ?? 'Unknown', customer_email: (cust as any)?.profiles?.email ?? '' }
-    }))
+  // Three-query load (was N+1 per listing). Search matches customer name,
+  // customer email, or zone string. Default = 25 most recent.
+  const loadListings = async (search = '') => {
+    const s = search.trim()
+
+    // ── Step 1: when searching, build the set of matching customer_ids
+    let customerFilterIds: string[] | null = null
+    if (s) {
+      const { data: matchingProfiles } = await (supabase as any)
+        .from('profiles').select('id')
+        .or(`full_name.ilike.%${s}%,email.ilike.%${s}%`).limit(200)
+      const profileIds = ((matchingProfiles as any[]) ?? []).map(p => p.id)
+      if (profileIds.length > 0) {
+        const { data: matchingCustomers } = await (supabase as any)
+          .from('customers').select('id').in('profile_id', profileIds).limit(200)
+        customerFilterIds = ((matchingCustomers as any[]) ?? []).map(c => c.id)
+      } else {
+        customerFilterIds = []
+      }
+    }
+
+    // ── Step 2: listings (filtered by zone-match OR customer match) ──
+    let rq = (supabase as any)
+      .from('clean_requests')
+      .select('id, status, created_at, zone, bedrooms, bathrooms, hourly_rate, frequency, customer_id, hidden')
+      .order('created_at', { ascending: false })
+    if (s && customerFilterIds !== null) {
+      if (customerFilterIds.length > 0) {
+        rq = rq.or(`zone.ilike.%${s}%,customer_id.in.(${customerFilterIds.join(',')})`).limit(100)
+      } else {
+        // No matching customers — fall back to zone-only search.
+        rq = rq.ilike('zone', `%${s}%`).limit(100)
+      }
+    } else {
+      rq = rq.limit(25)
+    }
+    const { data: reqs } = await rq
+    if (!reqs || (reqs as any[]).length === 0) { setListings([]); return }
+
+    // ── Step 3: batch customer + profile lookups ──
+    const customerIds = Array.from(new Set((reqs as any[]).map(r => r.customer_id)))
+    const { data: customers } = await (supabase as any)
+      .from('customers').select('id, profile_id').in('id', customerIds)
+    const cMap = new Map(((customers as any[]) ?? []).map(c => [c.id, c.profile_id]))
+    const profileIds = Array.from(new Set(((customers as any[]) ?? []).map(c => c.profile_id)))
+    const { data: profiles } = profileIds.length > 0
+      ? await (supabase as any).from('profiles').select('id, full_name, email').in('id', profileIds)
+      : { data: [] }
+    const pMap = new Map(((profiles as any[]) ?? []).map(p => [p.id, p]))
+
+    const enriched = (reqs as any[]).map(r => {
+      const pid = cMap.get(r.customer_id)
+      const p = pid ? (pMap.get(pid) as any) : null
+      return {
+        id: r.id, status: r.status, created_at: r.created_at, zone: r.zone,
+        bedrooms: r.bedrooms, bathrooms: r.bathrooms, hourly_rate: r.hourly_rate,
+        frequency: r.frequency, hidden: r.hidden ?? false,
+        customer_name: p?.full_name ?? 'Unknown',
+        customer_email: p?.email ?? '',
+      }
+    })
     setListings(enriched)
   }
 
-  const loadApplications = async () => {
-    const { data: apps } = await (supabase as any).from('applications').select('id, status, created_at, message, cleaner_id, request_id').order('created_at', { ascending: false }).limit(100)
-    if (!apps) return
-    const enriched = await Promise.all(apps.map(async (app: any) => {
-      const { data: cleaner } = await (supabase as any).from('cleaners').select('profiles(full_name)').eq('id', app.cleaner_id).single()
-      const { data: req } = await (supabase as any).from('clean_requests').select('zone, customer_id').eq('id', app.request_id).single()
-      const { data: customer } = req ? await (supabase as any).from('customers').select('profiles(full_name)').eq('id', req.customer_id).single() : { data: null }
-      return { id: app.id, status: app.status, created_at: app.created_at, message: app.message, cleaner_name: cleaner?.profiles?.full_name ?? 'Unknown', customer_name: (customer as any)?.profiles?.full_name ?? 'Unknown', zone: req?.zone ?? '—' }
-    }))
+  // Helper: given a list of cleaner ids and customer (profiles.id) ids,
+  // return Maps from id → full_name. Used by applications and conversations
+  // loads which both enrich rows with cleaner + customer names.
+  const fetchNameMaps = async (cleanerIds: string[], customerProfileIds: string[]) => {
+    const [{ data: cleaners }, { data: customerProfiles }] = await Promise.all([
+      cleanerIds.length > 0
+        ? (supabase as any).from('cleaners').select('id, profile_id').in('id', cleanerIds)
+        : Promise.resolve({ data: [] }),
+      customerProfileIds.length > 0
+        ? (supabase as any).from('profiles').select('id, full_name').in('id', customerProfileIds)
+        : Promise.resolve({ data: [] }),
+    ])
+    // Cleaners → cleaner.profile_id → profile.full_name
+    const cleanerProfileIds = ((cleaners as any[]) ?? []).map(c => c.profile_id)
+    const { data: cleanerProfiles } = cleanerProfileIds.length > 0
+      ? await (supabase as any).from('profiles').select('id, full_name').in('id', cleanerProfileIds)
+      : { data: [] }
+    const cProfileMap = new Map(((cleanerProfiles as any[]) ?? []).map(p => [p.id, p.full_name]))
+    const cleanerNameMap = new Map(((cleaners as any[]) ?? []).map(c => [c.id, cProfileMap.get(c.profile_id) ?? 'Unknown']))
+    const customerNameMap = new Map(((customerProfiles as any[]) ?? []).map(p => [p.id, p.full_name ?? 'Unknown']))
+    return { cleanerNameMap, customerNameMap }
+  }
+
+  // Batch-load with optional text search across cleaner name / customer name / zone.
+  // Default = 25 most recent, search = up to 100 matches.
+  const loadApplications = async (search = '') => {
+    const s = search.trim()
+    const { data: apps } = s
+      ? await searchApplications(s)
+      : await (supabase as any).from('applications').select('id, status, created_at, message, cleaner_id, request_id').order('created_at', { ascending: false }).limit(25)
+    if (!apps || (apps as any[]).length === 0) { setApplications([]); return }
+
+    // Batch-fetch request zones + customer_ids
+    const reqIds = Array.from(new Set((apps as any[]).map(a => a.request_id)))
+    const { data: reqs } = await (supabase as any).from('clean_requests').select('id, zone, customer_id').in('id', reqIds)
+    const reqMap = new Map(((reqs as any[]) ?? []).map(r => [r.id, r]))
+
+    // Build cleaner-id + customer-profile-id sets
+    const cleanerIds = Array.from(new Set((apps as any[]).map(a => a.cleaner_id)))
+    const customerIds = Array.from(new Set(((reqs as any[]) ?? []).map(r => r.customer_id)))
+    const { data: customers } = customerIds.length > 0
+      ? await (supabase as any).from('customers').select('id, profile_id').in('id', customerIds)
+      : { data: [] }
+    const customerProfileIdMap = new Map(((customers as any[]) ?? []).map(c => [c.id, c.profile_id]))
+    const customerProfileIds = Array.from(new Set(Array.from(customerProfileIdMap.values()))) as string[]
+
+    const { cleanerNameMap, customerNameMap } = await fetchNameMaps(cleanerIds, customerProfileIds)
+
+    const enriched = (apps as any[]).map(app => {
+      const r = (reqMap.get(app.request_id) as any) ?? {}
+      const customerProfileId = customerProfileIdMap.get(r.customer_id)
+      return {
+        id: app.id, status: app.status, created_at: app.created_at, message: app.message,
+        cleaner_name: cleanerNameMap.get(app.cleaner_id) ?? 'Unknown',
+        customer_name: customerProfileId ? (customerNameMap.get(customerProfileId) ?? 'Unknown') : 'Unknown',
+        zone: r.zone ?? '—',
+      }
+    })
     setApplications(enriched)
   }
 
-  const loadConversations = async () => {
-    const { data: convs } = await (supabase as any).from('conversations').select('id, created_at, cleaner_id, customer_id, clean_request_id').order('created_at', { ascending: false }).limit(100)
-    if (!convs) return
-    const enriched = await Promise.all(convs.map(async (conv: any) => {
-      const { data: cleaner } = await (supabase as any).from('cleaners').select('profiles(full_name)').eq('id', conv.cleaner_id).single()
-      const { data: customer } = await (supabase as any).from('profiles').select('full_name').eq('id', conv.customer_id).single()
-      const { data: req } = await (supabase as any).from('clean_requests').select('zone').eq('id', conv.clean_request_id).single()
-      const { data: msgs, count } = await (supabase as any).from('messages').select('content, created_at', { count: 'exact' }).eq('conversation_id', conv.id).order('created_at', { ascending: false }).limit(1)
-      return { id: conv.id, created_at: conv.created_at, cleaner_name: cleaner?.profiles?.full_name ?? 'Unknown', customer_name: (customer as any)?.full_name ?? 'Unknown', zone: req?.zone ?? '—', message_count: count ?? 0, last_message: msgs?.[0]?.content ?? '', last_message_at: msgs?.[0]?.created_at ?? null }
+  // Server-side search across applications by joining through the related
+  // tables. We pre-resolve which cleaner/customer/zone ids match the term,
+  // then pull applications referencing any of them.
+  const searchApplications = async (s: string) => {
+    // Profile name matches (covers both cleaner-side and customer-side names)
+    const { data: matchingProfiles } = await (supabase as any)
+      .from('profiles').select('id').ilike('full_name', `%${s}%`).limit(200)
+    const matchedProfileIds = ((matchingProfiles as any[]) ?? []).map(p => p.id)
+
+    // Cleaner ids whose profile_id is in the matched set
+    const { data: matchingCleaners } = matchedProfileIds.length > 0
+      ? await (supabase as any).from('cleaners').select('id').in('profile_id', matchedProfileIds).limit(200)
+      : { data: [] }
+    const cleanerIdMatches = ((matchingCleaners as any[]) ?? []).map(c => c.id)
+
+    // Customer ids whose profile_id is in the matched set
+    const { data: matchingCustomers } = matchedProfileIds.length > 0
+      ? await (supabase as any).from('customers').select('id').in('profile_id', matchedProfileIds).limit(200)
+      : { data: [] }
+    const customerIdMatches = ((matchingCustomers as any[]) ?? []).map(c => c.id)
+
+    // Request ids whose zone matches OR whose customer is in the matched set
+    const { data: matchingReqs } = await (supabase as any)
+      .from('clean_requests').select('id').or(
+        customerIdMatches.length > 0
+          ? `zone.ilike.%${s}%,customer_id.in.(${customerIdMatches.join(',')})`
+          : `zone.ilike.%${s}%`
+      ).limit(200)
+    const reqIdMatches = ((matchingReqs as any[]) ?? []).map(r => r.id)
+
+    // Final OR: cleaner match OR request match
+    const orParts: string[] = []
+    if (cleanerIdMatches.length > 0) orParts.push(`cleaner_id.in.(${cleanerIdMatches.join(',')})`)
+    if (reqIdMatches.length > 0) orParts.push(`request_id.in.(${reqIdMatches.join(',')})`)
+    if (orParts.length === 0) return { data: [] }
+    return (supabase as any)
+      .from('applications').select('id, status, created_at, message, cleaner_id, request_id')
+      .or(orParts.join(',')).order('created_at', { ascending: false }).limit(100)
+  }
+
+  const loadConversations = async (search = '') => {
+    const s = search.trim()
+    const { data: convs } = s
+      ? await searchConversations(s)
+      : await (supabase as any).from('conversations').select('id, created_at, cleaner_id, customer_id, clean_request_id').order('created_at', { ascending: false }).limit(25)
+    if (!convs || (convs as any[]).length === 0) { setConversations([]); return }
+
+    // Batch zone lookup
+    const reqIds = Array.from(new Set((convs as any[]).map(c => c.clean_request_id)))
+    const { data: reqs } = reqIds.length > 0
+      ? await (supabase as any).from('clean_requests').select('id, zone').in('id', reqIds)
+      : { data: [] }
+    const zoneMap = new Map(((reqs as any[]) ?? []).map(r => [r.id, r.zone]))
+
+    // Batch cleaner + customer (customer_id on conversations is profiles.id directly)
+    const cleanerIds = Array.from(new Set((convs as any[]).map(c => c.cleaner_id)))
+    const customerProfileIds = Array.from(new Set((convs as any[]).map(c => c.customer_id)))
+    const { cleanerNameMap, customerNameMap } = await fetchNameMaps(cleanerIds, customerProfileIds)
+
+    // Batch last-message + count per conversation. Single query for the
+    // latest message per conv, plus a separate count query. Both replace
+    // the previous per-row .limit(1) inside the loop.
+    const convIds = (convs as any[]).map(c => c.id)
+    const { data: latestMsgs } = convIds.length > 0
+      ? await (supabase as any)
+          .from('messages').select('conversation_id, content, created_at')
+          .in('conversation_id', convIds).order('created_at', { ascending: false })
+      : { data: [] }
+    const lastByConv = new Map<string, { content: string; created_at: string }>()
+    const countByConv = new Map<string, number>()
+    for (const m of ((latestMsgs as any[]) ?? [])) {
+      countByConv.set(m.conversation_id, (countByConv.get(m.conversation_id) ?? 0) + 1)
+      if (!lastByConv.has(m.conversation_id)) lastByConv.set(m.conversation_id, { content: m.content, created_at: m.created_at })
+    }
+
+    const enriched = (convs as any[]).map(c => ({
+      id: c.id, created_at: c.created_at,
+      cleaner_name: cleanerNameMap.get(c.cleaner_id) ?? 'Unknown',
+      customer_name: customerNameMap.get(c.customer_id) ?? 'Unknown',
+      zone: zoneMap.get(c.clean_request_id) ?? '—',
+      message_count: countByConv.get(c.id) ?? 0,
+      last_message: lastByConv.get(c.id)?.content ?? '',
+      last_message_at: lastByConv.get(c.id)?.created_at ?? null,
     }))
     setConversations(enriched)
   }
 
+  const searchConversations = async (s: string) => {
+    // Same profile-name match → cleaner/customer id resolution as
+    // searchApplications. Conversations.customer_id is profiles.id directly,
+    // so we OR profile_ids in instead of customer_ids.
+    const { data: matchingProfiles } = await (supabase as any)
+      .from('profiles').select('id').ilike('full_name', `%${s}%`).limit(200)
+    const matchedProfileIds = ((matchingProfiles as any[]) ?? []).map(p => p.id)
+
+    const { data: matchingCleaners } = matchedProfileIds.length > 0
+      ? await (supabase as any).from('cleaners').select('id').in('profile_id', matchedProfileIds).limit(200)
+      : { data: [] }
+    const cleanerIdMatches = ((matchingCleaners as any[]) ?? []).map(c => c.id)
+
+    const orParts: string[] = []
+    if (cleanerIdMatches.length > 0) orParts.push(`cleaner_id.in.(${cleanerIdMatches.join(',')})`)
+    if (matchedProfileIds.length > 0) orParts.push(`customer_id.in.(${matchedProfileIds.join(',')})`)
+    if (orParts.length === 0) return { data: [] }
+    return (supabase as any)
+      .from('conversations').select('id, created_at, cleaner_id, customer_id, clean_request_id')
+      .or(orParts.join(',')).order('created_at', { ascending: false }).limit(100)
+  }
+
+  // No text search on violations — they're a small daily list. Just batch
+  // the profile lookup to remove the N+1.
   const loadViolations = async () => {
-    const { data } = await (supabase as any).from('keyword_violations').select('id, created_at, conversation_id, message_content, triggered_keywords, sender_role, sender_id').order('created_at', { ascending: false }).limit(100)
+    const { data } = await (supabase as any)
+      .from('keyword_violations')
+      .select('id, created_at, conversation_id, message_content, triggered_keywords, sender_role, sender_id')
+      .order('created_at', { ascending: false }).limit(100)
     if (!data) return
-    const enriched = await Promise.all((data as any[]).map(async (v) => {
-      const { data: profile } = await (supabase as any).from('profiles').select('full_name').eq('id', v.sender_id).single()
-      return { ...v, sender_name: (profile as any)?.full_name ?? 'Unknown' }
-    }))
+    const senderIds = Array.from(new Set((data as any[]).map(v => v.sender_id)))
+    const { data: profiles } = senderIds.length > 0
+      ? await (supabase as any).from('profiles').select('id, full_name').in('id', senderIds)
+      : { data: [] }
+    const pMap = new Map(((profiles as any[]) ?? []).map(p => [p.id, p.full_name]))
+    const enriched = (data as any[]).map(v => ({ ...v, sender_name: pMap.get(v.sender_id) ?? 'Unknown' }))
     setViolations(enriched)
   }
 
@@ -980,10 +1276,13 @@ export default function AdminDashboard() {
     )
   }
 
-  const filteredUsers = users.filter(u => u.full_name?.toLowerCase().includes(userSearch.toLowerCase()) || u.email?.toLowerCase().includes(userSearch.toLowerCase()))
+  // Search is now server-side, so client-side filtering of users + listings
+  // is a pass-through (kept as aliases for the template's existing refs).
+  // The listing filter (all/active/hidden) stays client-side because it's
+  // an attribute the admin toggles on the loaded set, not a search term.
+  const filteredUsers = users
   const filteredListings = listings
     .filter(l => listingFilter === 'all' ? true : listingFilter === 'hidden' ? l.hidden : !l.hidden && l.status !== 'deleted')
-    .filter(l => l.customer_name?.toLowerCase().includes(listingSearch.toLowerCase()) || l.zone?.toLowerCase().includes(listingSearch.toLowerCase()))
 
   const tabs: { id: Tab; label: string; icon: string }[] = [
     { id: 'overview', label: 'Overview', icon: '📊' },
@@ -1068,6 +1367,11 @@ export default function AdminDashboard() {
           {/* ── Cleaners (approval CRM) ── */}
           {tab === 'cleaners' && (
             <div>
+              <div style={{ marginBottom: '16px', display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <input value={cleanerSearch} onChange={e => setCleanerSearch(e.target.value)} placeholder="Search by name or email…" style={{ padding: '10px 16px', borderRadius: '10px', border: '1.5px solid #e2e8f0', fontSize: '14px', fontFamily: "'DM Sans', sans-serif", outline: 'none', width: '300px', color: '#0f172a' }} />
+                {searching.cleaners && <span style={{ fontSize: '12px', color: '#94a3b8' }}>Searching…</span>}
+                <span style={{ fontSize: '13px', color: '#94a3b8' }}>{cleanersList.length} {cleanerSearch ? 'match' : 'recent'}{cleanersList.length === 1 ? '' : 'es'}</span>
+              </div>
               <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
                 <PipelineCount label="Submitted" count={cleanersList.filter(c => c.application_status === 'submitted').length} color="#2563eb" active={cleanerFilter === 'submitted'} onClick={() => setCleanerFilter('submitted')} />
                 <PipelineCount label="In review" count={cleanersList.filter(c => c.application_status === 'in_review').length} color="#f59e0b" active={cleanerFilter === 'in_review'} onClick={() => setCleanerFilter('in_review')} />
@@ -1093,7 +1397,7 @@ export default function AdminDashboard() {
                               <span title="Right to work" style={{ fontSize: '11px', opacity: c.right_to_work ? 1 : 0.25 }}>✅</span>
                             </div>
                           </td>
-                          <td style={{ padding: '12px 16px', color: '#94a3b8', whiteSpace: 'nowrap' }}>{ago(c.created_at)}</td>
+                          <td style={{ padding: '12px 16px', color: '#94a3b8', whiteSpace: 'nowrap' }}>{dual(c.created_at)}</td>
                           <td style={{ padding: '12px 16px' }}>
                             <Badge
                               label={c.application_status ?? 'submitted'}
@@ -1126,7 +1430,8 @@ export default function AdminDashboard() {
             <div>
               <div style={{ marginBottom: '16px', display: 'flex', gap: '12px', alignItems: 'center' }}>
                 <input value={userSearch} onChange={e => setUserSearch(e.target.value)} placeholder="Search by name or email…" style={{ padding: '10px 16px', borderRadius: '10px', border: '1.5px solid #e2e8f0', fontSize: '14px', fontFamily: "'DM Sans', sans-serif", outline: 'none', width: '300px', color: '#0f172a' }} />
-                <span style={{ fontSize: '13px', color: '#94a3b8' }}>{filteredUsers.length} users</span>
+                {searching.users && <span style={{ fontSize: '12px', color: '#94a3b8' }}>Searching…</span>}
+                <span style={{ fontSize: '13px', color: '#94a3b8' }}>{filteredUsers.length} {userSearch ? 'matches' : 'recent users'}</span>
               </div>
               <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
@@ -1137,7 +1442,7 @@ export default function AdminDashboard() {
                         <td style={{ padding: '12px 16px', fontWeight: 600, color: '#0f172a' }}>{u.full_name}</td>
                         <td style={{ padding: '12px 16px', color: '#64748b' }}>{u.email}</td>
                         <td style={{ padding: '12px 16px' }}><Badge label={u.role} color={u.role === 'cleaner' ? 'blue' : 'green'} /></td>
-                        <td style={{ padding: '12px 16px', color: '#94a3b8' }}>{fmt(u.created_at)}</td>
+                        <td style={{ padding: '12px 16px', color: '#94a3b8', whiteSpace: 'nowrap' }}>{dual(u.created_at)}</td>
                         <td style={{ padding: '12px 16px' }}><Badge label={u.suspended ? 'Suspended' : 'Active'} color={u.suspended ? 'red' : 'green'} /></td>
                         <td style={{ padding: '12px 16px' }}>
                           <button onClick={() => suspendUser(u.id, !u.suspended)} style={{ background: u.suspended ? '#f0fdf4' : '#fef2f2', color: u.suspended ? '#15803d' : '#dc2626', border: `1px solid ${u.suspended ? '#bbf7d0' : '#fecaca'}`, borderRadius: '8px', padding: '4px 12px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
@@ -1157,6 +1462,7 @@ export default function AdminDashboard() {
             <div>
               <div style={{ marginBottom: '16px', display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
                 <input value={listingSearch} onChange={e => setListingSearch(e.target.value)} placeholder="Search by customer or zone…" style={{ padding: '10px 16px', borderRadius: '10px', border: '1.5px solid #e2e8f0', fontSize: '14px', fontFamily: "'DM Sans', sans-serif", outline: 'none', width: '280px', color: '#0f172a' }} />
+                {searching.listings && <span style={{ fontSize: '12px', color: '#94a3b8' }}>Searching…</span>}
                 <div style={{ display: 'flex', gap: '4px', background: 'white', padding: '4px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                   {(['all', 'active', 'hidden'] as const).map(f => <button key={f} onClick={() => setListingFilter(f)} style={{ padding: '5px 14px', borderRadius: '6px', border: 'none', cursor: 'pointer', background: listingFilter === f ? '#0f172a' : 'transparent', color: listingFilter === f ? 'white' : '#64748b', fontSize: '12px', fontWeight: 600, fontFamily: "'DM Sans', sans-serif" }}>{f.charAt(0).toUpperCase() + f.slice(1)}</button>)}
                 </div>
@@ -1172,7 +1478,7 @@ export default function AdminDashboard() {
                         <td style={{ padding: '12px 16px', color: '#64748b' }}>{ZONE_LABELS[l.zone ?? ''] ?? l.zone ?? '—'}</td>
                         <td style={{ padding: '12px 16px', color: '#64748b' }}>{l.bedrooms}bd · {l.bathrooms}ba · £{l.hourly_rate}/hr · {l.frequency}</td>
                         <td style={{ padding: '12px 16px' }}><div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><Badge label={l.status} color={l.status === 'active' ? 'green' : l.status === 'pending_review' ? 'yellow' : 'gray'} />{l.hidden && <Badge label="Hidden" color="orange" />}</div></td>
-                        <td style={{ padding: '12px 16px', color: '#94a3b8', whiteSpace: 'nowrap' }}>{ago(l.created_at)}</td>
+                        <td style={{ padding: '12px 16px', color: '#94a3b8', whiteSpace: 'nowrap' }}>{dual(l.created_at)}</td>
                         <td style={{ padding: '12px 16px' }}>
                           <div style={{ display: 'flex', gap: '6px' }}>
                             <button onClick={() => hideListing(l.id, !l.hidden)} style={{ background: l.hidden ? '#fff7ed' : '#f8fafc', color: l.hidden ? '#c2410c' : '#64748b', border: `1px solid ${l.hidden ? '#fed7aa' : '#e2e8f0'}`, borderRadius: '6px', padding: '4px 10px', fontSize: '11px', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>{l.hidden ? '👁 Unhide' : '🚫 Hide'}</button>
@@ -1193,7 +1499,11 @@ export default function AdminDashboard() {
           {/* ── Applications ── */}
           {tab === 'applications' && (
             <div>
-              <div style={{ marginBottom: '16px', fontSize: '13px', color: '#94a3b8' }}>{applications.length} applications</div>
+              <div style={{ marginBottom: '16px', display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <input value={applicationSearch} onChange={e => setApplicationSearch(e.target.value)} placeholder="Search by cleaner, customer or zone…" style={{ padding: '10px 16px', borderRadius: '10px', border: '1.5px solid #e2e8f0', fontSize: '14px', fontFamily: "'DM Sans', sans-serif", outline: 'none', width: '320px', color: '#0f172a' }} />
+                {searching.applications && <span style={{ fontSize: '12px', color: '#94a3b8' }}>Searching…</span>}
+                <span style={{ fontSize: '13px', color: '#94a3b8' }}>{applications.length} {applicationSearch ? 'matches' : 'recent applications'}</span>
+              </div>
               <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
                   <thead><tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>{['Cleaner', 'Customer', 'Zone', 'Status', 'Message', 'Date'].map(h => <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>)}</tr></thead>
@@ -1217,7 +1527,11 @@ export default function AdminDashboard() {
           {/* ── Conversations ── */}
           {tab === 'conversations' && (
             <div>
-              <div style={{ marginBottom: '16px', fontSize: '13px', color: '#94a3b8' }}>{conversations.length} conversations</div>
+              <div style={{ marginBottom: '16px', display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <input value={conversationSearch} onChange={e => setConversationSearch(e.target.value)} placeholder="Search by cleaner or customer name…" style={{ padding: '10px 16px', borderRadius: '10px', border: '1.5px solid #e2e8f0', fontSize: '14px', fontFamily: "'DM Sans', sans-serif", outline: 'none', width: '320px', color: '#0f172a' }} />
+                {searching.conversations && <span style={{ fontSize: '12px', color: '#94a3b8' }}>Searching…</span>}
+                <span style={{ fontSize: '13px', color: '#94a3b8' }}>{conversations.length} {conversationSearch ? 'matches' : 'recent conversations'}</span>
+              </div>
               <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
                   <thead><tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>{['Cleaner', 'Customer', 'Zone', 'Messages', 'Last message', 'Started', ''].map(h => <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>)}</tr></thead>
