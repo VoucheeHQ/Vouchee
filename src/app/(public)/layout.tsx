@@ -1,5 +1,6 @@
 import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
+import { CountdownBanner } from '@/components/countdown-banner'
 import { createClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
@@ -24,6 +25,7 @@ export default async function PublicLayout({
 
   return (
     <>
+      <CountdownBanner />
       <Header userRole={userRole} />
       <main>{children}</main>
       <Footer />

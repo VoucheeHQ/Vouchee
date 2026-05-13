@@ -33,12 +33,35 @@ export async function POST(_req: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  // Flip pre_launch_pending → active and return the ids so we can fan-out alerts.
-  const { data: flipped, error: flipErr } = await admin
-    .from('clean_requests')
-    .update({ status: 'active', goes_live_at: new Date().toISOString() } as any)
-    .eq('status', 'pre_launch_pending')
-    .select('id, zone') as { data: Array<{ id: string; zone: string | null }> | null, error: any }
+  // Flip pre_launch_pending → active, but ONLY for listings the customer
+  // has confirmed via the 24h reminder email. Unconfirmed pre-launch
+  // listings stay where they are — customers can confirm any time after
+  // launch and the /api/pre-launch-confirm endpoint auto-flips them then.
+  //
+  // The pre_launch_confirmed_at column is migration-gated (004); if it
+  // doesn't exist yet, fall back to flipping everything so the admin's
+  // launch button still works during the migration rollout window.
+  let flipped: Array<{ id: string; zone: string | null }> | null = null
+  let flipErr: any = null
+  try {
+    const result = await admin
+      .from('clean_requests')
+      .update({ status: 'active', goes_live_at: new Date().toISOString() } as any)
+      .eq('status', 'pre_launch_pending')
+      .not('pre_launch_confirmed_at', 'is', null)
+      .select('id, zone') as { data: Array<{ id: string; zone: string | null }> | null; error: any }
+    if (result.error) throw result.error
+    flipped = result.data
+  } catch (e: any) {
+    console.warn('launch-listings: pre_launch_confirmed_at filter unavailable — apply migration 004. Flipping all pre_launch_pending rows as fallback.', e?.message ?? e)
+    const result = await admin
+      .from('clean_requests')
+      .update({ status: 'active', goes_live_at: new Date().toISOString() } as any)
+      .eq('status', 'pre_launch_pending')
+      .select('id, zone') as { data: Array<{ id: string; zone: string | null }> | null; error: any }
+    flipped = result.data
+    flipErr = result.error
+  }
 
   if (flipErr) {
     console.error('launch-listings: update failed', flipErr)

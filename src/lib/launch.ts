@@ -19,12 +19,16 @@
 // To delay past the scheduled date, push a code change moving LAUNCH_DATE.
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Monday 1 June 2026, 00:00 BST (01:00 UTC during British Summer Time).
-// UK is in BST (UTC+1) on this date.
-export const LAUNCH_DATE = new Date('2026-06-01T00:00:00+01:00')
+// Monday 1 June 2026, 12:00 BST (11:00 UTC during British Summer Time).
+// UK is in BST (UTC+1) on this date. Midday gives a sensible window: pre-
+// launch comms go out the day before, customers can spend the morning
+// confirming their listings, and the marketplace opens at lunch.
+export const LAUNCH_DATE = new Date('2026-06-01T12:00:00+01:00')
 
-// Plain-English label used in customer-facing copy.
+// Plain-English labels used in customer-facing copy.
 export const LAUNCH_DATE_LABEL = 'Monday 1st June'
+export const LAUNCH_TIME_LABEL = '12 PM'
+export const LAUNCH_DATETIME_LABEL = 'Monday 1st June at 12 PM'
 
 /**
  * True when the marketplace is open to cleaners. Reads the env var first

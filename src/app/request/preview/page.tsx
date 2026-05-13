@@ -255,6 +255,19 @@ async function publishRequest(data: RequestData, userId: string): Promise<{ id: 
     } catch (alertErr) {
       console.error('Cleaner job alert fire failed (non-fatal):', alertErr)
     }
+  } else {
+    // Pre-launch path: send the immediate "you're on the early list" email
+    // so the customer has a receipt in their inbox and knows what to expect
+    // 24 hours before launch.
+    try {
+      await fetch('/api/send-pre-launch-confirmation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId: inserted.id }),
+      })
+    } catch (preErr) {
+      console.error('Pre-launch confirmation email failed (non-fatal):', preErr)
+    }
   }
 
   return { id: inserted.id, status: listingStatus }

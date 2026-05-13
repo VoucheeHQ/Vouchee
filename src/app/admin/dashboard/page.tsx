@@ -1381,6 +1381,36 @@ export default function AdminDashboard() {
                   }}
                 />
 
+                {/* Pre-launch emails — sends both flavours (immediate confirmation + 24h reminder)
+                    so you can preview the visual + copy side-by-side. Templates are imported from
+                    src/lib/emails/pre-launch-received.ts and pre-launch-24h-reminder.ts,
+                    so editing those changes what the next test renders. */}
+                <TestCard
+                  title="📫 Pre-launch emails (received + 24h reminder)"
+                  description="Sends both flavours of the pre-launch flow: the immediate 'You're on the early list' confirmation that fires when a customer posts a listing before 1 June, and the '24-hour reminder' with the confirm-your-listing CTA that the cron fires the day before launch. Both go to your logged-in admin email so you can compare the styling side-by-side. The confirm link in the reminder points at a placeholder UUID — clicking it will redirect with pre_launch_confirm=notfound, which is expected."
+                  buttonLabel="Send test emails →"
+                  buttonColor="#2563eb"
+                  onRun={async () => {
+                    const res = await fetch('/api/admin/test-pre-launch-emails', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                    })
+                    const data = await res.json()
+                    if (!res.ok || !data.success) {
+                      return { success: false, message: data.error ?? 'Request failed' }
+                    }
+                    const receivedOK = !data.received?.error
+                    const reminderOK = !data.reminder?.error
+                    if (receivedOK && reminderOK) {
+                      return { success: true, message: `Both emails sent to ${data.sentTo}` }
+                    }
+                    const failures: string[] = []
+                    if (!receivedOK) failures.push(`received: ${data.received.error}`)
+                    if (!reminderOK) failures.push(`reminder: ${data.reminder.error}`)
+                    return { success: false, message: failures.join(' | ') }
+                  }}
+                />
+
                 {/* Launch flip — bulk converts all pre-launch listings to live and fires alerts.
                     Use ONCE on launch day, after flipping NEXT_PUBLIC_LAUNCHED to 'true' in Vercel. */}
                 <TestCard
