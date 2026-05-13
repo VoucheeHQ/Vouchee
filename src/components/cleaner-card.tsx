@@ -22,6 +22,10 @@ interface Props {
   // Optional override for compact (chat) variant — cleaner-side shows a number
   // instead of the avatar initial. e.g. avatarOverride={{ label: '2', subtitle: 'Faygate / Kilnwood Vale' }}
   avatarOverride?: { label: string; subtitle?: string }
+  // Optional contact block — shown only when the caller is a customer with a
+  // fulfilled clean_request assigned to this cleaner. Backend enforces this in
+  // /api/cleaners/[id]/card.
+  contact?: { email: string | null; phone: string | null } | null
 }
 
 // 5-star row that always shows 5 stars — empty by default, filled up to `rating`.
@@ -60,7 +64,7 @@ function Avatar({ label, color, size = 52 }: { label: string; color: string; siz
   )
 }
 
-export function CleanerCard({ data, variant = 'full', avatarOverride }: Props) {
+export function CleanerCard({ data, variant = 'full', avatarOverride, contact }: Props) {
   const { name_short, initial, member_since, credentials, stats, reviews } = data
   const ratingAvg = stats.rating_average ?? 0
   const hasRating = stats.rating_count > 0
@@ -189,12 +193,34 @@ export function CleanerCard({ data, variant = 'full', avatarOverride }: Props) {
     )
   }
 
+  // ─── Contact block — only when caller is authorised. Used by the customer
+  // dashboard's confirmed-cleaner card so the customer can reach their cleaner
+  // directly. /c/[shortId] passes contact={null} so this stays hidden there.
+  const ContactBlock = contact && (contact.email || contact.phone) ? (
+    <div style={{ marginTop: '14px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '12px', padding: '14px 16px' }}>
+      <div style={{ fontSize: '11px', fontWeight: 700, color: '#1e40af', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>Contact your cleaner</div>
+      {contact.email && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: contact.phone ? '6px' : 0 }}>
+          <span style={{ fontSize: '14px' }}>✉️</span>
+          <a href={`mailto:${contact.email}`} style={{ fontSize: '14px', color: '#1e40af', fontWeight: 600, textDecoration: 'none', wordBreak: 'break-all' }}>{contact.email}</a>
+        </div>
+      )}
+      {contact.phone && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <span style={{ fontSize: '14px' }}>📞</span>
+          <a href={`tel:${contact.phone}`} style={{ fontSize: '14px', color: '#1e40af', fontWeight: 600, textDecoration: 'none' }}>{contact.phone}</a>
+        </div>
+      )}
+    </div>
+  ) : null
+
   // ─── Public variant (/c/[shortId]) ──────────────────────────────────────────
   return (
     <div>
       {Header}
       {CredentialBadges}
       {ReviewsBlock}
+      {ContactBlock}
     </div>
   )
 }

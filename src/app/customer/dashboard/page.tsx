@@ -518,6 +518,182 @@ function ActiveRequestCard({ request, onPause, onRepublish, onDelete, onEdit, on
   )
 }
 
+// ─── Confirmed Cleaner Card ───────────────────────────────────────────────────
+//
+// Used in the "Confirmed cleaners" section. Replaces the listing-recap that
+// ActiveRequestCard renders for fulfilled requests — at this point the customer
+// has chosen a cleaner, so the relevant info is the cleaner themselves + how
+// to reach them. The job details are collapsed by default since they're the
+// same details the customer already approved.
+
+function ConfirmedCleanerCard({ request, onDelete, onEdit, onSwitch, onCover }: {
+  request: CleaningRequest; onDelete: () => void; onEdit: () => void
+  onSwitch: () => void; onCover: () => void
+}) {
+  const [cleaner, setCleaner] = useState<CleanerCardData | null>(null)
+  const [contact, setContact] = useState<{ email: string | null; phone: string | null } | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [expanded, setExpanded] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    const cleanerId = request.assigned_cleaner_id
+    if (!cleanerId) { setLoading(false); return }
+    ;(async () => {
+      try {
+        const res = await fetch(`/api/cleaners/${cleanerId}/card`)
+        if (!res.ok) throw new Error('Failed to load cleaner')
+        const data = await res.json()
+        if (cancelled) return
+        setCleaner(data.cleaner)
+        setContact(data.contact)
+      } catch (e) {
+        console.error('ConfirmedCleanerCard: cleaner fetch failed', e)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [request.assigned_cleaner_id])
+
+  const hours = request.hours_per_session ?? 0
+  const rate = request.hourly_rate ?? 0
+  const estPerSession = hours && rate ? `~£${(hours * rate).toFixed(2)}` : null
+  const locationLabel = request.zone ? (ZONE_LABELS[request.zone] ?? request.zone) : 'Horsham'
+  const daysLabel = formatDays(request.preferred_days)
+  const beforeStart = checkIsBeforeStartDate(request.start_date)
+
+  return (
+    <div style={{ background: 'white', borderRadius: '16px', border: '1.5px solid #bbf7d0', boxShadow: '0 2px 12px rgba(0,0,0,0.06)', marginBottom: '16px', overflow: 'hidden' }}>
+      <div style={{ background: '#f0fdf4', padding: '12px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#16a34a', display: 'inline-block' }} />
+          <span style={{ fontSize: '13px', fontWeight: 700, color: '#15803d' }}>Cleaner confirmed</span>
+        </div>
+        <span style={{ fontSize: '12px', color: '#94a3b8' }}>Posted {daysSince(request.created_at)} days ago</span>
+      </div>
+
+      <div style={{ padding: '20px' }}>
+        {/* Cleaner card with contact block */}
+        {loading ? (
+          <div style={{ padding: '24px 0', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>Loading cleaner…</div>
+        ) : cleaner ? (
+          <CleanerCard data={cleaner} variant="public" contact={contact} />
+        ) : (
+          <div style={{ padding: '16px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '10px', fontSize: '13px', color: '#b91c1c' }}>
+            Couldn&apos;t load cleaner details — refresh or contact support.
+          </div>
+        )}
+
+        {/* Collapsed job summary — area + est per clean visible by default,
+            expand for the full listing recap. */}
+        <button
+          type="button"
+          onClick={() => setExpanded(e => !e)}
+          style={{
+            width: '100%',
+            marginTop: '18px',
+            padding: '12px 14px',
+            background: '#f8fafc',
+            border: '1px solid #e2e8f0',
+            borderRadius: '12px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '12px',
+            cursor: 'pointer',
+            fontFamily: "'DM Sans', sans-serif",
+            textAlign: 'left',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
+            <span style={{ fontSize: '14px' }}>📍</span>
+            <span style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>{locationLabel}</span>
+            {estPerSession && (
+              <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 500 }}>· Est. {estPerSession}/clean</span>
+            )}
+          </div>
+          <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 600 }}>{expanded ? 'Hide details ▲' : 'Show details ▼'}</span>
+        </button>
+
+        {expanded && (
+          <div style={{ marginTop: '12px', padding: '14px 16px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: rate > 0 ? '14px' : 0 }}>
+              {request.bedrooms ? <Chip>{request.bedrooms} bed</Chip> : null}
+              {request.bathrooms ? <Chip>{request.bathrooms} bath</Chip> : null}
+              {hours > 0 ? <Chip>{hours} hrs</Chip> : null}
+              {request.frequency ? <Chip>{FREQUENCY_LABEL[request.frequency] ?? request.frequency}</Chip> : null}
+              {daysLabel ? <Chip>{daysLabel}</Chip> : null}
+              {request.time_of_day ? <Chip>{request.time_of_day}</Chip> : null}
+            </div>
+            {(request.tasks ?? []).length > 0 && (
+              <div style={{ marginBottom: rate > 0 ? '14px' : 0 }}>
+                <div style={{ fontSize: '10px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>Tasks</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                  {(request.tasks ?? []).map(task => <span key={task} style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#15803d', fontSize: '12px', fontWeight: 600, padding: '4px 10px', borderRadius: '100px' }}>{TASK_LABELS[task] ?? task}</span>)}
+                </div>
+              </div>
+            )}
+            {rate > 0 && (
+              <div style={{ background: '#fefce8', border: '1px solid #fef08a', borderRadius: '10px', padding: '12px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                <div>
+                  <div style={{ fontSize: '10px', fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '4px' }}>Offered rate</div>
+                  <div style={{ fontSize: '20px', fontWeight: 800, color: '#78350f', lineHeight: 1 }}>£{rate.toFixed(2)}<span style={{ fontSize: '13px', fontWeight: 500 }}>/hr</span></div>
+                </div>
+                {estPerSession && (
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '10px', fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '4px' }}>Est. per clean</div>
+                    <div style={{ fontSize: '16px', fontWeight: 700, color: '#92400e' }}>{estPerSession}</div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Action buttons */}
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '16px' }}>
+          <ActionBtn onClick={onEdit} primary>Edit listing</ActionBtn>
+          <ActionBtn onClick={onSwitch}>{beforeStart ? '⚠️ Problem with my cleaner' : '🔄 Switch cleaner'}</ActionBtn>
+          <ActionBtn onClick={onDelete} danger>Cancel subscription</ActionBtn>
+        </div>
+
+        {/* Cover-clean SOS button — only after the first clean has happened. */}
+        {firstCleanHappened(request.start_date) && (
+          <div style={{ marginTop: '18px', paddingTop: '16px', borderTop: '1px dashed #e2e8f0' }}>
+            <button
+              type="button"
+              onClick={onCover}
+              style={{
+                width: '100%',
+                background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '14px',
+                padding: '16px',
+                fontSize: '15px',
+                fontWeight: 800,
+                cursor: 'pointer',
+                fontFamily: "'DM Sans', sans-serif",
+                letterSpacing: '-0.2px',
+                boxShadow: '0 6px 20px rgba(168, 85, 247, 0.35)',
+                transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 10px 28px rgba(168, 85, 247, 0.45)' }}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(168, 85, 247, 0.35)' }}
+            >
+              🆘 Need cover for this clean?
+            </button>
+            <div style={{ fontSize: '12px', color: '#94a3b8', textAlign: 'center', marginTop: '8px', lineHeight: 1.5 }}>
+              One-off — you&apos;ll pay your cover cleaner directly
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ─── Past Listing Row ─────────────────────────────────────────────────────────
 
 function PastListingRow({ request }: { request: CleaningRequest }) {
@@ -1062,8 +1238,9 @@ function CustomerDashboardContent() {
             <div style={{ marginBottom: '36px' }}>
               <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '14px' }}>Request a clean</div>
               <div className="dashboard-tile-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                {/* Regular clean — primary action; greys out when an active listing exists */}
-                <div style={{ background: 'white', borderRadius: '14px', border: '1.5px solid #e2e8f0', padding: '18px', position: 'relative', overflow: 'hidden' }}>
+                {/* Regular clean — primary action. Blue accent border when actionable;
+                    border falls away to neutral grey when an active listing exists. */}
+                <div style={{ background: 'white', borderRadius: '14px', border: hasActive ? '1.5px solid #e2e8f0' : '2px solid #3b82f6', padding: '18px', position: 'relative', overflow: 'hidden' }}>
                   {hasActive && <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.7)', borderRadius: '14px', zIndex: 1 }} />}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}><span style={{ fontSize: '22px' }}>🧹</span><span style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>Regular clean</span></div>
                   <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '14px', lineHeight: 1.4 }}>Weekly or fortnightly recurring clean</div>
@@ -1073,8 +1250,8 @@ function CustomerDashboardContent() {
 
                 {/* Cover clean — visible-but-muted feature-discovery tile.
                     The real entry point is the 🆘 button on the fulfilled-request card below.
-                    Click handler is context-aware: nudges users with a confirmed cleaner toward
-                    that button, and tells everyone else the prerequisite. */}
+                    Button uses the same purple→pink gradient as the SOS button there so the
+                    visual language is consistent across the discovery + action paths. */}
                 <div style={{ background: '#f8fafc', borderRadius: '14px', border: '1.5px solid #e2e8f0', padding: '18px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}><span style={{ fontSize: '22px' }}>🆘</span><span style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>Cover clean</span></div>
                   <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '14px', lineHeight: 1.4 }}>One-off cover when your regular cleaner can&apos;t make it</div>
@@ -1086,19 +1263,19 @@ function CustomerDashboardContent() {
                         showToast('You have no active cleaners to cover. Cover cleans appear once you have a confirmed cleaner.')
                       }
                     }}
-                    style={{ background: '#f1f5f9', color: '#64748b', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
+                    style={{ background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", boxShadow: '0 4px 12px rgba(168, 85, 247, 0.25)' }}
                   >Request cover →</button>
                 </div>
 
-                {/* Special request — combines former End-of-tenancy + Oven-clean tiles into a
-                    single full-width row. Future: redirect to dedicated /request/special page. */}
+                {/* Special request — End-of-tenancy / oven / deep clean. Routes to
+                    /one-off which emails the partner network. */}
                 <div style={{ background: 'white', borderRadius: '14px', border: '1.5px solid #e2e8f0', padding: '18px', gridColumn: '1 / -1' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
                     <div style={{ flex: 1, minWidth: '200px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}><span style={{ fontSize: '22px' }}>✨</span><span style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>Special request</span></div>
                       <div style={{ fontSize: '12px', color: '#64748b', lineHeight: 1.4 }}>End of tenancy, oven clean, and other one-off jobs</div>
                     </div>
-                    <button onClick={() => showToast('Special requests — contact us at contact@vouchee.co.uk')} style={{ background: '#f1f5f9', color: '#64748b', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", flexShrink: 0, whiteSpace: 'nowrap' }}>Enquire</button>
+                    <button onClick={() => router.push('/one-off')} style={{ background: '#f1f5f9', color: '#0f172a', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", flexShrink: 0, whiteSpace: 'nowrap' }}>Enquire →</button>
                   </div>
                 </div>
               </div>
@@ -1124,9 +1301,14 @@ function CustomerDashboardContent() {
               <div style={{ marginBottom: '36px' }}>
                 <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '14px' }}>Confirmed cleaners</div>
                 {fulfilledRequests.map(req => (
-                  <ActiveRequestCard key={req.id} request={req} onPause={() => {}} onRepublish={() => {}} onDelete={() => handleDelete(req.id)} onEdit={() => setEditingRequest(req)}
+                  <ConfirmedCleanerCard
+                    key={req.id}
+                    request={req}
+                    onDelete={() => handleDelete(req.id)}
+                    onEdit={() => setEditingRequest(req)}
                     onSwitch={() => setSwitchModal({ requestId: req.id, isBeforeStart: checkIsBeforeStartDate(req.start_date) })}
-                    onCover={() => setCoverModalReq(req)} />
+                    onCover={() => setCoverModalReq(req)}
+                  />
                 ))}
               </div>
             )}

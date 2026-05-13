@@ -63,9 +63,33 @@ export async function GET(
 
   // ─── 2. Profile row ──────────────────────────────────────────────────────
   const { data: profile } = await admin
-    .from('profiles').select('full_name').eq('id', cleaner.profile_id).single() as { data: { full_name: string | null } | null }
+    .from('profiles').select('full_name, email, phone').eq('id', cleaner.profile_id).single() as { data: { full_name: string | null; email: string | null; phone: string | null } | null }
 
   const fullName = profile?.full_name ?? ''
+
+  // ─── Contact info — only included if caller has a fulfilled request with
+  // this cleaner. Email + phone are sensitive; we don't expose them to every
+  // logged-in user (anyone can read the base card data). The customer's
+  // confirmed-cleaner view needs them to coordinate cleans directly.
+  let contact: { email: string | null; phone: string | null } | null = null
+  try {
+    const { data: callerCustomer } = await admin
+      .from('customers').select('id').eq('profile_id', user.id).single() as { data: { id: string } | null }
+    if (callerCustomer) {
+      const { data: ownedFulfilled } = await admin
+        .from('clean_requests')
+        .select('id')
+        .eq('customer_id', callerCustomer.id)
+        .eq('assigned_cleaner_id', cleanerId)
+        .in('status', ['fulfilled'])
+        .limit(1) as { data: Array<{ id: string }> | null }
+      if (ownedFulfilled && ownedFulfilled.length > 0) {
+        contact = { email: profile?.email ?? null, phone: profile?.phone ?? null }
+      }
+    }
+  } catch (e) {
+    console.warn('contact lookup failed (non-fatal):', e)
+  }
 
   // ─── 3. Real reviews (top 3, most recent first) ──────────────────────────
   // The reviews table stores customer_profile_id → profiles.id directly,
@@ -148,5 +172,5 @@ export async function GET(
     zones: cleaner.zones ?? [],
   }
 
-  return NextResponse.json({ cleaner: card })
+  return NextResponse.json({ cleaner: card, contact })
 }
