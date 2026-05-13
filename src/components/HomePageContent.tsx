@@ -13,11 +13,6 @@ export default function HomePageContent({ location = 'Horsham' }: HomePageProps)
       <section className="relative overflow-hidden py-20 md:py-32">
         <div className="container">
           <div className="mx-auto max-w-3xl text-center">
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-brand-100 px-4 py-1.5 text-sm font-medium text-brand-700">
-              <Sparkles className="h-4 w-4" />
-              <span>Trusted local cleaners in {location}</span>
-            </div>
-
             <h1 className="mb-6 text-4xl font-bold tracking-tight text-ink md:text-6xl">
               Find a local cleaner,{' '}
               <span className="text-brand-600">vouched for</span>{' '}
@@ -38,7 +33,7 @@ export default function HomePageContent({ location = 'Horsham' }: HomePageProps)
                 <span className="text-sm text-brand-200">Weekly · Fortnightly · Monthly</span>
               </Link>
               <Link
-                href="/request/property?type=one-off"
+                href="/one-off"
                 className="group flex flex-col items-center rounded-2xl border-2 border-brand-600 bg-white px-8 py-6 text-brand-700 shadow-lg transition-all hover:-translate-y-1 hover:shadow-xl sm:w-52"
               >
                 <span className="mb-2 text-xl font-bold">One off clean</span>
