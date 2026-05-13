@@ -541,7 +541,7 @@ function ConfirmedCleanerCard({ request, onDelete, onEdit, onSwitch, onCover }: 
     if (!cleanerId) { setLoading(false); return }
     ;(async () => {
       try {
-        const res = await fetch(`/api/cleaners/${cleanerId}/card`)
+        const res = await fetch(`/api/cleaners/${cleanerId}/card?withContact=1`)
         if (!res.ok) throw new Error('Failed to load cleaner')
         const data = await res.json()
         if (cancelled) return
