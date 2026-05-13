@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Header } from '@/components/layout/header'
@@ -218,6 +218,59 @@ const PLATFORM_CHECKLIST = [
   { id: 'p3', label: 'Explained: job application process and customer expectations' },
   { id: 'p4', label: 'Explained: what happens if a customer cancels' },
 ]
+
+// ─── Sort state + helper ─────────────────────────────────────────────────
+// Each tab tracks its own { key, dir } object. Clicking the same header
+// flips direction; clicking a new header sets key + defaults to desc.
+type SortDir = 'asc' | 'desc'
+interface SortState { key: string; dir: SortDir }
+
+function flipSort(prev: SortState, key: string): SortState {
+  if (prev.key === key) return { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' }
+  return { key, dir: 'desc' }
+}
+
+// Generic stable sort by string/number/Date key. NULL/undefined sorts last.
+function sortRows<T extends Record<string, any>>(rows: T[], state: SortState): T[] {
+  const dir = state.dir === 'asc' ? 1 : -1
+  return [...rows].sort((a, b) => {
+    const av = a[state.key]
+    const bv = b[state.key]
+    if (av == null && bv == null) return 0
+    if (av == null) return 1
+    if (bv == null) return -1
+    if (typeof av === 'string' && typeof bv === 'string') return av.localeCompare(bv) * dir
+    if (av < bv) return -1 * dir
+    if (av > bv) return 1 * dir
+    return 0
+  })
+}
+
+// "Load 25 more" button shown at the bottom of paginated tables. Hides
+// when search is active or when the last batch returned < 25 rows.
+function LoadMoreButton({ visible, loading, onClick }: { visible: boolean; loading: boolean; onClick: () => void }) {
+  if (!visible) return null
+  return (
+    <div style={{ padding: '12px', textAlign: 'center', background: '#f8fafc', borderTop: '1px solid #e2e8f0' }}>
+      <button onClick={onClick} disabled={loading} style={{ background: 'white', color: '#0f172a', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 20px', fontSize: '12px', fontWeight: 600, cursor: loading ? 'wait' : 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
+        {loading ? 'Loading…' : 'Load 25 more'}
+      </button>
+    </div>
+  )
+}
+
+// Clickable column header with sort-direction indicator.
+function SortableTh({ label, sortKey, state, onChange }: { label: string; sortKey: string; state: SortState; onChange: (k: string) => void }) {
+  const active = state.key === sortKey
+  return (
+    <th onClick={() => onChange(sortKey)} style={{ padding: '12px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 700, color: active ? '#0f172a' : '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
+      {label}
+      <span style={{ marginLeft: '6px', opacity: active ? 1 : 0.3, fontSize: '10px' }}>
+        {active ? (state.dir === 'asc' ? '▲' : '▼') : '▾'}
+      </span>
+    </th>
+  )
+}
 
 function PipelineCount({ label, count, color, active, onClick }: { label: string; count: number; color: string; active: boolean; onClick: () => void }) {
   return (
@@ -455,6 +508,43 @@ function DocumentUploadSlot({
   )
 }
 
+// ─── Activity timeline ───────────────────────────────────────────────────
+// Renders a chronological story of the cleaner's journey using fields
+// already on the cleaner row. Each event shows label + relative+absolute
+// date. Skips events that haven't happened yet (null timestamps).
+function ActivityTimeline({ cleaner, convCount, latestConvAt }: { cleaner: CleanerRow; convCount: number; latestConvAt: string | null }) {
+  type Event = { at: string; emoji: string; label: string; color: string }
+  const events: Event[] = []
+  if (cleaner.created_at) events.push({ at: cleaner.created_at, emoji: '📝', label: 'Applied to Vouchee', color: '#3b82f6' })
+  if ((cleaner as any).dbs_uploaded_at) events.push({ at: (cleaner as any).dbs_uploaded_at, emoji: '🛡️', label: 'DBS uploaded', color: '#22c55e' })
+  if ((cleaner as any).insurance_uploaded_at) events.push({ at: (cleaner as any).insurance_uploaded_at, emoji: '📋', label: 'Insurance uploaded', color: '#22c55e' })
+  if ((cleaner as any).right_to_work_uploaded_at) events.push({ at: (cleaner as any).right_to_work_uploaded_at, emoji: '✅', label: 'Right to work uploaded', color: '#22c55e' })
+  if ((cleaner as any).approved_at) events.push({ at: (cleaner as any).approved_at, emoji: '🎉', label: 'Approved', color: '#16a34a' })
+  if ((cleaner as any).rejected_at) events.push({ at: (cleaner as any).rejected_at, emoji: '🚪', label: 'Rejected', color: '#dc2626' })
+  if ((cleaner as any).suspended_at) events.push({ at: (cleaner as any).suspended_at, emoji: '⏸️', label: 'Suspended', color: '#dc2626' })
+  if (latestConvAt) events.push({ at: latestConvAt, emoji: '💬', label: `Most recent conversation (${convCount} total)`, color: '#0f172a' })
+
+  if (events.length === 0) return null
+  events.sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime())
+
+  return (
+    <div style={{ marginBottom: '28px' }}>
+      <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '12px' }}>Activity</div>
+      <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '14px 18px' }}>
+        {events.map((ev, i) => (
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 0', borderTop: i > 0 ? '1px solid #f1f5f9' : 'none' }}>
+            <div style={{ fontSize: '18px', width: '24px', textAlign: 'center', flexShrink: 0 }}>{ev.emoji}</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: '13px', fontWeight: 600, color: ev.color, lineHeight: 1.3 }}>{ev.label}</div>
+              <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>{fmt(ev.at)} · {ago(ev.at)}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function CleanerDrawer({ cleaner: initialCleaner, onClose, onSaved }: { cleaner: CleanerRow; onClose: () => void; onSaved: () => void }) {
   // Track the cleaner's state internally so we can refresh the drawer
   // after an upload/verify without closing it
@@ -580,6 +670,11 @@ function CleanerDrawer({ cleaner: initialCleaner, onClose, onSaved }: { cleaner:
         </div>
 
         <div style={{ padding: '24px 28px' }}>
+          {/* Activity timeline — derived from cleaner row + conversations
+              count (already loaded). Ascending chronological so the latest
+              event sits at the bottom; quick visual story of where they're at. */}
+          <ActivityTimeline cleaner={cleaner} convCount={cleanerConvos.length} latestConvAt={cleanerConvos[0]?.created_at ?? null} />
+
           {/* Qualifying questions */}
           <div style={{ marginBottom: '28px' }}>
             <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '12px' }}>Qualifying questions</div>
@@ -869,7 +964,53 @@ export default function AdminDashboard() {
   // Per-tab "loading more on search" indicator. Doesn't block the page,
   // just shows in the search bar so the admin knows something's happening.
   const [searching, setSearching] = useState<Record<string, boolean>>({})
+  // "New since you last looked" per-tab counts. Realtime INSERT events
+  // increment these; switching to a tab resets it to 0.
+  const [newCounts, setNewCounts] = useState<Record<string, number>>({})
+  // Stats panel refresh state — spinner on the manual button.
+  const [statsRefreshing, setStatsRefreshing] = useState(false)
+  // Per-tab refs to the search input so "/" can focus the right one.
+  const userSearchInputRef = useRef<HTMLInputElement | null>(null)
+  const cleanerSearchInputRef = useRef<HTMLInputElement | null>(null)
+  const listingSearchInputRef = useRef<HTMLInputElement | null>(null)
+  const applicationSearchInputRef = useRef<HTMLInputElement | null>(null)
+  const conversationSearchInputRef = useRef<HTMLInputElement | null>(null)
+  // Per-tab sort state — default to most-recent (created_at desc).
+  const [userSort, setUserSort] = useState<SortState>({ key: 'created_at', dir: 'desc' })
+  const [cleanerSort, setCleanerSort] = useState<SortState>({ key: 'created_at', dir: 'desc' })
+  const [listingSort, setListingSort] = useState<SortState>({ key: 'created_at', dir: 'desc' })
+  const [applicationSort, setApplicationSort] = useState<SortState>({ key: 'created_at', dir: 'desc' })
+  // "More to load" flags — set false when a load returns < 25 rows. Hides
+  // the Load more button at the bottom of the table. Reset to true on the
+  // initial mount load.
+  const [hasMore, setHasMore] = useState<Record<string, boolean>>({ users: true, cleaners: true, listings: true, applications: true, conversations: true })
+  // "Loading more" spinner state per tab.
+  const [loadingMore, setLoadingMore] = useState<Record<string, boolean>>({})
   const supabase = createClient()
+
+  // Tab switcher: sets the tab AND clears the "new since you last looked"
+  // counter for that tab, AND syncs the tabRef used by realtime callbacks.
+  const switchTab = (next: Tab) => {
+    setTab(next)
+    tabRef.current = next
+    setNewCounts(c => ({ ...c, [next]: 0 }))
+  }
+
+  // Wraps the corresponding load function with the current offset (state
+  // length) + a per-tab "loadingMore" spinner so the button can show
+  // "Loading…". Used by every table's LoadMoreButton.
+  const loadMoreFor = async (key: string) => {
+    setLoadingMore(m => ({ ...m, [key]: true }))
+    try {
+      if (key === 'users') await loadUsers('', users.length)
+      else if (key === 'cleaners') await loadCleaners('', cleanersList.length)
+      else if (key === 'listings') await loadListings('', listings.length)
+      else if (key === 'applications') await loadApplications('', applications.length)
+      else if (key === 'conversations') await loadConversations('', conversations.length)
+    } finally {
+      setLoadingMore(m => ({ ...m, [key]: false }))
+    }
+  }
 
   // Debounced server-side search: each tab watches its own search state and
   // re-fires the matching load function 300ms after the admin stops typing.
@@ -910,6 +1051,87 @@ export default function AdminDashboard() {
     return () => clearTimeout(t)
   }, [conversationSearch])
 
+  // ─── Realtime: keep refs of the current search + tab in sync ──────────
+  // Without these, the realtime callbacks below would close over stale
+  // values and reload the wrong search context after an INSERT.
+  const userSearchRef = useRef(userSearch); useEffect(() => { userSearchRef.current = userSearch }, [userSearch])
+  const cleanerSearchRef = useRef(cleanerSearch); useEffect(() => { cleanerSearchRef.current = cleanerSearch }, [cleanerSearch])
+  const listingSearchRef = useRef(listingSearch); useEffect(() => { listingSearchRef.current = listingSearch }, [listingSearch])
+  const applicationSearchRef = useRef(applicationSearch); useEffect(() => { applicationSearchRef.current = applicationSearch }, [applicationSearch])
+  const conversationSearchRef = useRef(conversationSearch); useEffect(() => { conversationSearchRef.current = conversationSearch }, [conversationSearch])
+  const tabRef = useRef<Tab>('overview')
+
+  // ─── Realtime subscriptions ──────────────────────────────────────────
+  // INSERTs on cleaners / applications / keyword_violations / clean_requests
+  // re-fire the matching list load AND bump the "new since you last looked"
+  // counter for that tab (unless the admin is already viewing it). Stats
+  // also re-pull because counts change.
+  useEffect(() => {
+    const bump = (tabName: string) => {
+      if (tabRef.current === tabName) return // already looking — no badge
+      setNewCounts(c => ({ ...c, [tabName]: (c[tabName] ?? 0) + 1 }))
+    }
+    const channel = supabase.channel('admin-dashboard-realtime')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'cleaners' }, () => {
+        loadCleaners(cleanerSearchRef.current); loadStats(); bump('cleaners')
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'applications' }, () => {
+        loadApplications(applicationSearchRef.current); loadStats(); bump('applications')
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'keyword_violations' }, () => {
+        loadViolations(); loadStats(); bump('violations')
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'clean_requests' }, () => {
+        loadListings(listingSearchRef.current); loadStats(); bump('listings')
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'conversations' }, () => {
+        loadConversations(conversationSearchRef.current); loadStats()
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [])
+
+  // ─── Keyboard shortcuts ────────────────────────────────────────────────
+  //   /     → focus the active tab's search box
+  //   Esc   → close drawer / modal if one is open
+  // Skipped when the user is already typing in a textarea/input so the
+  // shortcuts don't fight with normal text entry.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null
+      const inField = target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable
+      if (e.key === '/' && !inField) {
+        e.preventDefault()
+        const refByTab: Record<string, React.RefObject<HTMLInputElement | null>> = {
+          users: userSearchInputRef,
+          cleaners: cleanerSearchInputRef,
+          listings: listingSearchInputRef,
+          applications: applicationSearchInputRef,
+          conversations: conversationSearchInputRef,
+        }
+        refByTab[tabRef.current]?.current?.focus()
+        return
+      }
+      if (e.key === 'Escape') {
+        // Drawer / modal close priority — only one should ever be open.
+        if (viewingCleaner) { setViewingCleaner(null); return }
+        if (viewingConv) { setViewingConv(null); return }
+        if (confirmAction) { setConfirmAction(null); return }
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [viewingCleaner, viewingConv, confirmAction])
+
+  // Auto-refresh stats every 30s while the admin is on the overview tab.
+  // No interval on other tabs — the realtime channel handles incremental
+  // updates, and we don't want unnecessary background queries.
+  useEffect(() => {
+    if (tab !== 'overview') return
+    const id = setInterval(() => { loadStats() }, 30000)
+    return () => clearInterval(id)
+  }, [tab])
+
   useEffect(() => {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser()
@@ -940,8 +1162,9 @@ export default function AdminDashboard() {
 
   // Default load = 25 most recent. When a search term is supplied, hit the
   // server with an ilike on name + email so we can find people who aren't
-  // in the first 25. Keeps initial load fast as the user base grows.
-  const loadUsers = async (search = '') => {
+  // in the first 25. When offset > 0, we're paginating — append to state
+  // rather than replacing, and update hasMore based on the returned count.
+  const loadUsers = async (search = '', offset = 0) => {
     let q = (supabase as any)
       .from('profiles')
       .select('id, full_name, email, role, created_at, suspended')
@@ -951,16 +1174,20 @@ export default function AdminDashboard() {
     if (s) {
       q = q.or(`full_name.ilike.%${s}%,email.ilike.%${s}%`).limit(100)
     } else {
-      q = q.limit(25)
+      q = q.range(offset, offset + 24)
     }
     const { data } = await q
-    setUsers(data ?? [])
+    const rows = data ?? []
+    if (offset > 0) setUsers(prev => [...prev, ...rows])
+    else setUsers(rows)
+    if (!s) setHasMore(m => ({ ...m, users: rows.length === 25 }))
   }
 
   // Two-query load (was N+1 per cleaner). When a search term is supplied,
   // we first find matching profile ids, then load only cleaners whose
-  // profile_id is in that set. Default = 25 most recent.
-  const loadCleaners = async (search = '') => {
+  // profile_id is in that set. Default = 25 most recent. Offset > 0
+  // paginates (append + update hasMore).
+  const loadCleaners = async (search = '', offset = 0) => {
     const s = search.trim()
 
     // ── Step 1: optional profile-id pre-filter for search ──
@@ -981,9 +1208,13 @@ export default function AdminDashboard() {
       .select('id, profile_id, application_status, created_at, dbs_checked, has_insurance, right_to_work, interview_notes, interview_qualifying, interview_platform, approved_at, rejected_at, rejection_reason, cleans_completed, dbs_verified, dbs_file_url, dbs_expiry, dbs_uploaded_at, insurance_verified, insurance_file_url, insurance_expiry, insurance_uploaded_at, right_to_work_verified, right_to_work_file_url, right_to_work_expiry, right_to_work_uploaded_at, suspension_reason, suspended_at')
       .order('created_at', { ascending: false })
     if (profileFilterIds) cq = cq.in('profile_id', profileFilterIds).limit(100)
-    else cq = cq.limit(25)
+    else cq = cq.range(offset, offset + 24)
     const { data: cleaners } = await cq
-    if (!cleaners || (cleaners as any[]).length === 0) { setCleanersList([]); return }
+    if (!cleaners || (cleaners as any[]).length === 0) {
+      if (offset === 0) setCleanersList([])
+      if (!s) setHasMore(m => ({ ...m, cleaners: false }))
+      return
+    }
 
     // ── Step 3: batch profile lookup (replaces N+1 per-row .single()) ──
     const profileIds = (cleaners as any[]).map(c => c.profile_id)
@@ -996,12 +1227,15 @@ export default function AdminDashboard() {
       full_name: (pMap.get(c.profile_id) as any)?.full_name ?? '—',
       email: (pMap.get(c.profile_id) as any)?.email ?? '—',
     })) as CleanerRow[]
-    setCleanersList(enriched)
+    if (offset > 0) setCleanersList(prev => [...prev, ...enriched])
+    else setCleanersList(enriched)
+    if (!s) setHasMore(m => ({ ...m, cleaners: enriched.length === 25 }))
   }
 
   // Three-query load (was N+1 per listing). Search matches customer name,
-  // customer email, or zone string. Default = 25 most recent.
-  const loadListings = async (search = '') => {
+  // customer email, or zone string. Default = 25 most recent. Offset > 0
+  // paginates.
+  const loadListings = async (search = '', offset = 0) => {
     const s = search.trim()
 
     // ── Step 1: when searching, build the set of matching customer_ids
@@ -1033,10 +1267,14 @@ export default function AdminDashboard() {
         rq = rq.ilike('zone', `%${s}%`).limit(100)
       }
     } else {
-      rq = rq.limit(25)
+      rq = rq.range(offset, offset + 24)
     }
     const { data: reqs } = await rq
-    if (!reqs || (reqs as any[]).length === 0) { setListings([]); return }
+    if (!reqs || (reqs as any[]).length === 0) {
+      if (offset === 0) setListings([])
+      if (!s) setHasMore(m => ({ ...m, listings: false }))
+      return
+    }
 
     // ── Step 3: batch customer + profile lookups ──
     const customerIds = Array.from(new Set((reqs as any[]).map(r => r.customer_id)))
@@ -1060,7 +1298,9 @@ export default function AdminDashboard() {
         customer_email: p?.email ?? '',
       }
     })
-    setListings(enriched)
+    if (offset > 0) setListings(prev => [...prev, ...enriched])
+    else setListings(enriched)
+    if (!s) setHasMore(m => ({ ...m, listings: enriched.length === 25 }))
   }
 
   // Helper: given a list of cleaner ids and customer (profiles.id) ids,
@@ -1087,13 +1327,17 @@ export default function AdminDashboard() {
   }
 
   // Batch-load with optional text search across cleaner name / customer name / zone.
-  // Default = 25 most recent, search = up to 100 matches.
-  const loadApplications = async (search = '') => {
+  // Default = 25 most recent, search = up to 100 matches. Offset > 0 paginates.
+  const loadApplications = async (search = '', offset = 0) => {
     const s = search.trim()
     const { data: apps } = s
       ? await searchApplications(s)
-      : await (supabase as any).from('applications').select('id, status, created_at, message, cleaner_id, request_id').order('created_at', { ascending: false }).limit(25)
-    if (!apps || (apps as any[]).length === 0) { setApplications([]); return }
+      : await (supabase as any).from('applications').select('id, status, created_at, message, cleaner_id, request_id').order('created_at', { ascending: false }).range(offset, offset + 24)
+    if (!apps || (apps as any[]).length === 0) {
+      if (offset === 0) setApplications([])
+      if (!s) setHasMore(m => ({ ...m, applications: false }))
+      return
+    }
 
     // Batch-fetch request zones + customer_ids
     const reqIds = Array.from(new Set((apps as any[]).map(a => a.request_id)))
@@ -1121,7 +1365,9 @@ export default function AdminDashboard() {
         zone: r.zone ?? '—',
       }
     })
-    setApplications(enriched)
+    if (offset > 0) setApplications(prev => [...prev, ...enriched])
+    else setApplications(enriched)
+    if (!s) setHasMore(m => ({ ...m, applications: enriched.length === 25 }))
   }
 
   // Server-side search across applications by joining through the related
@@ -1164,12 +1410,16 @@ export default function AdminDashboard() {
       .or(orParts.join(',')).order('created_at', { ascending: false }).limit(100)
   }
 
-  const loadConversations = async (search = '') => {
+  const loadConversations = async (search = '', offset = 0) => {
     const s = search.trim()
     const { data: convs } = s
       ? await searchConversations(s)
-      : await (supabase as any).from('conversations').select('id, created_at, cleaner_id, customer_id, clean_request_id').order('created_at', { ascending: false }).limit(25)
-    if (!convs || (convs as any[]).length === 0) { setConversations([]); return }
+      : await (supabase as any).from('conversations').select('id, created_at, cleaner_id, customer_id, clean_request_id').order('created_at', { ascending: false }).range(offset, offset + 24)
+    if (!convs || (convs as any[]).length === 0) {
+      if (offset === 0) setConversations([])
+      if (!s) setHasMore(m => ({ ...m, conversations: false }))
+      return
+    }
 
     // Batch zone lookup
     const reqIds = Array.from(new Set((convs as any[]).map(c => c.clean_request_id)))
@@ -1208,7 +1458,9 @@ export default function AdminDashboard() {
       last_message: lastByConv.get(c.id)?.content ?? '',
       last_message_at: lastByConv.get(c.id)?.created_at ?? null,
     }))
-    setConversations(enriched)
+    if (offset > 0) setConversations(prev => [...prev, ...enriched])
+    else setConversations(enriched)
+    if (!s) setHasMore(m => ({ ...m, conversations: enriched.length === 25 }))
   }
 
   const searchConversations = async (s: string) => {
@@ -1310,8 +1562,8 @@ export default function AdminDashboard() {
               <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>Full platform visibility and controls</p>
             </div>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-              <button onClick={() => setTab('customer-view')} style={{ background: '#f0fdf4', color: '#15803d', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>👤 Customer view</button>
-              <button onClick={() => setTab('cleaner-view')} style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>🧹 Cleaner view</button>
+              <button onClick={() => switchTab('customer-view')} style={{ background: '#f0fdf4', color: '#15803d', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>👤 Customer view</button>
+              <button onClick={() => switchTab('cleaner-view')} style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>🧹 Cleaner view</button>
               <button onClick={async () => { const supabase = createClient(); await supabase.auth.signOut(); router.refresh(); router.replace('/') }}
                 style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>Sign out</button>
             </div>
@@ -1320,13 +1572,24 @@ export default function AdminDashboard() {
           {/* Tabs */}
           <div style={{ display: 'flex', gap: '4px', marginBottom: '32px', background: 'white', padding: '4px', borderRadius: '12px', border: '1px solid #e2e8f0', flexWrap: 'wrap' }}>
             {tabs.map(t => (
-              <button key={t.id} onClick={() => setTab(t.id)} style={{ padding: '8px 14px', borderRadius: '9px', border: 'none', cursor: 'pointer', background: tab === t.id ? '#0f172a' : 'transparent', color: tab === t.id ? 'white' : '#64748b', fontSize: '12px', fontWeight: 600, fontFamily: "'DM Sans', sans-serif", display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <button key={t.id} onClick={() => switchTab(t.id)} style={{ padding: '8px 14px', borderRadius: '9px', border: 'none', cursor: 'pointer', background: tab === t.id ? '#0f172a' : 'transparent', color: tab === t.id ? 'white' : '#64748b', fontSize: '12px', fontWeight: 600, fontFamily: "'DM Sans', sans-serif", display: 'flex', alignItems: 'center', gap: '5px' }}>
                 {t.icon} {t.label}
+                {/* Persistent "work to do" badges — show the number that needs admin attention */}
+                {t.id === 'cleaners' && cleanersList.filter(c => c.application_status === 'submitted' || c.application_status === 'in_review').length > 0 && (
+                  <span style={{ background: '#2563eb', color: 'white', borderRadius: '100px', padding: '0 5px', fontSize: '10px', fontWeight: 700 }}>{cleanersList.filter(c => c.application_status === 'submitted' || c.application_status === 'in_review').length}</span>
+                )}
+                {t.id === 'applications' && applications.filter(a => a.status === 'pending').length > 0 && (
+                  <span style={{ background: '#2563eb', color: 'white', borderRadius: '100px', padding: '0 5px', fontSize: '10px', fontWeight: 700 }}>{applications.filter(a => a.status === 'pending').length}</span>
+                )}
                 {t.id === 'violations' && violations.filter(v => { const today = new Date(); today.setHours(0,0,0,0); return new Date(v.created_at) >= today }).length > 0 && (
                   <span style={{ background: '#ef4444', color: 'white', borderRadius: '100px', padding: '0 5px', fontSize: '10px', fontWeight: 700 }}>{violations.filter(v => { const today = new Date(); today.setHours(0,0,0,0); return new Date(v.created_at) >= today }).length}</span>
                 )}
                 {t.id === 'listings' && listings.filter(l => l.hidden).length > 0 && (
                   <span style={{ background: '#f59e0b', color: 'white', borderRadius: '100px', padding: '0 5px', fontSize: '10px', fontWeight: 700 }}>{listings.filter(l => l.hidden).length}</span>
+                )}
+                {/* "+N new" pulse for rows that arrived via realtime since the admin last opened this tab */}
+                {(newCounts[t.id] ?? 0) > 0 && tab !== t.id && (
+                  <span style={{ background: '#22c55e', color: 'white', borderRadius: '100px', padding: '0 5px', fontSize: '10px', fontWeight: 700, marginLeft: '2px' }} title={`${newCounts[t.id]} new since you looked`}>+{newCounts[t.id]}</span>
                 )}
               </button>
             ))}
@@ -1335,6 +1598,15 @@ export default function AdminDashboard() {
           {/* ── Overview ── */}
           {tab === 'overview' && stats && (
             <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                <div style={{ fontSize: '13px', color: '#94a3b8' }}>Auto-refreshes every 30 seconds while this tab is open</div>
+                <button
+                  onClick={async () => { setStatsRefreshing(true); await loadStats(); setStatsRefreshing(false) }}
+                  disabled={statsRefreshing}
+                  style={{ background: 'white', color: '#0f172a', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '6px 14px', fontSize: '12px', fontWeight: 600, cursor: statsRefreshing ? 'wait' : 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
+                  {statsRefreshing ? 'Refreshing…' : '↻ Refresh now'}
+                </button>
+              </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '16px', marginBottom: '32px' }}>
                 <StatCard label="Customers" value={stats.totalCustomers} color="#16a085" />
                 <StatCard label="Cleaners" value={stats.totalCleaners} color="#2563eb" />
@@ -1358,7 +1630,7 @@ export default function AdminDashboard() {
                       </div>
                     </div>
                   ))}
-                  {violations.length > 5 && <button onClick={() => setTab('violations')} style={{ marginTop: '12px', background: 'none', border: 'none', color: '#dc2626', fontSize: '12px', fontWeight: 700, cursor: 'pointer', padding: 0 }}>View all {violations.length} violations →</button>}
+                  {violations.length > 5 && <button onClick={() => switchTab('violations')} style={{ marginTop: '12px', background: 'none', border: 'none', color: '#dc2626', fontSize: '12px', fontWeight: 700, cursor: 'pointer', padding: 0 }}>View all {violations.length} violations →</button>}
                 </div>
               )}
             </div>
@@ -1368,7 +1640,7 @@ export default function AdminDashboard() {
           {tab === 'cleaners' && (
             <div>
               <div style={{ marginBottom: '16px', display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-                <input value={cleanerSearch} onChange={e => setCleanerSearch(e.target.value)} placeholder="Search by name or email…" style={{ padding: '10px 16px', borderRadius: '10px', border: '1.5px solid #e2e8f0', fontSize: '14px', fontFamily: "'DM Sans', sans-serif", outline: 'none', width: '300px', color: '#0f172a' }} />
+                <input ref={cleanerSearchInputRef} value={cleanerSearch} onChange={e => setCleanerSearch(e.target.value)} placeholder="Search by name or email… (/)" style={{ padding: '10px 16px', borderRadius: '10px', border: '1.5px solid #e2e8f0', fontSize: '14px', fontFamily: "'DM Sans', sans-serif", outline: 'none', width: '300px', color: '#0f172a' }} />
                 {searching.cleaners && <span style={{ fontSize: '12px', color: '#94a3b8' }}>Searching…</span>}
                 <span style={{ fontSize: '13px', color: '#94a3b8' }}>{cleanersList.length} {cleanerSearch ? 'match' : 'recent'}{cleanersList.length === 1 ? '' : 'es'}</span>
               </div>
@@ -1382,10 +1654,16 @@ export default function AdminDashboard() {
 
               <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                  <thead><tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>{['Cleaner', 'Email', 'Checks', 'Signed up', 'Status', ''].map(h => <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>)}</tr></thead>
+                  <thead><tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                    <SortableTh label="Cleaner" sortKey="full_name" state={cleanerSort} onChange={k => setCleanerSort(s => flipSort(s, k))} />
+                    <SortableTh label="Email" sortKey="email" state={cleanerSort} onChange={k => setCleanerSort(s => flipSort(s, k))} />
+                    <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Checks</th>
+                    <SortableTh label="Signed up" sortKey="created_at" state={cleanerSort} onChange={k => setCleanerSort(s => flipSort(s, k))} />
+                    <SortableTh label="Status" sortKey="application_status" state={cleanerSort} onChange={k => setCleanerSort(s => flipSort(s, k))} />
+                    <th style={{ padding: '12px 16px' }}></th>
+                  </tr></thead>
                   <tbody>
-                    {cleanersList
-                      .filter(c => cleanerFilter === 'all' ? true : (c.application_status ?? 'submitted') === cleanerFilter)
+                    {sortRows(cleanersList.filter(c => cleanerFilter === 'all' ? true : (c.application_status ?? 'submitted') === cleanerFilter), cleanerSort)
                       .map((c, i, arr) => (
                         <tr key={c.id} style={{ borderBottom: i < arr.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
                           <td style={{ padding: '12px 16px', fontWeight: 600, color: '#0f172a' }}>{c.full_name}</td>
@@ -1421,6 +1699,7 @@ export default function AdminDashboard() {
                     )}
                   </tbody>
                 </table>
+                <LoadMoreButton visible={!cleanerSearch && (hasMore.cleaners ?? true)} loading={!!loadingMore.cleaners} onClick={() => loadMoreFor('cleaners')} />
               </div>
             </div>
           )}
@@ -1429,15 +1708,22 @@ export default function AdminDashboard() {
           {tab === 'users' && (
             <div>
               <div style={{ marginBottom: '16px', display: 'flex', gap: '12px', alignItems: 'center' }}>
-                <input value={userSearch} onChange={e => setUserSearch(e.target.value)} placeholder="Search by name or email…" style={{ padding: '10px 16px', borderRadius: '10px', border: '1.5px solid #e2e8f0', fontSize: '14px', fontFamily: "'DM Sans', sans-serif", outline: 'none', width: '300px', color: '#0f172a' }} />
+                <input ref={userSearchInputRef} value={userSearch} onChange={e => setUserSearch(e.target.value)} placeholder="Search by name or email… (/)" style={{ padding: '10px 16px', borderRadius: '10px', border: '1.5px solid #e2e8f0', fontSize: '14px', fontFamily: "'DM Sans', sans-serif", outline: 'none', width: '300px', color: '#0f172a' }} />
                 {searching.users && <span style={{ fontSize: '12px', color: '#94a3b8' }}>Searching…</span>}
                 <span style={{ fontSize: '13px', color: '#94a3b8' }}>{filteredUsers.length} {userSearch ? 'matches' : 'recent users'}</span>
               </div>
               <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                  <thead><tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>{['Name', 'Email', 'Role', 'Joined', 'Status', 'Actions'].map(h => <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>)}</tr></thead>
+                  <thead><tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                    <SortableTh label="Name" sortKey="full_name" state={userSort} onChange={k => setUserSort(s => flipSort(s, k))} />
+                    <SortableTh label="Email" sortKey="email" state={userSort} onChange={k => setUserSort(s => flipSort(s, k))} />
+                    <SortableTh label="Role" sortKey="role" state={userSort} onChange={k => setUserSort(s => flipSort(s, k))} />
+                    <SortableTh label="Joined" sortKey="created_at" state={userSort} onChange={k => setUserSort(s => flipSort(s, k))} />
+                    <SortableTh label="Status" sortKey="suspended" state={userSort} onChange={k => setUserSort(s => flipSort(s, k))} />
+                    <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Actions</th>
+                  </tr></thead>
                   <tbody>
-                    {filteredUsers.map((u, i) => (
+                    {sortRows(filteredUsers, userSort).map((u, i, arr) => (
                       <tr key={u.id} style={{ borderBottom: i < filteredUsers.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
                         <td style={{ padding: '12px 16px', fontWeight: 600, color: '#0f172a' }}>{u.full_name}</td>
                         <td style={{ padding: '12px 16px', color: '#64748b' }}>{u.email}</td>
@@ -1453,6 +1739,7 @@ export default function AdminDashboard() {
                     ))}
                   </tbody>
                 </table>
+                <LoadMoreButton visible={!userSearch && (hasMore.users ?? true)} loading={!!loadingMore.users} onClick={() => loadMoreFor('users')} />
               </div>
             </div>
           )}
@@ -1461,7 +1748,7 @@ export default function AdminDashboard() {
           {tab === 'listings' && (
             <div>
               <div style={{ marginBottom: '16px', display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-                <input value={listingSearch} onChange={e => setListingSearch(e.target.value)} placeholder="Search by customer or zone…" style={{ padding: '10px 16px', borderRadius: '10px', border: '1.5px solid #e2e8f0', fontSize: '14px', fontFamily: "'DM Sans', sans-serif", outline: 'none', width: '280px', color: '#0f172a' }} />
+                <input ref={listingSearchInputRef} value={listingSearch} onChange={e => setListingSearch(e.target.value)} placeholder="Search by customer or zone… (/)" style={{ padding: '10px 16px', borderRadius: '10px', border: '1.5px solid #e2e8f0', fontSize: '14px', fontFamily: "'DM Sans', sans-serif", outline: 'none', width: '280px', color: '#0f172a' }} />
                 {searching.listings && <span style={{ fontSize: '12px', color: '#94a3b8' }}>Searching…</span>}
                 <div style={{ display: 'flex', gap: '4px', background: 'white', padding: '4px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                   {(['all', 'active', 'hidden'] as const).map(f => <button key={f} onClick={() => setListingFilter(f)} style={{ padding: '5px 14px', borderRadius: '6px', border: 'none', cursor: 'pointer', background: listingFilter === f ? '#0f172a' : 'transparent', color: listingFilter === f ? 'white' : '#64748b', fontSize: '12px', fontWeight: 600, fontFamily: "'DM Sans', sans-serif" }}>{f.charAt(0).toUpperCase() + f.slice(1)}</button>)}
@@ -1470,9 +1757,16 @@ export default function AdminDashboard() {
               </div>
               <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                  <thead><tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>{['Customer', 'Zone', 'Details', 'Status', 'Posted', 'Actions'].map(h => <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>)}</tr></thead>
+                  <thead><tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                    <SortableTh label="Customer" sortKey="customer_name" state={listingSort} onChange={k => setListingSort(s => flipSort(s, k))} />
+                    <SortableTh label="Zone" sortKey="zone" state={listingSort} onChange={k => setListingSort(s => flipSort(s, k))} />
+                    <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Details</th>
+                    <SortableTh label="Status" sortKey="status" state={listingSort} onChange={k => setListingSort(s => flipSort(s, k))} />
+                    <SortableTh label="Posted" sortKey="created_at" state={listingSort} onChange={k => setListingSort(s => flipSort(s, k))} />
+                    <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Actions</th>
+                  </tr></thead>
                   <tbody>
-                    {filteredListings.map((l, i) => (
+                    {sortRows(filteredListings, listingSort).map((l, i) => (
                       <tr key={l.id} style={{ borderBottom: i < filteredListings.length - 1 ? '1px solid #f1f5f9' : 'none', opacity: l.hidden ? 0.6 : 1 }}>
                         <td style={{ padding: '12px 16px' }}><div style={{ fontWeight: 600, color: '#0f172a' }}>{l.customer_name}</div><div style={{ fontSize: '11px', color: '#94a3b8' }}>{l.customer_email}</div></td>
                         <td style={{ padding: '12px 16px', color: '#64748b' }}>{ZONE_LABELS[l.zone ?? ''] ?? l.zone ?? '—'}</td>
@@ -1489,6 +1783,7 @@ export default function AdminDashboard() {
                     ))}
                   </tbody>
                 </table>
+                <LoadMoreButton visible={!listingSearch && (hasMore.listings ?? true)} loading={!!loadingMore.listings} onClick={() => loadMoreFor('listings')} />
               </div>
               <div style={{ marginTop: '16px', padding: '14px 18px', background: '#fefce8', border: '1px solid #fef08a', borderRadius: '10px', fontSize: '13px', color: '#92400e' }}>
                 💡 <strong>Hidden</strong> listings are removed from the cleaner jobs page but remain in the database. <strong>Delete</strong> marks them as deleted — irreversible from here but recoverable via Supabase if needed.
@@ -1500,26 +1795,34 @@ export default function AdminDashboard() {
           {tab === 'applications' && (
             <div>
               <div style={{ marginBottom: '16px', display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-                <input value={applicationSearch} onChange={e => setApplicationSearch(e.target.value)} placeholder="Search by cleaner, customer or zone…" style={{ padding: '10px 16px', borderRadius: '10px', border: '1.5px solid #e2e8f0', fontSize: '14px', fontFamily: "'DM Sans', sans-serif", outline: 'none', width: '320px', color: '#0f172a' }} />
+                <input ref={applicationSearchInputRef} value={applicationSearch} onChange={e => setApplicationSearch(e.target.value)} placeholder="Search by cleaner, customer or zone… (/)" style={{ padding: '10px 16px', borderRadius: '10px', border: '1.5px solid #e2e8f0', fontSize: '14px', fontFamily: "'DM Sans', sans-serif", outline: 'none', width: '320px', color: '#0f172a' }} />
                 {searching.applications && <span style={{ fontSize: '12px', color: '#94a3b8' }}>Searching…</span>}
                 <span style={{ fontSize: '13px', color: '#94a3b8' }}>{applications.length} {applicationSearch ? 'matches' : 'recent applications'}</span>
               </div>
               <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                  <thead><tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>{['Cleaner', 'Customer', 'Zone', 'Status', 'Message', 'Date'].map(h => <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>)}</tr></thead>
+                  <thead><tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                    <SortableTh label="Cleaner" sortKey="cleaner_name" state={applicationSort} onChange={k => setApplicationSort(s => flipSort(s, k))} />
+                    <SortableTh label="Customer" sortKey="customer_name" state={applicationSort} onChange={k => setApplicationSort(s => flipSort(s, k))} />
+                    <SortableTh label="Zone" sortKey="zone" state={applicationSort} onChange={k => setApplicationSort(s => flipSort(s, k))} />
+                    <SortableTh label="Status" sortKey="status" state={applicationSort} onChange={k => setApplicationSort(s => flipSort(s, k))} />
+                    <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Message</th>
+                    <SortableTh label="Date" sortKey="created_at" state={applicationSort} onChange={k => setApplicationSort(s => flipSort(s, k))} />
+                  </tr></thead>
                   <tbody>
-                    {applications.map((app, i) => (
+                    {sortRows(applications, applicationSort).map((app, i) => (
                       <tr key={app.id} style={{ borderBottom: i < applications.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
                         <td style={{ padding: '12px 16px', fontWeight: 600, color: '#0f172a' }}>{app.cleaner_name}</td>
                         <td style={{ padding: '12px 16px', color: '#64748b' }}>{app.customer_name}</td>
                         <td style={{ padding: '12px 16px', color: '#64748b' }}>{ZONE_LABELS[app.zone] ?? app.zone}</td>
                         <td style={{ padding: '12px 16px' }}><Badge label={app.status} color={app.status === 'accepted' ? 'green' : app.status === 'pending' ? 'yellow' : 'red'} /></td>
                         <td style={{ padding: '12px 16px', color: '#64748b', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{app.message || '—'}</td>
-                        <td style={{ padding: '12px 16px', color: '#94a3b8', whiteSpace: 'nowrap' }}>{ago(app.created_at)}</td>
+                        <td style={{ padding: '12px 16px', color: '#94a3b8', whiteSpace: 'nowrap' }}>{dual(app.created_at)}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
+                <LoadMoreButton visible={!applicationSearch && (hasMore.applications ?? true)} loading={!!loadingMore.applications} onClick={() => loadMoreFor('applications')} />
               </div>
             </div>
           )}
@@ -1528,7 +1831,7 @@ export default function AdminDashboard() {
           {tab === 'conversations' && (
             <div>
               <div style={{ marginBottom: '16px', display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-                <input value={conversationSearch} onChange={e => setConversationSearch(e.target.value)} placeholder="Search by cleaner or customer name…" style={{ padding: '10px 16px', borderRadius: '10px', border: '1.5px solid #e2e8f0', fontSize: '14px', fontFamily: "'DM Sans', sans-serif", outline: 'none', width: '320px', color: '#0f172a' }} />
+                <input ref={conversationSearchInputRef} value={conversationSearch} onChange={e => setConversationSearch(e.target.value)} placeholder="Search by cleaner or customer name… (/)" style={{ padding: '10px 16px', borderRadius: '10px', border: '1.5px solid #e2e8f0', fontSize: '14px', fontFamily: "'DM Sans', sans-serif", outline: 'none', width: '320px', color: '#0f172a' }} />
                 {searching.conversations && <span style={{ fontSize: '12px', color: '#94a3b8' }}>Searching…</span>}
                 <span style={{ fontSize: '13px', color: '#94a3b8' }}>{conversations.length} {conversationSearch ? 'matches' : 'recent conversations'}</span>
               </div>
@@ -1543,12 +1846,13 @@ export default function AdminDashboard() {
                         <td style={{ padding: '12px 16px', color: '#64748b' }}>{ZONE_LABELS[conv.zone] ?? conv.zone}</td>
                         <td style={{ padding: '12px 16px', fontWeight: 600, color: '#0f172a' }}>{conv.message_count}</td>
                         <td style={{ padding: '12px 16px', color: '#64748b', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{conv.last_message || '—'}</td>
-                        <td style={{ padding: '12px 16px', color: '#94a3b8', whiteSpace: 'nowrap' }}>{ago(conv.created_at)}</td>
+                        <td style={{ padding: '12px 16px', color: '#94a3b8', whiteSpace: 'nowrap' }}>{dual(conv.created_at)}</td>
                         <td style={{ padding: '12px 16px' }}><button onClick={() => setViewingConv(conv)} style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '4px 12px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>Read →</button></td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
+                <LoadMoreButton visible={!conversationSearch && (hasMore.conversations ?? true)} loading={!!loadingMore.conversations} onClick={() => loadMoreFor('conversations')} />
               </div>
             </div>
           )}
@@ -1692,6 +1996,31 @@ export default function AdminDashboard() {
                     const data = await res.json()
                     if (data.success) return { success: true, message: `Sent to ${data.sentTo}` }
                     return { success: false, message: data.error ?? 'Failed' }
+                  }}
+                />
+
+                {/* New-listing admin alert — both live and pre-launch variants */}
+                <TestCard
+                  title="🎉 New-listing admin alert (live + pre-launch)"
+                  description="Sends the admin-inbox alert that fires every time a customer posts a new listing. Sends both flavours — the green 'live' variant (post-launch) and the blue 'pre-launch' variant — so you can preview the visual + copy side-by-side. Template imported from src/lib/emails/new-listing-admin-alert.ts so edits flow through to live emails too."
+                  buttonLabel="Send test emails →"
+                  buttonColor="#16a34a"
+                  onRun={async () => {
+                    const res = await fetch('/api/admin/test-new-listing-alert', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                    })
+                    const data = await res.json()
+                    if (!res.ok || !data.success) {
+                      return { success: false, message: data.error ?? 'Request failed' }
+                    }
+                    const liveOK = !data.live?.error
+                    const preOK = !data.preLaunch?.error
+                    if (liveOK && preOK) return { success: true, message: `Both emails sent to ${data.sentTo}` }
+                    const failures: string[] = []
+                    if (!liveOK) failures.push(`live: ${data.live.error}`)
+                    if (!preOK) failures.push(`pre-launch: ${data.preLaunch.error}`)
+                    return { success: false, message: failures.join(' | ') }
                   }}
                 />
 

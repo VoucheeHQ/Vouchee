@@ -270,6 +270,18 @@ async function publishRequest(data: RequestData, userId: string): Promise<{ id: 
     }
   }
 
+  // Admin alert — fires for both branches above so the founder sees every
+  // new listing in real time during the early weeks. Non-fatal.
+  try {
+    await fetch('/api/send-new-listing-admin-alert', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ requestId: inserted.id }),
+    })
+  } catch (adminAlertErr) {
+    console.error('Admin alert fire failed (non-fatal):', adminAlertErr)
+  }
+
   return { id: inserted.id, status: listingStatus }
 }
 
