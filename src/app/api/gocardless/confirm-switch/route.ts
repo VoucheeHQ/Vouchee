@@ -177,9 +177,9 @@ function buildCleanerEmail(opts: {
   const yellow = (t: string) => `<span style="display:inline-block;background:#fefce8;border:1px solid #fde68a;color:#854d0e;font-size:12px;font-weight:600;padding:4px 14px;border-radius:100px;margin:3px 3px 3px 0;">${TASK_LABELS[t] ?? t}</span>`
   const std = tasks.filter(t => STANDARD_TASK_IDS.has(t))
   const spc = tasks.filter(t => !STANDARD_TASK_IDS.has(t))
+  // emailShell already provides the logo header — don't duplicate it here.
   const inner = `
   <div style="text-align:center;margin-bottom:28px;">
-    <img src="${LOGO_URL}" width="200" height="46" alt="Vouchee" style="display:block;margin:0 auto 20px;max-width:100%;" />
     <div style="font-size:28px;font-weight:800;color:#0f172a;">You've been chosen! 🎉</div>
   </div>
   <div style="background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:12px;padding:22px 28px;margin-bottom:24px;text-align:center;">
@@ -233,9 +233,9 @@ function buildCustomerConfirmEmail(opts: {
   const yellow = (t: string) => `<span style="display:inline-block;background:#fefce8;border:1px solid #fde68a;color:#854d0e;font-size:12px;font-weight:600;padding:4px 14px;border-radius:100px;margin:3px 3px 3px 0;">${TASK_LABELS[t] ?? t}</span>`
   const std = tasks.filter(t => STANDARD_TASK_IDS.has(t))
   const spc = tasks.filter(t => !STANDARD_TASK_IDS.has(t))
+  // emailShell already provides the logo header — don't duplicate it here.
   const inner = `
   <div style="text-align:center;margin-bottom:28px;">
-    <img src="${LOGO_URL}" width="200" height="46" alt="Vouchee" style="display:block;margin:0 auto 20px;max-width:100%;" />
     <div style="font-size:28px;font-weight:800;color:#0f172a;">You're all set! 🎉</div>
   </div>
   <div style="background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:12px;padding:22px 28px;margin-bottom:24px;text-align:center;">
