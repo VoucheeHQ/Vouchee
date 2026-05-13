@@ -79,7 +79,7 @@ export default function ArticlePage({ params }: Props) {
           <span className="text-xs text-gray-400">{formatDate(article.publishedAt)}</span>
         </div>
 
-        <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6 leading-tight" style={{ fontFamily: 'Lora, serif' }}>
+        <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6 leading-tight" style={{ fontFamily: "'DM Sans', sans-serif" }}>
           {article.title}
         </h1>
 
@@ -123,7 +123,7 @@ export default function ArticlePage({ params }: Props) {
         }`}>
           {article.audience === 'cleaner' ? (
             <>
-              <h3 className="font-bold text-gray-900 text-xl mb-2" style={{ fontFamily: 'Lora, serif' }}>
+              <h3 className="font-bold text-gray-900 text-xl mb-2" style={{ fontFamily: "'DM Sans', sans-serif" }}>
                 Ready to find cleaning work in Horsham?
               </h3>
               <p className="text-gray-500 text-sm mb-5">
@@ -138,7 +138,7 @@ export default function ArticlePage({ params }: Props) {
             </>
           ) : (
             <>
-              <h3 className="font-bold text-gray-900 text-xl mb-2" style={{ fontFamily: 'Lora, serif' }}>
+              <h3 className="font-bold text-gray-900 text-xl mb-2" style={{ fontFamily: "'DM Sans', sans-serif" }}>
                 Find a vetted cleaner in Horsham
               </h3>
               <p className="text-gray-500 text-sm mb-5">
@@ -159,7 +159,7 @@ export default function ArticlePage({ params }: Props) {
       {related.length > 0 && (
         <section className="border-t border-gray-100 bg-gray-50 py-14">
           <div className="container max-w-4xl mx-auto px-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-8" style={{ fontFamily: 'Lora, serif' }}>
+            <h2 className="text-xl font-bold text-gray-900 mb-8" style={{ fontFamily: "'DM Sans', sans-serif" }}>
               Related articles
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -175,7 +175,7 @@ export default function ArticlePage({ params }: Props) {
                   </div>
                   <div className="p-4">
                     <p className="text-xs text-gray-400 mb-2">{rel.readingTime} min read</p>
-                    <h3 className="text-sm font-bold text-gray-900 leading-snug group-hover:text-blue-600 transition-colors" style={{ fontFamily: 'Lora, serif' }}>
+                    <h3 className="text-sm font-bold text-gray-900 leading-snug group-hover:text-blue-600 transition-colors" style={{ fontFamily: "'DM Sans', sans-serif" }}>
                       {rel.title}
                     </h3>
                   </div>

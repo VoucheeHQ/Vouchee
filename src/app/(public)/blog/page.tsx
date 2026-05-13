@@ -76,7 +76,7 @@ export default function BlogPage() {
           <div className="inline-flex items-center gap-2 bg-blue-50 border border-blue-100 rounded-full px-4 py-1.5 text-xs font-semibold text-blue-700 mb-6">
             ✍️ Vouchee Blog
           </div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-4" style={{ fontFamily: 'Lora, serif' }}>
+          <h1 className="text-4xl font-bold text-gray-900 mb-4" style={{ fontFamily: "'DM Sans', sans-serif" }}>
             Cleaning advice, guides, and resources
           </h1>
           <p className="text-lg text-gray-500 max-w-xl mx-auto">
@@ -148,7 +148,7 @@ export default function BlogPage() {
                 </div>
 
                 <Link href={`/blog/${article.slug}`}>
-                  <h2 className="text-xl font-bold text-gray-900 mb-2 leading-tight group-hover:text-blue-600 transition-colors" style={{ fontFamily: 'Lora, serif' }}>
+                  <h2 className="text-xl font-bold text-gray-900 mb-2 leading-tight group-hover:text-blue-600 transition-colors" style={{ fontFamily: "'DM Sans', sans-serif" }}>
                     {article.title}
                   </h2>
                 </Link>
