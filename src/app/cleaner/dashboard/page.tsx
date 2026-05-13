@@ -7,6 +7,7 @@ import { NotificationsModal, PersonalDetailsModal } from '@/components/cleaner/p
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import './dashboard.css'
 
 type ApplicationStatus = 'submitted' | 'approved' | 'rejected' | 'suspended' | 'pending'
 
@@ -236,7 +237,7 @@ function ApprovedDashboard({ profile, cleaner, stats, notifications, onOpenNotif
   const activeZoneCount = (cleaner.zones ?? []).length
 
   return (
-    <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '0 24px 60px', display: 'grid', gridTemplateColumns: '340px 1fr', gap: '24px', alignItems: 'start' }}>
+    <div className="vouchee-cleaner-dashboard" style={{ maxWidth: '1100px', margin: '0 auto', padding: '0 24px 60px', display: 'grid', gridTemplateColumns: '340px 1fr', gap: '24px', alignItems: 'start' }}>
       {/* ── LEFT COLUMN ── */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         <div style={{ background: 'white', borderRadius: '20px', border: '1.5px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 16px rgba(0,0,0,0.06)' }}>
@@ -288,9 +289,9 @@ function ApprovedDashboard({ profile, cleaner, stats, notifications, onOpenNotif
                   </div>
                 </div>
               </div>
-              <div style={{ textAlign: 'center', background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '10px 14px', flexShrink: 0, marginRight: '36px' }}>
-                <div style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a', lineHeight: 1 }}>{jobsWon}</div>
-                <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 700, marginTop: '2px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Jobs won</div>
+              <div className="jobs-won-badge" style={{ textAlign: 'center', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '14px', padding: '12px 16px', flexShrink: 0, marginRight: '36px', minWidth: '78px' }}>
+                <div style={{ fontSize: '26px', fontWeight: 900, color: '#b45309', lineHeight: 1, letterSpacing: '-0.02em' }}>{jobsWon}</div>
+                <div style={{ fontSize: '10px', color: '#b45309', fontWeight: 700, marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Jobs won</div>
               </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '16px' }}>
@@ -396,21 +397,21 @@ function ApprovedDashboard({ profile, cleaner, stats, notifications, onOpenNotif
 
         <div style={{ background: 'white', borderRadius: '20px', border: '1.5px solid #e2e8f0', padding: '24px', boxShadow: '0 2px 16px rgba(0,0,0,0.04)' }}>
           <div style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '16px' }}>Job activity</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', marginBottom: '12px' }}>
-            <StatCard value={stats.pendingApplications} label="Pending applications" sub="Jobs you've applied to awaiting response" bg="#fffbeb" border="#fde68a" color="#92400e" />
-            <StatCard value={stats.jobsWon} label="Jobs won" sub="Customers who confirmed their start date" bg="#f0fdf4" border="#86efac" color="#15803d" />
+          <div className="dashboard-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', marginBottom: '12px' }}>
+            <StatCard value={stats.pendingApplications} label="Pending applications" bg="#fffbeb" border="#fde68a" color="#92400e" />
+            <StatCard value={stats.jobsWon} label="Jobs won" bg="#f0fdf4" border="#86efac" color="#15803d" />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
-            <StatCard value={stats.chatsAccepted} label="Chats accepted" sub="Customers who opened a conversation" bg="#eff6ff" border="#bfdbfe" color="#1d4ed8" />
-            <StatCard value={stats.chatsDeclined} label="Chats declined" sub="Customers who passed on your application" bg="#f8fafc" border="#e2e8f0" color="#64748b" />
+          <div className="dashboard-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
+            <StatCard value={stats.chatsAccepted} label="Chats accepted" bg="#eff6ff" border="#bfdbfe" color="#1d4ed8" />
+            <StatCard value={stats.chatsDeclined} label="Chats declined" bg="#f8fafc" border="#e2e8f0" color="#64748b" />
           </div>
         </div>
 
         <div style={{ background: 'white', borderRadius: '20px', border: '1.5px solid #e2e8f0', padding: '24px', boxShadow: '0 2px 16px rgba(0,0,0,0.04)' }}>
           <div style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '16px' }}>Your Vouchee business</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
-            <StatCard value={jobsWon} label="Jobs won" sub="Customers who confirmed you for a clean" bg="#f0fdf4" border="#86efac" color="#15803d" />
-            <StatCard value={stats.uniqueCustomers} label="Unique customers" sub="Different households you've worked with" bg="#fdf4ff" border="#e9d5ff" color="#7c3aed" />
+          <div className="dashboard-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
+            <StatCard value={jobsWon} label="Jobs won" bg="#f0fdf4" border="#86efac" color="#15803d" />
+            <StatCard value={stats.uniqueCustomers} label="Unique customers" bg="#fdf4ff" border="#e9d5ff" color="#7c3aed" />
           </div>
         </div>
 
@@ -582,7 +583,15 @@ export default function CleanerDashboardPage() {
           .eq('cleaner_id', (cleanerData as any).id)
         if (appData) {
           const apps = appData as Array<{ id: string; status: string; request_id: string; clean_requests: { status: string } | null }>
-          const pending = apps.filter(a => a.status === 'pending').length
+          // A "pending" application is only meaningful while the underlying
+          // request is still actively seeking a cleaner. Once the request is
+          // fulfilled / deleted / paused / cancelled, the cleaner's app is
+          // stale and shouldn't be shown as actionable in the stat.
+          const isLiveRequest = (s: string | undefined): boolean =>
+            s === 'active' || s === 'pending_review'
+          const pending = apps.filter(a =>
+            a.status === 'pending' && isLiveRequest(a.clean_requests?.status)
+          ).length
           const chatsAccepted = apps.filter(a => a.status === 'accepted').length
           const chatsDeclined = apps.filter(a => a.status === 'rejected' || a.status === 'declined').length
           const jobsWon = apps.filter(a => a.status === 'accepted' && a.clean_requests?.status === 'fulfilled').length

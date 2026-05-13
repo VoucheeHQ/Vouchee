@@ -1,0 +1,40 @@
+/*
+ * Cleaner dashboard responsive overrides.
+ *
+ * The page's layout is built with inline styles which work well for desktop
+ * but don't scale to mobile. Rather than refactor every style, we add a few
+ * targeted media-query overrides here. The CSS uses !important because
+ * inline styles win over CSS by default — this is the simplest way to flip
+ * specific layout properties on small screens.
+ *
+ * Scoped under .vouchee-cleaner-dashboard so nothing else on the site is
+ * affected.
+ */
+
+ @media (max-width: 768px) {
+    /* Main page container: stack the 340px sidebar above the main column */
+    .vouchee-cleaner-dashboard {
+      grid-template-columns: 1fr !important;
+      padding: 0 16px 40px !important;
+    }
+  
+    /* Stat cards stay 2-up on mobile (smaller padding handles fit) — see
+       .dashboard-card override below for the tighter card spacing. */
+  
+    /* Jobs won badge: remove the desktop right-margin offset */
+    .vouchee-cleaner-dashboard .jobs-won-badge {
+      margin-right: 0 !important;
+    }
+  
+    /* Card padding: slightly tighter on mobile so content gets more breathing room */
+    .vouchee-cleaner-dashboard .dashboard-card {
+      padding: 16px !important;
+    }
+  
+    /* Header row: allow stars / member-since to wrap rather than getting cut off */
+    .vouchee-cleaner-dashboard .dashboard-header-row {
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+  }
+  
