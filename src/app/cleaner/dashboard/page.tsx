@@ -3,6 +3,7 @@
 import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
 import { ChatWidget } from '@/components/chat-widget'
+import { FeedbackWidget } from '@/components/feedback-widget'
 import { NotificationsModal, PersonalDetailsModal } from '@/components/cleaner/profile-modals'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -286,7 +287,7 @@ function ApprovedDashboard({ profile, cleaner, stats, notifications, onOpenNotif
   const activeZoneCount = (cleaner.zones ?? []).length
 
   return (
-    <div className="vouchee-cleaner-dashboard" style={{ maxWidth: '1100px', margin: '0 auto', padding: '0 24px 60px', display: 'grid', gridTemplateColumns: '340px 1fr', gap: '24px', alignItems: 'start' }}>
+    <div className="vouchee-cleaner-dashboard" style={{ maxWidth: '1100px', margin: '0 auto', padding: '0 24px 60px', display: 'grid', gridTemplateColumns: '400px 1fr', gap: '24px', alignItems: 'start' }}>
       {/* ── LEFT COLUMN ── */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         <div style={{ background: 'white', borderRadius: '20px', border: '1.5px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 16px rgba(0,0,0,0.06)' }}>
@@ -338,7 +339,7 @@ function ApprovedDashboard({ profile, cleaner, stats, notifications, onOpenNotif
                   </div>
                 </div>
               </div>
-              <div className="jobs-won-badge" style={{ textAlign: 'center', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '14px', padding: '12px 16px', flexShrink: 0, marginRight: '36px', minWidth: '78px' }}>
+              <div className="jobs-won-badge" style={{ textAlign: 'center', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '14px', padding: '12px 16px', flexShrink: 0, minWidth: '78px' }}>
                 <div style={{ fontSize: '26px', fontWeight: 900, color: '#b45309', lineHeight: 1, letterSpacing: '-0.02em' }}>{jobsWon}</div>
                 <div style={{ fontSize: '10px', color: '#b45309', fontWeight: 700, marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Jobs won</div>
               </div>
@@ -423,6 +424,31 @@ function ApprovedDashboard({ profile, cleaner, stats, notifications, onOpenNotif
             <div style={{ fontSize: '12px', color: '#b45309' }}>Recommended products for professionals</div>
           </div>
           <a href="/cleaning-supplies" style={{ background: '#f59e0b', color: 'white', borderRadius: '10px', padding: '8px 16px', fontSize: '12px', fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' }}>Browse →</a>
+        </div>
+
+        {/* Feedback buttons — bug + suggestion. Each dispatches an event that
+            the FeedbackWidget below listens for, opening the modal with the
+            type pre-set. Same pattern as the cookie preferences link. */}
+        <div style={{ background: 'white', border: '1.5px solid #e2e8f0', borderRadius: '16px', padding: '16px 18px' }}>
+          <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px' }}>Help improve Vouchee</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent('vouchee:open-feedback', { detail: { type: 'suggestion' } }))}
+              style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '10px', padding: '10px 14px', fontSize: '13px', fontWeight: 700, color: '#0369a1', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', width: '100%' }}
+            >
+              <span style={{ fontSize: '16px' }}>💡</span>
+              <span>Send a suggestion</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent('vouchee:open-feedback', { detail: { type: 'bug' } }))}
+              style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '10px', padding: '10px 14px', fontSize: '13px', fontWeight: 700, color: '#b91c1c', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', width: '100%' }}
+            >
+              <span style={{ fontSize: '16px' }}>🐛</span>
+              <span>Report a bug</span>
+            </button>
+          </div>
         </div>
 
         <div style={{ background: '#f8faff', borderRadius: '14px', padding: '14px 18px', border: '1px solid #e0e7ff', textAlign: 'center' }}>
@@ -797,6 +823,7 @@ export default function CleanerDashboardPage() {
           conversations where cleaner_id matches this user's cleaner record.
           Shows count=0 tray when no conversations exist yet. */}
       <ChatWidget />
+      <FeedbackWidget />
 
       {/* ── Profile modals — rendered at page level so they overlay cleanly ── */}
       {showNotificationsModal && cleaner && (
