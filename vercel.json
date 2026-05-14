@@ -22,7 +22,7 @@
     },
     {
       "path": "/api/cron/violation-digest",
-      "schedule": "0 9 * * *"
+      "schedule": "30 8 * * *"
     }
   ]
 }
