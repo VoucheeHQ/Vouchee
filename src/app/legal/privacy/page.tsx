@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   description: 'How Vouchee collects, uses, and protects your personal data in accordance with UK GDPR and the Data Protection Act 2018.',
 }
 
-const LAST_UPDATED = '30 March 2026'
+const LAST_UPDATED = '14 May 2026'
 const CONTROLLER = 'Vouchee'
 const CONTACT_EMAIL = 'legal@vouchee.co.uk'
 const SITE_URL = 'https://www.vouchee.co.uk'
@@ -58,11 +58,13 @@ export default function PrivacyPolicyPage() {
 
             <h4 className="font-semibold text-gray-800 mt-4 mb-2">2.1 Data you give us directly</h4>
             <ul>
-              <li><strong>Account registration:</strong> Full name, email address, password (stored as a bcrypt hash — we never store your plain-text password), phone number, and role (customer or cleaner).</li>
+              <li><strong>Account registration:</strong> Full name, email address, password (securely hashed by our authentication provider — we never store or have access to your plain-text password), phone number, and role (customer or cleaner).</li>
               <li><strong>Cleaning requests (customers):</strong> Property details including number of bedrooms and bathrooms, preferred cleaning days and times, tasks required, hourly rate offered, and any additional notes you choose to provide.</li>
               <li><strong>Cleaner profile (cleaners):</strong> Years of experience, types of cleaning experience, whether you supply your own equipment, DBS check status, right to work confirmation, public liability insurance status, and the areas of Horsham you are willing to cover.</li>
               <li><strong>Application messages:</strong> Any message you write when applying for a job or communicating through our chat system.</li>
-              <li><strong>Payment information:</strong> We do not store card details. Payment processing is handled by GoCardless, a PCI DSS-compliant third party. We receive only limited transaction references necessary to confirm payment status.</li>
+              <li><strong>Reviews you write:</strong> The star rating and review body you submit about a Cleaner. Reviews are displayed publicly on the Cleaner's profile page, attributed by your first name and last initial only (e.g. "Sarah B.").</li>
+              <li><strong>Referral data:</strong> If you sign up via a friend's referral link, we record that they referred you so we can apply free-month credits to both accounts when the conditions in our Customer Terms are met. Each Customer is also assigned a unique opaque referral token used only to identify their personal invite link (e.g. <code className="bg-gray-100 px-1 py-0.5 rounded text-xs">vouchee.co.uk/?ref=…</code>) — this token is shareable but is not a tracking identifier and cannot be used to look up your name, email, or any other personal details.</li>
+              <li><strong>Payment information:</strong> We do not store card details. Payment processing is handled by GoCardless, an FCA-authorised payment service provider. We receive only limited transaction references necessary to confirm payment status.</li>
             </ul>
 
             <h4 className="font-semibold text-gray-800 mt-4 mb-2">2.2 Data we collect automatically</h4>
@@ -132,6 +134,9 @@ export default function PrivacyPolicyPage() {
                 <strong>Other users of the Platform:</strong> When a cleaner applies for a job, their first name and last initial, profile information, application message, and rating are shared with the customer. A customer's full address is shared with a cleaner <em>only</em> after the customer has accepted that cleaner's application. Customers are not identified by name to cleaners — they are referred to by their area only (e.g. "Central Horsham") until acceptance.
               </li>
               <li>
+                <strong>Publicly visible content:</strong> Reviews you submit about a Cleaner appear on that Cleaner's public profile page (e.g. <code className="bg-gray-100 px-1 py-0.5 rounded text-xs">/c/cleaner-slug</code>), which is accessible without an account. Reviews are attributed only by your first name and last initial (e.g. "Sarah B."). The Cleaner's first name, last initial, area, rating, and review body are also publicly visible on these pages.
+              </li>
+              <li>
                 <strong>Service providers (data processors):</strong> We use the following third-party processors who act on our instructions and are bound by data processing agreements:
                 <ul className="mt-2">
                   <li><strong>Supabase Inc.</strong> — database hosting and authentication (servers located in EU)</li>
@@ -178,6 +183,8 @@ export default function PrivacyPolicyPage() {
                     ['Active account data', 'For the duration of your account, plus 30 days following account deletion request'],
                     ['Completed transaction and booking records', '7 years (to comply with HMRC record-keeping requirements)'],
                     ['Chat messages and application messages', '2 years from the date of the conversation, or until account deletion'],
+                    ['Reviews', 'For the duration of the reviewed Cleaner\'s registration, plus 1 year — reviews remain visible on the Cleaner\'s profile during this period'],
+                    ['Referral attribution and credit records', '7 years (to support audit of free-month credits applied to subscriptions)'],
                     ['Keyword violation logs', '2 years from the date of the violation'],
                     ['Marketing consent records', 'Until you withdraw consent, plus 1 year'],
                     ['Server and access logs', '90 days'],
@@ -234,14 +241,14 @@ export default function PrivacyPolicyPage() {
             <p>We use the following categories of cookies:</p>
             <ul>
               <li>
-                <strong>Strictly necessary cookies:</strong> Required for the Platform to function — for example, session authentication cookies that keep you logged in. These cannot be disabled.
+                <strong>Strictly necessary cookies:</strong> Required for the Platform to function — for example, Supabase authentication cookies that keep you logged in, your cookie-consent preferences, and the referral-attribution cookie (<code className="bg-gray-100 px-1 py-0.5 rounded text-xs">vouchee_ref</code>) which remembers the friend's invite link you arrived through for up to 30 days so we can apply the correct credits when you complete signup. These cannot be disabled.
               </li>
               <li>
                 <strong>Analytics cookies:</strong> Used to understand how users interact with the Platform (e.g. PostHog). These are only set with your consent.
               </li>
             </ul>
             <p>
-              You can manage your cookie preferences via the cookie banner on your first visit, or by adjusting your browser settings. Note that disabling certain cookies may affect Platform functionality.
+              For the full list of individual cookies, their purpose, and retention period, see our <Link href="/legal/cookies" className="text-blue-600 underline">Cookie Policy</Link>. You can manage your cookie preferences via the cookie banner on your first visit, or by adjusting your browser settings. Note that disabling certain cookies may affect Platform functionality.
             </p>
           </Section>
 
@@ -281,7 +288,8 @@ export default function PrivacyPolicyPage() {
 
         {/* Related links */}
         <div className="mt-16 pt-8 border-t border-gray-100 flex flex-wrap gap-4 text-sm">
-          <Link href="/legal/terms" className="text-blue-600 hover:underline font-medium">Terms of Service →</Link>
+          <Link href="/legal/terms/customer" className="text-blue-600 hover:underline font-medium">Customer Terms →</Link>
+          <Link href="/legal/terms/cleaner" className="text-blue-600 hover:underline font-medium">Cleaner Terms →</Link>
           <Link href="/legal/cookies" className="text-blue-600 hover:underline font-medium">Cookie Policy →</Link>
           <Link href="/" className="text-gray-400 hover:text-gray-600">← Back to home</Link>
         </div>

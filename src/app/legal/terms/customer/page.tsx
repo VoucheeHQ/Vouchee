@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   description: 'The terms and conditions governing Customers\' use of the Vouchee platform, including subscription terms, vetting process, and platform rules.',
 }
 
-const LAST_UPDATED = 'March 2026'
+const LAST_UPDATED = 'May 2026'
 const CONTACT_EMAIL = 'legal@vouchee.co.uk'
 const SITE_URL = 'https://www.vouchee.co.uk'
 
@@ -24,7 +24,7 @@ export default function CustomerTermsPage() {
             Customer Terms of Service
           </h1>
           <p className="text-gray-500 text-sm mb-4">
-            Last updated: <span className="font-semibold text-gray-700">{LAST_UPDATED}</span> · Version 7.0
+            Last updated: <span className="font-semibold text-gray-700">{LAST_UPDATED}</span> · Version 7.1
           </p>
           <p className="text-sm text-gray-500 max-w-xl mx-auto">
             These terms apply specifically to homeowners using Vouchee to find a cleaner. If you are a cleaner looking for work, please read the{' '}
@@ -168,11 +168,11 @@ export default function CustomerTermsPage() {
 
           <Section id="9" title="9. Cleaner Non-Attendance">
             <p>Vouchee is not liable for any loss, cost, or damage arising from a Cleaner's failure to attend a scheduled session, including but not limited to lost earnings, annual leave taken in anticipation of a session, or any other consequential financial loss.</p>
-            <p>Where a Cleaner is unable to attend, Customers are encouraged to use the Vouchee cover clean feature to arrange a replacement session at short notice. The cover clean feature is planned for availability at launch. Vouchee will make reasonable efforts to facilitate cover in such circumstances but cannot guarantee availability.</p>
+            <p>Where a Cleaner is unable to attend, Customers may use the Vouchee <strong>cover clean</strong> feature on their dashboard to request a replacement session at short notice from any available Cleaner on the platform. Cover cleans are one-off arrangements paid directly to the cover Cleaner. Vouchee will make reasonable efforts to facilitate cover in such circumstances but cannot guarantee that a cover Cleaner will be available for any particular date or time.</p>
           </Section>
 
           <Section id="10" title="10. Force Majeure">
-            <p>Neither Vouchee nor any Cleaner shall be considered in breach of their obligations where non-performance is caused by circumstances genuinely outside their reasonable control, including but not limited to illness, severe weather, transport disruption, or other events beyond reasonable anticipation. In such cases, Customers are encouraged to use the cover clean feature (planned for launch) to arrange an alternative session.</p>
+            <p>Neither Vouchee nor any Cleaner shall be considered in breach of their obligations where non-performance is caused by circumstances genuinely outside their reasonable control, including but not limited to illness, severe weather, transport disruption, or other events beyond reasonable anticipation. In such cases, Customers may use the cover clean feature described in Clause 9 to arrange an alternative session.</p>
           </Section>
 
           <Section id="11" title="11. Subscriptions and Payments">
@@ -186,8 +186,36 @@ export default function CustomerTermsPage() {
             <p>Where a Customer does not wish to find a replacement Cleaner, they may request a subscription pause through the platform. The 30-day notice period will still apply, but no charges will be collected during that period. At the end of the notice period the subscription will be cancelled.</p>
             <p>No refunds will be issued for partial months within a notice period where a Cleaner remains available.</p>
 
-            <h4 className="font-semibold text-gray-800 mt-4 mb-2">11.3 Cleaner Hourly Rate</h4>
-            <p>The hourly rate paid to your Cleaner is set by you during the request process and agreed between you and the Cleaner. This is paid through the platform and is separate from the platform subscription fee.</p>
+            <h4 className="font-semibold text-gray-800 mt-4 mb-2">11.3 Cleaner Hourly Rate (Paid Directly)</h4>
+            <p>The hourly rate paid to your Cleaner is set by you during the request process and agreed between you and the Cleaner. <strong>This payment is made by you directly to your Cleaner, not through Vouchee.</strong> The Direct Debit you set up with Vouchee covers the platform subscription fee only — it does <strong>not</strong> include your Cleaner's pay. You and your Cleaner are free to agree any reasonable payment method (cash, bank transfer, or other) for the cleaning service itself, and you remain solely responsible for paying your Cleaner promptly for sessions completed.</p>
+            <p>Because Cleaner payments are made directly, Vouchee is not involved in those transactions and accepts no liability for disputes over payment between you and your Cleaner. Any such dispute should be raised through the in-platform chat in the first instance, and where unresolved may be referred to Vouchee for mediation under Clause 20.</p>
+          </Section>
+
+          <Section id="11A" title="11A. Referral Programme">
+            <p>Vouchee operates a customer referral programme designed to reward Customers who introduce friends to the platform.</p>
+
+            <h4 className="font-semibold text-gray-800 mt-4 mb-2">11A.1 How It Works</h4>
+            <p>Each Customer is assigned a unique personal invite link from their dashboard. When a new Customer signs up through that link, both the referring Customer and the new Customer become eligible for <strong>one month free</strong> on their respective subscriptions, provided the following conditions are met:</p>
+            <ul>
+              <li>The new Customer signs up via the personal invite link (attribution is captured automatically when the link is clicked).</li>
+              <li>The new Customer completes the signup process, selects a Cleaner, sets up their Direct Debit, and the agreed clean start date has passed.</li>
+              <li>At least <strong>24 hours</strong> have elapsed since the start date, and the new Customer has not cancelled their subscription in that time.</li>
+              <li>The new Customer's statutory 14-day cancellation period (see Clause 11.2) has fully passed.</li>
+              <li>The referring Customer's subscription is still active at the time the credit is applied. If it has been cancelled, only the new Customer receives their free month.</li>
+            </ul>
+
+            <h4 className="font-semibold text-gray-800 mt-4 mb-2">11A.2 How the Free Month is Applied</h4>
+            <p>The free month is applied by pausing the next billing cycle of the relevant Direct Debit. No cash refund or alternative is offered. If multiple successful referrals are made, free months are stacked sequentially — for example, three successful referrals will result in three consecutive billing cycles being skipped.</p>
+
+            <h4 className="font-semibold text-gray-800 mt-4 mb-2">11A.3 Limits and Anti-Abuse</h4>
+            <ul>
+              <li>You may not refer yourself, members of your immediate household using the same payment method, or accounts that you control or operate.</li>
+              <li>Referrals must be genuine. Vouchee reserves the right to withhold or reverse free-month credits where we reasonably believe the referral is fraudulent, abusive, or in breach of these Terms.</li>
+              <li>There is no cap on the number of friends you can refer, but the credit is applied only once per unique referred Customer.</li>
+            </ul>
+
+            <h4 className="font-semibold text-gray-800 mt-4 mb-2">11A.4 Changes to the Programme</h4>
+            <p>Vouchee reserves the right to modify, suspend, or discontinue the referral programme at any time. Where changes are material, we will give at least 14 days' notice. Credits already earned at the time of any change will be honoured.</p>
           </Section>
 
           <Section id="12" title="12. Credits and Rewards (Cleaners)">
@@ -234,6 +262,8 @@ export default function CustomerTermsPage() {
           <Section id="15" title="15. Reviews and User-Generated Content">
             <p>Vouchee hosts reviews and ratings submitted by Customers about Cleaners. By submitting a review, you grant Vouchee a non-exclusive, royalty-free licence to display, reproduce, and use that content on the platform and in our marketing materials.</p>
             <p>You agree that any review you submit is truthful, based on genuine experience, and does not contain defamatory, discriminatory, or misleading content.</p>
+            <p><strong>Public visibility:</strong> Reviews are displayed on the Cleaner's public profile page and are visible to anyone visiting that page, including users without a Vouchee account. Your review is attributed by your first name and last initial only (e.g. "Sarah B.") — your full name, email address, and contact details are never shown.</p>
+            <p><strong>Verification gate:</strong> You may only leave a review for a Cleaner with whom you have an active or completed arrangement on the platform (i.e. you have selected them and confirmed a start date). You may leave one review per Cleaner per six-month period — this prevents review-bombing while allowing genuine updates over time.</p>
             <p>Vouchee reserves the right to remove any review that we reasonably believe to be fraudulent, fabricated, defamatory, or in breach of these Terms.</p>
           </Section>
 
@@ -310,7 +340,7 @@ export default function CustomerTermsPage() {
 
           <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 mt-8 not-prose">
             <p className="text-xs text-gray-500 leading-relaxed italic">
-              This document is a working draft prepared for solicitor review prior to publication. Priority review areas: Clauses 2 (marketplace status / employment classification), 6 (platform protection fee enforceability), 14 (limitation of liability under Consumer Rights Act 2015), and 16 (UK GDPR compliance). Updated March 2026 to reflect GoCardless payment processing, address disclosure policy, keyword violation logging, and cover clean feature status.
+              This document is a working draft prepared for solicitor review prior to publication. Priority review areas: Clauses 2 (marketplace status / employment classification), 6 (platform protection fee enforceability), 11.3 (direct payment between Customer and Cleaner — VAT / tax characterisation), 11A (referral programme — consumer credit / promotion regulations), 14 (limitation of liability under Consumer Rights Act 2015), and 16 (UK GDPR compliance). Updated May 2026 to clarify direct Cleaner payment, add the referral programme, mark cover cleans as live, and document review public-visibility and 6-month gate.
             </p>
           </div>
 

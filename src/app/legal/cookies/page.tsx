@@ -15,7 +15,7 @@ export default function CookiePolicyPage() {
         <h1 style={{ fontSize: 'clamp(28px, 5vw, 42px)', fontWeight: 800, color: '#0f172a', margin: '0 0 16px', letterSpacing: '-0.4px', lineHeight: 1.15 }}>
           Cookie Policy
         </h1>
-        <p style={{ fontSize: '15px', color: '#64748b', margin: 0 }}>Last updated: May 2026</p>
+        <p style={{ fontSize: '15px', color: '#64748b', margin: 0 }}>Last updated: 14 May 2026</p>
       </div>
 
       <div style={{ fontSize: '15px', color: '#374151', lineHeight: 1.8 }}>
@@ -43,6 +43,13 @@ export default function CookiePolicyPage() {
             purpose: 'Cookie preferences',
             description: 'Stores your cookie consent choices so we do not show you the banner on every visit. Stored in your browser using localStorage rather than a traditional cookie.',
             duration: '12 months',
+            type: 'Strictly necessary',
+          },
+          {
+            name: 'vouchee_ref',
+            purpose: 'Referral attribution',
+            description: 'Set when you arrive via a friend\'s personal invite link (e.g. vouchee.co.uk/?ref=…). Remembers which friend referred you so we can apply the correct free-month credits to both accounts when you complete signup. Only contains an opaque referral token, not your name or any contact details. First-touch attribution — never overwritten.',
+            duration: '30 days',
             type: 'Strictly necessary',
           },
           {

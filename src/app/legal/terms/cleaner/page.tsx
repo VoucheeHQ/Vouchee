@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   description: 'The terms and conditions governing Cleaners\' use of the Vouchee platform, including self-employment obligations, tax responsibilities, and platform rules.',
 }
 
-const LAST_UPDATED = 'March 2026'
+const LAST_UPDATED = 'May 2026'
 const CONTACT_EMAIL = 'legal@vouchee.co.uk'
 const SITE_URL = 'https://www.vouchee.co.uk'
 
@@ -24,7 +24,7 @@ export default function CleanerTermsPage() {
             Cleaner Terms of Service
           </h1>
           <p className="text-gray-500 text-sm mb-4">
-            Last updated: <span className="font-semibold text-gray-700">{LAST_UPDATED}</span> · Version 3.0
+            Last updated: <span className="font-semibold text-gray-700">{LAST_UPDATED}</span> · Version 3.1
           </p>
           <p className="text-sm text-gray-500 max-w-xl mx-auto">
             These terms apply specifically to Cleaners on the Vouchee platform. If you are a homeowner looking for a cleaner, please read the{' '}
@@ -281,13 +281,19 @@ export default function CleanerTermsPage() {
           </Section>
 
           <Section id="12" title="12. Payments">
-            <p>Payments for cleaning sessions are processed through the Vouchee platform via <strong>GoCardless</strong>, an FCA-authorised payment service provider operating via Direct Debit. You agree to:</p>
+            <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 not-prose mb-4">
+              <p className="text-sm font-bold text-blue-800">Customers pay you directly. Vouchee does not handle your earnings.</p>
+            </div>
+            <p>Your hourly rate is agreed between you and the Customer through the Vouchee platform during the application and acceptance flow. Once the arrangement is confirmed, the Customer pays you <strong>directly</strong> — by cash, bank transfer, or any other reasonable method you mutually agree — for the cleaning work itself.</p>
+            <p>The Customer's monthly Direct Debit to Vouchee (processed via GoCardless, an FCA-authorised payment service provider) covers the <strong>platform subscription fee</strong> only. None of that Direct Debit money is paid to you, and Vouchee does not act as an intermediary, collection agent, or escrow for your hourly earnings.</p>
+            <p>You agree to:</p>
             <ul>
               <li>Set your hourly rate accurately and not misrepresent the time spent on a session</li>
-              <li>Not request or accept cash payments, bank transfers, or any other form of payment from Customers outside of the Vouchee platform</li>
-              <li>Raise any payment disputes through the Vouchee platform promptly</li>
+              <li>Issue receipts or invoices to your Customers where requested, in line with your obligations as a self-employed individual (see Clause 3)</li>
+              <li>Raise any payment disputes with your Customer through the Vouchee in-platform chat in the first instance, so the dispute is on record. Where unresolved, the matter may be referred to Vouchee for mediation under Clause 22.</li>
+              <li>Voluntary tips offered by a Customer are permitted; soliciting or pressuring a Customer for additional payment is not.</li>
             </ul>
-            <p>Vouchee charges a platform fee on payments processed. The current fee structure is published on the platform and may be updated with reasonable notice.</p>
+            <p>Because you are paid directly, you are solely responsible for declaring and paying tax on your earnings (see Clause 3). Vouchee does not provide payment records, invoices, or any other tax documentation for the work you do — you must maintain your own records.</p>
           </Section>
 
           <Section id="13" title="13. Account Deactivation">
@@ -402,7 +408,7 @@ export default function CleanerTermsPage() {
 
           <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 mt-8 not-prose">
             <p className="text-xs text-gray-500 leading-relaxed italic">
-              This document is a working draft prepared for solicitor review prior to publication. Priority review areas: Clauses 2 (self-employment / worker status), 6 (off-platform restriction enforceability and 24-month window), 10 (credit system — consumer credit regulations), and 13 (deactivation process and data retention). Should be reviewed alongside the Customer Terms of Service to ensure consistency between both documents.
+              This document is a working draft prepared for solicitor review prior to publication. Priority review areas: Clauses 2 (self-employment / worker status), 6 (off-platform restriction enforceability and 24-month window), 10 (credit system — consumer credit regulations), 12 (direct payment between Cleaner and Customer — VAT / tax characterisation), and 13 (deactivation process and data retention). Should be reviewed alongside the Customer Terms of Service to ensure consistency between both documents. Updated May 2026 to clarify the direct-payment model and consistency with Customer Terms §11.3.
             </p>
           </div>
 

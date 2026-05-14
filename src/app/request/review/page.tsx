@@ -538,7 +538,7 @@ export default function ReviewPublishPage() {
 
           <p style={{ textAlign: "center", fontSize: "12px", color: "#94a3b8", marginTop: "12px", lineHeight: 1.5 }}>
             You can pause or remove your listing at any time from your dashboard.{" "}
-            <Link href="/legal/terms" style={{ color: "#3b82f6", textDecoration: "none" }}>Full terms</Link>
+            <Link href="/legal/terms/customer" style={{ color: "#3b82f6", textDecoration: "none" }}>Full terms</Link>
           </p>
 
         </div>
