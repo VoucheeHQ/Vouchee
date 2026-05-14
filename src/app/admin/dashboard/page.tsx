@@ -2363,6 +2363,39 @@ export default function AdminDashboard() {
                   }}
                 />
 
+                {/* Review request — fires 14d after start_date via cron */}
+                <TestCard
+                  title="⭐ Review request email"
+                  description="Sends the email customers receive ~14 days after their first clean asking for a review. The CTA links to the test cleaner's /c/[short_id] profile — the same destination as the dashboard's 'Leave a review' button. Sends to your admin email."
+                  buttonLabel="Send test email →"
+                  buttonColor="#f59e0b"
+                  onRun={async () => {
+                    const res = await fetch('/api/admin/test-review-request-email', { method: 'POST' })
+                    const data = await res.json()
+                    if (data.success) return { success: true, message: `Sent to ${data.sentTo}` }
+                    return { success: false, message: data.error ?? 'Failed' }
+                  }}
+                />
+
+                {/* Referral credited — both flavours (referrer + referee) */}
+                <TestCard
+                  title="🎁 Referral credited emails (referrer + referee)"
+                  description="Sends both sides of the referral reward: 'Your next month is on us' to the referrer and 'Welcome — first month free' to the referee. Both go to your admin email so you can compare. Templates imported from src/lib/emails/referral-credited.ts."
+                  buttonLabel="Send test emails →"
+                  buttonColor="#8e44ad"
+                  onRun={async () => {
+                    const res = await fetch('/api/admin/test-referral-credited-emails', { method: 'POST' })
+                    const data = await res.json()
+                    if (!res.ok || !data.success) {
+                      const failures: string[] = []
+                      if (data.referrer?.error) failures.push(`referrer: ${data.referrer.error}`)
+                      if (data.referee?.error) failures.push(`referee: ${data.referee.error}`)
+                      return { success: false, message: failures.length > 0 ? failures.join(' | ') : (data.error ?? 'Failed') }
+                    }
+                    return { success: true, message: `Both emails sent to ${data.sentTo}` }
+                  }}
+                />
+
                 {/* Launch flip — bulk converts all pre-launch listings to live and fires alerts.
                     Use ONCE on launch day, after flipping NEXT_PUBLIC_LAUNCHED to 'true' in Vercel. */}
                 <TestCard
