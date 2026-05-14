@@ -322,5 +322,42 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true })
   }
 
+  // ── Dismiss / re-flag a work-queue badge entry ───────────────────────────
+  // Each list-tab badge (cleaners, applications, listings, violations)
+  // counts only rows where the entity-specific *_reviewed_at column is NULL.
+  // The admin can either resolve the row through the normal action (which
+  // changes its state, naturally clearing it from the badge) or explicitly
+  // dismiss it via this endpoint without changing the underlying state.
+  //
+  // dismissed=true  → set the timestamp (drops from badge)
+  // dismissed=false → null it (re-adds to badge, "I want to look at this again")
+  if (action === 'dismiss_review') {
+    const { entityType, entityId, dismissed } = body
+    const flag = dismissed === false ? false : true
+    if (!entityId || typeof entityType !== 'string') {
+      return NextResponse.json({ error: 'Missing entityType or entityId' }, { status: 400 })
+    }
+
+    const stamp = flag ? new Date().toISOString() : null
+    let error: any = null
+    if (entityType === 'cleaner') {
+      ({ error } = await admin.from('cleaners').update({ submission_reviewed_at: stamp } as any).eq('id', entityId))
+    } else if (entityType === 'application') {
+      ({ error } = await admin.from('applications').update({ pending_reviewed_at: stamp } as any).eq('id', entityId))
+    } else if (entityType === 'listing') {
+      ({ error } = await admin.from('clean_requests').update({ hidden_reviewed_at: stamp } as any).eq('id', entityId))
+    } else if (entityType === 'violation') {
+      ({ error } = await admin
+        .from('keyword_violations')
+        .update({ reviewed_at: stamp, reviewed_by: flag ? user.id : null } as any)
+        .eq('id', entityId))
+    } else {
+      return NextResponse.json({ error: 'Unknown entityType' }, { status: 400 })
+    }
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ success: true })
+  }
+
   return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
 }

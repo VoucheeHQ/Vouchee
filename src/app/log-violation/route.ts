@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
 import { Resend } from 'resend'
+import { detectTriggeredKeywords } from '@/lib/violation-detect'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
@@ -25,13 +26,16 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json()
-    const { conversationId, messageContent, triggeredKeywords, senderRole } = body
+    const { conversationId, messageContent, senderRole } = body
     // senderId is derived from the authenticated user — ignore any value
     // the client provides, otherwise an attacker can frame another user.
     const senderId = user.id
 
-    if (!conversationId || !messageContent || !triggeredKeywords) {
+    if (!conversationId || !messageContent) {
       return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
+    }
+    if (senderRole !== 'customer' && senderRole !== 'cleaner') {
+      return NextResponse.json({ error: 'Invalid senderRole' }, { status: 400 })
     }
 
     // Participant check: caller must be either the customer (conversations
@@ -52,6 +56,22 @@ export async function POST(request: NextRequest) {
     }
     if (!isParticipant) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
+    // ─── Re-run keyword detection server-side ──────────────────────────────
+    // The client tells us what it thinks triggered, but we don't trust it.
+    // Loading from DB also means new keywords added in the admin tab apply
+    // immediately, no deploy needed.
+    const { data: keywordRows } = await supabaseAdmin
+      .from('violation_keywords').select('keyword') as { data: { keyword: string }[] | null }
+    const watchlist = (keywordRows ?? []).map(r => r.keyword)
+    const triggeredKeywords = detectTriggeredKeywords(String(messageContent), watchlist)
+
+    if (triggeredKeywords.length === 0) {
+      // Client said this was a violation but the server check disagrees.
+      // Return 200 with skipped:true so the chat-widget doesn't error out,
+      // but don't write a row or email anyone.
+      return NextResponse.json({ success: true, skipped: 'no_match' })
+    }
+
     // 1. Log the violation
     const { error: insertError } = await supabaseAdmin
       .from('keyword_violations')
@@ -66,6 +86,18 @@ export async function POST(request: NextRequest) {
     if (insertError) {
       console.error('Violation insert failed:', insertError)
       // Don't fail the request — violation logging is best-effort
+    }
+
+    // ─── Email handling: respect the hourly digest toggle ──────────────────
+    // When digest is ON (default), we skip the per-event email and let the
+    // /api/cron/violation-digest job send a roll-up. When OFF, we email
+    // each violation as it happens.
+    const { data: settingRow } = await supabaseAdmin
+      .from('admin_settings').select('value').eq('key', 'hourly_violation_digest').single() as { data: { value: any } | null }
+    const digestOn = settingRow?.value === true || settingRow?.value === 'true'
+
+    if (digestOn) {
+      return NextResponse.json({ success: true, emailed: false, digest: true })
     }
 
     // 2. Get sender name for the alert email
@@ -87,7 +119,8 @@ export async function POST(request: NextRequest) {
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.vouchee.co.uk'
 
-    // 4. Send alert email to all admins
+    // 4. Send alert email to all admins, and mark emailed_at on the row
+    //    so the digest cron skips it.
     await Promise.all(admins.map((admin: { email: string }) =>
       resend.emails.send({
         from: 'Vouchee Alerts <info@vouchee.co.uk>',
@@ -111,13 +144,13 @@ export async function POST(request: NextRequest) {
                   <tr>
                     <td style="padding: 8px 0; font-size: 12px; font-weight: 700; color: #94a3b8; text-transform: uppercase;">Keywords</td>
                     <td style="padding: 8px 0;">
-                      ${(triggeredKeywords as string[]).map((k: string) => `<span style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:700;margin-right:4px;">${escapeHtml(k)}</span>`).join('')}
+                      ${triggeredKeywords.map((k: string) => `<span style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:700;margin-right:4px;">${escapeHtml(k)}</span>`).join('')}
                     </td>
                   </tr>
                 </table>
 
                 <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 10px; padding: 14px 16px; margin-bottom: 24px;">
-                  <div style="font-size: 12px; font-weight: 700; color: '#94a3b8'; margin-bottom: 6px;">Message content</div>
+                  <div style="font-size: 12px; font-weight: 700; color: #94a3b8; margin-bottom: 6px;">Message content</div>
                   <div style="font-size: 14px; color: #0f172a; font-style: italic;">"${escapeHtml(messageContent)}"</div>
                 </div>
 
@@ -131,7 +164,17 @@ export async function POST(request: NextRequest) {
       })
     ))
 
-    return NextResponse.json({ success: true })
+    // Mark emailed_at on the most recent violation row for this conversation
+    // (the one we just inserted — no insert-returning above to keep the
+    // change minimal). Best-effort.
+    await supabaseAdmin
+      .from('keyword_violations')
+      .update({ emailed_at: new Date().toISOString() })
+      .eq('conversation_id', conversationId)
+      .eq('sender_id', senderId)
+      .is('emailed_at', null)
+
+    return NextResponse.json({ success: true, emailed: true })
   } catch (err: any) {
     console.error('log-violation error:', err)
     return NextResponse.json({ error: err.message ?? 'Internal server error' }, { status: 500 })

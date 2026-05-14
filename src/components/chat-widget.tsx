@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { detectTriggeredKeywords } from '@/lib/violation-detect'
 import './chat-widget.css'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -53,7 +54,28 @@ const ZONE_LABELS: Record<string, string> = {
   christs_hospital: "Christ's Hospital",
 }
 
-const WATCHLIST = ['07', '+44', 'whatsapp', 'email', '@', 'bank', 'address', 'go direct', 'go private', 'direct payment', 'cash']
+// Fallback list used only if /api/keywords fails — the source of truth is
+// the violation_keywords table, fetched on chat-widget mount.
+const FALLBACK_WATCHLIST = ['07', '+44', 'whatsapp', 'email', '@', 'bank', 'address', 'go direct', 'go private', 'direct payment', 'cash']
+
+// Module-level cache so each ChatWindow mount doesn't re-fetch.
+let cachedWatchlist: string[] | null = null
+async function loadWatchlist(): Promise<string[]> {
+  if (cachedWatchlist) return cachedWatchlist
+  try {
+    const res = await fetch('/api/keywords', { credentials: 'include' })
+    if (!res.ok) throw new Error('keywords fetch failed')
+    const json = await res.json() as { keywords?: string[] }
+    if (Array.isArray(json.keywords) && json.keywords.length > 0) {
+      cachedWatchlist = json.keywords
+      return cachedWatchlist
+    }
+  } catch (e) {
+    // fall through to fallback
+  }
+  cachedWatchlist = FALLBACK_WATCHLIST
+  return cachedWatchlist
+}
 
 const SUGGESTED_QUESTIONS = [
   "When are you next available?",
@@ -143,10 +165,13 @@ async function triggerMessageEmail(conversationId: string, content: string) {
 
 async function logViolation(conversationId: string, messageContent: string, triggeredKeywords: string[], senderId: string, senderRole: string) {
   try {
+    // senderId is ignored server-side (derived from auth.getUser), but we
+    // keep the param shape so call-sites read clearly.
+    void senderId
     await fetch('/api/log-violation', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ conversationId, messageContent, triggeredKeywords, senderId, senderRole }),
+      body: JSON.stringify({ conversationId, messageContent, triggeredKeywords, senderRole }),
     })
   } catch (e) {}
 }
@@ -201,19 +226,30 @@ function ChatWindow({ conversation, currentUserId, currentRole, onClose, onDismi
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [warningShown, setWarningShown] = useState(false)
+  // Warning banner shown above the input. Cleared by the X button or when
+  // the user successfully sends. Each fresh keyword hit re-shows it.
   const [showWarning, setShowWarning] = useState(false)
+  // Set true after a keyword-triggered send has been warned + logged.
+  // Sending the same content immediately afterwards is allowed (the user
+  // confirmed they wanted to go ahead). Cleared whenever the input is
+  // edited so the next flagged variant warns again.
+  const [pendingFlaggedSend, setPendingFlaggedSend] = useState(false)
   const [showSuppliesFollowup, setShowSuppliesFollowup] = useState(false)
   const [customerHasSent, setCustomerHasSent] = useState(false)
   const [otherIsTyping, setOtherIsTyping] = useState(false)
   const [applicationId, setApplicationId] = useState<string | null>(null)
+  const [watchlist, setWatchlist] = useState<string[]>(FALLBACK_WATCHLIST)
   const bottomRef = useRef<HTMLDivElement>(null)
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const channelRef = useRef<any>(null)
   const supabase = createClient()
 
   const getTriggeredKeywords = (text: string): string[] =>
-    WATCHLIST.filter(w => text.toLowerCase().includes(w))
+    detectTriggeredKeywords(text, watchlist)
+
+  useEffect(() => {
+    loadWatchlist().then(setWatchlist).catch(() => {})
+  }, [])
 
   useEffect(() => {
     const load = async () => {
@@ -330,6 +366,9 @@ function ChatWindow({ conversation, currentUserId, currentRole, onClose, onDismi
 
   const handleInputChange = (val: string) => {
     setInput(val)
+    // Any edit cancels the "press send again to confirm" state — a fresh
+    // flagged variant should get a fresh warning + a fresh log entry.
+    if (pendingFlaggedSend) setPendingFlaggedSend(false)
     broadcastTyping(val.length > 0)
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
     if (val.length > 0) {
@@ -341,10 +380,15 @@ function ChatWindow({ conversation, currentUserId, currentRole, onClose, onDismi
     const content = (overrideContent ?? input).trim()
     if (!content || sending) return
 
+    // Keyword check. The flow is "warn, log, then allow on the next press":
+    //   1. First flagged press   → log violation, show warning, return (no send)
+    //   2. Same content re-pressed (pendingFlaggedSend=true) → send through
+    //   3. Editing the input clears pendingFlaggedSend, so a new variant
+    //      re-triggers the warning + a fresh log
     const triggered = getTriggeredKeywords(content)
-    if (triggered.length > 0 && !warningShown) {
+    if (triggered.length > 0 && !pendingFlaggedSend) {
       setShowWarning(true)
-      setWarningShown(true)
+      setPendingFlaggedSend(true)
       logViolation(conversation.id, content, triggered, currentUserId, currentRole)
       return
     }
@@ -352,6 +396,8 @@ function ChatWindow({ conversation, currentUserId, currentRole, onClose, onDismi
     setSending(true)
     setInput('')
     setShowSuppliesFollowup(false)
+    setShowWarning(false)
+    setPendingFlaggedSend(false)
     broadcastTyping(false)
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
 
@@ -462,6 +508,7 @@ function ChatWindow({ conversation, currentUserId, currentRole, onClose, onDismi
             <div style={{ fontSize: '11px', fontWeight: 700, color: '#92400e' }}>Keep conversations on Vouchee</div>
             <div style={{ fontSize: '11px', color: '#b45309', lineHeight: 1.5 }}>
               Taking conversations off-platform removes your protection as a {currentRole}. All payments, scheduling and communication must stay within Vouchee.
+              {pendingFlaggedSend && <> Press send again if you want to go ahead — Vouchee will be notified.</>}
             </div>
           </div>
           <button onClick={() => setShowWarning(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#92400e', fontSize: '14px', flexShrink: 0 }}>✕</button>
