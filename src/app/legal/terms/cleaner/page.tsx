@@ -24,7 +24,7 @@ export default function CleanerTermsPage() {
             Cleaner Terms of Service
           </h1>
           <p className="text-gray-500 text-sm mb-4">
-            Last updated: <span className="font-semibold text-gray-700">{LAST_UPDATED}</span> · Version 3.1
+            Last updated: <span className="font-semibold text-gray-700">{LAST_UPDATED}</span> · Version 3.2
           </p>
           <p className="text-sm text-gray-500 max-w-xl mx-auto">
             These terms apply specifically to Cleaners on the Vouchee platform. If you are a homeowner looking for a cleaner, please read the{' '}
@@ -202,71 +202,10 @@ export default function CleanerTermsPage() {
             <p>This monitoring is conducted on the basis of legitimate interest and in accordance with our Privacy Policy. By using our messaging system, you consent to this monitoring.</p>
           </Section>
 
-          <Section id="10" title="10. Credits, Tiers, and Rewards">
-            <p>Vouchee operates a rewards programme designed to recognise and reward Cleaners who deliver consistent, high-quality work on the platform. Full details of the current rewards programme are published on the Rewards page of the platform.</p>
-
-            <h4 className="font-semibold text-gray-800 mt-4 mb-2">10.1 Sign-Up Credits</h4>
-            <p>All new Cleaners who successfully complete the onboarding process and have their accreditations verified will receive <strong>20 credits</strong> as a sign-up bonus, available to use immediately.</p>
-
-            <h4 className="font-semibold text-gray-800 mt-4 mb-2">10.2 Milestone Credits</h4>
-            <div className="overflow-x-auto my-4 not-prose">
-              <table className="w-full text-sm border border-gray-200 rounded-xl overflow-hidden">
-                <thead>
-                  <tr className="bg-gray-50 text-left">
-                    <th className="px-4 py-3 font-semibold text-gray-700 border-b border-gray-200">Milestone</th>
-                    <th className="px-4 py-3 font-semibold text-gray-700 border-b border-gray-200">Credits awarded</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {[['3 verified reviews', '10 credits'],['10 verified reviews', '15 credits'],['25 verified reviews', '20 credits'],['50 verified reviews', '30 credits'],['100 verified reviews', '50 credits']].map(([m, c]) => (
-                    <tr key={m}><td className="px-4 py-3 text-gray-700">{m}</td><td className="px-4 py-3 text-gray-600">{c}</td></tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <p>Milestone credits are awarded once per milestone and are not repeatable.</p>
-
-            <h4 className="font-semibold text-gray-800 mt-4 mb-2">10.3 Tier Structure and Monthly Credits</h4>
-            <div className="overflow-x-auto my-4 not-prose">
-              <table className="w-full text-sm border border-gray-200 rounded-xl overflow-hidden">
-                <thead>
-                  <tr className="bg-gray-50 text-left">
-                    <th className="px-4 py-3 font-semibold text-gray-700 border-b border-gray-200">Tier</th>
-                    <th className="px-4 py-3 font-semibold text-gray-700 border-b border-gray-200">Threshold</th>
-                    <th className="px-4 py-3 font-semibold text-gray-700 border-b border-gray-200">Monthly Credits</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  <tr><td className="px-4 py-3 text-gray-700">🥉 Bronze</td><td className="px-4 py-3 text-gray-600">20 verified 4+ star reviews</td><td className="px-4 py-3 text-gray-600">5 credits/month</td></tr>
-                  <tr><td className="px-4 py-3 text-gray-700">🥈 Silver</td><td className="px-4 py-3 text-gray-600">50 verified 4+ star reviews</td><td className="px-4 py-3 text-gray-600">10 credits/month</td></tr>
-                  <tr><td className="px-4 py-3 text-gray-700">🥇 Gold</td><td className="px-4 py-3 text-gray-600">100 verified 4+ star reviews</td><td className="px-4 py-3 text-gray-600">Unlimited credits</td></tr>
-                </tbody>
-              </table>
-            </div>
-            <p>Monthly credits that are unused at the end of the month are forfeited and do not carry over. Tier status is reviewed monthly. Where a Cleaner's qualifying review count falls below the threshold for their current tier, they will enter a 30-day review period during which their tier and monthly allocation are retained.</p>
-
-            <h4 className="font-semibold text-gray-800 mt-4 mb-2">10.4 Quests and Challenges</h4>
-            <p>Vouchee may from time to time offer time-limited quests or challenges that award bonus credits or other platform benefits upon completion. Quest availability, terms, and rewards are published on the platform and may change at any time. Quests that are withdrawn before completion will not result in partial credit awards unless otherwise stated at the time the quest was offered.</p>
-
-            <h4 className="font-semibold text-gray-800 mt-4 mb-2">10.5 Spending Credits</h4>
-            <ul>
-              <li>Each job application costs <strong>1 credit</strong>, except for Gold tier Cleaners who apply at no credit cost</li>
-              <li>Credits are <strong>non-refundable</strong> once a homeowner has opened and reviewed your application</li>
-              <li>Credits <strong>will be refunded</strong> if a job listing expires without the homeowner opening your application</li>
-              <li>Credits have <strong>no cash value</strong> and cannot be transferred between accounts</li>
-            </ul>
-
-            <h4 className="font-semibold text-gray-800 mt-4 mb-2">10.6 Purchasing Credits</h4>
-            <p>Additional credits will be available for purchase through the Vouchee credit store when this feature launches. The rates will be published on the platform at that time. Purchased credits that remain unused may be refunded within 14 days of purchase in accordance with applicable consumer law. After 14 days, purchased credits are non-refundable except where required by law.</p>
-
-            <h4 className="font-semibold text-gray-800 mt-4 mb-2">10.7 Admin Credits</h4>
-            <p>During early platform operation, Vouchee may at its discretion grant selected Cleaners complimentary credits or temporary unlimited access. This is a discretionary arrangement and may be withdrawn at any time with reasonable notice.</p>
-
-            <h4 className="font-semibold text-gray-800 mt-4 mb-2">10.8 Credits on Termination</h4>
-            <p>Upon account deactivation or termination, any unused credits are forfeited with no entitlement to refund, except for purchased credits within the 14-day window described in Clause 10.6.</p>
-
-            <h4 className="font-semibold text-gray-800 mt-4 mb-2">10.9 Changes to the Rewards Programme</h4>
-            <p>Vouchee reserves the right to introduce, modify, suspend, or discontinue any element of the rewards programme at any time. Where changes are material, Vouchee will provide at least 14 days notice before the change takes effect. Nothing in the rewards programme creates any contractual entitlement to a specific level of credits, tier status, or quest availability beyond what is explicitly confirmed in writing by Vouchee at the time of award.</p>
+          <Section id="10" title="10. Rewards Programmes">
+            <p>Vouchee does not currently operate a credit, token, or paid-application programme for Cleaners. Applying for any job listing is free for all approved Cleaners, with no per-application charge and no monthly or sign-up allocations.</p>
+            <p>Vouchee may introduce reward, loyalty, or incentive programmes in the future. Any such programme will be published on the platform with its own terms, and these Cleaner Terms of Service will be updated to reflect those terms before the programme takes effect.</p>
+            <p>Where Vouchee runs occasional discretionary promotions — for example, a free first-month subscription credit for Customers who refer a friend — these are governed by the relevant promotion's terms, not by this clause.</p>
           </Section>
 
           <Section id="11" title="11. Reviews and Ratings">
@@ -329,7 +268,7 @@ export default function CleanerTermsPage() {
               <li>A serious complaint is received from a Customer that warrants immediate action</li>
               <li>You are found to have arranged off-platform work in breach of Clause 6</li>
             </ul>
-            <p>Where possible, Vouchee will notify you of the reason for suspension or removal. In cases involving serious allegations or safety concerns, suspension may be immediate and without prior notice. Upon permanent removal, any unused credits are forfeited with no entitlement to refund.</p>
+            <p>Where possible, Vouchee will notify you of the reason for suspension or removal. In cases involving serious allegations or safety concerns, suspension may be immediate and without prior notice.</p>
           </Section>
 
           <Section id="15" title="15. Limitation of Liability">
@@ -339,7 +278,7 @@ export default function CleanerTermsPage() {
               <li>Vouchee is not liable for the conduct, actions, or omissions of any Customer</li>
               <li>Vouchee is not liable for any injury, accident, or damage that occurs while you are carrying out a cleaning session</li>
               <li>Vouchee does not guarantee any minimum level of work or earnings through the platform</li>
-              <li>Vouchee's total liability to you in connection with the platform shall not exceed the total value of credits purchased by you in the 3 months prior to the event giving rise to the claim</li>
+              <li>Vouchee's total liability to you in connection with the platform shall not exceed £100, this being a reasonable pre-estimate of any direct loss given that Cleaners pay no subscription or per-application fee to Vouchee</li>
             </ul>
             <p>Nothing in this clause excludes or limits our liability for:</p>
             <ul>
@@ -364,7 +303,7 @@ export default function CleanerTermsPage() {
 
           <Section id="18" title="18. Platform Availability and Changes">
             <p>Vouchee will make reasonable efforts to keep the platform available and functioning. However, we do not guarantee uninterrupted access and are not liable for losses arising from downtime, technical issues, or temporary unavailability.</p>
-            <p>We reserve the right to modify, suspend, or discontinue any part of the platform at any time. Where changes materially affect Cleaners — including changes to the credit system, fee structure, or platform rules — we will provide reasonable notice before changes take effect.</p>
+            <p>We reserve the right to modify, suspend, or discontinue any part of the platform at any time. Where changes materially affect Cleaners — including changes to the fee structure or platform rules — we will provide reasonable notice before changes take effect.</p>
           </Section>
 
           <Section id="19" title="19. Force Majeure">
@@ -405,12 +344,6 @@ export default function CleanerTermsPage() {
               <p className="text-gray-600 text-sm mt-1">Website: <a href={SITE_URL} className="text-blue-600 underline">{SITE_URL}</a></p>
             </div>
           </Section>
-
-          <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 mt-8 not-prose">
-            <p className="text-xs text-gray-500 leading-relaxed italic">
-              This document is a working draft prepared for solicitor review prior to publication. Priority review areas: Clauses 2 (self-employment / worker status), 6 (off-platform restriction enforceability and 24-month window), 10 (credit system — consumer credit regulations), 12 (direct payment between Cleaner and Customer — VAT / tax characterisation), and 13 (deactivation process and data retention). Should be reviewed alongside the Customer Terms of Service to ensure consistency between both documents. Updated May 2026 to clarify the direct-payment model and consistency with Customer Terms §11.3.
-            </p>
-          </div>
 
         </div>
 

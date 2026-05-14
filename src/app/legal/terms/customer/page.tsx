@@ -24,7 +24,7 @@ export default function CustomerTermsPage() {
             Customer Terms of Service
           </h1>
           <p className="text-gray-500 text-sm mb-4">
-            Last updated: <span className="font-semibold text-gray-700">{LAST_UPDATED}</span> · Version 7.1
+            Last updated: <span className="font-semibold text-gray-700">{LAST_UPDATED}</span> · Version 7.2
           </p>
           <p className="text-sm text-gray-500 max-w-xl mx-auto">
             These terms apply specifically to homeowners using Vouchee to find a cleaner. If you are a cleaner looking for work, please read the{' '}
@@ -218,15 +218,9 @@ export default function CustomerTermsPage() {
             <p>Vouchee reserves the right to modify, suspend, or discontinue the referral programme at any time. Where changes are material, we will give at least 14 days' notice. Credits already earned at the time of any change will be honoured.</p>
           </Section>
 
-          <Section id="12" title="12. Credits and Rewards (Cleaners)">
-            <p>Cleaners on Vouchee participate in a rewards programme. From a Customer's perspective:</p>
-            <ul>
-              <li>Credits are what Cleaners use to apply for your job listing</li>
-              <li>Each application a Cleaner submits costs them 1 credit, which encourages genuine and considered applications</li>
-              <li>Cleaners at Gold tier (100+ verified 4-star reviews) apply at no credit cost, reflecting their proven track record on the platform</li>
-              <li>Credits have no cash value and are not visible to or managed by Customers</li>
-            </ul>
-            <p>Vouchee reserves the right to modify the rewards programme at any time with reasonable notice to Cleaners. Changes to the Cleaner rewards programme do not affect Customer subscriptions or pricing.</p>
+          <Section id="12" title="12. Rewards and Promotions">
+            <p>Vouchee may from time to time run reward, loyalty, or referral programmes for Customers — for example, the referral programme described in Clause 11A above. Any such programme has its own terms, which we publish on the platform and reference in these Terms when introduced.</p>
+            <p>Where a promotional benefit (such as a free month) is applied to your subscription, it is applied by pausing the next eligible Direct Debit cycle. Promotional benefits have no cash value, cannot be transferred or exchanged, and are subject to the eligibility rules of the relevant programme.</p>
           </Section>
 
           <Section id="13" title="13. Our Commitment to Customers">
@@ -290,7 +284,7 @@ export default function CustomerTermsPage() {
               <li>A Cleaner's accreditations are found to be invalid or fraudulent</li>
               <li>A Customer has failed to pay outstanding fees or the platform protection fee under Clause 6</li>
             </ul>
-            <p>Upon termination, any unused credits held by a Cleaner account will be forfeited. Termination does not affect any rights or obligations that have already arisen.</p>
+            <p>Termination does not affect any rights or obligations that have already arisen prior to the termination.</p>
           </Section>
 
           <Section id="20" title="20. Disputes Between Customers and Cleaners">
@@ -337,12 +331,6 @@ export default function CustomerTermsPage() {
               <p className="text-gray-600 text-sm mt-1">Website: <a href={SITE_URL} className="text-blue-600 underline">{SITE_URL}</a></p>
             </div>
           </Section>
-
-          <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 mt-8 not-prose">
-            <p className="text-xs text-gray-500 leading-relaxed italic">
-              This document is a working draft prepared for solicitor review prior to publication. Priority review areas: Clauses 2 (marketplace status / employment classification), 6 (platform protection fee enforceability), 11.3 (direct payment between Customer and Cleaner — VAT / tax characterisation), 11A (referral programme — consumer credit / promotion regulations), 14 (limitation of liability under Consumer Rights Act 2015), and 16 (UK GDPR compliance). Updated May 2026 to clarify direct Cleaner payment, add the referral programme, mark cover cleans as live, and document review public-visibility and 6-month gate.
-            </p>
-          </div>
 
         </div>
 
