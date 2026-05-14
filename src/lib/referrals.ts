@@ -1,3 +1,5 @@
+import { trackEvent } from '@/lib/analytics'
+
 // Client-side helpers for the customer referral scheme.
 //
 // The flow:
@@ -41,7 +43,10 @@ export async function attachReferralIfAny(): Promise<{ attached: boolean; reason
       credentials: 'include',
     })
     const json = await res.json().catch(() => ({})) as { attached?: boolean; reason?: string }
-    if (json.attached) clearReferralCookie()
+    if (json.attached) {
+      clearReferralCookie()
+      trackEvent('signup_with_ref', { token })
+    }
     return { attached: !!json.attached, reason: json.reason }
   } catch (e) {
     return { attached: false, reason: 'network' }

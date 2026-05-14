@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import { trackEvent } from '@/lib/analytics'
 
 // Mounted in root layout. First-touch attribution: when a visitor lands
 // with ?ref=TOKEN in the URL, we store it for 30 days. If they already
@@ -43,6 +44,7 @@ export function ReferralCapture() {
       // First-touch wins — don't overwrite an existing cookie.
       if (readRefCookie()) return
       setRefCookie(token)
+      trackEvent('ref_link_clicked', { token })
     } catch (e) {
       // Don't break the page if URL parsing fails for any reason.
     }

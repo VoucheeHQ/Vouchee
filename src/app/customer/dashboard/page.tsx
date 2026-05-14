@@ -537,6 +537,13 @@ function ConfirmedCleanerCard({ request, onDelete, onEdit, onSwitch, onCover }: 
   const [contact, setContact] = useState<{ email: string | null; phone: string | null } | null>(null)
   const [loading, setLoading] = useState(true)
   const [expanded, setExpanded] = useState(false)
+  // Whether the customer has already reviewed this specific clean_request.
+  // The "Leave a review" CTA hides once a review exists so we don't nag.
+  const [reviewExists, setReviewExists] = useState<boolean | null>(null)
+  // Hide the review button until the first clean has actually happened —
+  // sending someone to write a review before any service is performed
+  // would be premature.
+  const canReview = firstCleanHappened(request.start_date)
 
   useEffect(() => {
     let cancelled = false
@@ -558,6 +565,25 @@ function ConfirmedCleanerCard({ request, onDelete, onEdit, onSwitch, onCover }: 
     })()
     return () => { cancelled = true }
   }, [request.assigned_cleaner_id])
+
+  // Has this customer already submitted a review for this clean_request?
+  // Cheap single-row exists check — the reviews RLS policy lets customers
+  // read their own reviews so the anon supabase client can answer this.
+  useEffect(() => {
+    let cancelled = false
+    if (!canReview) { setReviewExists(false); return }
+    const supabase = createClient()
+    ;(async () => {
+      const { data } = await (supabase as any)
+        .from('reviews')
+        .select('id')
+        .eq('clean_request_id', request.id)
+        .limit(1)
+        .maybeSingle()
+      if (!cancelled) setReviewExists(!!data)
+    })()
+    return () => { cancelled = true }
+  }, [request.id, canReview])
 
   const hours = request.hours_per_session ?? 0
   const rate = request.hourly_rate ?? 0
@@ -660,6 +686,25 @@ function ConfirmedCleanerCard({ request, onDelete, onEdit, onSwitch, onCover }: 
           <ActionBtn onClick={onSwitch}>{beforeStart ? '⚠️ Problem with my cleaner' : '🔄 Switch cleaner'}</ActionBtn>
           <ActionBtn onClick={onDelete} danger>Cancel subscription</ActionBtn>
         </div>
+
+        {/* Leave-a-review CTA — shown once the first clean has happened and
+            this customer hasn't yet reviewed this specific clean_request.
+            The review-request email (sent 14d after start_date) deep-links
+            to the same /c/[short_id] page, so dashboard and email stay
+            consistent. */}
+        {canReview && reviewExists === false && cleaner?.short_id && (
+          <div style={{ marginTop: '14px', padding: '12px 14px', background: '#fefce8', border: '1px solid #fef08a', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+            <div style={{ fontSize: '13px', color: '#92400e', lineHeight: 1.4 }}>
+              ⭐ How are your cleans going? Leave a review to help other Horsham customers.
+            </div>
+            <a
+              href={`/c/${cleaner.short_id}`}
+              style={{ background: '#0f172a', color: 'white', textDecoration: 'none', borderRadius: '8px', padding: '6px 14px', fontSize: '13px', fontWeight: 700, fontFamily: "'DM Sans', sans-serif", whiteSpace: 'nowrap' }}
+            >
+              Leave a review →
+            </a>
+          </div>
+        )}
 
         {/* Cover-clean SOS button — only after the first clean has happened. */}
         {firstCleanHappened(request.start_date) && (

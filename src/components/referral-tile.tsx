@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { trackEvent } from '@/lib/analytics'
 
 // Dashboard tile shown to customers. Pulls the customer's referral_token
 // (assigned automatically on customer-row creation by the migration trigger)
@@ -58,6 +59,7 @@ export function ReferralTile({ customerId }: { customerId: string }) {
     try {
       await navigator.clipboard.writeText(link)
       setCopied(true)
+      trackEvent('referral_tile_link_copied', { has_pending: (stats?.pending ?? 0) > 0 })
       setTimeout(() => setCopied(false), 2000)
     } catch (e) {
       // Older browsers / iframe contexts: fall back to select
@@ -80,7 +82,7 @@ export function ReferralTile({ customerId }: { customerId: string }) {
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '18px' }}>
+        <div className="referral-share-row" style={{ display: 'flex', gap: '8px', marginBottom: '18px' }}>
           <input
             readOnly
             value={link ?? ''}
@@ -96,7 +98,7 @@ export function ReferralTile({ customerId }: { customerId: string }) {
         </div>
 
         {stats && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+          <div className="referral-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
             <div style={{ background: '#f8fafc', borderRadius: '10px', padding: '12px' }}>
               <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>Pending</div>
               <div style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a', lineHeight: 1 }}>{stats.pending}</div>
