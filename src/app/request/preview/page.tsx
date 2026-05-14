@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { OnboardingShell } from '@/components/layout/onboarding-shell'
 import { isLaunched, LAUNCH_DATE_LABEL } from '@/lib/launch'
+import { attachReferralIfAny } from '@/lib/referrals'
 
 const TASK_LABELS: Record<string, string> = {
   general: "General cleaning", hoovering: "Hoovering", mopping: "Mopping",
@@ -178,6 +179,10 @@ async function publishRequest(data: RequestData, userId: string): Promise<{ id: 
       }).select("id").single()
     if (customerError || !newCustomer) throw new Error("Failed to create customer record")
     customerId = newCustomer.id
+    // Best-effort referral attachment for first-time customer signups. The
+    // helper checks the vouchee_ref cookie, posts to /api/referral/attach,
+    // and is a no-op if there's no cookie or anything fails.
+    await attachReferralIfAny()
   }
 
   // ── Role guard — block cleaners from posting listings ────────────────────

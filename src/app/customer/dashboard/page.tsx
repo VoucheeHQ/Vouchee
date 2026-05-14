@@ -10,6 +10,7 @@ import { CleanerCard } from '@/components/cleaner-card'
 import { CleanerCardData } from '@/lib/cleaner-card'
 import { CoverCleanModal } from '@/components/customer/cover-clean-modal'
 import { FeedbackWidget } from '@/components/feedback-widget'
+import { ReferralTile } from '@/components/referral-tile'
 import './dashboard.css'
 import { LAUNCH_DATE_LABEL } from '@/lib/launch'
 
@@ -1283,6 +1284,8 @@ function CustomerDashboardContent() {
                 </p>
               </div>
             )}
+            {customerId && <ReferralTile customerId={customerId} />}
+
             <div style={{ marginBottom: '36px' }}>
               <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '14px' }}>Request a clean</div>
               <div className="dashboard-tile-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>

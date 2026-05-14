@@ -6,6 +6,7 @@ import { AuthListener } from '@/components/auth-listener'
 import { ChatWidget } from '@/components/chat-widget'
 import { CookieBanner } from '@/components/cookie-banner'
 import { PostHogProvider } from '@/components/posthog-provider'
+import { ReferralCapture } from '@/components/referral-capture'
 
 const dmSans = DM_Sans({
   subsets: ['latin'],
@@ -55,6 +56,7 @@ export default function RootLayout({
       <body>
         <AuthListener />
         <PostHogProvider />
+        <ReferralCapture />
         {children}
         <ChatWidget />
         <CookieBanner />

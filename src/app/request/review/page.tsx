@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
+import { attachReferralIfAny } from "@/lib/referrals";
 
 const TASK_LABELS: Record<string, string> = {
   general: "General cleaning", hoovering: "Hoovering", mopping: "Mopping",
@@ -118,6 +119,8 @@ async function publishRequest(data: RequestData, userId: string): Promise<string
       }).select("id").single()
     if (customerError || !newCustomer) throw new Error("Failed to create customer record")
     customerId = newCustomer.id
+    // Best-effort referral attachment (see /lib/referrals.ts).
+    await attachReferralIfAny()
   }
 
   const zone = data.zone || (data.postcode ? getSectorFromPostcode(data.postcode) : null) || null

@@ -8,6 +8,7 @@ import { Header } from '@/components/layout/header'
 interface Stats {
   totalCustomers: number; totalCleaners: number; activeListings: number
   totalApplications: number; totalConversations: number; totalMessages: number; violationsToday: number
+  referralsPending: number; referralsApplied: number
 }
 interface UserRow { id: string; full_name: string; email: string; role: string; created_at: string; suspended?: boolean }
 interface ListingRow { id: string; status: string; created_at: string; zone: string | null; bedrooms: number; bathrooms: number; hourly_rate: number; frequency: string; customer_name: string; customer_email: string; hidden?: boolean; hidden_reviewed_at?: string | null }
@@ -1221,7 +1222,7 @@ export default function AdminDashboard() {
   }, [])
 
   const loadStats = async () => {
-    const [{ count: customers }, { count: cleaners }, { count: listingsCount }, { count: apps }, { count: convs }, { count: msgs }, { count: viols }] = await Promise.all([
+    const [{ count: customers }, { count: cleaners }, { count: listingsCount }, { count: apps }, { count: convs }, { count: msgs }, { count: viols }, { count: refPending }, { count: refApplied }] = await Promise.all([
       (supabase as any).from('customers').select('*', { count: 'exact', head: true }),
       (supabase as any).from('cleaners').select('*', { count: 'exact', head: true }),
       (supabase as any).from('clean_requests').select('*', { count: 'exact', head: true }).eq('status', 'active').not('hidden', 'eq', true),
@@ -1229,8 +1230,10 @@ export default function AdminDashboard() {
       (supabase as any).from('conversations').select('*', { count: 'exact', head: true }),
       (supabase as any).from('messages').select('*', { count: 'exact', head: true }),
       (supabase as any).from('keyword_violations').select('*', { count: 'exact', head: true }).gte('created_at', new Date(Date.now() - 86400000).toISOString()),
+      (supabase as any).from('referral_credits').select('*', { count: 'exact', head: true }).eq('state', 'pending'),
+      (supabase as any).from('referral_credits').select('*', { count: 'exact', head: true }).eq('state', 'applied'),
     ])
-    setStats({ totalCustomers: customers ?? 0, totalCleaners: cleaners ?? 0, activeListings: listingsCount ?? 0, totalApplications: apps ?? 0, totalConversations: convs ?? 0, totalMessages: msgs ?? 0, violationsToday: viols ?? 0 })
+    setStats({ totalCustomers: customers ?? 0, totalCleaners: cleaners ?? 0, activeListings: listingsCount ?? 0, totalApplications: apps ?? 0, totalConversations: convs ?? 0, totalMessages: msgs ?? 0, violationsToday: viols ?? 0, referralsPending: refPending ?? 0, referralsApplied: refApplied ?? 0 })
   }
 
   // Default load = 25 most recent. When a search term is supplied, hit the
@@ -1816,6 +1819,8 @@ export default function AdminDashboard() {
                 <StatCard label="Conversations" value={stats.totalConversations} color="#0f172a" />
                 <StatCard label="Total messages" value={stats.totalMessages} color="#0f172a" />
                 <StatCard label="Violations today" value={stats.violationsToday} color={stats.violationsToday > 0 ? '#dc2626' : '#22c55e'} sub={stats.violationsToday > 0 ? 'Needs attention' : 'All clear'} />
+                <StatCard label="Referrals (pending)" value={stats.referralsPending} color="#8e44ad" sub="signed up, awaiting first clean" />
+                <StatCard label="Referrals (credited)" value={stats.referralsApplied} color="#16a34a" sub="free months given so far" />
               </div>
               {/* Hourly digest toggle — when ON, /api/log-violation skips
                   per-event email and the cron sends a roll-up every hour;
