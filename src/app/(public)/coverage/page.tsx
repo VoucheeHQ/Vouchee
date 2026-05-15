@@ -1,8 +1,14 @@
 import Link from 'next/link'
 
 export const metadata = {
-  title: 'Coverage Area | Vouchee',
-  description: 'Vouchee connects vetted local cleaners with homeowners across Horsham and surrounding areas including Broadbridge Heath, Southwater, Mannings Heath and more.',
+  title: 'Coverage Area — Horsham & Surrounding Villages',
+  description: 'Vouchee connects vetted local cleaners with homeowners across Horsham, Broadbridge Heath, Southwater, Roffey, Mannings Heath, Warnham, Kilnwood Vale and more.',
+  alternates: { canonical: '/coverage' },
+  openGraph: {
+    title: 'Vouchee Coverage Area — Horsham & Surrounding Villages',
+    description: 'Areas covered by Vouchee across Horsham and the surrounding villages.',
+    url: '/coverage',
+  },
 }
 
 const zones = [

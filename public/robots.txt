@@ -1,6 +1,14 @@
 User-agent: *
-Disallow: /blog
-Disallow: /cleaning-supplies
-
-User-agent: *
 Allow: /
+Disallow: /admin
+Disallow: /api
+Disallow: /customer/dashboard
+Disallow: /cleaner/dashboard
+Disallow: /auth/
+Disallow: /login
+Disallow: /forgot-password
+Disallow: /request/
+Disallow: /cancel/
+Disallow: /c/
+
+Sitemap: https://www.vouchee.co.uk/sitemap.xml

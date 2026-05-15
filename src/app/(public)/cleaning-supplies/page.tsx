@@ -1,8 +1,14 @@
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Cleaning Supplies Recommended by Professionals | Vouchee',
+  title: 'Cleaning Supplies Recommended by Professionals',
   description: 'Hand-picked cleaning products recommended by Vouchee and our professional cleaners. From everyday essentials to specialist tools — everything you need for a spotless home.',
+  alternates: { canonical: '/cleaning-supplies' },
+  openGraph: {
+    title: 'Cleaning Supplies Recommended by Professional Cleaners',
+    description: 'The products Vouchee\'s professional cleaners actually use, hand-picked.',
+    url: '/cleaning-supplies',
+  },
 }
 
 const BASE_IMG = 'https://m.media-amazon.com/images/I/'

@@ -1,8 +1,10 @@
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Apply to Join Vouchee | Cleaning Jobs in Horsham',
+  title: 'Apply to Join Vouchee — Cleaning Jobs in Horsham',
   description: 'Apply to join Vouchee and connect with reliable customers in Horsham who need regular cleaning. Set your own rate, choose your hours, work on your terms.',
+  alternates: { canonical: '/cleaner/onboarding' },
+  robots: { index: false, follow: true },
 }
 
 export default function CleanerOnboardingLayout({ children }: { children: React.ReactNode }) {

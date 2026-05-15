@@ -28,12 +28,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const article = getArticle(params.slug)
   if (!article) return {}
   return {
-    title: `${article.title} | Vouchee Blog`,
+    title: article.title,
     description: article.excerpt,
+    alternates: { canonical: `/blog/${article.slug}` },
     openGraph: {
       title: article.title,
       description: article.excerpt,
       images: [article.image],
+      url: `/blog/${article.slug}`,
       type: 'article',
       publishedTime: article.publishedAt,
     },

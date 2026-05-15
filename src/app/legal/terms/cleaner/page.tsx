@@ -2,8 +2,9 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 
 export const metadata: Metadata = {
-  title: 'Cleaner Terms of Service | Vouchee',
+  title: 'Cleaner Terms of Service',
   description: 'The terms and conditions governing Cleaners\' use of the Vouchee platform, including self-employment obligations, tax responsibilities, and platform rules.',
+  alternates: { canonical: '/legal/terms/cleaner' },
 }
 
 const LAST_UPDATED = 'May 2026'

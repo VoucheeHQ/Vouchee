@@ -2,8 +2,9 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 
 export const metadata: Metadata = {
-  title: 'Cookie Policy | Vouchee',
+  title: 'Cookie Policy',
   description: 'How Vouchee uses cookies and similar technologies on vouchee.co.uk.',
+  alternates: { canonical: '/legal/cookies' },
 }
 
 export default function CookiePolicyPage() {

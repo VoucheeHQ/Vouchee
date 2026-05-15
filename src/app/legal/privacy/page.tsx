@@ -2,8 +2,9 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 
 export const metadata: Metadata = {
-  title: 'Privacy Policy | Vouchee',
+  title: 'Privacy Policy',
   description: 'How Vouchee collects, uses, and protects your personal data in accordance with UK GDPR and the Data Protection Act 2018.',
+  alternates: { canonical: '/legal/privacy' },
 }
 
 const LAST_UPDATED = '14 May 2026'
