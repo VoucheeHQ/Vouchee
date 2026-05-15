@@ -18,10 +18,10 @@ const dmSans = DM_Sans({
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.vouchee.co.uk'),
   title: {
-    default: 'Vouchee — Vetted Local Cleaners in Horsham',
+    default: 'Vouchee — Vetted Local Cleaners in Horsham, West Sussex',
     template: '%s | Vouchee',
   },
-  description: 'Find trusted local cleaners in Horsham and surrounding areas. Weekly, fortnightly, or monthly cleaning services tailored to your needs.',
+  description: 'Connect with vetted, DBS-checked, insured local cleaners in Horsham and surrounding villages. Weekly, fortnightly, monthly, or one-off cleans — no commission, ever.',
   keywords: ['cleaning service', 'local cleaners', 'Horsham cleaners', 'house cleaning', 'domestic cleaning'],
   authors: [{ name: 'Vouchee' }],
   creator: 'Vouchee',
@@ -32,8 +32,8 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'en_GB',
     url: 'https://www.vouchee.co.uk',
-    title: 'Vouchee — Vetted Local Cleaners in Horsham',
-    description: 'Find trusted local cleaners in Horsham and surrounding areas.',
+    title: 'Vouchee — Vetted Local Cleaners in Horsham, West Sussex',
+    description: 'Connect with vetted, DBS-checked, insured local cleaners in Horsham and surrounding villages. Weekly, fortnightly, monthly, or one-off cleans — no commission, ever.',
     siteName: 'Vouchee',
     images: [
       {
@@ -46,8 +46,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Vouchee — Vetted Local Cleaners in Horsham',
-    description: 'Find trusted local cleaners in Horsham and surrounding areas.',
+    title: 'Vouchee — Vetted Local Cleaners in Horsham, West Sussex',
+    description: 'Connect with vetted, DBS-checked, insured local cleaners in Horsham and surrounding villages. Weekly, fortnightly, monthly, or one-off cleans — no commission, ever.',
     images: ['/og-image.png'],
   },
   robots: {
