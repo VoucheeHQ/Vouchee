@@ -2284,9 +2284,7 @@ export default function AdminDashboard() {
                   buttonLabel="Send test email →"
                   buttonColor="#2563eb"
                   onRun={async () => {
-                    const res = await fetch(
-                      '/api/admin/test-cleaner-email?applicationId=5d2c5f56-080d-48cd-b552-a666881bde38&startDate=2026-04-17'
-                    )
+                    const res = await fetch('/api/admin/test-cleaner-email')
                     const data = await res.json()
                     if (data.success) return { success: true, message: `Sent to ${data.sentTo}` }
                     return { success: false, message: data.error ?? 'Failed' }
@@ -2299,9 +2297,7 @@ export default function AdminDashboard() {
                   buttonLabel="Send test email →"
                   buttonColor="#16a34a"
                   onRun={async () => {
-                    const res = await fetch(
-                      '/api/admin/test-customer-email?applicationId=5d2c5f56-080d-48cd-b552-a666881bde38&startDate=2026-04-17'
-                    )
+                    const res = await fetch('/api/admin/test-customer-email')
                     const data = await res.json()
                     if (data.success) return { success: true, message: `Sent to ${data.sentTo}` }
                     return { success: false, message: data.error ?? 'Failed' }

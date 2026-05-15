@@ -232,11 +232,23 @@ export async function GET(request: NextRequest) {
 
   try {
 
-    const { data: application } = await supabaseAdmin
-      .from('applications').select('cleaner_id, request_id').eq('id', applicationId).single()
-
+    // Resolve application: explicit ID if provided AND exists, else latest.
+    // Keeps the test self-healing when old test data gets cleaned out.
+    type AppRow = { cleaner_id: string; request_id: string }
+    let application: AppRow | null = null
+    if (applicationId) {
+      const { data } = await supabaseAdmin
+        .from('applications').select('cleaner_id, request_id').eq('id', applicationId).single()
+      application = (data ?? null) as AppRow | null
+    }
     if (!application) {
-      return NextResponse.json({ error: 'Application not found' }, { status: 404 })
+      const { data } = await supabaseAdmin
+        .from('applications').select('cleaner_id, request_id')
+        .order('created_at', { ascending: false }).limit(1).single()
+      application = (data ?? null) as AppRow | null
+    }
+    if (!application) {
+      return NextResponse.json({ error: 'No applications found in the database' }, { status: 404 })
     }
 
     const { data: cleanRequest } = await supabaseAdmin
