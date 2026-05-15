@@ -10,7 +10,7 @@ export const metadata = {
     title: 'Cleaners in Horsham — Vetted Local Cleaning Services',
     description: 'Find vetted local cleaners in Horsham. Weekly, fortnightly, or monthly cleans.',
     url: '/horsham',
-    images: ['/og-image.png'],
+    images: ['/og-image.jpg'],
   },
 }
 

@@ -8,7 +8,7 @@ export const metadata: Metadata = {
     title: 'Cleaning Jobs in Horsham',
     description: 'Browse open cleaning jobs from homeowners in Horsham. Set your own rate, choose your hours.',
     url: '/jobs',
-    images: ['/og-image.png'],
+    images: ['/og-image.jpg'],
   },
 }
 

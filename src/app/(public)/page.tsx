@@ -10,7 +10,7 @@ export const metadata = {
     title: 'Vouchee — Vetted Local Cleaners in Horsham, West Sussex',
     description: 'Connect with vetted, DBS-checked, insured local cleaners in Horsham. Weekly, fortnightly, monthly, or one-off cleans — no commission, ever.',
     url: '/',
-    images: ['/og-image.png'],
+    images: ['/og-image.jpg'],
   },
 }
 

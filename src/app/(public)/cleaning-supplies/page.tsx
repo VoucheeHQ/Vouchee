@@ -8,7 +8,7 @@ export const metadata: Metadata = {
     title: 'Cleaning Supplies Recommended by Professional Cleaners',
     description: 'The products Vouchee\'s professional cleaners actually use, hand-picked.',
     url: '/cleaning-supplies',
-    images: ['/og-image.png'],
+    images: ['/og-image.jpg'],
   },
 }
 

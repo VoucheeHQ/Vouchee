@@ -8,7 +8,7 @@ export const metadata = {
     title: 'How Vouchee Works',
     description: 'Post a request, get applications from vetted local cleaners, chat, and choose who feels right.',
     url: '/how-it-works',
-    images: ['/og-image.png'],
+    images: ['/og-image.jpg'],
   },
 }
 

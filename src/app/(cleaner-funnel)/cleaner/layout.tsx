@@ -8,7 +8,7 @@ export const metadata: Metadata = {
     title: 'Become a Vouchee Cleaner — Cleaning Jobs in Horsham',
     description: 'Find regular local cleaning work. Set your own rate, pick your hours, keep 100% of customer pay.',
     url: '/cleaner',
-    images: ['/og-image.png'],
+    images: ['/og-image.jpg'],
   },
 }
 

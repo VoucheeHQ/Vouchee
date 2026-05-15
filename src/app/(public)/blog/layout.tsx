@@ -8,7 +8,7 @@ export const metadata: Metadata = {
     title: 'The Vouchee Blog — Cleaning Tips & Guides',
     description: 'Practical cleaning advice, guides for finding the right cleaner, and tips for self-employed cleaners.',
     url: '/blog',
-    images: ['/og-image.png'],
+    images: ['/og-image.jpg'],
   },
 }
 

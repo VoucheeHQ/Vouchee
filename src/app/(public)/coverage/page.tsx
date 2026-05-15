@@ -8,7 +8,7 @@ export const metadata = {
     title: 'Vouchee Coverage Area — Horsham & Surrounding Villages',
     description: 'Areas covered by Vouchee across Horsham and the surrounding villages.',
     url: '/coverage',
-    images: ['/og-image.png'],
+    images: ['/og-image.jpg'],
   },
 }
 
