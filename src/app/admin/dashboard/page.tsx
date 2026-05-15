@@ -2373,6 +2373,23 @@ export default function AdminDashboard() {
                   }}
                 />
 
+                {/* Cover-feedback prompt — fires 24h after cover_date via cron */}
+                <TestCard
+                  title="🔄 Cover-feedback prompt email"
+                  description="Sends the email customers receive ~24h after a fulfilled cover clean. The CTA links to /cover-feedback/[requestId] where they leave a review (counts to the cleaner's same rating + jobs_won) and can optionally tell admin how it went. Uses the most recent real fulfilled cover request for the link if one exists. Sends to your admin email."
+                  buttonLabel="Send test email →"
+                  buttonColor="#f97316"
+                  onRun={async () => {
+                    const res = await fetch('/api/admin/test-cover-feedback-email', { method: 'POST' })
+                    const data = await res.json()
+                    if (data.success) {
+                      const realityNote = data.usedRealCover ? ' · real cover linked' : ' · placeholder link (no fulfilled cover yet)'
+                      return { success: true, message: `Sent to ${data.sentTo}${realityNote}` }
+                    }
+                    return { success: false, message: data.error ?? 'Failed' }
+                  }}
+                />
+
                 {/* Referral credited — both flavours (referrer + referee) */}
                 <TestCard
                   title="🎁 Referral credited emails (referrer + referee)"
