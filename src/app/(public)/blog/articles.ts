@@ -14,6 +14,18 @@ export interface Article {
 
 export const articles: Article[] = [
   {
+    slug: 'how-much-does-a-cleaner-cost-horsham',
+    title: 'How much does a cleaner cost in Horsham? (2026 prices)',
+    excerpt: 'A clear, honest breakdown of cleaning costs in Horsham — hourly rates, monthly totals for weekly/fortnightly/monthly cleans, what affects the price, and the hidden fees agencies charge that independent cleaners don\'t.',
+    audience: 'customer',
+    readingTime: 8,
+    publishedAt: '2026-05-15',
+    // Clean modern interior — verified working
+    image: 'https://images.unsplash.com/photo-1556911220-bff31c812dba?w=800&q=80',
+    imageAlt: 'A spotlessly clean and tidy modern home interior',
+    category: 'For Customers',
+  },
+  {
     slug: 'essential-cleaning-kit-new-home',
     title: 'The essential cleaning kit for a new home',
     excerpt: 'Moving into a new property? Here\'s exactly what to stock up on — from the basics that every home needs to the specialist products that make the tricky jobs easy.',
