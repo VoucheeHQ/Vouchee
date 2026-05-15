@@ -38,6 +38,13 @@ const ADMIN_EMAIL = 'support@vouchee.co.uk'
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.vouchee.co.uk'
 const GRACE_DAYS = 7
 
+// Per-clean platform fee, mirrored from src/app/api/gocardless/confirm-switch/route.ts.
+// Used by handlePaymentConfirmed to refund 1 × per-clean fee on the first
+// successful payment of a switch-created subscription.
+const PER_CLEAN_PENCE: Record<string, number> = {
+  weekly: 999, fortnightly: 1499, monthly: 2499,
+}
+
 // ─── Signature verification ───────────────────────────────────────────────────
 // GoCardless signs the raw request body with HMAC-SHA256. The signature is
 // hex-encoded in the Webhook-Signature header. We MUST compare against the
@@ -165,6 +172,7 @@ export async function POST(request: NextRequest) {
 async function processEvent(admin: any, ev: any) {
   const key = `${ev.resource_type}.${ev.action}`
   switch (key) {
+    case 'payments.confirmed':         return handlePaymentConfirmed(admin, ev)
     case 'payments.failed':            return handlePaymentFailed(admin, ev)
     case 'payments.paid_out':          return handlePaymentPaidOut(admin, ev)
     case 'payments.cancelled':         return handlePaymentCancelled(admin, ev)
@@ -251,6 +259,299 @@ async function findRequestContext(admin: any, opts: {
     customerName: custProfile?.full_name ?? null,
     cleanerEmail,
     cleanerName,
+  }
+}
+
+// ─── payments.confirmed — auto-refund the "first clean discount" on switches ─
+//
+// When a customer switches cleaners, marketing promises "your first clean
+// with a new cleaner will be discounted automatically" (see the email body
+// in src/app/api/switch-cleaner/route.ts). The mechanic, owned entirely by
+// this handler:
+//
+//   1. Identify the payment's subscription → clean_request
+//   2. If the request was created via the switch flow (is_switch=true) AND
+//      first_clean_discount_credited_at IS NULL, claim the credit with a
+//      CAS update (single UPDATE ... IS NULL ... RETURNING id). The CAS
+//      defends against two concurrent payments.confirmed events both
+//      issuing a refund.
+//   3. Call GoCardless POST /refunds against the just-confirmed payment for
+//      1 × per-clean platform fee (capped at the payment's total amount so
+//      monthly customers never receive more than they paid).
+//   4. On refund failure (network, GC outage), back out the CAS lock so a
+//      future payments.confirmed event for the SAME subscription can retry —
+//      worst case the customer gets the discount on month 2 instead of
+//      month 1, but they always get it without manual intervention. Admin
+//      gets an alert email each time a refund fails.
+//   5. On success, persist the refunded amount + email the customer.
+//
+// One-off payments (pro-rata at switch time, ad-hoc top-ups) carry no
+// `links.subscription`, so they bypass this handler entirely on the first
+// guard.
+async function handlePaymentConfirmed(admin: any, ev: any) {
+  const subscriptionId: string | undefined = ev.links?.subscription
+  const paymentId: string | undefined = ev.links?.payment
+  if (!subscriptionId || !paymentId) {
+    // One-off payments (e.g. pro-rata at switch time) — nothing to credit.
+    return
+  }
+
+  const gcEnvironment = process.env.GOCARDLESS_ENVIRONMENT ?? 'sandbox'
+  const gcBaseUrl = gcEnvironment === 'live'
+    ? 'https://api.gocardless.com'
+    : 'https://api-sandbox.gocardless.com'
+  const gcToken = process.env.GOCARDLESS_ACCESS_TOKEN
+  if (!gcToken) {
+    console.error('[gc-webhook] payments.confirmed: GOCARDLESS_ACCESS_TOKEN missing — cannot refund')
+    return
+  }
+
+  // Find the clean_request tied to this subscription. Service-role client
+  // already (passed in), so RLS isn't in play.
+  const { data: request } = await admin
+    .from('clean_requests')
+    .select('id, customer_id, frequency, is_switch, first_clean_discount_credited_at')
+    .eq('gocardless_subscription_id', subscriptionId)
+    .single() as { data: {
+      id: string
+      customer_id: string
+      frequency: string | null
+      is_switch: boolean | null
+      first_clean_discount_credited_at: string | null
+    } | null }
+
+  if (!request) {
+    console.log(`[gc-webhook] payments.confirmed: no matching request for sub ${subscriptionId}`)
+    return
+  }
+  if (!request.is_switch) return                            // Not a switch — no discount owed
+  if (request.first_clean_discount_credited_at) return      // Already credited
+
+  // CAS lock: only the first event for this request gets through. The
+  // `.is('first_clean_discount_credited_at', null)` clause is the
+  // compare-and-swap; if another concurrent caller raced and won, our
+  // update affects 0 rows and we bail.
+  const claimAt = new Date().toISOString()
+  const { data: claimed } = await admin
+    .from('clean_requests')
+    .update({ first_clean_discount_credited_at: claimAt } as any)
+    .eq('id', request.id)
+    .is('first_clean_discount_credited_at', null)
+    .select('id')
+    .maybeSingle() as { data: { id: string } | null }
+
+  if (!claimed) {
+    console.log(`[gc-webhook] payments.confirmed: CAS lost on discount credit for ${request.id}`)
+    return
+  }
+
+  // Helper to release the lock so a future event can retry. Used on every
+  // failure path past this point.
+  const releaseLock = async (reason: string) => {
+    try {
+      await admin
+        .from('clean_requests')
+        .update({ first_clean_discount_credited_at: null } as any)
+        .eq('id', request.id)
+    } catch (e) {
+      console.error(`[gc-webhook] failed to release CAS lock for ${request.id} (${reason}):`, e)
+    }
+  }
+
+  // Look up the payment so we know its true amount (and so we can hand
+  // GoCardless the total_amount_confirmation it requires on /refunds — a
+  // sanity check to prevent a stale refund hitting a topped-up payment).
+  let paymentTotalPence: number
+  try {
+    const paymentRes = await fetch(`${gcBaseUrl}/payments/${paymentId}`, {
+      headers: {
+        'Authorization': `Bearer ${gcToken}`,
+        'GoCardless-Version': '2015-07-06',
+        'Accept': 'application/json',
+      },
+    })
+    if (!paymentRes.ok) {
+      const errBody = await paymentRes.text()
+      console.error(`[gc-webhook] payment lookup ${paymentId} failed: ${paymentRes.status} ${errBody}`)
+      await releaseLock('payment lookup failed')
+      await alertAdminRefundIssue({
+        requestId: request.id,
+        paymentId,
+        subscriptionId,
+        stage: 'payment lookup',
+        detail: `${paymentRes.status}: ${errBody.slice(0, 400)}`,
+      })
+      return
+    }
+    const paymentData = await paymentRes.json()
+    paymentTotalPence = paymentData.payments?.amount
+    if (typeof paymentTotalPence !== 'number' || paymentTotalPence <= 0) {
+      console.error(`[gc-webhook] payment ${paymentId} returned invalid amount:`, paymentData)
+      await releaseLock('invalid payment amount')
+      return
+    }
+  } catch (e: any) {
+    console.error(`[gc-webhook] payment lookup ${paymentId} threw:`, e)
+    await releaseLock('payment lookup threw')
+    await alertAdminRefundIssue({
+      requestId: request.id, paymentId, subscriptionId,
+      stage: 'payment lookup (threw)', detail: e?.message ?? String(e),
+    })
+    return
+  }
+
+  // Calculate refund: 1 × per-clean fee for this frequency, capped at the
+  // payment's total amount (so monthly customers — whose 1-clean fee equals
+  // their monthly subscription — get exactly their month refunded, not more).
+  const frequency = request.frequency ?? 'fortnightly'
+  const perCleanPence = PER_CLEAN_PENCE[frequency] ?? PER_CLEAN_PENCE.fortnightly
+  const refundPence = Math.min(perCleanPence, paymentTotalPence)
+
+  // Issue the refund. Idempotency-Key uses the request id so even if this
+  // handler re-runs after a partial failure, GoCardless returns the same
+  // refund rather than creating a duplicate.
+  let refundOk = false
+  let refundDetail = ''
+  try {
+    const refundRes = await fetch(`${gcBaseUrl}/refunds`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${gcToken}`,
+        'GoCardless-Version': '2015-07-06',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Idempotency-Key': `switch-discount-${request.id}`,
+      },
+      body: JSON.stringify({
+        refunds: {
+          amount: refundPence,
+          total_amount_confirmation: paymentTotalPence,
+          links: { payment: paymentId },
+          metadata: {
+            vouchee_request_id: request.id,
+            type: 'switch_first_clean_discount',
+          },
+        },
+      }),
+    })
+    if (refundRes.ok) {
+      refundOk = true
+    } else {
+      refundDetail = `${refundRes.status}: ${(await refundRes.text()).slice(0, 400)}`
+      console.error(`[gc-webhook] refund POST failed for ${request.id}: ${refundDetail}`)
+    }
+  } catch (e: any) {
+    refundDetail = `threw: ${e?.message ?? String(e)}`
+    console.error(`[gc-webhook] refund POST threw for ${request.id}:`, e)
+  }
+
+  if (!refundOk) {
+    await releaseLock('refund failed')
+    await alertAdminRefundIssue({
+      requestId: request.id, paymentId, subscriptionId,
+      stage: 'refund POST', detail: refundDetail,
+    })
+    return
+  }
+
+  // Persist the actual refund amount for audit + future customer support
+  // lookups. Lock stays set (success path).
+  await admin
+    .from('clean_requests')
+    .update({ first_clean_discount_amount_pence: refundPence } as any)
+    .eq('id', request.id)
+
+  // Notify the customer (best-effort — failure here doesn't undo the refund;
+  // they'll see the credit on their statement either way).
+  await notifyCustomerOfDiscount({
+    admin, requestId: request.id, refundPence,
+  })
+
+  console.log(`[gc-webhook] issued switch discount refund: request=${request.id} amount=${refundPence}p payment=${paymentId}`)
+}
+
+// Admin alert when a refund fails — the lock has already been released so
+// the next payment cycle's payments.confirmed will retry, but the admin
+// should know in case they want to refund manually sooner.
+async function alertAdminRefundIssue(opts: {
+  requestId: string
+  paymentId: string
+  subscriptionId: string
+  stage: string
+  detail: string
+}) {
+  const { requestId, paymentId, subscriptionId, stage, detail } = opts
+  const inner = `
+    <p style="font-size:18px;font-weight:800;margin:0 0 8px;">⚠️ Switch discount refund failed</p>
+    <p style="font-size:14px;color:#475569;margin:0 0 16px;line-height:1.6;">
+      A first-clean discount refund attempt failed for a switch-created subscription.
+      The CAS lock has been released, so the NEXT successful payment on this
+      subscription will retry automatically. If you want to refund sooner, do it
+      manually in the GoCardless dashboard.
+    </p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:12px;">
+      <tr><td style="padding:6px 0;border-bottom:1px solid #f1f5f9;font-size:13px;color:#475569;">Request ID</td><td style="text-align:right;font-family:monospace;font-size:12px;color:#0f172a;padding:6px 0;border-bottom:1px solid #f1f5f9;">${requestId}</td></tr>
+      <tr><td style="padding:6px 0;border-bottom:1px solid #f1f5f9;font-size:13px;color:#475569;">Payment ID</td><td style="text-align:right;font-family:monospace;font-size:12px;color:#0f172a;padding:6px 0;border-bottom:1px solid #f1f5f9;">${paymentId}</td></tr>
+      <tr><td style="padding:6px 0;border-bottom:1px solid #f1f5f9;font-size:13px;color:#475569;">Subscription ID</td><td style="text-align:right;font-family:monospace;font-size:12px;color:#0f172a;padding:6px 0;border-bottom:1px solid #f1f5f9;">${subscriptionId}</td></tr>
+      <tr><td style="padding:6px 0;font-size:13px;color:#475569;">Stage</td><td style="text-align:right;font-size:13px;color:#0f172a;padding:6px 0;">${stage}</td></tr>
+    </table>
+    <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:12px 14px;margin-bottom:16px;">
+      <p style="margin:0;font-size:12px;color:#991b1b;font-family:monospace;white-space:pre-wrap;">${detail || 'no detail captured'}</p>
+    </div>
+    <p style="font-size:12px;color:#94a3b8;margin:0;">Self-healing on next payment cycle. No action required unless you want to refund manually.</p>
+  `
+  await sendEmail(ADMIN_EMAIL, '⚠️ [Admin] Switch discount refund failed', emailShell(inner, 'Refund failure alert'))
+}
+
+// Customer-facing notification of the discount credit. In-app notification
+// is the primary channel; we keep this terse because the email is optional.
+async function notifyCustomerOfDiscount(opts: {
+  admin: any
+  requestId: string
+  refundPence: number
+}) {
+  const { admin, requestId, refundPence } = opts
+  const amountStr = `£${(refundPence / 100).toFixed(2)}`
+  try {
+    // Look up customer email for the email side
+    const { data: req } = await admin
+      .from('clean_requests')
+      .select('customer_id')
+      .eq('id', requestId)
+      .single() as { data: { customer_id: string } | null }
+    if (!req) return
+
+    await admin.from('notifications').insert({
+      customer_id: req.customer_id,
+      type: 'discount_credited',
+      title: `✅ Your switch discount has been credited`,
+      body: `We've refunded ${amountStr} as the first-clean discount on your new cleaner. It'll appear on your bank statement within a few days.`,
+      link: '/customer/dashboard',
+    } as any)
+
+    const { data: customer } = await admin
+      .from('customers').select('profile_id').eq('id', req.customer_id).single() as { data: { profile_id: string } | null }
+    if (!customer) return
+    const { data: profile } = await admin
+      .from('profiles').select('email, full_name').eq('id', customer.profile_id).single() as { data: { email: string | null; full_name: string | null } | null }
+    if (!profile?.email) return
+
+    const firstName = profile.full_name?.split(' ')[0] ?? 'there'
+    const inner = `
+      <p style="font-size:22px;font-weight:800;margin:0 0 6px;">${amountStr} refunded — your switch discount</p>
+      <p style="font-size:14px;color:#64748b;margin:0 0 16px;line-height:1.6;">
+        Hi ${firstName}, we've credited ${amountStr} back to you as the first-clean discount on your new cleaner. It'll appear on your bank statement within a few days.
+      </p>
+      <p style="font-size:14px;color:#475569;margin:0 0 16px;line-height:1.6;">
+        No action needed. Just our way of helping you find the right fit.
+      </p>
+      <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;"><tr><td align="center">
+        <a href="${APP_URL}/customer/dashboard" style="display:inline-block;background:#0f172a;color:white;padding:12px 28px;border-radius:10px;text-decoration:none;font-weight:700;font-size:14px;">View dashboard →</a>
+      </td></tr></table>
+    `
+    await sendEmail(profile.email, `✅ ${amountStr} refunded — your switch discount`, emailShell(inner, 'Switch discount credited'))
+  } catch (e) {
+    console.error('[gc-webhook] notifyCustomerOfDiscount failed (non-fatal):', e)
   }
 }
 

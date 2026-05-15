@@ -20,7 +20,7 @@ export default function HomePageContent({ location = 'Horsham' }: HomePageProps)
             </h1>
 
             <p className="mb-10 text-lg text-ink-secondary md:text-xl">
-              Created in Horsham, for Horsham.
+              Vouchee launches for customers on 1st June 2026.
             </p>
 
             {/* Service type cards */}
@@ -60,7 +60,7 @@ export default function HomePageContent({ location = 'Horsham' }: HomePageProps)
         <div className="container">
           <div className="mx-auto mb-12 max-w-2xl text-center">
             <h2 className="mb-4 text-3xl font-bold text-ink md:text-4xl">Why choose Vouchee?</h2>
-            <p className="text-lg text-ink-secondary">We make finding and managing your cleaner effortless</p>
+            <p className="text-lg text-ink-secondary">Real local cleaners, vetted, vouched-for, and reviewed. None of the hassle, all in a few clicks.</p>
           </div>
 
           <div className="grid gap-6 md:grid-cols-3">
@@ -70,7 +70,7 @@ export default function HomePageContent({ location = 'Horsham' }: HomePageProps)
                   <Shield className="h-6 w-6 text-brand-600" />
                 </div>
                 <CardTitle>Fully vetted cleaners</CardTitle>
-                <CardDescription>All cleaners are DBS checked, reference verified, and insured for your peace of mind</CardDescription>
+                <CardDescription>All cleaners have a valid DBS, public liability insurance, and right to work, giving you peace of mind.</CardDescription>
               </CardHeader>
             </Card>
 
@@ -79,8 +79,8 @@ export default function HomePageContent({ location = 'Horsham' }: HomePageProps)
                 <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-lg bg-accent-100">
                   <Clock className="h-6 w-6 text-accent-600" />
                 </div>
-                <CardTitle>Flexible scheduling</CardTitle>
-                <CardDescription>Choose weekly, fortnightly, or monthly cleans. Pause or adjust your schedule anytime</CardDescription>
+                <CardTitle>You&apos;re in control</CardTitle>
+                <CardDescription>Pick the days you&apos;d like, how many hours, how often, and what you&apos;d like to pay, and local cleaners apply to you.</CardDescription>
               </CardHeader>
             </Card>
 
@@ -89,8 +89,8 @@ export default function HomePageContent({ location = 'Horsham' }: HomePageProps)
                 <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-lg bg-green-100">
                   <Sparkles className="h-6 w-6 text-green-600" />
                 </div>
-                <CardTitle>Hassle-free management</CardTitle>
-                <CardDescription>Simple platform to manage bookings, communicate, and report any issues</CardDescription>
+                <CardTitle>You&apos;re in safe hands</CardTitle>
+                <CardDescription>Cleaner can&apos;t make it? Request a cover clean in one click, and watch the applications fly in.</CardDescription>
               </CardHeader>
             </Card>
           </div>
@@ -109,7 +109,7 @@ export default function HomePageContent({ location = 'Horsham' }: HomePageProps)
             <Link href="/request/property?preset=weekly" className="block no-underline">
               <Card className="card-hover h-full cursor-pointer border-brand-500 shadow-elevated ...">
                 <CardHeader>
-                  <CardTitle>Weekly</CardTitle>
+                  <CardTitle>Weekly cleans</CardTitle>
                   <div className="mt-4">
                     <span className="text-4xl font-bold text-ink">£9.99</span>
                     <span className="text-ink-secondary"> / clean</span>
@@ -117,11 +117,7 @@ export default function HomePageContent({ location = 'Horsham' }: HomePageProps)
                   <CardDescription className="mt-2">Billed monthly: £39.96</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <ul className="space-y-2 text-sm">
-                    <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-green-600" /><span>Every week</span></li>
-                    <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-green-600" /><span>Cancel anytime</span></li>
-                  </ul>
-                  <div className="mt-4 inline-block rounded-full bg-brand-100 px-3 py-1 text-xs font-medium text-brand-700">Most popular</div>
+                  <div className="inline-block rounded-full bg-brand-100 px-3 py-1 text-xs font-medium text-brand-700">Most popular</div>
                 </CardContent>
               </Card>
             </Link>
@@ -130,19 +126,13 @@ export default function HomePageContent({ location = 'Horsham' }: HomePageProps)
             <Link href="/request/property?preset=fortnightly" className="block no-underline">
               <Card className="card-hover h-full cursor-pointer transition-all hover:-translate-y-1 hover:shadow-lg">
                 <CardHeader>
-                  <CardTitle>Fortnightly</CardTitle>
+                  <CardTitle>Fortnightly cleans</CardTitle>
                   <div className="mt-4">
                     <span className="text-4xl font-bold text-ink">£14.99</span>
                     <span className="text-ink-secondary"> / clean</span>
                   </div>
                   <CardDescription className="mt-2">Billed monthly: £29.98</CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <ul className="space-y-2 text-sm">
-                    <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-green-600" /><span>Every 2 weeks</span></li>
-                    <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-green-600" /><span>Cancel anytime</span></li>
-                  </ul>
-                </CardContent>
               </Card>
             </Link>
 
@@ -150,25 +140,19 @@ export default function HomePageContent({ location = 'Horsham' }: HomePageProps)
             <Link href="/request/property?preset=monthly" className="block no-underline">
               <Card className="card-hover h-full cursor-pointer transition-all hover:-translate-y-1 hover:shadow-lg hover:border-brand-400">
                 <CardHeader>
-                  <CardTitle>Monthly</CardTitle>
+                  <CardTitle>Monthly clean</CardTitle>
                   <div className="mt-4">
                     <span className="text-4xl font-bold text-ink">£24.99</span>
                     <span className="text-ink-secondary"> / month</span>
                   </div>
                   <CardDescription className="mt-2">Flat rate</CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <ul className="space-y-2 text-sm">
-                    <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-green-600" /><span>Once per month</span></li>
-                    <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-green-600" /><span>Cancel anytime</span></li>
-                  </ul>
-                </CardContent>
               </Card>
             </Link>
           </div>
 
           <p className="mt-8 text-center text-sm text-ink-secondary">
-            You pay your cleaner directly for their time.
+            Vouchee service fee. You pay your cleaner directly for their time.
           </p>
         </div>
       </section>
@@ -185,7 +169,7 @@ export default function HomePageContent({ location = 'Horsham' }: HomePageProps)
               Not the right fit? Switch cleaners anytime.
             </h2>
             <p className="mb-8 text-lg" style={{ color: "rgba(255,255,255,0.8)", position: "relative" }}>
-              If your cleaner isn&apos;t the right fit, let us know and we&apos;ll help you find a better match — with a discounted first clean.
+              If your cleaner isn&apos;t the right fit, let us know and we&apos;ll help you find a better match, with a discounted first clean.
             </p>
             <Link href="/request/property" style={{
               display: "inline-flex", alignItems: "center", gap: "8px",
