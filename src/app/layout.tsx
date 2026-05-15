@@ -37,7 +37,7 @@ export const metadata: Metadata = {
     siteName: 'Vouchee',
     images: [
       {
-        url: '/full-logo-black.png',
+        url: '/og-image.png',
         width: 1200,
         height: 630,
         alt: 'Vouchee',
@@ -48,7 +48,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Vouchee — Vetted Local Cleaners in Horsham',
     description: 'Find trusted local cleaners in Horsham and surrounding areas.',
-    images: ['/full-logo-black.png'],
+    images: ['/og-image.png'],
   },
   robots: {
     index: true,
@@ -66,7 +66,7 @@ const organizationJsonLd = {
   name: 'Vouchee',
   url: 'https://www.vouchee.co.uk',
   logo: 'https://www.vouchee.co.uk/full-logo-black.png',
-  image: 'https://www.vouchee.co.uk/full-logo-black.png',
+  image: 'https://www.vouchee.co.uk/og-image.png',
   description: 'Vouchee connects homeowners in Horsham with vetted, DBS-checked, insured local cleaners for weekly, fortnightly, or monthly cleans.',
   email: 'support@vouchee.co.uk',
   areaServed: [
