@@ -9,6 +9,7 @@ export const metadata: Metadata = {
     title: 'Cleaning Prices in Horsham — Transparent Service Fees',
     description: 'Simple, transparent pricing for cleaning in Horsham. £9.99 per weekly clean, £14.99 fortnightly, £24.99 monthly.',
     url: '/pricing',
+    images: ['/og-image.png'],
   },
 }
 

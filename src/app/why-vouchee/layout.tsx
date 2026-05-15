@@ -8,6 +8,7 @@ export const metadata: Metadata = {
     title: 'Why Choose Vouchee',
     description: 'Vetted cleaners, no commission, no booking fees — Vouchee is built on trust.',
     url: '/why-vouchee',
+    images: ['/og-image.png'],
   },
 }
 

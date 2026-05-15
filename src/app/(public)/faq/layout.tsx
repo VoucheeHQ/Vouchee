@@ -8,6 +8,7 @@ export const metadata: Metadata = {
     title: 'Vouchee FAQ — Common Questions Answered',
     description: 'How Vouchee works, what it costs, how cleaners are vetted, and how to manage your clean.',
     url: '/faq',
+    images: ['/og-image.png'],
   },
 }
 

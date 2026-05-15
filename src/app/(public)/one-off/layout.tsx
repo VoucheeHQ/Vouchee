@@ -8,6 +8,7 @@ export const metadata: Metadata = {
     title: 'One-Off Cleans in Horsham — Deep Clean, End of Tenancy, Oven Clean',
     description: 'Vetted, insured local cleaners for one-off jobs in Horsham. Get a quote in minutes.',
     url: '/one-off',
+    images: ['/og-image.png'],
   },
 }
 
