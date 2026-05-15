@@ -73,8 +73,7 @@ export function approvalHtml(firstName: string, appUrl: string) {
   const suppliesUrl = `${appUrl}/cleaning-supplies`
 
   const inner = `
-    <p style="margin:0 0 6px;font-size:26px;font-weight:800;color:#0f172a;">Welcome to Vouchee, ${htmlEscape(firstName)}! 🎉</p>
-    <p style="margin:0 0 28px;font-size:15px;color:#475569;line-height:1.6;">Your application has been approved. It was great to meet you — we're really glad to have you on the team.</p>
+    <p style="margin:0 0 28px;font-size:26px;font-weight:800;color:#0f172a;">Welcome to Vouchee, ${htmlEscape(firstName)}! 🎉</p>
 
     <div style="background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:14px;padding:24px 26px;margin-bottom:24px;text-align:center;">
       <div style="font-size:28px;margin-bottom:8px;">✅</div>
@@ -91,7 +90,7 @@ export function approvalHtml(firstName: string, appUrl: string) {
       </tr>
       <tr>
         <td style="padding:10px 0;border-bottom:1px solid #f1f5f9;font-size:13px;color:#475569;line-height:1.6;">
-          <strong style="color:#0f172a;">2.</strong> &nbsp;Apply to anything that fits your availability — first to apply often gets the chat first
+          <strong style="color:#0f172a;">2.</strong> &nbsp;Apply to any cleaner requests that suit your availability and rate
         </td>
       </tr>
       <tr>
@@ -111,13 +110,9 @@ export function approvalHtml(firstName: string, appUrl: string) {
 
     <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:22px 26px;margin-bottom:24px;text-align:center;">
       <div style="font-size:15px;font-weight:700;color:#15803d;margin-bottom:6px;">🧴 Need to stock up before your first clean?</div>
-      <div style="font-size:13px;color:#166534;line-height:1.6;margin-bottom:16px;">We've put together a page with everything you might need in one place — the products we know work and where to get them at the best prices.</div>
+      <div style="font-size:13px;color:#166534;line-height:1.6;margin-bottom:16px;">We've put together a page with everything you might need in one place.</div>
       <a href="${suppliesUrl}" style="display:inline-block;background:${BRAND_GREEN};color:white;font-size:13px;font-weight:700;padding:11px 26px;border-radius:8px;text-decoration:none;">Browse cleaning supplies →</a>
     </div>
-
-    <p style="margin:0 0 16px;font-size:13px;color:#475569;line-height:1.6;text-align:center;">
-      Welcome aboard, ${htmlEscape(firstName)} — looking forward to seeing your first jobs come through.
-    </p>
 
     <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.5;text-align:center;">
       Questions? Reply to this email or contact <a href="mailto:cleaners@vouchee.co.uk" style="color:${BRAND_BLUE};">cleaners@vouchee.co.uk</a>
