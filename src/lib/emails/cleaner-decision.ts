@@ -139,7 +139,7 @@ export function rejectionHtml(firstName: string, appUrl: string) {
       Right now isn't the right moment for us to bring you on. We're keeping the cleaner side of the platform deliberately small while we settle into the early weeks, and we're holding off on growing it for now.
     </p>
     <p style="margin:0 0 28px;font-size:14px;color:#475569;line-height:1.7;">
-      We won't keep you waiting on a list or get back in touch later. Genuinely wishing you all the best with your cleaning work.
+      We are unsure when this may change. We will reach back out if and when we reconsider your application.
     </p>
 
     <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.5;text-align:center;">
