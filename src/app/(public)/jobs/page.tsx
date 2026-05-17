@@ -43,6 +43,31 @@ interface Job {
   original_cleaner_id: string | null
 }
 
+// ─── Pre-launch flag ──────────────────────────────────
+//
+// Until the customer-side launch on 2026-06-01, the /jobs page shows
+// seed/marketing listings so the feed isn't a ghost town and Google has
+// real content to index for "cleaning jobs in Horsham". Those rows are
+// real `clean_requests` from Adam's admin customer (see the marketing-
+// fake DO block run on 2026-05-15) — they pass every check the live
+// flow does, which is what makes them useful for SEO without faking
+// anything in the database.
+//
+// What this flag DOES change, until launch:
+//   - job-card timestamps swap from "Xd ago" → "Example listing" badge,
+//     so no listing falsely appears recent
+//   - the apply CTA on each card swaps from "Apply →" to a non-clickable
+//     "Live from 1 June 2026" marker, so cleaners landing from search
+//     aren't tricked into applying to non-existent jobs
+//   - the hero subhead explicitly says these are examples
+//   - the "X requests live now" counter copy reflects example mode
+//
+// The flag goes false automatically the moment the system clock crosses
+// the launch date — no follow-up edit needed. Re-render the page after
+// 2026-06-01 and the example treatment falls away.
+const LAUNCH_DATE = new Date('2026-06-01T00:00:00Z')
+const PRE_LAUNCH = Date.now() < LAUNCH_DATE.getTime()
+
 // ─── Display helpers ──────────────────────────────────
 
 const ZONE_LABELS: Record<HorshamZone, string> = {
@@ -284,9 +309,15 @@ function JobCard({ job, isOwn = false, userRole, cleanerApproved, onEdit, onAppl
           </div>
         )}
         <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
-          <span className="text-xs text-gray-400">{timeAgo(job.created_at)}</span>
+          {PRE_LAUNCH && !isOwn ? (
+            <span className="text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2.5 py-1">Example listing</span>
+          ) : (
+            <span className="text-xs text-gray-400">{timeAgo(job.created_at)}</span>
+          )}
           {isOwn ? (
             <button onClick={onEdit} className="text-xs font-semibold text-white bg-green-600 hover:bg-green-700 rounded-full px-4 py-1.5 transition-colors">Edit →</button>
+          ) : PRE_LAUNCH ? (
+            <span className="text-xs font-semibold text-gray-500 bg-gray-100 border border-gray-200 rounded-full px-4 py-1.5">Live from 1 June 2026</span>
           ) : showApplyBtn ? (
             alreadyApplied ? (
               <span className="text-xs font-semibold text-green-600 bg-green-50 border border-green-200 rounded-full px-4 py-1.5">✓ Applied</span>
@@ -712,11 +743,21 @@ export default function JobsPage() {
       <section className="bg-white border-b border-gray-100 py-10">
         <div className="container max-w-5xl mx-auto px-4">
           <div className="flex items-center gap-2 mb-3">
-            <span className={`w-2 h-2 rounded-full ${openJobs.length > 0 ? 'bg-green-500' : 'bg-gray-300'}`} />
-            <span className="text-sm text-gray-500">{openJobs.length > 0 ? `${openJobs.length} request${openJobs.length !== 1 ? 's' : ''} live now` : '0 requests live now'}</span>
+            <span className={`w-2 h-2 rounded-full ${PRE_LAUNCH ? 'bg-amber-400' : openJobs.length > 0 ? 'bg-green-500' : 'bg-gray-300'}`} />
+            <span className="text-sm text-gray-500">
+              {PRE_LAUNCH
+                ? `${openJobs.length} example request${openJobs.length !== 1 ? 's' : ''} · real listings from 1 June 2026`
+                : openJobs.length > 0
+                  ? `${openJobs.length} request${openJobs.length !== 1 ? 's' : ''} live now`
+                  : '0 requests live now'}
+            </span>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Active cleaning requests</h1>
-          <p className="text-gray-500 max-w-lg mb-6">Browse open jobs from homeowners in Horsham. See what customers are paying and apply to become a Vouchee cleaner.</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Cleaning Jobs in Horsham</h1>
+          <p className="text-gray-500 max-w-2xl mb-6">
+            {PRE_LAUNCH
+              ? "We're launching to customers on 1 June 2026. The listings below are real examples of the kind of work you can expect: weekly, fortnightly and monthly cleans across Horsham, Broadbridge Heath, Southwater, Roffey, Warnham and the surrounding villages. Apply to become a vetted Vouchee cleaner now and be matched to real customers from day one."
+              : "Browse open jobs from homeowners in Horsham. Set your own rate, choose your hours, work directly with customers. Weekly, fortnightly and monthly cleans across Horsham and the surrounding villages."}
+          </p>
           {showAnyTopCta && (
             <div className="flex gap-3 flex-wrap">
               {showBecomeCleanerCta && (
