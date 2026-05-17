@@ -11,18 +11,35 @@ import { referrerHtml, refereeHtml } from '@/lib/emails/referral-credited'
 // both parties.
 //
 // Trigger gate (per referee):
-//   - customers.subscription_status === 'active'
-//   - referee has a fulfilled clean_request whose start_date is set
+//   - referee has an active or fulfilled clean_request whose start_date is set
 //   - now() > start_date + 24h
 //   - now() > cooling_off_until (or cooling_off_until IS NULL)
+//   - referee.gocardless_subscription_id IS NOT NULL
 //
-// Referrer side is best-effort: if their subscription isn't active anymore,
-// we record a referrer_skipped_reason and only credit the referee. No clawback.
+// Why not customers.subscription_status: that column is set at signup and
+// is not updated anywhere downstream (none of the GC webhook handlers, no
+// confirm-switch, no switch-cleaner). Reading from it drifts immediately,
+// so we derive readiness from clean_requests.status instead — the row that
+// IS canonically maintained for arrangement state.
+//
+// Referrer side is best-effort: if pausing the referrer's GC subscription
+// fails (cancelled, expired, no sub id), we record a referrer_skipped_reason
+// and only credit the referee. No clawback.
+//
+// Voiding: a pending credit is voided when every clean_request the referee
+// has is in a TERMINAL_FAILED state (cancelled / deleted) — they tried and
+// didn't proceed. A referee with no requests yet keeps waiting; a referee
+// with any pending/active/fulfilled/completed request keeps waiting.
 //
 // Stacking: when applying a pause to a subscription that's already paused,
 // we read the remaining `pause_cycles` from GoCardless and post the new total
 // so credits accumulate correctly for power-referrers.
 // ─────────────────────────────────────────────────────────────────────────────
+
+// clean_requests statuses that mean "tried Vouchee, didn't stick". Used to
+// decide whether to void a pending credit. Pending/active/fulfilled/completed
+// are NOT in this set so an in-flight or successful customer is never voided.
+const TERMINAL_FAILED_STATUSES = new Set(['cancelled', 'deleted'])
 
 const CRON_SECRET = process.env.CRON_SECRET
 const IS_PROD = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1'
@@ -122,20 +139,31 @@ export async function GET(request: NextRequest) {
 
   const { data: customers } = await admin
     .from('customers')
-    .select('id, profile_id, subscription_status, gocardless_subscription_id')
-    .in('id', allIds) as { data: Array<{ id: string; profile_id: string; subscription_status: string; gocardless_subscription_id: string | null }> | null }
+    .select('id, profile_id, gocardless_subscription_id')
+    .in('id', allIds) as { data: Array<{ id: string; profile_id: string; gocardless_subscription_id: string | null }> | null }
   const custMap = new Map((customers ?? []).map(c => [c.id, c]))
 
+  // Fetch ALL clean_requests for the referees (no start_date filter) so we
+  // can also see cancelled rows. We need them for the void path — a customer
+  // whose only requests are cancelled has effectively given up, and the
+  // pending credit should void rather than wait forever.
   const { data: requests } = await admin
     .from('clean_requests')
     .select('customer_id, start_date, cooling_off_until, status, fulfilled_at')
-    .in('customer_id', refereeIds)
-    .not('start_date', 'is', null) as { data: Array<{ customer_id: string; start_date: string | null; cooling_off_until: string | null; status: string; fulfilled_at: string | null }> | null }
+    .in('customer_id', refereeIds) as { data: Array<{ customer_id: string; start_date: string | null; cooling_off_until: string | null; status: string; fulfilled_at: string | null }> | null }
 
-  // First fulfilled clean_request per referee — that's the qualifying clean.
-  // If they have multiple, take the earliest fulfilled one.
+  // Two maps from the same fetch:
+  //   - reqByReferee: the qualifying clean (earliest active/fulfilled with
+  //     start_date) used by the trigger gate
+  //   - statusesByReferee: every request status the referee has, used by the
+  //     terminal-failed void check
   const reqByReferee = new Map<string, { start_date: string; cooling_off_until: string | null }>()
+  const statusesByReferee = new Map<string, string[]>()
   for (const r of (requests ?? [])) {
+    const arr = statusesByReferee.get(r.customer_id) ?? []
+    arr.push(r.status)
+    statusesByReferee.set(r.customer_id, arr)
+
     if (!r.start_date) continue
     if (r.status !== 'fulfilled' && r.status !== 'active') continue
     const existing = reqByReferee.get(r.customer_id)
@@ -165,14 +193,20 @@ export async function GET(request: NextRequest) {
     const referrer = custMap.get(credit.referrer_customer_id)
     if (!referrer) { errors.push(`referrer ${credit.referrer_customer_id} not found`); continue }
 
-    // Void if referee cancelled — no point waiting forever.
-    if (referee.subscription_status === 'cancelled') {
+    // Void if every request the referee has ever made is in a terminal-
+    // failed state (cancelled / deleted). A referee with NO requests yet
+    // keeps waiting — they may still post one. A referee with any pending,
+    // active, fulfilled or completed request is in-flight and waits.
+    const refereeStatuses = statusesByReferee.get(referee.id)
+    if (refereeStatuses && refereeStatuses.length > 0 && refereeStatuses.every(s => TERMINAL_FAILED_STATUSES.has(s))) {
       await admin.from('referral_credits').update({ state: 'voided' } as any).eq('id', credit.id)
       voided++
       continue
     }
-    if (referee.subscription_status !== 'active') { skippedNotReady++; continue }
 
+    // Trigger gate: must have a qualifying request (active/fulfilled with
+    // start_date) past start+24h and past any cooling-off. No more
+    // subscription_status check — clean_requests is the source of truth.
     const req = reqByReferee.get(referee.id)
     if (!req) { skippedNotReady++; continue }
 
@@ -194,11 +228,16 @@ export async function GET(request: NextRequest) {
       continue
     }
 
-    // ── Apply referrer pause (silently skip if not active) ──
+    // ── Apply referrer pause (best-effort; skip on missing sub or GC error) ──
+    // gocardless_subscription_id is the only canonical signal we maintain
+    // accurately. If the referrer's sub is actually cancelled/expired, the
+    // pause call will fail and we record that as the skipped reason — same
+    // outcome as the old subscription_status check, without depending on the
+    // stale column.
     let referrerAppliedAt: string | null = null
     let referrerSkippedReason: string | null = null
-    if (referrer.subscription_status !== 'active' || !referrer.gocardless_subscription_id) {
-      referrerSkippedReason = `subscription_status=${referrer.subscription_status}`
+    if (!referrer.gocardless_subscription_id) {
+      referrerSkippedReason = 'no_subscription_id'
     } else {
       const refCycles = (await readCurrentPauseCycles(referrer.gocardless_subscription_id)) + 1
       const refPause = await pauseSubscription(referrer.gocardless_subscription_id, refCycles)
