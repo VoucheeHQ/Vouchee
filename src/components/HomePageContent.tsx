@@ -118,6 +118,7 @@ export default function HomePageContent({ location = 'Horsham' }: HomePageProps)
                 </CardHeader>
                 <CardContent>
                   <div className="inline-block rounded-full bg-brand-100 px-3 py-1 text-xs font-medium text-brand-700">Most popular</div>
+                  <p className="mt-3 text-sm text-ink-secondary">Stay on top of everything week to week. Need an extra hour for an event? Just ask your cleaner.</p>
                 </CardContent>
               </Card>
             </Link>

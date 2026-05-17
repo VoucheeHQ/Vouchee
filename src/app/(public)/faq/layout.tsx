@@ -2,10 +2,10 @@ import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
   title: 'Frequently Asked Questions',
-  description: 'Common questions about Vouchee — how it works, pricing, cleaner vetting, managing your clean, and how cleaners join the platform.',
+  description: 'Common questions about Vouchee. How it works, pricing, cleaner vetting, managing your clean, and how cleaners join the platform.',
   alternates: { canonical: '/faq' },
   openGraph: {
-    title: 'Vouchee FAQ — Common Questions Answered',
+    title: 'Vouchee FAQ, Common Questions Answered',
     description: 'How Vouchee works, what it costs, how cleaners are vetted, and how to manage your clean.',
     url: '/faq',
     images: ['/og-image.jpg'],

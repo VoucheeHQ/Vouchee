@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
   title: 'Cleaning Supplies Recommended by Professionals',
-  description: 'Hand-picked cleaning products recommended by Vouchee and our professional cleaners. From everyday essentials to specialist tools — everything you need for a spotless home.',
+  description: 'Hand-picked cleaning products recommended by Vouchee and our professional cleaners. Everyday essentials, specialist tools, and the kit that actually works for a spotless home.',
   alternates: { canonical: '/cleaning-supplies' },
   openGraph: {
     title: 'Cleaning Supplies Recommended by Professional Cleaners',

@@ -18,10 +18,12 @@ const dmSans = DM_Sans({
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.vouchee.co.uk'),
   title: {
-    default: 'Vouchee — Vetted Local Cleaners in Horsham, West Sussex',
+    default: 'Vouchee, Vetted Local Cleaners in Horsham, West Sussex',
     template: '%s | Vouchee',
   },
-  description: 'Connect with vetted, DBS-checked, insured local cleaners in Horsham. Weekly, fortnightly, monthly, or one-off cleans — no commission, ever.',
+  // Site-wide fallback. Page-specific descriptions override this. Used when
+  // a child page has no description of its own.
+  description: 'Vouchee is a local cleaning marketplace for Horsham. Vetted, DBS-checked, insured cleaners. Pay your cleaner directly, no commission, fixed monthly platform fee.',
   keywords: ['cleaning service', 'local cleaners', 'Horsham cleaners', 'house cleaning', 'domestic cleaning'],
   authors: [{ name: 'Vouchee' }],
   creator: 'Vouchee',
@@ -32,8 +34,8 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'en_GB',
     url: 'https://www.vouchee.co.uk',
-    title: 'Vouchee — Vetted Local Cleaners in Horsham, West Sussex',
-    description: 'Connect with vetted, DBS-checked, insured local cleaners in Horsham. Weekly, fortnightly, monthly, or one-off cleans — no commission, ever.',
+    title: 'Vouchee, Vetted Local Cleaners in Horsham, West Sussex',
+    description: 'Vouchee is a local cleaning marketplace for Horsham. Vetted, DBS-checked, insured cleaners with real reviews.',
     siteName: 'Vouchee',
     images: [
       {
@@ -46,8 +48,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Vouchee — Vetted Local Cleaners in Horsham, West Sussex',
-    description: 'Connect with vetted, DBS-checked, insured local cleaners in Horsham. Weekly, fortnightly, monthly, or one-off cleans — no commission, ever.',
+    title: 'Vouchee, Vetted Local Cleaners in Horsham, West Sussex',
+    description: 'Vouchee is a local cleaning marketplace for Horsham. Vetted, DBS-checked, insured cleaners with real reviews.',
     images: ['/og-image.jpg'],
   },
   robots: {

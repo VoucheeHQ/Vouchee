@@ -2,11 +2,11 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Cleaning Prices in Horsham — Transparent Service Fees',
-  description: 'Simple, transparent pricing for cleaning in Horsham. £9.99 per weekly clean, £14.99 fortnightly, £24.99 monthly. No commission, no booking fees — you pay your cleaner directly.',
+  title: 'Cleaning Prices in Horsham: Transparent Service Fees',
+  description: 'Simple, transparent pricing for cleaning in Horsham. £9.99 per weekly clean, £14.99 fortnightly, £24.99 monthly. No commission, no booking fees. You pay your cleaner directly.',
   alternates: { canonical: '/pricing' },
   openGraph: {
-    title: 'Cleaning Prices in Horsham — Transparent Service Fees',
+    title: 'Cleaning Prices in Horsham: Transparent Service Fees',
     description: 'Simple, transparent pricing for cleaning in Horsham. £9.99 per weekly clean, £14.99 fortnightly, £24.99 monthly.',
     url: '/pricing',
     images: ['/og-image.jpg'],
