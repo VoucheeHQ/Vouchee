@@ -13,7 +13,7 @@ import './dashboard.css'
 type ApplicationStatus = 'submitted' | 'approved' | 'rejected' | 'suspended' | 'pending'
 
 interface CleanerProfile {
-  full_name: string
+  full_name: string | null
   email: string
   phone: string | null
 }
@@ -70,8 +70,8 @@ function formatDate(iso: string) { return new Date(iso).toLocaleDateString('en-G
 function formatMonthYear(iso: string) { return new Date(iso).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }) }
 function formatExpiry(iso: string | null) { if (!iso) return null; return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) }
 function isExpired(iso: string | null) { if (!iso) return false; return new Date(iso) < new Date() }
-function getInitial(name: string) { return name.trim().charAt(0).toUpperCase() }
-function formatShortName(fullName: string) { const parts = fullName.trim().split(' '); return parts.length === 1 ? parts[0] : `${parts[0]} ${parts[parts.length - 1].charAt(0)}.` }
+function getInitial(name: string | null) { return (name ?? '').trim().charAt(0).toUpperCase() || '?' }
+function formatShortName(fullName: string | null) { const parts = (fullName ?? '').trim().split(' '); if (!parts[0]) return 'Cleaner'; return parts.length === 1 ? parts[0] : `${parts[0]} ${parts[parts.length - 1].charAt(0)}.` }
 
 function relativeTime(iso: string) {
   const diff = Date.now() - new Date(iso).getTime()
@@ -464,7 +464,7 @@ function ApprovedDashboard({ profile, cleaner, stats, notifications, onOpenNotif
         <div style={{ background: 'linear-gradient(135deg, #1d4ed8 0%, #2563eb 60%, #3b82f6 100%)', borderRadius: '20px', padding: '24px 28px', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 4px 20px rgba(37,99,235,0.25)' }}>
           <div>
             <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.75, marginBottom: '4px' }}>Welcome back</div>
-            <div style={{ fontSize: '22px', fontWeight: 800, letterSpacing: '-0.3px' }}>Hi, {profile.full_name.trim().split(' ')[0]}! 👋</div>
+            <div style={{ fontSize: '22px', fontWeight: 800, letterSpacing: '-0.3px' }}>Hi, {(profile.full_name ?? '').trim().split(' ')[0] || 'there'}! 👋</div>
             <div style={{ fontSize: '13px', opacity: 0.8, marginTop: '4px' }}>Here's how your Vouchee business is doing.</div>
           </div>
           <a href="/jobs" style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', color: 'white', borderRadius: '12px', padding: '10px 20px', fontSize: '13px', fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' }}>Browse jobs →</a>
@@ -529,7 +529,7 @@ function ApprovedDashboard({ profile, cleaner, stats, notifications, onOpenNotif
 }
 
 function PendingScreen({ profile, cleaner, emailConfirmed }: { profile: CleanerProfile; cleaner: CleanerData; emailConfirmed: boolean }) {
-  const firstName = profile.full_name.trim().split(' ')[0]
+  const firstName = (profile.full_name ?? '').trim().split(' ')[0]
   const zones = (cleaner.zones ?? []).map(z => ZONE_LABELS[z] ?? z)
   const steps = [
     { icon: '✅', title: 'Application received', desc: `Submitted on ${formatDate(cleaner.created_at)}`, done: true },
@@ -839,7 +839,7 @@ export default function CleanerDashboardPage() {
       {showDetailsModal && profile && cleaner && userId && (
         <PersonalDetailsModal
           profileId={userId}
-          initialFullName={profile.full_name}
+          initialFullName={profile.full_name ?? ''}
           initialEmail={profile.email}
           initialPhone={profile.phone}
           onClose={() => setShowDetailsModal(false)}
