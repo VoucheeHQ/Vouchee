@@ -27,7 +27,7 @@ const promises = [
     icon: "🔄",
     color: "purple",
     title: "No long contracts",
-    body: "Give us 30 days notice and that's it — no fees, no awkward calls. If your regular cleaner can't make a session and no cover clean is available through Vouchee, just let us know and we'll credit the missed session against your next payment.",
+    body: "Give us 30 days notice and that's it. Cleans continue during your notice period, and we refund any unused portion of your last billed month on a pro-rata basis. If your regular cleaner can't make a session and no cover clean is available through Vouchee, just let us know and we'll credit the missed session against your next payment.",
   },
   {
     icon: "🏠",

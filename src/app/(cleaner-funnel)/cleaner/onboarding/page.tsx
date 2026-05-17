@@ -150,10 +150,9 @@ function ApplicationCardPreview({ form }: { form: any }) {
             </div>
           </div>
         </div>
-        <div style={{ padding: '8px 16px 12px', display: 'flex', alignItems: 'center', gap: '6px', borderBottom: '1px solid #f1f5f9' }}>
-          {[1,2,3,4,5].map(i => <span key={i} style={{ fontSize: '14px', color: '#f59e0b' }}>★</span>)}
-          <span style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>5.0</span>
-          <span style={{ fontSize: '13px', color: '#94a3b8' }}>· 0 cleans completed</span>
+        <div style={{ padding: '8px 16px 12px', display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid #f1f5f9' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1d4ed8', fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '100px' }}>✨ New to Vouchee</span>
+          <span style={{ fontSize: '12px', color: '#94a3b8' }}>Your stars and cleans appear here once customers review you.</span>
         </div>
         <div style={{ padding: '12px 16px', borderBottom: '1px solid #f1f5f9' }}>
           <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>Reviews</div>
@@ -508,8 +507,8 @@ export default function CleanerOnboarding() {
                   {platformAgreement && <Check size={13} color="white" strokeWidth={3} />}
                 </button>
                 <div>
-                  <p style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', margin: '0 0 8px', lineHeight: 1.55 }}>I have read and agree to the <a href="/legal/terms/cleaner" target="_blank" style={{ color: '#3b82f6', textDecoration: 'underline' }}>Cleaner Terms of Service</a>, including my responsibilities as a self-employed individual, my tax obligations, and the platform integrity clause. I understand that taking customers introduced through Vouchee off-platform may result in a formal warning, suspension, or permanent removal.</p>
-                  <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0, lineHeight: 1.5 }}>Note: You are paid directly by the customer for your time — <strong style={{ color: '#64748b' }}>Vouchee does not take a cut of your hourly earnings.</strong> The full Terms of Service set out your rights and obligations as a Vouchee Cleaner.</p>
+                  <p style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', margin: '0 0 8px', lineHeight: 1.55 }}>I have read and agree to the <a href="/legal/terms/cleaner" target="_blank" style={{ color: '#3b82f6', textDecoration: 'underline' }}>Cleaner Terms of Service</a> and <a href="/legal/privacy" target="_blank" style={{ color: '#3b82f6', textDecoration: 'underline' }}>Privacy Policy</a>, including my responsibilities as a self-employed individual, my tax obligations, and the platform integrity clause. Vouchee invests in vetting, insurance verification, and customer acquisition for every job, so taking introduced customers off-platform may result in a formal warning, suspension, or permanent removal. You remain free to work for any customer you find independently.</p>
+                  <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0, lineHeight: 1.5 }}>Note: You are paid directly by the customer for your time. <strong style={{ color: '#64748b' }}>Vouchee does not take a cut of your hourly earnings.</strong> The full Terms of Service set out your rights and obligations as a Vouchee Cleaner.</p>
                 </div>
               </div>
             </div>
@@ -518,9 +517,7 @@ export default function CleanerOnboarding() {
 
           <div>
             <p style={{ fontSize: '13px', color: '#94a3b8', lineHeight: 1.6, marginBottom: '20px', textAlign: 'center' }}>
-              By submitting you confirm that the information above is accurate and agree to Vouchee's{' '}
-              <a href="/legal/terms/cleaner" style={{ color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>Cleaner Terms of Service</a>{' '}and{' '}
-              <a href="/legal/privacy" style={{ color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>Privacy Policy</a>.
+              By submitting you confirm that the information above is accurate.
             </p>
             {submitError && <div style={{ background: '#fef2f2', border: '1.5px solid #fecaca', borderRadius: '12px', padding: '14px 16px', marginBottom: '16px' }}><p style={{ fontSize: '14px', color: '#dc2626', margin: 0, fontWeight: 600 }}>{submitError}</p></div>}
             <button onClick={handleSubmit} disabled={submitting} style={{ width: '100%', padding: '16px', background: submitting ? '#86efac' : 'linear-gradient(90deg, #3b82f6 0%, #22c55e 100%)', color: 'white', border: 'none', borderRadius: '14px', fontSize: '16px', fontWeight: 700, cursor: submitting ? 'not-allowed' : 'pointer', transition: 'all 0.2s', boxShadow: submitting ? 'none' : '0 4px 16px rgba(59,130,246,0.25)', fontFamily: 'inherit' }}>
