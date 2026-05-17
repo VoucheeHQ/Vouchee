@@ -115,7 +115,6 @@ async function publishRequest(data: RequestData, userId: string): Promise<string
         address_line1: data.addressLine1 ?? "",
         address_line2: data.addressLine2 ?? "",
         frequency: (data.frequency ?? "fortnightly") as any,
-        subscription_status: "pending",
       }).select("id").single()
     if (customerError || !newCustomer) throw new Error("Failed to create customer record")
     customerId = newCustomer.id
