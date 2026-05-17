@@ -679,7 +679,7 @@ function MessagingTray({ conversations, openIds, onOpen, onClose, totalUnread }:
   }
 
   return (
-    <div style={{ position: 'relative', fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)" }}>
+    <div className="vouchee-messaging-tray" style={{ position: 'relative', fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)" }}>
       {expanded && (
         <div style={{ position: 'absolute', bottom: '100%', right: 0, marginBottom: '4px', width: '300px', background: 'white', borderRadius: '8px', boxShadow: '0 4px 24px rgba(0,0,0,0.18)', overflow: 'hidden', border: '1px solid #e2e8f0' }}>
           <div style={{ padding: '12px 16px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -898,7 +898,16 @@ export function ChatWidget() {
   useEffect(() => { currentUserIdRef.current = currentUserId }, [currentUserId])
 
   const openConversation = useCallback((id: string) => {
-    setOpenIds(prev => new Set(prev).add(id))
+    // On mobile, only one chat at a time. The chat window goes fullscreen
+    // (see chat-widget.css) so stacking two windows is visually impossible —
+    // we replace any previously open chat instead of adding to it. Desktop
+    // keeps the existing additive behaviour so power users can keep multiple
+    // chats open side-by-side.
+    const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768
+    setOpenIds(prev => {
+      if (isMobile) return new Set([id])
+      return new Set(prev).add(id)
+    })
     setConversations(prev => prev.map(c => c.id === id ? { ...c, unread: 0 } : c))
   }, [])
 
@@ -912,27 +921,42 @@ export function ChatWidget() {
   }, [])
 
   useEffect(() => {
+    // Wrapped in try/finally so setInitialized(true) ALWAYS fires. Previously
+    // an unhandled rejection in fetchUserConversations / enrichConversations
+    // would skip the final setInitialized call and the widget would silently
+    // never render — the customer-side "no chat widget at all" bug. Now any
+    // failure logs, but the tray still renders (empty if the data fetch
+    // genuinely failed) so customers always have an entry point.
     const init = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { setInitialized(true); return }
-      setCurrentUserId(user.id)
-      currentUserIdRef.current = user.id
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+        setCurrentUserId(user.id)
+        currentUserIdRef.current = user.id
 
-      const { data: profile } = await (supabase as any).from('profiles').select('role').eq('id', user.id).single()
-      if (!profile || profile.role === 'admin') { setInitialized(true); return }
+        const { data: profile } = await (supabase as any).from('profiles').select('role').eq('id', user.id).single()
+        if (!profile || profile.role === 'admin') return
 
-      const role = profile.role as 'customer' | 'cleaner'
-      setCurrentRole(role)
+        const role = profile.role as 'customer' | 'cleaner'
+        setCurrentRole(role)
 
-      if (role === 'cleaner') {
-        const { data: cl } = await (supabase as any).from('cleaners').select('id').eq('profile_id', user.id).single()
-        cleanerIdRef.current = cl?.id ?? null
+        if (role === 'cleaner') {
+          const { data: cl } = await (supabase as any).from('cleaners').select('id').eq('profile_id', user.id).single()
+          cleanerIdRef.current = cl?.id ?? null
+        }
+
+        try {
+          const convos = await fetchUserConversations(supabase, user.id, role)
+          const enriched = await enrichConversations(supabase, convos, role)
+          setConversations(enriched)
+        } catch (e) {
+          console.error('[chat-widget] conversations fetch/enrich failed — rendering empty tray:', e)
+        }
+      } catch (e) {
+        console.error('[chat-widget] init failed:', e)
+      } finally {
+        setInitialized(true)
       }
-
-      const convos = await fetchUserConversations(supabase, user.id, role)
-      const enriched = await enrichConversations(supabase, convos, role)
-      setConversations(enriched)
-      setInitialized(true)
     }
     init()
   }, [])
@@ -1103,7 +1127,7 @@ export function ChatWidget() {
   const openExpanded = conversations.filter(c => openIds.has(c.id))
 
   return (
-    <div className="vouchee-chat-dock" style={{ position: 'fixed', bottom: 0, right: '16px', zIndex: 400, display: 'flex', alignItems: 'flex-end', gap: '12px', fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)" }}>
+    <div className={`vouchee-chat-dock${openExpanded.length > 0 ? ' has-open-chat' : ''}`} style={{ position: 'fixed', bottom: 0, right: '16px', zIndex: 400, display: 'flex', alignItems: 'flex-end', gap: '12px', fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)" }}>
       {openExpanded.map(conv => (
         <ChatWindow
           key={conv.id}
