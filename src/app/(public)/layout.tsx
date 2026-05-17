@@ -1,32 +1,24 @@
 import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
 import { CountdownBanner } from '@/components/countdown-banner'
-import { createClient } from '@/lib/supabase/server'
 
-export const dynamic = 'force-dynamic'
+// Note: this layout used to be `force-dynamic` + an awaited
+// supabase.auth.getUser() + profile lookup, which added ~400-800ms of
+// blocking time before any HTML streamed on mobile. Header is already
+// designed to auto-detect auth client-side when no explicit userRole
+// is passed (see header.tsx, the `shouldAutoDetect` path), so removing
+// the server-side fetch costs nothing functionally and lets every
+// public page render from Vercel's edge cache instantly.
 
-export default async function PublicLayout({
+export default function PublicLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  let userRole: string | null = null
-  if (user) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-    userRole = (profile as any)?.role ?? null
-  }
-
   return (
     <>
       <CountdownBanner />
-      <Header userRole={userRole} />
+      <Header />
       <main>{children}</main>
       <Footer />
     </>

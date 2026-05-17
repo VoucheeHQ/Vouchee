@@ -2,11 +2,14 @@ import type { Metadata } from 'next'
 import { DM_Sans } from 'next/font/google'
 import './globals.css'
 import { Toaster } from 'sonner'
-import { AuthListener } from '@/components/auth-listener'
-import { ChatWidget } from '@/components/chat-widget'
-import { CookieBanner } from '@/components/cookie-banner'
-import { PostHogProvider } from '@/components/posthog-provider'
-import { ReferralCapture } from '@/components/referral-capture'
+import { ChatWidgetGate } from '@/components/chat-widget-gate'
+import { ClientChrome } from '@/components/client-chrome'
+
+// Note: AuthListener, PostHogProvider, ReferralCapture, CookieBanner are
+// lazy-loaded inside ClientChrome (dynamic + ssr:false). The full ChatWidget
+// is auth-gated and lazy-loaded inside ChatWidgetGate. Together these defer
+// roughly 1.6k lines of client JS off the critical path; non-authed visitors
+// to marketing pages download zero chat code at all.
 
 const dmSans = DM_Sans({
   subsets: ['latin'],
@@ -102,12 +105,9 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
         />
-        <AuthListener />
-        <PostHogProvider />
-        <ReferralCapture />
         {children}
-        <ChatWidget />
-        <CookieBanner />
+        <ClientChrome />
+        <ChatWidgetGate />
         <Toaster position="top-right" richColors closeButton />
       </body>
     </html>
