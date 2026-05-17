@@ -12,29 +12,53 @@
  */
 
  @media (max-width: 768px) {
-    /* Main page container: stack the 340px sidebar above the main column */
+    /* Main page container becomes a single flex column on mobile, with the
+       child column-wrappers flattened via `display: contents` so all the
+       cards become direct flex items. That lets `order` below resequence
+       them per the cleaner-portal mobile UX (welcome at top, profile/
+       settings further down) regardless of which desktop column they
+       live in. Desktop layout above is untouched. */
     .vouchee-cleaner-dashboard {
+      display: flex !important;
+      flex-direction: column !important;
       grid-template-columns: 1fr !important;
+      gap: 16px !important;
       padding: 0 16px 40px !important;
     }
-  
+    .vouchee-cleaner-dashboard > div {
+      display: contents !important;
+    }
+
+    /* Mobile section order — must match the cleaner-portal sequence the
+       team agreed on: welcome → job activity → business → notifications
+       → notif prefs → cleaner card → reviews → feedback → supplies → help. */
+    .vouchee-cleaner-dashboard .area-welcome       { order: 1; }
+    .vouchee-cleaner-dashboard .area-job-activity  { order: 2; }
+    .vouchee-cleaner-dashboard .area-business      { order: 3; }
+    .vouchee-cleaner-dashboard .area-notifications { order: 4; }
+    .vouchee-cleaner-dashboard .area-notif-prefs   { order: 5; }
+    .vouchee-cleaner-dashboard .area-cleaner-card  { order: 6; }
+    .vouchee-cleaner-dashboard .area-reviews       { order: 7; }
+    .vouchee-cleaner-dashboard .area-feedback      { order: 8; }
+    .vouchee-cleaner-dashboard .area-supplies      { order: 9; }
+    .vouchee-cleaner-dashboard .area-help          { order: 10; }
+
     /* Stat cards stay 2-up on mobile (smaller padding handles fit) — see
        .dashboard-card override below for the tighter card spacing. */
-  
+
     /* Jobs won badge: remove the desktop right-margin offset */
     .vouchee-cleaner-dashboard .jobs-won-badge {
       margin-right: 0 !important;
     }
-  
+
     /* Card padding: slightly tighter on mobile so content gets more breathing room */
     .vouchee-cleaner-dashboard .dashboard-card {
       padding: 16px !important;
     }
-  
+
     /* Header row: allow stars / member-since to wrap rather than getting cut off */
     .vouchee-cleaner-dashboard .dashboard-header-row {
       flex-wrap: wrap;
       gap: 12px;
     }
   }
-  

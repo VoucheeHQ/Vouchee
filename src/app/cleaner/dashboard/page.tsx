@@ -289,8 +289,13 @@ function ApprovedDashboard({ profile, cleaner, stats, notifications, onOpenNotif
   return (
     <div className="vouchee-cleaner-dashboard" style={{ maxWidth: '1100px', margin: '0 auto', padding: '0 24px 60px', display: 'grid', gridTemplateColumns: '400px 1fr', gap: '24px', alignItems: 'start' }}>
       {/* ── LEFT COLUMN ── */}
+      {/* Mobile note: the .area-* classes on each card below let dashboard.css
+          flatten this two-column grid into a single flow at <=768px and
+          reorder the cards per the cleaner-portal sequence (welcome → job
+          activity → business → notifications → notif prefs → cleaner card →
+          reviews → feedback → supplies → help). Desktop layout unchanged. */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        <div style={{ background: 'white', borderRadius: '20px', border: '1.5px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 16px rgba(0,0,0,0.06)' }}>
+        <div className="area-cleaner-card" style={{ background: 'white', borderRadius: '20px', border: '1.5px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 16px rgba(0,0,0,0.06)' }}>
           <div style={{ padding: '24px 24px 20px', position: 'relative' }}>
             {/* ── Cog button — opens personal-details modal ── */}
             <button
@@ -358,6 +363,7 @@ function ApprovedDashboard({ profile, cleaner, stats, notifications, onOpenNotif
 
         {/* ── Notification preferences card — now a clickable button ── */}
         <button
+          className="area-notif-prefs"
           onClick={onOpenNotifications}
           style={{
             background: 'white', borderRadius: '20px', border: '1.5px solid #e2e8f0',
@@ -418,7 +424,7 @@ function ApprovedDashboard({ profile, cleaner, stats, notifications, onOpenNotif
           </div>
         </button>
 
-        <div style={{ background: 'linear-gradient(135deg, #fefce8, #fff7ed)', borderRadius: '16px', border: '1.5px solid #fde68a', padding: '18px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div className="area-supplies" style={{ background: 'linear-gradient(135deg, #fefce8, #fff7ed)', borderRadius: '16px', border: '1.5px solid #fde68a', padding: '18px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
             <div style={{ fontSize: '13px', fontWeight: 700, color: '#92400e', marginBottom: '2px' }}>Need supplies?</div>
             <div style={{ fontSize: '12px', color: '#b45309' }}>Recommended products for professionals</div>
@@ -429,7 +435,7 @@ function ApprovedDashboard({ profile, cleaner, stats, notifications, onOpenNotif
         {/* Feedback buttons — bug + suggestion. Each dispatches an event that
             the FeedbackWidget below listens for, opening the modal with the
             type pre-set. Same pattern as the cookie preferences link. */}
-        <div style={{ background: 'white', border: '1.5px solid #e2e8f0', borderRadius: '16px', padding: '16px 18px' }}>
+        <div className="area-feedback" style={{ background: 'white', border: '1.5px solid #e2e8f0', borderRadius: '16px', padding: '16px 18px' }}>
           <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px' }}>Help improve Vouchee</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <button
@@ -451,7 +457,7 @@ function ApprovedDashboard({ profile, cleaner, stats, notifications, onOpenNotif
           </div>
         </div>
 
-        <div style={{ background: '#f8faff', borderRadius: '14px', padding: '14px 18px', border: '1px solid #e0e7ff', textAlign: 'center' }}>
+        <div className="area-help" style={{ background: '#f8faff', borderRadius: '14px', padding: '14px 18px', border: '1px solid #e0e7ff', textAlign: 'center' }}>
           <p style={{ fontSize: '13px', color: '#475569', margin: 0 }}>
             Need help?{' '}
             <a href="mailto:cleaners@vouchee.co.uk" style={{ color: '#3b82f6', fontWeight: 700, textDecoration: 'none' }}>cleaners@vouchee.co.uk</a>
@@ -461,7 +467,7 @@ function ApprovedDashboard({ profile, cleaner, stats, notifications, onOpenNotif
 
       {/* ── RIGHT COLUMN ── */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        <div style={{ background: 'linear-gradient(135deg, #1d4ed8 0%, #2563eb 60%, #3b82f6 100%)', borderRadius: '20px', padding: '24px 28px', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 4px 20px rgba(37,99,235,0.25)' }}>
+        <div className="area-welcome" style={{ background: 'linear-gradient(135deg, #1d4ed8 0%, #2563eb 60%, #3b82f6 100%)', borderRadius: '20px', padding: '24px 28px', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 4px 20px rgba(37,99,235,0.25)' }}>
           <div>
             <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.75, marginBottom: '4px' }}>Welcome back</div>
             <div style={{ fontSize: '22px', fontWeight: 800, letterSpacing: '-0.3px' }}>Hi, {(profile.full_name ?? '').trim().split(' ')[0] || 'there'}! 👋</div>
@@ -470,7 +476,7 @@ function ApprovedDashboard({ profile, cleaner, stats, notifications, onOpenNotif
           <a href="/jobs" style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', color: 'white', borderRadius: '12px', padding: '10px 20px', fontSize: '13px', fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' }}>Browse jobs →</a>
         </div>
 
-        <div style={{ background: 'white', borderRadius: '20px', border: '1.5px solid #e2e8f0', padding: '24px', boxShadow: '0 2px 16px rgba(0,0,0,0.04)' }}>
+        <div className="area-job-activity" style={{ background: 'white', borderRadius: '20px', border: '1.5px solid #e2e8f0', padding: '24px', boxShadow: '0 2px 16px rgba(0,0,0,0.04)' }}>
           <div style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '16px' }}>Job activity</div>
           <div className="dashboard-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', marginBottom: '12px' }}>
             <StatCard value={stats.pendingApplications} label="Pending applications" bg="#fffbeb" border="#fde68a" color="#92400e" />
@@ -482,7 +488,7 @@ function ApprovedDashboard({ profile, cleaner, stats, notifications, onOpenNotif
           </div>
         </div>
 
-        <div style={{ background: 'white', borderRadius: '20px', border: '1.5px solid #e2e8f0', padding: '24px', boxShadow: '0 2px 16px rgba(0,0,0,0.04)' }}>
+        <div className="area-business" style={{ background: 'white', borderRadius: '20px', border: '1.5px solid #e2e8f0', padding: '24px', boxShadow: '0 2px 16px rgba(0,0,0,0.04)' }}>
           <div style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '16px' }}>Your Vouchee business</div>
           <div className="dashboard-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
             <StatCard value={stats.estimatedHoursWorked} label="Estimated hours worked" bg="#fffbeb" border="#fde68a" color="#b45309" />
@@ -490,9 +496,11 @@ function ApprovedDashboard({ profile, cleaner, stats, notifications, onOpenNotif
           </div>
         </div>
 
-        <ProfileLinkCard shortId={cleaner.short_id} ratingAverage={cleaner.rating_average} ratingCount={cleaner.rating_count} />
+        <div className="area-reviews">
+          <ProfileLinkCard shortId={cleaner.short_id} ratingAverage={cleaner.rating_average} ratingCount={cleaner.rating_count} />
+        </div>
 
-        <div style={{ background: 'white', borderRadius: '20px', border: '1.5px solid #e2e8f0', padding: '24px', boxShadow: '0 2px 16px rgba(0,0,0,0.04)' }}>
+        <div className="area-notifications" style={{ background: 'white', borderRadius: '20px', border: '1.5px solid #e2e8f0', padding: '24px', boxShadow: '0 2px 16px rgba(0,0,0,0.04)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
             <div style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Recent notifications</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
