@@ -456,27 +456,77 @@ export async function POST(request: NextRequest) {
       : 'https://api-sandbox.gocardless.com'
     const gcToken = process.env.GOCARDLESS_ACCESS_TOKEN!
 
-    // Cancel the subscription in all branches (no future charges)
+    // ── Subscription handling per branch ─────────────────────────────────────
+    // Branches A and B (cooling-off): cancel the subscription immediately —
+    // no further charges, refunds happen separately.
+    // Branch C (standard 30-day): DO NOT cancel immediately. Set end_date on
+    // the subscription so DDs continue through the notice period and then
+    // stop. The pro-rata refund for any unused tail of the final billed cycle
+    // is issued by /api/cron/process-cancellation-refunds at notice end.
     const subscriptionId = cleanRequest.gocardless_subscription_id
+    const NOTICE_DAYS = 30
+    const cancellationCompletesAt = new Date(now.getTime() + NOTICE_DAYS * 24 * 60 * 60 * 1000)
+
     if (subscriptionId) {
-      try {
-        const cancelRes = await fetch(`${gcBaseUrl}/subscriptions/${subscriptionId}/actions/cancel`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${gcToken}`,
-            'GoCardless-Version': '2015-07-06',
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          },
-          body: JSON.stringify({ data: {} }),
-        })
-        if (!cancelRes.ok) {
-          console.error('GoCardless subscription cancel failed:', await cancelRes.text())
-        } else {
-          console.log('GoCardless subscription cancelled:', subscriptionId)
+      if (route === 'standard_30_day') {
+        // PATCH end_date — last charge_date on or before this date can still
+        // fire; charges scheduled after this date are not created.
+        try {
+          const endDateStr = cancellationCompletesAt.toISOString().split('T')[0]
+          const patchRes = await fetch(`${gcBaseUrl}/subscriptions/${subscriptionId}`, {
+            method: 'PUT',
+            headers: {
+              'Authorization': `Bearer ${gcToken}`,
+              'GoCardless-Version': '2015-07-06',
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: JSON.stringify({ subscriptions: { end_date: endDateStr } }),
+          })
+          if (!patchRes.ok) {
+            const errText = await patchRes.text()
+            console.error('GoCardless subscription end_date PATCH failed:', errText)
+            // Fall back to immediate cancel so we never end up in a state
+            // where we promise an end date GC didn't accept and keep
+            // collecting forever. Admin gets the alert via the standard
+            // gc-webhook subscriptions.cancelled handler.
+            await fetch(`${gcBaseUrl}/subscriptions/${subscriptionId}/actions/cancel`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${gcToken}`,
+                'GoCardless-Version': '2015-07-06',
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+              },
+              body: JSON.stringify({ data: {} }),
+            })
+          } else {
+            console.log('GoCardless subscription end_date set:', subscriptionId, endDateStr)
+          }
+        } catch (e: any) {
+          console.error('Subscription end_date PATCH threw:', e?.message)
         }
-      } catch (e: any) {
-        console.error('Subscription cancel threw:', e?.message)
+      } else {
+        // Cooling-off branches: hard cancel
+        try {
+          const cancelRes = await fetch(`${gcBaseUrl}/subscriptions/${subscriptionId}/actions/cancel`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${gcToken}`,
+              'GoCardless-Version': '2015-07-06',
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: JSON.stringify({ data: {} }),
+          })
+          if (!cancelRes.ok) {
+            console.error('GoCardless subscription cancel failed:', await cancelRes.text())
+          } else {
+            console.log('GoCardless subscription cancelled:', subscriptionId)
+          }
+        } catch (e: any) {
+          console.error('Subscription cancel threw:', e?.message)
+        }
       }
     }
 
@@ -531,6 +581,12 @@ export async function POST(request: NextRequest) {
         status: 'cancelled',
         cancellation_reason: cancellationReason,
         cancellation_requested_at: now.toISOString(),
+        // Branch C only: marker the pro-rata refund cron looks for. Branches
+        // A and B are settled inline (full refund / manual review) so they
+        // get no completes_at and the cron leaves them alone.
+        ...(route === 'standard_30_day'
+          ? { cancellation_completes_at: cancellationCompletesAt.toISOString() }
+          : {}),
         ...(firstRefundId ? { gocardless_refund_id: firstRefundId } : {}),
       } as any)
       .eq('id', requestId)
