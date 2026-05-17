@@ -78,94 +78,132 @@ export function ArticleContent({ slug }: { slug: string }) {
 function HowMuchDoesACleanerCost() {
   return (
     <>
-      <p>A regular cleaner in Horsham typically costs <strong>£15–£20 per hour</strong>, with most homeowners paying around £16 per hour for a vetted, self-employed cleaner in 2026. For a 3-bedroom home cleaned fortnightly, that works out to roughly <strong>£100–£140 per month</strong>, including any platform fees.</p>
-      <p>That's the short answer. The longer version, which is what most people actually want, depends on how often you have a cleaner, the size and condition of your home, and whether you're going through an agency or hiring an independent cleaner directly. This guide breaks it all down with real numbers from the Horsham market.</p>
+      <p>If you&apos;ve never hired a cleaner before, the pricing can feel a bit murky. Agencies quote one number, a friend pays another, and online estimates seem to swing by £10/hr depending on where you look.</p>
 
-      <Highlight label="The headline numbers">
-        Hourly rate in Horsham: £15–£20 (most pay £16). Typical 3-bed fortnightly clean: 2.5–3 hours, ~£40–£50 per session. Monthly total for fortnightly: ~£100–£140 all-in. Agency markup adds 25–50% on top.
+      <p>This is a plain-English guide to what cleaning actually costs in Horsham in 2026, what you get for the money, and how to get the most out of your cleaner once you&apos;ve found one.</p>
+
+      <Highlight label="The short answer">
+        £16 to £22 per hour for a vetted, insured cleaner in Horsham. Most homes settle around £17 to £18/hr. Fortnightly is the most popular choice. Budget around £100 to £140 a month all-in for a 3-bed.
       </Highlight>
 
-      <h2>Hourly rates for cleaners in Horsham</h2>
-      <p>The Horsham market is fairly consistent. Across the requests we see come through Vouchee, the vast majority of customers set their hourly budget between £15 and £18, and the cleaners who get the most applications tend to charge in the £15–£17 range. Some experienced cleaners with strong reviews charge £18–£20, particularly for larger properties or more demanding schedules.</p>
-      <p>Rates are slightly higher than the national average because Horsham is a relatively affluent area within commuting distance of London, and there's strong demand from professional households who want reliable, vetted cleaners rather than the cheapest option.</p>
-      <p>What you don't want to do is hire significantly below this range. Anyone offering £10–£12 per hour in Horsham is almost certainly either uninsured, not DBS-checked, working cash-in-hand without declaring income, or some combination of the three. Cleaning is a real job done by real professionals; the rate reflects that.</p>
+      <h2>How much per hour?</h2>
+
+      <p>Vouchee cleaners in Horsham charge between <strong>£16 and £22 per hour</strong>. The range reflects experience, demand, and what&apos;s involved. A small flat usually sits at the lower end. A larger family home with pets and ironing comes in higher.</p>
+
+      <p>You set the hourly rate when you post your job. Cleaners then apply at the rate they&apos;re happy to work for, so you see real numbers from real people in your area rather than a one-size-fits-all quote.</p>
+
+      <Callout emoji="💡">
+        Setting your rate too low is the most common first-timer mistake. Below £16/hr in Horsham, the cleaners who apply often turn out to be uninsured or not DBS-checked. Pay market rate and you get peace of mind.
+      </Callout>
+
+      <h2>Agencies charge more, and pay the cleaner less</h2>
+
+      <p>Most cleaning agencies in Horsham add around <strong>£5 or more per hour</strong> on top of what they pay the cleaner. So a cleaner earning £16/hr through an agency typically costs you £21+/hr. The agency keeps the difference.</p>
+
+      <p>That isn&apos;t the agency being greedy, it&apos;s just the model. With Vouchee, you pay your cleaner directly at the rate you both agree, and we charge a small flat platform fee that doesn&apos;t scale with hours worked.</p>
+
+      <h2>Weekly, fortnightly, or monthly?</h2>
+
+      <p>This is the biggest decision you&apos;ll make, because it shapes everything else.</p>
+
+      <ul>
+        <li><strong>Weekly:</strong> 2 to 2.5 hours per visit. Home stays consistently tidy, no big catch-up sessions. Around £140 to £170 a month all-in.</li>
+        <li><strong>Fortnightly:</strong> 2.5 to 3 hours per visit. Most popular by far. Around £100 to £140 a month all-in.</li>
+        <li><strong>Monthly:</strong> 4 to 5 hours per visit. Cheapest overall, but each session is intense and the house tends to slip mid-month. Around £75 to £100 a month.</li>
+      </ul>
+
+      <Highlight label="Most homes pick fortnightly">
+        It&apos;s the sweet spot. Often enough that nothing builds up too much, infrequent enough that the cost stays reasonable. Around 7 in 10 Vouchee customers go fortnightly.
+      </Highlight>
 
       <InlineImage
         src="https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=1200&q=80"
         alt="A clean, well-maintained kitchen in a Horsham home"
-        caption="What you're actually paying for: a home that consistently looks and feels looked-after."
+        caption="A consistently looked-after kitchen is what you&apos;re actually paying for."
       />
 
-      <h2>Weekly, fortnightly, or monthly: which costs less per clean?</h2>
-      <p>This catches a lot of first-time customers out. The hourly rate is roughly the same regardless of frequency, but the <strong>length of each session</strong> varies significantly depending on how often the cleaner visits. The longer between cleans, the more work each session needs to do to get the house back to standard.</p>
-      <p>For a typical 3-bedroom Horsham home, here's what you can expect:</p>
-      <ul>
-        <li><strong>Weekly clean:</strong> 2–2.5 hours per session. The home stays consistently clean, so each session is efficient maintenance rather than catch-up. At £16/hr, that's <strong>£32–£40 per session</strong>, or around <strong>£140–£170 per month</strong>.</li>
-        <li><strong>Fortnightly clean:</strong> 2.5–3 hours per session. The most popular choice in Horsham. Dust and grime have had two weeks to build up so sessions are slightly longer, but the per-month cost is lower. At £16/hr, around <strong>£40–£50 per session</strong>, or <strong>£85–£105 per month</strong> for the cleaning itself.</li>
-        <li><strong>Monthly clean:</strong> 4–5 hours per session. The cleaner essentially does a light deep-clean each visit because four weeks of build-up is a lot. At £16/hr, around <strong>£65–£80 per session</strong>, or <strong>£65–£80 per month</strong> total.</li>
-      </ul>
-      <p>Weekly works out to the highest monthly cost but the lowest cost per visit, and the home stays consistently presentable. Monthly is the cheapest overall but each individual session is a slog for the cleaner and the result tends to slip mid-month. Fortnightly is the sweet spot for most Horsham households, which is why it's the most common arrangement we see.</p>
+      <h2>One-off jobs (quoted bespoke)</h2>
 
-      <h2>What affects the price beyond hourly rate</h2>
-      <p>Three things move the actual cost up or down from the headline figure:</p>
+      <p>One-off cleans aren&apos;t billed hourly. They&apos;re quoted as a fixed price based on your specific property and what&apos;s needed. Here&apos;s the range to expect:</p>
+
       <ul>
-        <li><strong>Property size.</strong> A 2-bedroom flat takes about half the time of a 4-bedroom house. Bathrooms add the most time per square metre because they need the most attention.</li>
-        <li><strong>Condition.</strong> If the property hasn't been professionally cleaned in a while, the first session is always longer (sometimes much longer). Most cleaners will quote a one-off deep clean to start, then settle into a shorter regular session from there.</li>
-        <li><strong>Supplies.</strong> Most cleaners use the household's products by default. Some will bring their own if you ask, but expect to pay slightly more (an extra £2–£5 per session) to cover the cost.</li>
+        <li><strong>Oven clean:</strong> <strong>£60</strong> for a single oven, <strong>£100</strong> for a double.</li>
+        <li><strong>End-of-tenancy clean:</strong> <strong>£250 to £800</strong>, depending on property size and condition. A 1-bed flat in good shape sits at the lower end. A 4-bed family home with pets and kids will be higher.</li>
+        <li><strong>Deep clean:</strong> £130 to £250 for most homes, quoted on the day after the cleaner has seen the place.</li>
       </ul>
 
-      <h2>The hidden cost: agency commission and booking fees</h2>
-      <p>If you've ever called a cleaning agency in Horsham for a quote, the number they give you isn't what the cleaner gets paid. Agencies typically take <strong>25–50% commission</strong> on every hour the cleaner works. That's why an agency rate of £22–£25 per hour translates to the cleaner only seeing £14–£16 of it. You're paying significantly more, the cleaner is earning less, and the relationship is mediated through a third party.</p>
-      <p>Booking platforms (Bark, Checkatrade, MyBuilder) work differently but have their own costs. Cleaners typically pay £15–£30 per lead just to message you, regardless of whether you book them. Those costs get passed back to customers through higher rates.</p>
+      <p>For these jobs, post a request describing your home (size, condition, what you need included) and cleaners will quote you back with a fixed price. No guesswork and no hidden fees once it&apos;s quoted.</p>
 
-      <Highlight label="Where your money actually goes">
-        Hire through an agency at £25/hr: cleaner gets ~£15, agency keeps £10. Hire an independent at £16/hr: cleaner gets £16, you pay £9 less. Vouchee&apos;s model works the same way as hiring independently — we charge a small flat platform fee and never touch what you pay the cleaner.
-      </Highlight>
+      <h2>What you actually get for the money</h2>
 
-      <h2>How Vouchee's pricing works</h2>
-      <p>Vouchee charges a small monthly service fee for the platform — <strong>£9.99 per weekly clean, £14.99 per fortnightly, or £24.99 for monthly</strong>. That covers cleaner vetting (DBS, insurance, right-to-work checks), the matching system, ongoing support, verified reviews, and access to cover cleans if your regular cleaner is away.</p>
-      <p>Crucially, we don't take any commission on what you pay your cleaner. You agree the hourly rate together, and pay them directly. Full pricing details are on our <Link href="/pricing" className="font-semibold text-blue-600">pricing page</Link>.</p>
+      <p>A standard regular clean covers what most homeowners think of as the basics:</p>
 
-      <h2>A real example: a 3-bed Horsham home, fortnightly</h2>
-      <p>To make the numbers concrete, here's what a typical Vouchee customer in Roffey or Broadbridge Heath pays for a fortnightly clean of a 3-bedroom home:</p>
       <ul>
-        <li>Cleaner: £16/hr × 2.75 hours × 2 visits per month = <strong>£88/month paid directly to the cleaner</strong></li>
-        <li>Vouchee service fee: <strong>£29.98/month</strong> (£14.99 × 2)</li>
-        <li><strong>Total: ~£118/month, all-in</strong></li>
+        <li>Hoovering and mopping throughout</li>
+        <li>Kitchen surfaces, hob, sink, and the outside of appliances</li>
+        <li>Bathrooms: toilet, sink, shower, bath, mirrors</li>
+        <li>Dusting accessible surfaces</li>
+        <li>Emptying bins</li>
       </ul>
-      <p>For comparison, the same arrangement through a Horsham cleaning agency would typically cost £130–£160 per month, with the cleaner earning the same or less.</p>
 
-      <Callout emoji="💷">
-        <Link href="/pricing" className="font-semibold underline">See full Vouchee pricing</Link>, or <Link href="/request/property" className="font-semibold underline">post a request</Link> to see what local cleaners are charging in your specific area. There's no commitment until you accept a cleaner.
+      <p>What&apos;s <em>not</em> usually included unless you ask: ironing, laundry, inside of the oven, inside cupboards, windows (inside or out), changing beds, mould treatment, and anything specialist. These are all add-ons and your cleaner will quote them separately or build them into a longer session.</p>
+
+      <h2>Getting the most out of your cleaner</h2>
+
+      <p>The biggest difference between a great cleaner relationship and a frustrating one isn&apos;t the cleaner. It&apos;s the setup. A few things consistently work:</p>
+
+      <h3>1. Set clear expectations from day one</h3>
+
+      <p>Write down the rooms and tasks you want covered before the first session, then share it with your cleaner ahead of time. It avoids the &ldquo;I thought you were doing the windows&rdquo; moments that erode trust on both sides.</p>
+
+      <h3>2. Tidy before they arrive</h3>
+
+      <p>Cleaners clean, they don&apos;t tidy. The more clutter on surfaces and floors when they arrive, the less actual cleaning gets done in the hours you&apos;re paying for.</p>
+
+      <h3>3. Rotate the deeper tasks across visits</h3>
+
+      <p>Not everything needs doing every visit. Most cleaners suggest a rotation like this:</p>
+
+      <ul>
+        <li><strong>Every visit:</strong> kitchen, bathrooms, hoovering, mopping, dusting.</li>
+        <li><strong>Every other visit:</strong> skirting boards, doorframes, inside of the microwave.</li>
+        <li><strong>Once a month:</strong> inside of windows, fridge, deeper kitchen cabinetry.</li>
+      </ul>
+
+      <p>It keeps each session efficient and means the deeper jobs don&apos;t pile up.</p>
+
+      <h3>4. Keep communication in one place</h3>
+
+      <p>Pick one channel (your dashboard chat, text, WhatsApp) and stick to it for everything cleaning-related. If half the conversation is on text and half is in person, things get missed.</p>
+
+      <Callout emoji="🧹">
+        On Vouchee, your dashboard has a built-in chat with each cleaner. It keeps the whole arrangement (schedule changes, special requests, feedback) in one place, with no phone numbers swapping unless you both choose to.
       </Callout>
 
-      <h2>One-off cleans: deep clean, end of tenancy, oven</h2>
-      <p>Pricing for one-off cleans works differently because they're intensive jobs done in a single session rather than ongoing maintenance. Typical Horsham prices in 2026:</p>
+      <h2>A realistic monthly budget</h2>
+
+      <p>For a typical 3-bed Horsham home, fortnightly, here&apos;s what most Vouchee customers actually pay:</p>
+
       <ul>
-        <li><strong>Deep clean</strong> (2–3 bed home): £130–£200. Takes 4–7 hours. Usually quoted as a fixed price rather than hourly.</li>
-        <li><strong>End-of-tenancy clean</strong> (2–3 bed): £180–£280. Includes inside ovens, fridges, cupboards. Often required to get a tenancy deposit back.</li>
-        <li><strong>Oven clean</strong> (single oven): £55–£85. Specialist job, often done with chemical baths off-site for racks.</li>
-        <li><strong>Carpet cleaning</strong> (per room): £25–£40. Usually done by a separate specialist with proper equipment.</li>
+        <li>Cleaner: £17/hr × 2.5 hours × 2 visits = <strong>£85 a month</strong></li>
+        <li>Vouchee service fee: <strong>£29.98 a month</strong></li>
+        <li><strong>Total: around £115 a month, all-in</strong></li>
       </ul>
-      <p>For more on what's included in each, see our guide to <Link href="/blog/deep-clean-vs-regular-clean" className="text-blue-600 underline">deep clean vs regular clean</Link>, or browse our <Link href="/one-off" className="text-blue-600 underline">one-off services page</Link>.</p>
 
-      <h2>Should you tip a UK cleaner?</h2>
-      <p>UK cleaning culture is different from the US. Tipping isn't expected the way it is for waiting staff. A reasonable rule of thumb is to give a Christmas tip equivalent to one extra session's pay (so £40–£60 for a fortnightly cleaner). Anything else is appreciated but not expected.</p>
-      <p>What matters more than tipping is paying on time, paying the agreed rate without quibbling, and treating your cleaner like a professional. From everything cleaners tell us through Vouchee, those three things matter far more than a tip.</p>
+      <p>The same arrangement through a Horsham agency typically lands at £130 to £170 a month, with the cleaner earning the same or less.</p>
 
-      <h2>Cheaper isn't better — and free isn't a thing</h2>
-      <p>If a cleaner offers significantly less than £14 per hour in Horsham, ask yourself how. They're almost certainly cutting corners somewhere: no insurance, no DBS, not declaring income to HMRC, or rushing jobs to make the rate work. A cleaner without insurance is one accident away from a problem you don't want to be on the hook for.</p>
-      <p>The cleaners on Vouchee charge market rate because they're insured, vetted, and run their work professionally. <Link href="/blog/how-to-find-a-cleaner-horsham" className="text-blue-600 underline">Our guide to finding a cleaner in Horsham</Link> covers the credentials to look for in detail.</p>
+      <h2>A note on price floors</h2>
 
-      <Highlight label="The 30-second summary">
-        Expect to pay £15–£17 per hour for a vetted, insured cleaner in Horsham. A typical fortnightly clean of a 3-bed home costs around £100–£120 per month all-in. Agency markups add 25–50%. One-off deep cleans range £130–£200 for a typical home. Anything significantly cheaper means something has been cut.
+      <p>Anything significantly cheaper than £14/hr in Horsham almost always means a corner is being cut: no insurance, no DBS, or income not declared to HMRC. A cleaner without insurance is one accident away from being your problem.</p>
+
+      <p>Pay market rate, ask for the credentials, and treat your cleaner like the professional they are. Our guide to <Link href="/blog/how-to-find-a-cleaner-horsham" className="text-blue-600 underline">finding a cleaner in Horsham</Link> goes deeper on what to check.</p>
+
+      <Highlight label="The 30-second recap">
+        £16 to £22/hr in Horsham. Fortnightly is most common, around £100 to £140 a month all-in. Oven cleans £60 single, £100 double. End-of-tenancy £250 to £800, quoted bespoke. Agencies add around £5+/hr on top of cleaner pay.
       </Highlight>
 
-      <h2>Ready to find a cleaner?</h2>
-      <p>Vouchee makes it straightforward to compare prices from actual local cleaners rather than guessing. You post a request describing your home and frequency, vetted cleaners in your area apply with their rate, and you choose based on profile, reviews, and the application message. There's no cost until you accept a cleaner, and your full address stays private until you do.</p>
-
       <Callout emoji="🏠">
-        <Link href="/request/property" className="font-semibold underline">Post a request</Link> to see what cleaners in your specific Horsham area charge. Most customers get their first applications within hours.
+        Ready to find a cleaner? <Link href="/request/property" className="font-semibold underline">Post a request</Link> and see what cleaners in your specific Horsham area are charging. There&apos;s no cost until you accept one.
       </Callout>
     </>
   )

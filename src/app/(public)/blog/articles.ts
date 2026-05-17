@@ -16,7 +16,7 @@ export const articles: Article[] = [
   {
     slug: 'how-much-does-a-cleaner-cost-horsham',
     title: 'How much does a cleaner cost in Horsham? (2026 prices)',
-    excerpt: 'A clear, honest breakdown of cleaning costs in Horsham — hourly rates, monthly totals for weekly/fortnightly/monthly cleans, what affects the price, and the hidden fees agencies charge that independent cleaners don\'t.',
+    excerpt: 'A plain-English guide to what a cleaner actually costs in Horsham. Hourly rates, monthly totals, one-off jobs quoted bespoke, and the practical bits no one tells first-time customers about how to get the most out of your cleaner.',
     audience: 'customer',
     readingTime: 8,
     publishedAt: '2026-05-15',
