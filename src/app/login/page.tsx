@@ -298,26 +298,15 @@ function LoginPageInner() {
   return (
     <CardShell>
       {/* ── Heading ─────────────────────────────────────────── */}
-      <div style={{ marginBottom: '14px' }}>
+      <div style={{ textAlign: 'center', marginBottom: '8px' }}>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: '100px', padding: '4px 12px', marginBottom: '14px', fontSize: '11px', fontWeight: 700, color: '#15803d', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
           <span>🏠</span>
           Customer account
         </div>
-        <h1 style={{ fontFamily: 'Lora, serif', fontSize: '24px', fontWeight: 700, color: '#0f172a', margin: '0 0 6px', lineHeight: 1.25 }}>
-          {isSignup ? 'Sign up to find a cleaner' : 'Welcome back'}
+        <h1 style={{ fontFamily: 'Lora, serif', fontSize: '24px', fontWeight: 700, color: '#0f172a', margin: 0, lineHeight: 1.25 }}>
+          {isSignup ? 'Sign up to publish your request' : 'Welcome back'}
         </h1>
-        <p style={{ fontSize: '14px', color: '#64748b', margin: 0, lineHeight: 1.55 }}>
-          {isSignup
-            ? 'Create your Vouchee customer account in under a minute.'
-            : 'Sign in to manage your cleaning requests.'}
-        </p>
       </div>
-
-      {redirectTarget && (
-        <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '10px', padding: '10px 12px', margin: '14px 0 18px', fontSize: '12px', color: '#1e40af', lineHeight: 1.5 }}>
-          💡 We'll take you straight back to where you were after {isSignup ? 'sign-up' : 'sign-in'}.
-        </div>
-      )}
 
       {/* ── SSO ─────────────────────────────────────────────── */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', margin: '18px 0' }}>
@@ -495,8 +484,8 @@ function CardShell({ children }: { children: React.ReactNode }) {
         padding: '24px',
         fontFamily: 'DM Sans, sans-serif',
       }}>
-        <a href="/" style={{ textDecoration: 'none', marginBottom: '24px' }}>
-          <VoucheeLogoText width={140} height={36} />
+        <a href="/" style={{ textDecoration: 'none', marginBottom: '28px' }}>
+          <VoucheeLogoText width={220} height={56} />
         </a>
         <div className="vouchee-auth-card" style={{
           background: 'white',
