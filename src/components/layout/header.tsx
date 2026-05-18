@@ -259,7 +259,7 @@ export function Header({ userRole: explicitRole }: HeaderProps) {
             </Link>
           ) : (
             <>
-              <Link href="/login" className="text-base font-medium text-ink-secondary hover:text-brand-600 transition-colors whitespace-nowrap">
+              <Link href="/login?mode=login" className="text-base font-medium text-ink-secondary hover:text-brand-600 transition-colors whitespace-nowrap">
                 Log in
               </Link>
               <Link href="/request/property" className="text-base font-semibold bg-brand-600 text-white px-5 py-2.5 rounded-lg hover:bg-brand-700 transition-colors whitespace-nowrap">
@@ -315,7 +315,7 @@ export function Header({ userRole: explicitRole }: HeaderProps) {
                 </Link>
               ) : (
                 <>
-                  <Link href="/login" className="block rounded-lg px-3 py-2.5 text-base font-medium text-ink-secondary hover:bg-surface-secondary" onClick={() => setMobileMenuOpen(false)}>
+                  <Link href="/login?mode=login" className="block rounded-lg px-3 py-2.5 text-base font-medium text-ink-secondary hover:bg-surface-secondary" onClick={() => setMobileMenuOpen(false)}>
                     Log in
                   </Link>
                   <Link href="/request/property" className="block rounded-lg px-3 py-2.5 text-base font-semibold bg-brand-600 text-white text-center" onClick={() => setMobileMenuOpen(false)}>

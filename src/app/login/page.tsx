@@ -7,18 +7,11 @@ import { Eye, EyeOff } from 'lucide-react'
 import VoucheeLogoText from '@/assets/vouchee-logo-text.svg'
 import '../auth/auth-card.css'
 
-type Role = 'cleaner' | 'customer'
+type Mode = 'signup' | 'login'
 type Provider = 'google' | 'facebook' | 'apple'
 
-/**
- * Safe-redirect helper.
- * Accepts only same-origin relative paths starting with a single "/".
- * Rejects:
- *   - absolute URLs (https://..., http://...)
- *   - protocol-relative URLs (//evil.com — some browsers treat these as absolute)
- *   - any path that doesn't start with "/"
- *   - bare "/" or empty values (fall back to role default)
- */
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
 function sanitiseRedirect(raw: string | null): string | null {
   if (!raw) return null
   const trimmed = raw.trim()
@@ -29,7 +22,7 @@ function sanitiseRedirect(raw: string | null): string | null {
   return trimmed
 }
 
-// ─── Brand logos (inline SVG, no external deps) ─────────────────────────────
+// ─── Brand logos (inline SVG) ───────────────────────────────────────────────
 
 function GoogleLogo() {
   return (
@@ -61,7 +54,6 @@ function AppleLogo() {
 const PROVIDER_LABELS: Record<Provider, string> = {
   google: 'Continue with Google',
   facebook: 'Continue with Facebook',
-  // Apple's brand guidelines require this exact wording
   apple: 'Sign in with Apple',
 }
 
@@ -78,19 +70,34 @@ function LoginPageInner() {
   const searchParams = useSearchParams()
   const redirectTarget = sanitiseRedirect(searchParams?.get('redirect') ?? null)
 
-  const [role, setRole] = useState<Role>('customer')
+  // Default to signup. Header's "Log in" link passes ?mode=login so existing
+  // users land directly on the sign-in form. Any other entry point (the
+  // wizard's "Sign in to publish" button, deep-link, etc.) defaults to the
+  // signup view because the conversion-critical path is new customers
+  // creating their account.
+  const initialMode: Mode = searchParams?.get('mode') === 'login' ? 'login' : 'signup'
+  const [mode, setMode] = useState<Mode>(initialMode)
+
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [agreedTerms, setAgreedTerms] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [oauthLoading, setOauthLoading] = useState<Provider | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // Post-signup "check your email" state. True only when signUp() returned
+  // success AND email confirmation is required (no session).
+  const [signupSentToEmail, setSignupSentToEmail] = useState<string | null>(null)
 
-  // ─── OAuth handler ─────────────────────────────────────────────────────────
-  // Hands off to Supabase, which redirects to the provider's consent screen,
-  // then back to /auth/callback. The callback exchanges the code for a session
-  // and routes by role; we pass redirectTarget as `next` so the original
-  // destination (e.g. /request/preview) is preserved across the OAuth round-trip.
+  const switchMode = (next: Mode) => {
+    setMode(next)
+    setError(null)
+    setPassword('')
+    setConfirmPassword('')
+  }
+
+  // ─── OAuth ─────────────────────────────────────────────────────────────────
   const handleOAuth = async (provider: Provider) => {
     setError(null)
     setOauthLoading(provider)
@@ -105,11 +112,9 @@ function LoginPageInner() {
         options: { redirectTo },
       })
       if (oauthError) throw oauthError
-      // On success the browser is already navigating away — no further work here.
     } catch (err: any) {
       setOauthLoading(null)
       const msg = err?.message ?? 'Could not start sign-in. Please try again.'
-      // Common case: provider not yet configured in Supabase Auth dashboard
       if (/provider .* (is not enabled|not enabled)/i.test(msg)) {
         setError(`${provider.charAt(0).toUpperCase() + provider.slice(1)} sign-in isn't quite ready yet. Use email + password for now.`)
       } else {
@@ -118,7 +123,63 @@ function LoginPageInner() {
     }
   }
 
-  // ─── Email/password login ──────────────────────────────────────────────────
+  // ─── Email signup ──────────────────────────────────────────────────────────
+  const handleSignup = async () => {
+    if (!email.trim() || !password) return
+    setError(null)
+
+    if (password.length < 8) {
+      setError('Password needs to be at least 8 characters.')
+      return
+    }
+    if (password !== confirmPassword) {
+      setError("Passwords don't match.")
+      return
+    }
+    if (!agreedTerms) {
+      setError("Please agree to Vouchee's Terms and Privacy Policy.")
+      return
+    }
+
+    setLoading(true)
+    try {
+      const supabase = createClient()
+      const callbackBase = `${window.location.origin}/auth/callback`
+      const emailRedirectTo = redirectTarget
+        ? `${callbackBase}?next=${encodeURIComponent(redirectTarget)}`
+        : `${callbackBase}?next=${encodeURIComponent('/request/property')}`
+
+      const { data, error: signupError } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: { emailRedirectTo },
+      })
+
+      if (signupError) {
+        const msg = signupError.message.toLowerCase()
+        if (msg.includes('already registered') || msg.includes('user already')) {
+          throw new Error('An account with this email already exists. Try signing in instead.')
+        }
+        throw new Error(signupError.message)
+      }
+
+      // No session = email confirmation required (Supabase default behaviour
+      // when "Confirm email" is enabled in Auth settings).
+      if (!data.session) {
+        setSignupSentToEmail(email.trim())
+        return
+      }
+
+      // Confirmation disabled in Supabase Auth → instant session → redirect
+      router.push(redirectTarget ?? '/request/property')
+    } catch (err: any) {
+      setError(err?.message ?? 'Something went wrong. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // ─── Email login ───────────────────────────────────────────────────────────
   const handleLogin = async () => {
     if (!email.trim() || !password) return
     setError(null)
@@ -135,38 +196,21 @@ function LoginPageInner() {
           throw new Error('Incorrect email or password. Please try again.')
         }
         if (authError.message.toLowerCase().includes('email not confirmed')) {
-          throw new Error('Please check your inbox and confirm your email address before logging in.')
+          throw new Error('Please check your inbox and confirm your email address before signing in.')
         }
         throw new Error(authError.message)
       }
-
-      if (!data.user) throw new Error('Login failed. Please try again.')
+      if (!data.user) throw new Error('Sign-in failed. Please try again.')
 
       const { data: profile } = await (supabase as any)
-        .from('profiles')
-        .select('role')
-        .eq('id', data.user.id)
-        .single()
-
-      const actualRole = profile?.role
-
-      // Admin can log in via either form — skip role mismatch check
-      if (actualRole !== 'admin') {
-        if (role === 'cleaner' && actualRole !== 'cleaner') {
-          await supabase.auth.signOut()
-          throw new Error("We couldn't find a cleaner account with those details. If you're a customer, switch to 'Customer' instead.")
-        }
-        if (role === 'customer' && actualRole !== 'customer') {
-          await supabase.auth.signOut()
-          throw new Error("We couldn't find a customer account with those details. If you're a cleaner, switch to 'Cleaner' instead.")
-        }
-      }
+        .from('profiles').select('role').eq('id', data.user.id).single()
+      const role = (profile as any)?.role
 
       if (redirectTarget) {
         router.push(redirectTarget)
-      } else if (actualRole === 'admin') {
+      } else if (role === 'admin') {
         router.push('/admin/dashboard')
-      } else if (actualRole === 'cleaner') {
+      } else if (role === 'cleaner') {
         router.push('/cleaner/dashboard')
       } else {
         router.push('/customer/dashboard')
@@ -178,7 +222,7 @@ function LoginPageInner() {
     }
   }
 
-  // ─── Styles ───────────────────────────────────────────────────────────────
+  // ─── Styles ────────────────────────────────────────────────────────────────
   const inputStyle = (hasError?: boolean): CSSProperties => ({
     width: '100%',
     background: hasError ? '#fff5f5' : 'white',
@@ -214,14 +258,226 @@ function LoginPageInner() {
 
   const isAuthInFlight = loading || oauthLoading !== null
 
-  // ─── New-account destination ───────────────────────────────────────────────
-  // Customers always create accounts through the wizard (so their first
-  // request and account are made together). Cleaners go through the
-  // application funnel at /cleaner. Either way, "Create account" routes
-  // the user into the funnel for the role they've selected here.
-  const createAccountHref = role === 'cleaner' ? '/cleaner' : '/request/property'
-  const createAccountLabel = role === 'cleaner' ? 'Apply as a cleaner' : 'Create an account'
+  // ─── Post-signup "check your email" view ───────────────────────────────────
+  if (signupSentToEmail) {
+    return (
+      <CardShell>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: '#f0fdf4', border: '2px solid #bbf7d0', margin: '0 auto 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px' }}>
+            ✉️
+          </div>
+          <h1 style={{ fontFamily: 'Lora, serif', fontSize: '24px', fontWeight: 700, color: '#0f172a', margin: '0 0 8px' }}>
+            Check your inbox
+          </h1>
+          <p style={{ fontSize: '14px', color: '#64748b', margin: '0 0 18px', lineHeight: 1.55 }}>
+            We've sent a confirmation link to <strong style={{ color: '#0f172a' }}>{signupSentToEmail}</strong>. Click it to activate your account.
+          </p>
+          <div style={{ background: '#f8fafc', borderRadius: '12px', padding: '14px 16px', marginBottom: '18px', textAlign: 'left' }}>
+            <p style={{ fontSize: '12px', color: '#64748b', margin: 0, lineHeight: 1.55 }}>
+              💡 Once your email is confirmed we'll take you straight to {redirectTarget ? 'where you were going' : 'the next step of your cleaning request'}.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => { setSignupSentToEmail(null); setMode('login') }}
+            style={{ background: 'none', border: 'none', color: '#3b82f6', fontWeight: 600, fontSize: '13px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}
+          >
+            Already confirmed? Sign in
+          </button>
+        </div>
+      </CardShell>
+    )
+  }
 
+  // ─── Main signup / login view ──────────────────────────────────────────────
+  const isSignup = mode === 'signup'
+  const ctaLabel = isSignup ? 'Create my customer account' : 'Sign in'
+  const submitHandler = isSignup ? handleSignup : handleLogin
+  const submitDisabled = isAuthInFlight || !email.trim() || !password || (isSignup && (!confirmPassword || !agreedTerms))
+
+  return (
+    <CardShell>
+      {/* ── Heading ─────────────────────────────────────────── */}
+      <div style={{ marginBottom: '14px' }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: '100px', padding: '4px 12px', marginBottom: '14px', fontSize: '11px', fontWeight: 700, color: '#15803d', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+          <span>🏠</span>
+          Customer account
+        </div>
+        <h1 style={{ fontFamily: 'Lora, serif', fontSize: '24px', fontWeight: 700, color: '#0f172a', margin: '0 0 6px', lineHeight: 1.25 }}>
+          {isSignup ? 'Sign up to find a cleaner' : 'Welcome back'}
+        </h1>
+        <p style={{ fontSize: '14px', color: '#64748b', margin: 0, lineHeight: 1.55 }}>
+          {isSignup
+            ? 'Create your Vouchee customer account in under a minute.'
+            : 'Sign in to manage your cleaning requests.'}
+        </p>
+      </div>
+
+      {redirectTarget && (
+        <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '10px', padding: '10px 12px', margin: '14px 0 18px', fontSize: '12px', color: '#1e40af', lineHeight: 1.5 }}>
+          💡 We'll take you straight back to where you were after {isSignup ? 'sign-up' : 'sign-in'}.
+        </div>
+      )}
+
+      {/* ── SSO ─────────────────────────────────────────────── */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', margin: '18px 0' }}>
+        {(['google', 'facebook', 'apple'] as Provider[]).map(p => (
+          <button
+            key={p}
+            type="button"
+            onClick={() => handleOAuth(p)}
+            disabled={isAuthInFlight}
+            style={ssoButtonStyle(p, oauthLoading === p)}
+          >
+            <ProviderLogo provider={p} />
+            <span>{oauthLoading === p ? 'Redirecting…' : PROVIDER_LABELS[p]}</span>
+          </button>
+        ))}
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '14px 0 16px' }}>
+        <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }} />
+        <span style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em' }}>or</span>
+        <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }} />
+      </div>
+
+      {/* ── Email/password fields ───────────────────────────── */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div>
+          <label style={{ fontSize: '12px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: '6px' }}>
+            Email address
+          </label>
+          <input
+            type="email"
+            style={inputStyle(!!error)}
+            placeholder="you@example.com"
+            value={email}
+            onChange={e => { setEmail(e.target.value); setError(null) }}
+            onKeyDown={e => e.key === 'Enter' && submitHandler()}
+            autoComplete="email"
+          />
+        </div>
+
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+            <label style={{ fontSize: '12px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              {isSignup ? 'Choose a password' : 'Password'}
+            </label>
+            {!isSignup && (
+              <a href="/forgot-password" style={{ fontSize: '12px', color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>
+                Forgot password?
+              </a>
+            )}
+          </div>
+          <div style={{ position: 'relative' }}>
+            <input
+              type={showPassword ? 'text' : 'password'}
+              style={{ ...inputStyle(!!error), paddingRight: '44px' }}
+              placeholder={isSignup ? 'At least 8 characters' : 'Your password'}
+              value={password}
+              onChange={e => { setPassword(e.target.value); setError(null) }}
+              onKeyDown={e => e.key === 'Enter' && submitHandler()}
+              autoComplete={isSignup ? 'new-password' : 'current-password'}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(v => !v)}
+              style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', display: 'flex', alignItems: 'center', padding: '4px' }}
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+            >
+              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </div>
+        </div>
+
+        {isSignup && (
+          <div>
+            <label style={{ fontSize: '12px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: '6px' }}>
+              Confirm password
+            </label>
+            <input
+              type={showPassword ? 'text' : 'password'}
+              style={inputStyle(!!error)}
+              placeholder="Re-enter your password"
+              value={confirmPassword}
+              onChange={e => { setConfirmPassword(e.target.value); setError(null) }}
+              onKeyDown={e => e.key === 'Enter' && submitHandler()}
+              autoComplete="new-password"
+            />
+          </div>
+        )}
+
+        {isSignup && (
+          <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '13px', color: '#475569', lineHeight: 1.5, cursor: 'pointer', marginTop: '4px' }}>
+            <input
+              type="checkbox"
+              checked={agreedTerms}
+              onChange={e => { setAgreedTerms(e.target.checked); setError(null) }}
+              style={{ marginTop: '3px', width: '16px', height: '16px', cursor: 'pointer', accentColor: '#22c55e' }}
+            />
+            <span>
+              I agree to Vouchee's{' '}
+              <a href="/legal/terms/customer" target="_blank" style={{ color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>Customer Terms</a>
+              {' '}and{' '}
+              <a href="/legal/privacy" target="_blank" style={{ color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>Privacy Policy</a>.
+            </span>
+          </label>
+        )}
+
+        {error && (
+          <div style={{ background: '#fef2f2', border: '1.5px solid #fecaca', borderRadius: '10px', padding: '11px 13px' }}>
+            <p style={{ fontSize: '13px', color: '#dc2626', margin: 0, fontWeight: 500, lineHeight: 1.5 }}>⚠ {error}</p>
+          </div>
+        )}
+
+        <button
+          onClick={submitHandler}
+          disabled={submitDisabled}
+          style={{
+            width: '100%',
+            padding: '14px',
+            background: submitDisabled
+              ? '#e2e8f0'
+              : 'linear-gradient(135deg, #22c55e, #16a34a)',
+            color: submitDisabled ? '#94a3b8' : 'white',
+            border: 'none',
+            borderRadius: '14px',
+            fontSize: '15px',
+            fontWeight: 700,
+            cursor: submitDisabled ? 'not-allowed' : 'pointer',
+            transition: 'all 0.2s',
+            boxShadow: submitDisabled ? 'none' : '0 4px 16px rgba(34,197,94,0.3)',
+            fontFamily: 'DM Sans, sans-serif',
+            marginTop: '4px',
+          }}
+        >
+          {loading ? (isSignup ? 'Creating your account…' : 'Signing in…') : ctaLabel}
+        </button>
+      </div>
+
+      {/* ── Mode toggle (smaller, secondary) ─────────────────── */}
+      <div style={{ marginTop: '22px', paddingTop: '18px', borderTop: '1px solid #f1f5f9', textAlign: 'center' }}>
+        <p style={{ fontSize: '13px', color: '#64748b', margin: 0 }}>
+          {isSignup ? 'Already have a Vouchee account?' : 'New to Vouchee?'}{' '}
+          <button
+            type="button"
+            onClick={() => switchMode(isSignup ? 'login' : 'signup')}
+            style={{ background: 'none', border: 'none', color: '#3b82f6', fontWeight: 700, fontSize: '13px', cursor: 'pointer', padding: 0, fontFamily: 'DM Sans, sans-serif', textDecoration: 'underline' }}
+          >
+            {isSignup ? 'Sign in' : 'Create an account'}
+          </button>
+        </p>
+      </div>
+
+      {/* ── Cleaner footer link ─────────────────────────────── */}
+      <p style={{ fontSize: '11px', color: '#94a3b8', textAlign: 'center', margin: '14px 0 0', lineHeight: 1.5 }}>
+        Are you a cleaner? <a href="/cleaner" style={{ color: '#94a3b8', fontWeight: 600 }}>Cleaner sign-up is here</a>
+      </p>
+    </CardShell>
+  )
+}
+
+function CardShell({ children }: { children: React.ReactNode }) {
   return (
     <>
       <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -229,7 +485,6 @@ function LoginPageInner() {
         href="https://fonts.googleapis.com/css2?family=Lora:wght@400;600;700&family=DM+Sans:wght@400;500;600;700;800&display=swap"
         rel="stylesheet"
       />
-
       <div style={{
         minHeight: '100vh',
         background: 'linear-gradient(160deg, #f0f7ff 0%, #fefce8 50%, #f0fdf4 100%)',
@@ -240,196 +495,28 @@ function LoginPageInner() {
         padding: '24px',
         fontFamily: 'DM Sans, sans-serif',
       }}>
-        <a href="/" style={{ textDecoration: 'none', marginBottom: '28px' }}>
+        <a href="/" style={{ textDecoration: 'none', marginBottom: '24px' }}>
           <VoucheeLogoText width={140} height={36} />
         </a>
-
         <div className="vouchee-auth-card" style={{
           background: 'white',
           borderRadius: '24px',
-          padding: '36px',
+          padding: '32px',
           width: '100%',
           maxWidth: '440px',
           boxShadow: '0 4px 32px rgba(0,0,0,0.07)',
           border: '1.5px solid rgba(255,255,255,0.9)',
         }}>
-          <h1 style={{ fontFamily: 'Lora, serif', fontSize: '24px', fontWeight: 700, color: '#0f172a', margin: '0 0 6px', lineHeight: 1.25 }}>
-            Welcome back
-          </h1>
-          <p style={{ fontSize: '14px', color: '#64748b', margin: '0 0 22px', lineHeight: 1.55 }}>
-            Sign in to manage your Vouchee account.
-          </p>
-
-          {redirectTarget && (
-            <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '10px', padding: '10px 12px', marginBottom: '18px', fontSize: '12px', color: '#1e40af', lineHeight: 1.5 }}>
-              💡 We'll take you to where you were going right after sign-in.
-            </div>
-          )}
-
-          {/* ── SSO buttons ───────────────────────────────────────── */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '18px' }}>
-            {(['google', 'facebook', 'apple'] as Provider[]).map(p => (
-              <button
-                key={p}
-                type="button"
-                onClick={() => handleOAuth(p)}
-                disabled={isAuthInFlight}
-                style={ssoButtonStyle(p, oauthLoading === p)}
-              >
-                <ProviderLogo provider={p} />
-                <span>{oauthLoading === p ? 'Redirecting…' : PROVIDER_LABELS[p]}</span>
-              </button>
-            ))}
-          </div>
-
-          {/* ── OR divider ────────────────────────────────────────── */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '8px 0 18px' }}>
-            <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }} />
-            <span style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em' }}>or</span>
-            <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }} />
-          </div>
-
-          {/* ── Role toggle ───────────────────────────────────────── */}
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', padding: '4px', background: '#f1f5f9', borderRadius: '12px' }}>
-            {(['customer', 'cleaner'] as Role[]).map(r => (
-              <button
-                key={r}
-                type="button"
-                onClick={() => { setRole(r); setError(null) }}
-                style={{
-                  flex: 1, padding: '9px', borderRadius: '9px', border: 'none',
-                  background: role === r ? 'white' : 'transparent',
-                  color: role === r ? '#0f172a' : '#64748b',
-                  fontSize: '13px', fontWeight: 700,
-                  cursor: 'pointer', fontFamily: 'DM Sans, sans-serif',
-                  boxShadow: role === r ? '0 1px 4px rgba(0,0,0,0.06)' : 'none',
-                  transition: 'all 0.15s',
-                }}
-              >
-                {r === 'customer' ? '🏠 Customer' : '🧹 Cleaner'}
-              </button>
-            ))}
-          </div>
-
-          {/* ── Email/password form ───────────────────────────────── */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div>
-              <label style={{ fontSize: '12px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: '6px' }}>
-                Email address
-              </label>
-              <input
-                type="email"
-                style={inputStyle(!!error)}
-                placeholder="you@example.com"
-                value={email}
-                onChange={e => { setEmail(e.target.value); setError(null) }}
-                onKeyDown={e => e.key === 'Enter' && handleLogin()}
-                autoComplete="email"
-              />
-            </div>
-
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                <label style={{ fontSize: '12px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                  Password
-                </label>
-                <a href="/forgot-password" style={{ fontSize: '12px', color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>
-                  Forgot password?
-                </a>
-              </div>
-              <div style={{ position: 'relative' }}>
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  style={{ ...inputStyle(!!error), paddingRight: '44px' }}
-                  placeholder="Your password"
-                  value={password}
-                  onChange={e => { setPassword(e.target.value); setError(null) }}
-                  onKeyDown={e => e.key === 'Enter' && handleLogin()}
-                  autoComplete="current-password"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(v => !v)}
-                  style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', display: 'flex', alignItems: 'center', padding: '4px' }}
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-            </div>
-
-            {error && (
-              <div style={{ background: '#fef2f2', border: '1.5px solid #fecaca', borderRadius: '10px', padding: '11px 13px' }}>
-                <p style={{ fontSize: '13px', color: '#dc2626', margin: 0, fontWeight: 500, lineHeight: 1.5 }}>⚠ {error}</p>
-              </div>
-            )}
-
-            <button
-              onClick={handleLogin}
-              disabled={isAuthInFlight || !email.trim() || !password}
-              style={{
-                width: '100%',
-                padding: '14px',
-                background: isAuthInFlight || !email.trim() || !password
-                  ? '#e2e8f0'
-                  : role === 'cleaner'
-                    ? 'linear-gradient(135deg, #3b82f6, #6366f1)'
-                    : 'linear-gradient(135deg, #22c55e, #16a34a)',
-                color: isAuthInFlight || !email.trim() || !password ? '#94a3b8' : 'white',
-                border: 'none',
-                borderRadius: '14px',
-                fontSize: '15px',
-                fontWeight: 700,
-                cursor: isAuthInFlight || !email.trim() || !password ? 'not-allowed' : 'pointer',
-                transition: 'all 0.2s',
-                boxShadow: isAuthInFlight || !email.trim() || !password
-                  ? 'none'
-                  : role === 'cleaner'
-                    ? '0 4px 16px rgba(59,130,246,0.3)'
-                    : '0 4px 16px rgba(34,197,94,0.3)',
-                fontFamily: 'DM Sans, sans-serif',
-                marginTop: '4px',
-              }}
-            >
-              {loading ? 'Signing in…' : `Sign in as ${role === 'cleaner' ? 'cleaner' : 'customer'}`}
-            </button>
-          </div>
-
-          {/* ── Create account CTA ────────────────────────────────── */}
-          <div style={{ marginTop: '22px', paddingTop: '18px', borderTop: '1px solid #f1f5f9' }}>
-            <p style={{ fontSize: '13px', color: '#64748b', textAlign: 'center', margin: '0 0 12px' }}>
-              {role === 'cleaner'
-                ? 'Not yet a Vouchee cleaner?'
-                : "Don't have an account?"}
-            </p>
-            <a
-              href={createAccountHref}
-              style={{
-                display: 'block', width: '100%', textAlign: 'center', boxSizing: 'border-box',
-                padding: '12px', borderRadius: '12px',
-                background: 'white',
-                color: '#0f172a',
-                border: '1.5px solid #0f172a',
-                fontSize: '14px', fontWeight: 700,
-                textDecoration: 'none', fontFamily: 'DM Sans, sans-serif',
-                transition: 'background 0.15s, color 0.15s',
-              }}
-            >
-              {createAccountLabel} →
-            </a>
-          </div>
+          {children}
         </div>
-
         <p style={{ fontSize: '12px', color: '#94a3b8', marginTop: '20px', textAlign: 'center' }}>
-          Need help?{' '}
-          <a href="mailto:support@vouchee.co.uk" style={{ color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>support@vouchee.co.uk</a>
+          Need help? <a href="mailto:support@vouchee.co.uk" style={{ color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>support@vouchee.co.uk</a>
         </p>
       </div>
     </>
   )
 }
 
-// useSearchParams requires Suspense in Next.js 14 App Router
 export default function LoginPage() {
   return (
     <Suspense fallback={
