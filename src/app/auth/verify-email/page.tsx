@@ -20,7 +20,7 @@ export default function VerifyEmailPage() {
           <p className="text-sm text-ink-secondary">
             Didn't receive the email? Check your spam folder or contact support.
           </p>
-          <Link href="/auth/login" className="w-full inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium">
+          <Link href="/login" className="w-full inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium">
   Back to login
 </Link>
         </CardContent>

@@ -327,7 +327,7 @@ export default function ReviewPublishPage() {
     if (!data) { publishLock.current = false; return }
     if (!userId) {
       toast.error("Please sign in before publishing.")
-      router.push("/auth/login?redirectTo=/request/preview")
+      router.push("/login?redirect=/request/preview")
       publishLock.current = false
       return
     }
@@ -517,7 +517,7 @@ export default function ReviewPublishPage() {
 
           {/* Go live CTA */}
           <button
-            onClick={() => userId ? handlePublish() : router.push("/auth/login?redirectTo=/request/preview")}
+            onClick={() => userId ? handlePublish() : router.push("/login?redirect=/request/preview")}
             disabled={isPublishing}
             style={{
               width: "100%", padding: "20px", borderRadius: "16px", border: "none",
