@@ -532,7 +532,7 @@ export default function ReviewPublishPage() {
             onMouseEnter={e => { if (!isPublishing) (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-2px)" }}
             onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = "translateY(0)" }}
           >
-            {isPublishing ? "Publishing…" : userId ? "🚀 Go live" : "Sign in to publish →"}
+            {isPublishing ? "Publishing…" : userId ? "🚀 Go live" : "Sign up and publish →"}
           </button>
 
           <p style={{ textAlign: "center", fontSize: "12px", color: "#94a3b8", marginTop: "12px", lineHeight: 1.5 }}>

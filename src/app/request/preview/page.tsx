@@ -663,7 +663,7 @@ export default function ReviewPublishPage() {
           </div>
 
           <button className="go-live-btn" onClick={() => userId ? handlePublish() : router.push("/login?redirect=/request/preview")} disabled={isPublishing} style={{ width: "100%", padding: "20px", borderRadius: "16px", border: "none", background: isPublishing ? "#e2e8f0" : "linear-gradient(135deg, #16a34a, #22c55e)", color: isPublishing ? "#94a3b8" : "white", fontSize: "18px", fontWeight: 800, fontFamily: "'Sora', sans-serif", cursor: isPublishing ? "not-allowed" : "pointer", boxShadow: isPublishing ? "none" : "0 4px 20px rgba(22,163,74,0.3)", transition: "transform 0.2s, box-shadow 0.2s" }}>
-            {isPublishing ? "Publishing…" : userId ? "🚀 Go live" : "Sign in to publish →"}
+            {isPublishing ? "Publishing…" : userId ? "🚀 Go live" : "Sign up and publish →"}
           </button>
 
           <p style={{ textAlign: "center", fontSize: "12px", color: "#94a3b8", marginTop: "12px", lineHeight: 1.5 }}>
