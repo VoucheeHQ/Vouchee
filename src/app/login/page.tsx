@@ -309,8 +309,13 @@ function LoginPageInner() {
       </div>
 
       {/* ── SSO ─────────────────────────────────────────────── */}
+      {/* Only Google is enabled for now — Facebook and Apple are wired up
+          in the codebase (PROVIDER_LABELS / ProviderLogo / ssoButtonStyle
+          all still handle them) but kept out of this array until the
+          providers are configured in Supabase Auth. To turn them on, just
+          add 'facebook' / 'apple' back into the array below. */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', margin: '18px 0' }}>
-        {(['google', 'facebook', 'apple'] as Provider[]).map(p => (
+        {(['google'] as Provider[]).map(p => (
           <button
             key={p}
             type="button"
