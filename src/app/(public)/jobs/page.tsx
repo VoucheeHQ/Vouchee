@@ -197,7 +197,10 @@ function JobCard({ job, isOwn = false, userRole, cleanerApproved, onEdit, onAppl
   const isGrace = job.status === 'pending_review'
   const zone = job.zone ? ZONE_LABELS[job.zone as HorshamZone] : 'Horsham'
   const days = (job.preferred_days?.length ? job.preferred_days : job.preferred_day ? [job.preferred_day] : [])
-  const daysLabel = days.length > 0 ? days.map((d: string) => d.slice(0, 3)).join(' · ') : null
+  // Slash separator (Fri/Sat/Mon) so it reads as "any of these days" rather
+  // than a sequence — bullet-point separators (Fri · Sat · Mon) were getting
+  // misread as a Fri→Sat→Mon ordered preference.
+  const daysLabel = days.length > 0 ? days.map((d: string) => d.slice(0, 3)).join('/') : null
   const estPerSession = job.hourly_rate && job.hours_per_session ? (job.hourly_rate * job.hours_per_session).toFixed(2) : null
 
   const allTasks = job.tasks ?? []
@@ -229,8 +232,8 @@ function JobCard({ job, isOwn = false, userRole, cleanerApproved, onEdit, onAppl
       )}
       {isCover && !isOwn && !isCompleted && (
         <div className="absolute top-4 right-4 z-10">
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)', color: 'white', fontSize: '11px', fontWeight: 800, padding: '4px 12px', borderRadius: '100px', letterSpacing: '0.04em', boxShadow: '0 2px 8px rgba(168, 85, 247, 0.3)' }}>
-            🆘 Cover clean
+          <span style={{ display: 'inline-flex', alignItems: 'center', background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)', color: 'white', fontSize: '11px', fontWeight: 800, padding: '4px 12px', borderRadius: '100px', letterSpacing: '0.04em', boxShadow: '0 2px 8px rgba(168, 85, 247, 0.3)' }}>
+            Cover clean
           </span>
         </div>
       )}
@@ -263,9 +266,21 @@ function JobCard({ job, isOwn = false, userRole, cleanerApproved, onEdit, onAppl
           {!isCover && daysLabel && <span className="text-xs bg-gray-100 text-gray-700 rounded-full px-2.5 py-1 font-medium">{daysLabel}</span>}
           {!isCover && job.time_of_day && <span className="text-xs bg-gray-100 text-gray-700 rounded-full px-2.5 py-1 font-medium">{job.time_of_day}</span>}
           {!isCover && job.frequency && (
-            <span className="text-xs bg-blue-50 text-blue-700 border border-blue-200 rounded-full px-2.5 py-1 font-medium">
-              {FREQUENCY_LABELS[job.frequency] ?? job.frequency}
-            </span>
+            (() => {
+              // Frequency chip colour-coded for fast skim: weekly=blue,
+              // fortnightly=purple, monthly=red. Defaults to gray for any
+              // unknown frequency so future enum additions still render.
+              const freqClass =
+                job.frequency === 'weekly'      ? 'bg-blue-50 text-blue-700 border-blue-200'
+              : job.frequency === 'fortnightly' ? 'bg-purple-50 text-purple-700 border-purple-200'
+              : job.frequency === 'monthly'     ? 'bg-red-50 text-red-700 border-red-200'
+              :                                   'bg-gray-50 text-gray-700 border-gray-200'
+              return (
+                <span className={`text-xs ${freqClass} border rounded-full px-2.5 py-1 font-medium`}>
+                  {FREQUENCY_LABELS[job.frequency] ?? job.frequency}
+                </span>
+              )
+            })()
           )}
           {job.has_pets && <span className="text-xs bg-amber-50 text-amber-700 border border-amber-200 rounded-full px-2.5 py-1 font-medium">🐾 Pets</span>}
         </div>
@@ -352,7 +367,10 @@ function ApplyModal({ job, cleanerProfile, onClose, onSubmit, submitting }: {
   const zone = job.zone ? ZONE_LABELS[job.zone as HorshamZone] : 'Horsham'
   const estPerSession = job.hourly_rate && job.hours_per_session ? (job.hourly_rate * job.hours_per_session).toFixed(2) : null
   const days = (job.preferred_days?.length ? job.preferred_days : job.preferred_day ? [job.preferred_day] : [])
-  const daysLabel = days.length > 0 ? days.map((d: string) => d.slice(0, 3)).join(' · ') : null
+  // Slash separator (Fri/Sat/Mon) so it reads as "any of these days" rather
+  // than a sequence — bullet-point separators (Fri · Sat · Mon) were getting
+  // misread as a Fri→Sat→Mon ordered preference.
+  const daysLabel = days.length > 0 ? days.map((d: string) => d.slice(0, 3)).join('/') : null
   const showNoRatingsTip = showNewCleanerTip && cleanerProfile && !cleanerProfile.hasRatings
   const allTasks = job.tasks ?? []
   const regularTasks = allTasks.filter(t => REGULAR_TASKS.includes(t))
