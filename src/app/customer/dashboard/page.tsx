@@ -9,6 +9,7 @@ import { Footer } from '@/components/layout/footer'
 import { CleanerCard } from '@/components/cleaner-card'
 import { CleanerCardData } from '@/lib/cleaner-card'
 import { CoverCleanModal } from '@/components/customer/cover-clean-modal'
+import { CustomerNameModal } from '@/components/customer/name-modal'
 import { FeedbackWidget } from '@/components/feedback-widget'
 import { ReferralTile } from '@/components/referral-tile'
 import './dashboard.css'
@@ -972,6 +973,8 @@ function CustomerDashboardContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [profile, setProfile] = useState<CustomerProfile | null>(null)
+  const [userId, setUserId] = useState<string | null>(null)
+  const [showNameModal, setShowNameModal] = useState(false)
   const [requests, setRequests] = useState<CleaningRequest[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -1027,7 +1030,7 @@ function CustomerDashboardContent() {
             .subscribe()
         }
 
-        if (!cancelled) { setProfile(profileData); setRequests(requestData ?? []) }
+        if (!cancelled) { setProfile(profileData); setUserId(user.id); setRequests(requestData ?? []) }
         if (searchParams.get('gc_success') === '1') setShowSuccessBanner(true)
         const acceptAppId = searchParams.get('accept'); const acceptReqId = searchParams.get('request')
         if (acceptAppId && acceptReqId) { handleAcceptApplication(acceptAppId, acceptReqId); router.replace('/customer/dashboard') }
@@ -1312,7 +1315,23 @@ function CustomerDashboardContent() {
         <main style={{ flex: 1 }}>
           <div className="vouchee-customer-dashboard" style={{ maxWidth: '720px', margin: '0 auto', padding: '40px 24px 60px' }}>
             <div style={{ marginBottom: '36px' }}>
-              <h1 style={{ fontSize: '30px', fontWeight: 700, color: '#0f172a', marginBottom: '6px' }}>Hey {firstName}! 👋</h1>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px', flexWrap: 'wrap' }}>
+                <h1 style={{ fontSize: '30px', fontWeight: 700, color: '#0f172a', margin: 0 }}>Hey {firstName}! 👋</h1>
+                <button
+                  onClick={() => setShowNameModal(true)}
+                  aria-label="Edit your name"
+                  title="Edit your name"
+                  style={{
+                    background: '#f1f5f9', color: '#475569', border: '1.5px solid #e2e8f0',
+                    borderRadius: '999px', padding: '4px 10px', fontSize: '12px', fontWeight: 600,
+                    cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", lineHeight: 1.4,
+                    display: 'inline-flex', alignItems: 'center', gap: '4px',
+                  }}
+                >
+                  <span aria-hidden style={{ fontSize: '12px' }}>✏️</span>
+                  Edit name
+                </button>
+              </div>
               <p style={{ fontSize: '15px', color: '#64748b' }}>{hasActive ? 'Your request is live — cleaners can apply.' : 'Manage your cleaning requests below.'}</p>
             </div>
 
@@ -1469,6 +1488,14 @@ function CustomerDashboardContent() {
         {showSuccessBanner && <SuccessBanner onClose={() => setShowSuccessBanner(false)} />}
         {startDateModal && <StartDateModal cleanerName={startDateModal.cleanerName} frequency={startDateModal.frequency} applicationId={startDateModal.applicationId} requestId={startDateModal.requestId} conversationId={startDateModal.conversationId} onCancel={handleCancelStartDate} onConfirm={handleConfirmStartDate} loading={startDateLoading} />}
         {switchModal && <SwitchCleanerModal requestId={switchModal.requestId} isBeforeStart={switchModal.isBeforeStart} onCancel={() => setSwitchModal(null)} onSuccess={handleSwitchSuccess} />}
+        {showNameModal && userId && profile && (
+          <CustomerNameModal
+            profileId={userId}
+            initialFullName={profile.full_name}
+            onClose={() => setShowNameModal(false)}
+            onSaved={(next) => setProfile(p => p ? { ...p, full_name: next } : p)}
+          />
+        )}
         {coverModalReq && customerId && (
           <CoverCleanModal
             parentRequest={{
