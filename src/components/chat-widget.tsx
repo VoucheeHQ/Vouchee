@@ -6,7 +6,7 @@ import { detectTriggeredKeywords } from '@/lib/violation-detect'
 import {
   type MessageMetadata,
   isSystemMessage as isSystemMetadata,
-  isGoCardlessConfirmedMessage,
+  isServiceConfirmedMessage,
 } from '@/types/message-metadata'
 import './chat-widget.css'
 
@@ -517,7 +517,7 @@ function ChatWindow({ conversation, currentUserId, currentRole, onClose, onDismi
   const postConfirmTrigger = useMemo(() => {
     let confirmMsg: Message | null = null
     for (let i = messages.length - 1; i >= 0; i--) {
-      if (isGoCardlessConfirmedMessage(messages[i].metadata)) {
+      if (isServiceConfirmedMessage(messages[i].metadata)) {
         confirmMsg = messages[i]
         break
       }
