@@ -17,7 +17,20 @@ interface ConversationRow { id: string; created_at: string; cleaner_name: string
 interface ViolationRow { id: string; created_at: string; conversation_id: string; message_content: string; triggered_keywords: string[]; sender_role: string; sender_name: string; sender_id: string; reviewed_at: string | null }
 interface KeywordRow { id: string; keyword: string; created_at: string }
 
-type Tab = 'overview' | 'users' | 'cleaners' | 'listings' | 'applications' | 'conversations' | 'violations' | 'keywords' | 'customer-view' | 'cleaner-view' | 'tests'
+type Tab = 'overview' | 'users' | 'cleaners' | 'listings' | 'applications' | 'conversations' | 'violations' | 'keywords' | 'customers' | 'tests'
+
+interface CustomerRow {
+  id: string
+  profile_id: string
+  full_name: string
+  email: string
+  joined: string
+  listings: number
+  chats: number
+  partner_names: string[]
+  accepted_cleaners: number
+  paid_pence: number
+}
 
 const ZONE_LABELS: Record<string, string> = {
   central_south_east: 'Central / South East', north_west: 'North West',
@@ -1034,6 +1047,11 @@ export default function AdminDashboard() {
   const [listingFilter, setListingFilter] = useState<'all' | 'active' | 'hidden'>('all')
   const [cleanersList, setCleanersList] = useState<CleanerRow[]>([])
   const [cleanerFilter, setCleanerFilter] = useState<'all' | 'submitted' | 'in_review' | 'approved' | 'rejected'>('submitted')
+  const [customers, setCustomers] = useState<CustomerRow[]>([])
+  const [loadingCustomers, setLoadingCustomers] = useState(false)
+  const [customersLoaded, setCustomersLoaded] = useState(false)
+  const [customerSearch, setCustomerSearch] = useState('')
+  const [customerSort, setCustomerSort] = useState<SortState>({ key: 'paid_pence', dir: 'desc' })
   const [viewingCleaner, setViewingCleaner] = useState<CleanerRow | null>(null)
   // Per-tab "loading more on search" indicator. Doesn't block the page,
   // just shows in the search bar so the admin knows something's happening.
@@ -1068,6 +1086,9 @@ export default function AdminDashboard() {
     setTab(next)
     tabRef.current = next
     setNewCounts(c => ({ ...c, [next]: 0 }))
+    if (next === 'customers' && !customersLoaded && !loadingCustomers) {
+      loadCustomers()
+    }
   }
 
   // Wraps the corresponding load function with the current offset (state
@@ -1617,6 +1638,22 @@ export default function AdminDashboard() {
     if (res.ok) setKeywords(prev => prev.filter(k => k.id !== id))
   }
 
+  // Aggregated per-customer stats — listings, chats, accepted cleaners, paid £.
+  // Server-side because parsing webhook_events JSONB + four-way joins
+  // client-side is fiddly. Lazy: only fires the first time the tab opens.
+  const loadCustomers = async () => {
+    setLoadingCustomers(true)
+    try {
+      const res = await fetch('/api/admin/customers', { credentials: 'include' })
+      if (!res.ok) return
+      const json = await res.json() as { customers?: CustomerRow[] }
+      setCustomers(json.customers ?? [])
+      setCustomersLoaded(true)
+    } finally {
+      setLoadingCustomers(false)
+    }
+  }
+
   const loadSettings = async () => {
     try {
       const res = await fetch('/api/admin/settings', { credentials: 'include' })
@@ -1726,8 +1763,7 @@ export default function AdminDashboard() {
     { id: 'conversations', label: 'Conversations', icon: '💬' },
     { id: 'violations', label: 'Violations', icon: '🚨' },
     { id: 'keywords', label: 'Keywords', icon: '🔑' },
-    { id: 'customer-view', label: 'Customer view', icon: '👤' },
-    { id: 'cleaner-view', label: 'Cleaner view', icon: '🧹' },
+    { id: 'customers', label: 'Customers', icon: '👤' },
     { id: 'tests', label: 'Tests', icon: '🧪' },
   ]
 
@@ -1763,8 +1799,6 @@ export default function AdminDashboard() {
               <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>Full platform visibility and controls</p>
             </div>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-              <button onClick={() => switchTab('customer-view')} style={{ background: '#f0fdf4', color: '#15803d', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>👤 Customer view</button>
-              <button onClick={() => switchTab('cleaner-view')} style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>🧹 Cleaner view</button>
               <button onClick={async () => { const supabase = createClient(); await supabase.auth.signOut(); router.refresh(); router.replace('/') }}
                 style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>Sign out</button>
             </div>
@@ -2196,23 +2230,91 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {/* ── Customer view ── */}
-          {tab === 'customer-view' && (
+          {/* ── Customers ──
+              Per-customer activity + spend, default sort = highest paid. Use it
+              to spot top customers worth approaching for feedback. "Paid" is
+              count of confirmed GoCardless payment events × monthly fee for
+              the subscription's frequency — exact for recurring spend, ignores
+              one-off cover-clean charges. */}
+          {tab === 'customers' && (
             <div>
-              <div style={{ marginBottom: '16px', padding: '12px 16px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', fontSize: '13px', color: '#15803d', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span>ℹ️</span><span>You're viewing the customer dashboard as admin.</span>
+              <div style={{ marginBottom: '16px', display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <input
+                  value={customerSearch}
+                  onChange={e => setCustomerSearch(e.target.value)}
+                  placeholder="Search by name or email…"
+                  style={{ padding: '10px 16px', borderRadius: '10px', border: '1.5px solid #e2e8f0', fontSize: '14px', fontFamily: "'DM Sans', sans-serif", outline: 'none', width: '300px', color: '#0f172a' }}
+                />
+                <span style={{ fontSize: '13px', color: '#94a3b8' }}>
+                  {loadingCustomers ? 'Loading…' : `${customers.filter(c => {
+                    const s = customerSearch.trim().toLowerCase()
+                    if (!s) return true
+                    return (c.full_name ?? '').toLowerCase().includes(s) || (c.email ?? '').toLowerCase().includes(s)
+                  }).length} customers`}
+                </span>
+                <button
+                  onClick={() => loadCustomers()}
+                  disabled={loadingCustomers}
+                  style={{ background: 'white', color: '#475569', border: '1.5px solid #e2e8f0', borderRadius: '8px', padding: '6px 14px', fontSize: '12px', fontWeight: 600, cursor: loadingCustomers ? 'wait' : 'pointer', fontFamily: "'DM Sans', sans-serif" }}
+                >
+                  {loadingCustomers ? 'Refreshing…' : '↻ Refresh'}
+                </button>
               </div>
-              <iframe src="/customer/dashboard" style={{ width: '100%', height: '85vh', border: 'none', borderRadius: '16px', boxShadow: '0 2px 16px rgba(0,0,0,0.08)' }} />
-            </div>
-          )}
 
-          {/* ── Cleaner view ── */}
-          {tab === 'cleaner-view' && (
-            <div>
-              <div style={{ marginBottom: '16px', padding: '12px 16px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '10px', fontSize: '13px', color: '#1d4ed8', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span>ℹ️</span><span>You're viewing the cleaner dashboard as admin.</span>
+              <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                  <thead>
+                    <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                      <SortableTh label="Name"     sortKey="full_name"          state={customerSort} onChange={k => setCustomerSort(s => flipSort(s, k))} />
+                      <SortableTh label="Email"    sortKey="email"              state={customerSort} onChange={k => setCustomerSort(s => flipSort(s, k))} />
+                      <SortableTh label="Listings" sortKey="listings"           state={customerSort} onChange={k => setCustomerSort(s => flipSort(s, k))} />
+                      <SortableTh label="Chats"    sortKey="chats"              state={customerSort} onChange={k => setCustomerSort(s => flipSort(s, k))} />
+                      <SortableTh label="Accepted" sortKey="accepted_cleaners"  state={customerSort} onChange={k => setCustomerSort(s => flipSort(s, k))} />
+                      <SortableTh label="Paid"     sortKey="paid_pence"         state={customerSort} onChange={k => setCustomerSort(s => flipSort(s, k))} />
+                      <SortableTh label="Joined"   sortKey="joined"             state={customerSort} onChange={k => setCustomerSort(s => flipSort(s, k))} />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(() => {
+                      const s = customerSearch.trim().toLowerCase()
+                      const filtered = customers.filter(c => {
+                        if (!s) return true
+                        return (c.full_name ?? '').toLowerCase().includes(s) || (c.email ?? '').toLowerCase().includes(s)
+                      })
+                      const sorted = sortRows(filtered, customerSort)
+                      return sorted.map((c, i) => (
+                        <tr key={c.id} style={{ borderBottom: i < sorted.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
+                          <td style={{ padding: '12px 16px', fontWeight: 600, color: '#0f172a' }}>{c.full_name}</td>
+                          <td style={{ padding: '12px 16px', color: '#64748b' }}>{c.email}</td>
+                          <td style={{ padding: '12px 16px', color: '#0f172a' }}>{c.listings}</td>
+                          <td
+                            style={{ padding: '12px 16px', color: '#0f172a', cursor: c.partner_names.length > 0 ? 'help' : 'default' }}
+                            title={c.partner_names.length > 0 ? `Chatted with: ${c.partner_names.join(', ')}` : 'No chats yet'}
+                          >
+                            {c.chats}
+                            {c.partner_names.length > 0 && (
+                              <span style={{ marginLeft: '6px', fontSize: '11px', color: '#94a3b8' }}>
+                                ({c.partner_names.length === 1 ? c.partner_names[0] : `${c.partner_names[0]} +${c.partner_names.length - 1}`})
+                              </span>
+                            )}
+                          </td>
+                          <td style={{ padding: '12px 16px', color: '#0f172a' }}>{c.accepted_cleaners}</td>
+                          <td style={{ padding: '12px 16px', color: c.paid_pence > 0 ? '#15803d' : '#94a3b8', fontWeight: c.paid_pence > 0 ? 700 : 400 }}>
+                            £{(c.paid_pence / 100).toFixed(2)}
+                          </td>
+                          <td style={{ padding: '12px 16px', color: '#94a3b8', whiteSpace: 'nowrap' }}>{dual(c.joined)}</td>
+                        </tr>
+                      ))
+                    })()}
+                  </tbody>
+                </table>
+                {!loadingCustomers && customers.length === 0 && customersLoaded && (
+                  <div style={{ padding: '40px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>No customers yet.</div>
+                )}
+                {loadingCustomers && customers.length === 0 && (
+                  <div style={{ padding: '40px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>Loading customers…</div>
+                )}
               </div>
-              <iframe src="/cleaner/dashboard" style={{ width: '100%', height: '85vh', border: 'none', borderRadius: '16px', boxShadow: '0 2px 16px rgba(0,0,0,0.08)' }} />
             </div>
           )}
 
