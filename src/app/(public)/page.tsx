@@ -2,13 +2,13 @@ import HomePageContent from '@/components/HomePageContent'
 
 export const metadata = {
   title: {
-    absolute: 'Vouchee, Vetted Local Cleaners in Horsham, West Sussex',
+    absolute: 'Vouchee — Vetted local cleaners in Horsham, no agency fees',
   },
-  description: 'Hire a vetted, DBS-checked, insured local cleaner in Horsham. Real reviews, fixed monthly fee, no commission. Weekly, fortnightly, monthly or one-off cleans.',
+  description: 'Find vetted local cleaners in Horsham. Set your own price, pick your hours, no agency fees. Direct Debit through GoCardless.',
   alternates: { canonical: '/' },
   openGraph: {
-    title: 'Vouchee, Vetted Local Cleaners in Horsham, West Sussex',
-    description: 'Hire a vetted, DBS-checked, insured local cleaner in Horsham. Real reviews, fixed monthly fee, no commission.',
+    title: 'Vouchee — Vetted local cleaners in Horsham, no agency fees',
+    description: 'Find vetted local cleaners in Horsham. Set your own price, pick your hours, no agency fees. Direct Debit through GoCardless.',
     url: '/',
     images: ['/og-image.jpg'],
   },

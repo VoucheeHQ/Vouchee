@@ -1,12 +1,12 @@
 import Link from 'next/link'
 
 export const metadata = {
-  title: 'How It Works',
-  description: 'See how Vouchee connects Horsham homeowners with vetted local cleaners. Post a request, get applications, chat with cleaners, and choose who feels right.',
+  title: { absolute: 'How it works — Vouchee' },
+  description: 'How Vouchee works: post a cleaning request, browse vetted local cleaners, agree a price, get cleaned. No agency fees, no contracts.',
   alternates: { canonical: '/how-it-works' },
   openGraph: {
-    title: 'How Vouchee Works',
-    description: 'Post a request, get applications from vetted local cleaners, chat, and choose who feels right.',
+    title: 'How it works — Vouchee',
+    description: 'How Vouchee works: post a cleaning request, browse vetted local cleaners, agree a price, get cleaned. No agency fees, no contracts.',
     url: '/how-it-works',
     images: ['/og-image.jpg'],
   },

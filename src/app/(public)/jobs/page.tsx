@@ -779,7 +779,7 @@ export default function JobsPage() {
           {showAnyTopCta && (
             <div className="flex gap-3 flex-wrap">
               {showBecomeCleanerCta && (
-                <Link href="/cleaner/apply" className="inline-flex items-center gap-2 bg-gray-900 text-white rounded-full px-5 py-2.5 text-sm font-semibold hover:bg-gray-700 transition-colors">Become a cleaner →</Link>
+                <Link href="/cleaner" className="inline-flex items-center gap-2 bg-gray-900 text-white rounded-full px-5 py-2.5 text-sm font-semibold hover:bg-gray-700 transition-colors">Become a cleaner →</Link>
               )}
               {showPostRequestCta && (
                 <Link href="/request/property" className="inline-flex items-center gap-2 bg-white border border-gray-200 text-gray-700 rounded-full px-5 py-2.5 text-sm font-semibold hover:bg-gray-50 transition-colors">Post a request</Link>
@@ -863,7 +863,7 @@ export default function JobsPage() {
           <div className="container max-w-5xl mx-auto px-4 text-center">
             <h2 className="text-xl font-bold text-gray-900 mb-2">Want to pick up cleaning work in Horsham?</h2>
             <p className="text-gray-500 mb-5 max-w-md mx-auto text-sm">Join Vouchee as a vetted cleaner and apply for open requests directly.</p>
-            <Link href="/cleaner/apply" className="inline-flex items-center gap-2 bg-gray-900 text-white rounded-full px-6 py-3 text-sm font-semibold hover:bg-gray-700 transition-colors">Apply to become a cleaner →</Link>
+            <Link href="/cleaner" className="inline-flex items-center gap-2 bg-gray-900 text-white rounded-full px-6 py-3 text-sm font-semibold hover:bg-gray-700 transition-colors">Apply to become a cleaner →</Link>
           </div>
         </section>
       )}
