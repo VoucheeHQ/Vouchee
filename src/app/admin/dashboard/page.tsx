@@ -2390,6 +2390,20 @@ export default function AdminDashboard() {
                   }}
                 />
 
+                {/* Credentials guide — sent to cleaners who tick "Email me a simple step-by-step guide" at onboarding step 3 */}
+                <TestCard
+                  title="📋 Cleaner credentials guide email"
+                  description="Sends the step-by-step DBS + public liability insurance + right-to-work guide that cleaners receive when they tick 'I don't have everything just yet' followed by 'Email me a simple step-by-step guide' on the onboarding page. Renders all three sections at once so you can review the full guide. In production, each section is conditionally suppressed based on what the cleaner already has."
+                  buttonLabel="Send test email →"
+                  buttonColor="#0ea5e9"
+                  onRun={async () => {
+                    const res = await fetch('/api/admin/test-credentials-guide-email', { method: 'POST' })
+                    const data = await res.json()
+                    if (data.success) return { success: true, message: `Sent to ${data.sentTo}` }
+                    return { success: false, message: data.error ?? 'Failed' }
+                  }}
+                />
+
                 {/* Referral credited — both flavours (referrer + referee) */}
                 <TestCard
                   title="🎁 Referral credited emails (referrer + referee)"

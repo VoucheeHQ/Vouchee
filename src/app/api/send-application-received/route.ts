@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { cleanerWelcomeHtml, adminAlertHtml } from '@/lib/emails/application-received'
+import { cleanerCredentialsGuideHtml } from '@/lib/emails/cleaner-credentials-guide'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
@@ -159,9 +160,43 @@ export async function POST(request: NextRequest) {
     console.error('Admin alert email threw:', e)
   }
 
+  // ─── 3. Send credentials guide if they ticked the help box ───────────────
+  // Cleaners who don't yet have all three accreditations and tick "Email me
+  // a simple step-by-step guide" on the onboarding page get this guide as a
+  // third email. Each section is conditionally suppressed based on what they
+  // already have, so a cleaner who has DBS but is missing insurance sees only
+  // the insurance section.
+  let guideResult: any = { skipped: true, error: null, id: null }
+  if (cleanerRow.needs_credentials_help) {
+    try {
+      const { data, error } = await resend.emails.send({
+        from: 'Vouchee <cleaners@vouchee.co.uk>',
+        to: profile.email,
+        subject: 'Your Vouchee credentials guide 📋',
+        html: cleanerCredentialsGuideHtml({
+          appUrl,
+          firstName,
+          hasDbs: !!cleanerRow.dbs_checked,
+          hasInsurance: !!cleanerRow.has_insurance,
+          hasRightToWork: !!cleanerRow.right_to_work,
+        }),
+      })
+      if (error) {
+        guideResult = { skipped: false, error: String(error), id: null }
+        console.error('Credentials guide email failed:', error)
+      } else {
+        guideResult = { skipped: false, error: null, id: data?.id ?? null }
+      }
+    } catch (e: any) {
+      guideResult = { skipped: false, error: e.message ?? 'unknown', id: null }
+      console.error('Credentials guide email threw:', e)
+    }
+  }
+
   return NextResponse.json({
     success: true,
     cleaner: cleanerResult,
     admin: adminResult,
+    guide: guideResult,
   })
 }
