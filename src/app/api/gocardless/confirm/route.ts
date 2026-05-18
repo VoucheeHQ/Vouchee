@@ -774,7 +774,8 @@ export async function GET(request: NextRequest) {
         conversation_id: conversationId,
         sender_id: customerRecord.profile_id,
         sender_role: 'customer',
-        content: `🎉 __system__ Direct Debit confirmed — start date ${formattedStartDate}. Your address has been shared with your cleaner.`,
+        content: `🎉 Direct Debit confirmed — start date ${formattedStartDate}. Your address has been shared with your cleaner.`,
+        metadata: { type: 'system', event: 'gocardless_confirmed' },
       }),
 
       supabaseAdmin.from('notifications').insert({
@@ -859,7 +860,8 @@ export async function GET(request: NextRequest) {
               conversation_id: conv.id,
               sender_id: customerRecord.profile_id,
               sender_role: 'customer',
-              content: '__system__ This listing has been filled. Thank you for applying.',
+              content: 'This listing has been filled. Thank you for applying.',
+              metadata: { type: 'system' },
             }))
           }
           if (rejCleanerProfile?.email) {

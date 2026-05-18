@@ -1,8 +1,13 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { detectTriggeredKeywords } from '@/lib/violation-detect'
+import {
+  type MessageMetadata,
+  isSystemMessage as isSystemMetadata,
+  isGoCardlessConfirmedMessage,
+} from '@/types/message-metadata'
 import './chat-widget.css'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -38,6 +43,9 @@ interface Message {
   sender_role: 'customer' | 'cleaner'
   content: string
   created_at: string
+  // System-message marker + future structured-message types. Null for normal
+  // user-to-user messages, populated for anything the platform emits.
+  metadata: MessageMetadata | null
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -86,6 +94,33 @@ const SUGGESTED_QUESTIONS = [
 
 const SUPPLIES_FOLLOWUP = "If not, what products should I get?"
 
+// ─── Post-confirmation suggested replies ─────────────────────────────────────
+// Shown to both sides of the chat after the gocardless_confirmed system
+// message lands, until the receiving side sends a reply. Cleaner gets prompts
+// to ASK for the customer's contact + entry details; customer gets prompts
+// to SHARE that info. `mode: 'send'` auto-fires the message; `mode: 'prefill'`
+// loads it into the input so the user can fill in the actual number/notes.
+
+type PostConfirmSuggestion = {
+  label: string
+  send: string
+  mode: 'send' | 'prefill'
+}
+
+const POST_CONFIRM_SUGGESTIONS_CLEANER: PostConfirmSuggestion[] = [
+  { label: "What's the best number to reach you on?", send: "What's the best number to reach you on?", mode: 'send' },
+  { label: "Parking / entry?", send: "Where's best to park, and how do I get in?", mode: 'send' },
+  { label: "Anything I should know?", send: "Anything I should know before the first clean?", mode: 'send' },
+  { label: "Looking forward to it 👋", send: "Looking forward to meeting you! See you then 👋", mode: 'send' },
+]
+
+const POST_CONFIRM_SUGGESTIONS_CUSTOMER: PostConfirmSuggestion[] = [
+  { label: "Share my number", send: "My best contact number is ", mode: 'prefill' },
+  { label: "Parking info", send: "For parking: ", mode: 'prefill' },
+  { label: "Entry info", send: "To get in: ", mode: 'prefill' },
+  { label: "Looking forward to it 👋", send: "Looking forward to meeting you! 👋", mode: 'send' },
+]
+
 const AVATAR_COLORS = [
   '#e67e22', '#e74c3c', '#9b59b6', '#16a085', '#d35400',
   '#c0392b', '#8e44ad', '#2980b9', '#27ae60', '#f39c12',
@@ -131,12 +166,19 @@ function formatLastMessageTime(iso: string | null): string {
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
 }
 
-function isSystemMessage(content: string): boolean {
-  return content.includes('__system__')
+// Single source of truth for "is this a platform-emitted system message?" —
+// reads message.metadata via the typed guard rather than the old content
+// marker. Takes the whole message so call-sites don't accidentally pass the
+// content string and silently mis-classify.
+function isSystemMessage(message: Pick<Message, 'metadata'>): boolean {
+  return isSystemMetadata(message.metadata)
 }
 
+// Kept as a passthrough for call-site stability. The backfill stripped the
+// "__system__" marker from existing content, so we no longer need to clean
+// the string before display.
 function getSystemMessageText(content: string): string {
-  return content.replace(/🗓️\s*__system__\s*/g, '').replace(/__system__\s*/g, '').trim()
+  return content
 }
 
 // ─── Notification sound ───────────────────────────────────────────────────────
@@ -263,7 +305,7 @@ function ChatWindow({ conversation, currentUserId, currentRole, onClose, onDismi
         const msgs = data ?? []
         setMessages(msgs)
         if (currentRole === 'customer') {
-          setCustomerHasSent(msgs.some((m: Message) => m.sender_role === 'customer' && !isSystemMessage(m.content)))
+          setCustomerHasSent(msgs.some((m: Message) => m.sender_role === 'customer' && !isSystemMessage(m)))
         }
       }
 
@@ -293,7 +335,7 @@ function ChatWindow({ conversation, currentUserId, currentRole, onClose, onDismi
         setMessages(prev => prev.find(m => m.id === msg.id) ? prev : [...prev, msg])
         if (msg.sender_id !== currentUserId) {
           setOtherIsTyping(false)
-          if (!isSystemMessage(msg.content)) playNotificationSound()
+          if (!isSystemMessage(msg)) playNotificationSound()
         }
       })
       .on('presence', { event: 'sync' }, () => {
@@ -349,7 +391,8 @@ function ChatWindow({ conversation, currentUserId, currentRole, onClose, onDismi
           conversation_id: conversation.id,
           sender_id: user.id,
           sender_role: 'customer',
-          content: '__system__ Vouchee: Customer did not complete set-up.',
+          content: 'Vouchee: Customer did not complete set-up.',
+          metadata: { type: 'system' },
         })
       }
       postAbandoned()
@@ -385,7 +428,16 @@ function ChatWindow({ conversation, currentUserId, currentRole, onClose, onDismi
     //   2. Same content re-pressed (pendingFlaggedSend=true) → send through
     //   3. Editing the input clears pendingFlaggedSend, so a new variant
     //      re-triggers the warning + a fresh log
-    const triggered = getTriggeredKeywords(content)
+    //
+    // POST-CONFIRMATION LIFT: once the customer's DD is set up
+    // (requestStatus === 'fulfilled'), the keyword filter no longer serves
+    // a business purpose — the customer is committed, off-platform poach
+    // risk drops, and the post-confirmation suggested replies legitimately
+    // need to send phone numbers / addresses. Skip the check entirely in
+    // that case. The server-side audit trigger (migration 007) still logs
+    // violations, but the client doesn't surface a warning.
+    const filterActive = conversation.requestStatus !== 'fulfilled'
+    const triggered = filterActive ? getTriggeredKeywords(content) : []
     if (triggered.length > 0 && !pendingFlaggedSend) {
       setShowWarning(true)
       setPendingFlaggedSend(true)
@@ -455,6 +507,56 @@ function ChatWindow({ conversation, currentUserId, currentRole, onClose, onDismi
 
   const showSuggestions = currentRole === 'customer' && !customerHasSent && !loading
   const isFulfilled = conversation.requestStatus === 'fulfilled'
+
+  // ─── Post-confirmation suggested replies ─────────────────────────────────
+  // Trigger: there's a gocardless_confirmed system message in this chat and
+  // the current user hasn't sent a non-system reply since. Mutually exclusive
+  // with the pre-confirm SUGGESTED_QUESTIONS bar by construction — once the
+  // customer responds post-confirm they've sent a message, so customerHasSent
+  // is true and showSuggestions is false.
+  const postConfirmTrigger = useMemo(() => {
+    let confirmMsg: Message | null = null
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (isGoCardlessConfirmedMessage(messages[i].metadata)) {
+        confirmMsg = messages[i]
+        break
+      }
+    }
+    if (!confirmMsg) return null
+
+    const confirmTime = new Date(confirmMsg.created_at).getTime()
+    const hasResponded = messages.some(m =>
+      m.sender_role === currentRole &&
+      !isSystemMessage(m) &&
+      new Date(m.created_at).getTime() > confirmTime
+    )
+    return hasResponded ? null : confirmMsg
+  }, [messages, currentRole])
+
+  // Dismissed state persists per-conversation per-tab in sessionStorage so
+  // scrolling through history or reopening the window in the same session
+  // doesn't bring the bar back.
+  const [dismissedPostConfirm, setDismissedPostConfirm] = useState(() => {
+    if (typeof window === 'undefined') return false
+    try { return sessionStorage.getItem(`vouchee:postconfirm-dismissed:${conversation.id}`) === '1' } catch { return false }
+  })
+  const dismissPostConfirmSuggestions = useCallback(() => {
+    setDismissedPostConfirm(true)
+    try { sessionStorage.setItem(`vouchee:postconfirm-dismissed:${conversation.id}`, '1') } catch {}
+  }, [conversation.id])
+
+  const showPostConfirm = !!postConfirmTrigger && !dismissedPostConfirm
+
+  const handlePostConfirmClick = (suggestion: PostConfirmSuggestion) => {
+    if (suggestion.mode === 'send') {
+      handleSend(suggestion.send)
+    } else {
+      // Prefill: load the prompt into the input so the user can fill in the
+      // actual number / parking notes / entry instructions and then press send.
+      setInput(suggestion.send)
+    }
+  }
+
   // The chat is "closed" when the customer has removed/cancelled their listing.
   // When this is true, the input is disabled and we show a banner with a
   // dismiss button so the cleaner can clear the chat from their tray.
@@ -531,7 +633,7 @@ function ChatWindow({ conversation, currentUserId, currentRole, onClose, onDismi
                 {group.date}
               </div>
               {group.msgs.map(msg => {
-                if (isSystemMessage(msg.content)) {
+                if (isSystemMessage(msg)) {
                   return (
                     <div key={msg.id} style={{ textAlign: 'center', margin: '10px 0' }}>
                       <span style={{ display: 'inline-block', background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: '100px', padding: '4px 12px', fontSize: '11px', fontWeight: 600, color: '#64748b', lineHeight: 1.5 }}>
@@ -600,6 +702,29 @@ function ChatWindow({ conversation, currentUserId, currentRole, onClose, onDismi
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Post-confirmation suggested replies — appears once after a
+          gocardless_confirmed system message lands, until the local user
+          sends a reply (or dismisses the bar). Mutually exclusive with the
+          pre-confirm SUGGESTED_QUESTIONS block above by construction. */}
+      {showPostConfirm && (
+        <div style={{ padding: '0 12px 8px', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', flex: 1 }}>
+              {(currentRole === 'cleaner' ? POST_CONFIRM_SUGGESTIONS_CLEANER : POST_CONFIRM_SUGGESTIONS_CUSTOMER).map((s, i) => (
+                <button key={i} onClick={() => handlePostConfirmClick(s)} style={{ padding: '4px 10px', borderRadius: '100px', border: '1px solid #e2e8f0', background: 'white', fontSize: '11px', fontWeight: 600, color: '#475569', cursor: 'pointer', fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)" }}>
+                  {s.label}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={dismissPostConfirmSuggestions}
+              aria-label="Dismiss suggestions"
+              style={{ padding: '2px 6px', background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: '12px', lineHeight: 1, flexShrink: 0, fontFamily: "var(--font-dm-sans, 'DM Sans', sans-serif)" }}
+            >✕</button>
+          </div>
         </div>
       )}
 
@@ -973,7 +1098,7 @@ export function ChatWidget() {
 
         const isOpen = openIdsRef.current.has(convId)
         const isFromMe = msg.sender_id === currentUserIdRef.current
-        const isSys = isSystemMessage(msg.content)
+        const isSys = isSystemMessage(msg)
 
         setConversations(prev => prev.map(c => {
           if (c.id !== convId) return c

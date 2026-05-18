@@ -189,7 +189,8 @@ export async function POST(request: NextRequest) {
             conversation_id: conversationId,
             sender_id: customerRecord.profile_id,
             sender_role: 'customer',
-            content: `🎉 __system__ Cover clean confirmed for ${coverDateIso}. Your address has been shared with your cleaner. Payment is direct between you and ${cleanerFirstName}.`,
+            content: `🎉 Cover clean confirmed for ${coverDateIso}. Your address has been shared with your cleaner. Payment is direct between you and ${cleanerFirstName}.`,
+            metadata: { type: 'system' },
           } as any)
         )
       }

@@ -1072,7 +1072,7 @@ function CustomerDashboardContent() {
       timerFiredRef.current = true; systemMessageTimerRef.current = null
       try {
         const supabase = createClient(); const { data: { user } } = await supabase.auth.getUser(); if (!user) return
-        await (supabase as any).from('messages').insert({ conversation_id: detail.conversationId, sender_id: user.id, sender_role: 'customer', content: '🗓️ __system__ Customer is selecting a start date…' })
+        await (supabase as any).from('messages').insert({ conversation_id: detail.conversationId, sender_id: user.id, sender_role: 'customer', content: '🗓️ Customer is selecting a start date…', metadata: { type: 'system' } })
       } catch {}
     }, 60000)
   }
@@ -1083,7 +1083,7 @@ function CustomerDashboardContent() {
     if (timerFiredRef.current && m) {
       try {
         const supabase = createClient(); const { data: { user } } = await supabase.auth.getUser(); if (!user) return
-        await (supabase as any).from('messages').insert({ conversation_id: m.conversationId, sender_id: user.id, sender_role: 'customer', content: '__system__ Customer did not complete set-up.' })
+        await (supabase as any).from('messages').insert({ conversation_id: m.conversationId, sender_id: user.id, sender_role: 'customer', content: 'Customer did not complete set-up.', metadata: { type: 'system' } })
       } catch {}
     }
     timerFiredRef.current = false
