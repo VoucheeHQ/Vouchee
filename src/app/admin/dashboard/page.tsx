@@ -2404,6 +2404,20 @@ export default function AdminDashboard() {
                   }}
                 />
 
+                {/* Insurance expiry reminder — fires from the daily cron when an approved cleaner is within 30 days of expiry */}
+                <TestCard
+                  title="🛡️ Insurance expiry reminder email"
+                  description="Sends the renewal nudge the daily /api/cron/insurance-expiry-reminder cron fires when an approved cleaner's public liability insurance is between 14 and 30 days from expiry. Test render uses a fixed 21-day-out expiry. Includes the three UK insurers we recommend (Simply Business, Tradesman Saver, Protectivity)."
+                  buttonLabel="Send test email →"
+                  buttonColor="#16a34a"
+                  onRun={async () => {
+                    const res = await fetch('/api/admin/test-insurance-expiry-reminder-email', { method: 'POST' })
+                    const data = await res.json()
+                    if (data.success) return { success: true, message: `Sent to ${data.sentTo}` }
+                    return { success: false, message: data.error ?? 'Failed' }
+                  }}
+                />
+
                 {/* Referral credited — both flavours (referrer + referee) */}
                 <TestCard
                   title="🎁 Referral credited emails (referrer + referee)"
