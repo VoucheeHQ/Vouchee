@@ -1329,8 +1329,6 @@ function CustomerDashboardContent() {
                 </p>
               </div>
             )}
-            {customerId && <ReferralTile customerId={customerId} />}
-
             <div style={{ marginBottom: '36px' }}>
               <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '14px' }}>Request a clean</div>
               <div className="dashboard-tile-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
@@ -1399,7 +1397,6 @@ function CustomerDashboardContent() {
                 {pausedRequests.map(req => <ActiveRequestCard key={req.id} request={req} onPause={() => setModal({ type: 'pause', id: req.id })} onRepublish={() => setModal({ type: 'republish', id: req.id })} onDelete={() => setModal({ type: 'delete', id: req.id })} onEdit={() => setEditingRequest(req)} />)}
               </div>
             )}
-            <NotificationsPanel notifications={notifications} onClick={handleNotificationClick} onDismiss={handleDismissNotification} onMarkAllRead={handleMarkAllRead} />
             {activeRequestIds.length > 0 && <ApplicationsSection requestIds={activeRequestIds} requests={activeRequests} onAccept={handleAcceptApplication} onOpenChat={handleOpenChat} />}
 
             {fulfilledRequests.length > 0 && (
@@ -1418,41 +1415,45 @@ function CustomerDashboardContent() {
               </div>
             )}
 
+            <NotificationsPanel notifications={notifications} onClick={handleNotificationClick} onDismiss={handleDismissNotification} onMarkAllRead={handleMarkAllRead} />
+
+            {customerId && <ReferralTile customerId={customerId} />}
+
             {pastRequests.filter(r => r.status !== 'paused' && r.status !== 'fulfilled').length > 0 && (
-              <div>
+              <div style={{ marginBottom: '36px' }}>
                 <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '14px' }}>Past listings</div>
                 {pastRequests.filter(r => r.status !== 'paused' && r.status !== 'fulfilled').map(req => <PastListingRow key={req.id} request={req} />)}
               </div>
             )}
             {requests.length === 0 && <div style={{ textAlign: 'center', padding: '40px 0', color: '#94a3b8' }}><div style={{ fontSize: '40px', marginBottom: '12px' }}>🧹</div><p style={{ fontSize: '15px' }}>No requests yet — use the buttons above to get started.</p></div>}
-          </div>
-        </main>
-        {/* Feedback card — two buttons that pop the FeedbackWidget modal
-            with the type pre-set via custom event. Sits above Sign out so
-            it's discoverable but not in the way. */}
-        <div style={{ maxWidth: '720px', margin: '24px auto 0', padding: '0 24px', boxSizing: 'border-box' }}>
-          <div style={{ background: 'white', border: '1.5px solid #e2e8f0', borderRadius: '16px', padding: '18px 20px' }}>
-            <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px' }}>Help improve Vouchee</div>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                onClick={() => window.dispatchEvent(new CustomEvent('vouchee:open-feedback', { detail: { type: 'suggestion' } }))}
-                style={{ flex: '1 1 160px', display: 'flex', alignItems: 'center', gap: '10px', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '10px', padding: '10px 14px', fontSize: '13px', fontWeight: 700, color: '#0369a1', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", textAlign: 'left' }}
-              >
-                <span style={{ fontSize: '16px' }}>💡</span>
-                <span>Send a suggestion</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => window.dispatchEvent(new CustomEvent('vouchee:open-feedback', { detail: { type: 'bug' } }))}
-                style={{ flex: '1 1 160px', display: 'flex', alignItems: 'center', gap: '10px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '10px', padding: '10px 14px', fontSize: '13px', fontWeight: 700, color: '#b91c1c', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", textAlign: 'left' }}
-              >
-                <span style={{ fontSize: '16px' }}>🐛</span>
-                <span>Report a bug</span>
-              </button>
+
+            {/* Help improve Vouchee — last main-content section. Two buttons in
+                a 2-column grid (always side-by-side, no wrap-on-narrow) so the
+                suggestion/bug pair reads as a single decision rather than a
+                vertical stack. */}
+            <div style={{ background: 'white', border: '1.5px solid #e2e8f0', borderRadius: '16px', padding: '18px 20px', marginTop: '8px' }}>
+              <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px' }}>Help improve Vouchee</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                <button
+                  type="button"
+                  onClick={() => window.dispatchEvent(new CustomEvent('vouchee:open-feedback', { detail: { type: 'suggestion' } }))}
+                  style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '10px', padding: '10px 14px', fontSize: '13px', fontWeight: 700, color: '#0369a1', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", textAlign: 'left' }}
+                >
+                  <span style={{ fontSize: '16px' }}>💡</span>
+                  <span>Send a suggestion</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => window.dispatchEvent(new CustomEvent('vouchee:open-feedback', { detail: { type: 'bug' } }))}
+                  style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '10px', padding: '10px 14px', fontSize: '13px', fontWeight: 700, color: '#b91c1c', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", textAlign: 'left' }}
+                >
+                  <span style={{ fontSize: '16px' }}>🐛</span>
+                  <span>Report a bug</span>
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </main>
         <div style={{ borderTop: '1px solid #e2e8f0', padding: '32px 24px', display: 'flex', justifyContent: 'center', marginTop: '16px' }}>
           <button onClick={() => setModal({ type: 'signout', id: '' })} style={{ background: 'none', border: '1px solid #fecaca', borderRadius: '8px', padding: '8px 20px', fontSize: '13px', fontWeight: 600, color: '#ef4444', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>Sign out</button>
         </div>
