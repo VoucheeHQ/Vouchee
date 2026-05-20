@@ -1241,6 +1241,52 @@ export function ChatWidget() {
     }
   }, [initialized])
 
+  const totalUnread = conversations.reduce((sum, c) => sum + (c.unread ?? 0), 0)
+
+  // Tab title flicker: when unread climbs (desktop only, tab in background),
+  // alternate the tab title every 5s between "New message" and the original
+  // page title for up to 5 minutes, or until the tab is refocused / unread
+  // clears. Mobile browsers ignore document.title changes anyway, so the
+  // ≤768px branch is a hard skip rather than a degraded experience.
+  const prevUnreadRef = useRef(0)
+  useEffect(() => {
+    const prev = prevUnreadRef.current
+    prevUnreadRef.current = totalUnread
+    if (typeof window === 'undefined') return
+    if (window.innerWidth <= 768) return
+    if (totalUnread <= prev || totalUnread === 0) return
+
+    const originalTitle = document.title
+    let showingAlert = false
+    const interval = setInterval(() => {
+      // Only flip while the tab is hidden — no point flickering at someone
+      // who is already looking at the page.
+      if (!document.hidden) {
+        if (document.title !== originalTitle) document.title = originalTitle
+        return
+      }
+      showingAlert = !showingAlert
+      document.title = showingAlert ? 'New message' : originalTitle
+    }, 5000)
+
+    const stop = () => {
+      clearInterval(interval)
+      clearTimeout(timeout)
+      document.removeEventListener('visibilitychange', onVisible)
+      document.title = originalTitle
+    }
+    const timeout = setTimeout(stop, 5 * 60 * 1000)
+    const onVisible = () => {
+      if (!document.hidden) {
+        // User looked at the tab — assume they've seen the unread and stop.
+        stop()
+      }
+    }
+    document.addEventListener('visibilitychange', onVisible)
+
+    return stop
+  }, [totalUnread])
+
   // Don't render until we know who the user is
   if (!initialized || !currentUserId || !currentRole) return null
 
@@ -1248,7 +1294,6 @@ export function ChatWidget() {
   // The tray now always renders once the user is identified, showing an empty
   // state ("No conversations yet") until a chat is opened or received.
 
-  const totalUnread = conversations.reduce((sum, c) => sum + (c.unread ?? 0), 0)
   const openExpanded = conversations.filter(c => openIds.has(c.id))
 
   return (
